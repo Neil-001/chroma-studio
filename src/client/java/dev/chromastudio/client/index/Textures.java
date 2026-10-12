@@ -62,11 +62,15 @@ final class Textures {
             int[] argb = new int[side * side];
             for (int i = 0; i < alpha.length; i++) {
                 if (alpha[i] <= 0) continue;
+                // As many whole pixels as fit, then one with what is left over. A leftover under the cutoff is
+                // dropped, unless it is all the cell has.
                 double wanted = alpha[i] * per * per;
-                int filled = (int) Math.ceil(wanted - 1e-6);
-                int each = Math.clamp(Math.round(wanted / filled * 255), TextureStats.ALPHA_CUTOFF, 255);
+                int whole = (int) Math.floor(wanted + 1e-6);
+                int rest = (int) Math.round((wanted - whole) * 255);
+                if (whole == 0) rest = Math.max(rest, TextureStats.ALPHA_CUTOFF);
                 int x0 = i % SIDE * per, y0 = i / SIDE * per;
-                for (int n = 0; n < filled; n++) argb[(y0 + n / per) * side + x0 + n % per] = each << 24 | rgb[i];
+                for (int n = 0; n < whole; n++) argb[(y0 + n / per) * side + x0 + n % per] = 0xFF000000 | rgb[i];
+                if (rest >= TextureStats.ALPHA_CUTOFF && whole < per * per) argb[(y0 + whole / per) * side + x0 + whole % per] = rest << 24 | rgb[i];
             }
             return TextureStats.of(argb, side, side);
         }
