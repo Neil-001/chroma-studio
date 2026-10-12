@@ -1,5 +1,6 @@
 package dev.chromastudio.client;
 
+import dev.chromastudio.client.export.ExportCommand;
 import dev.chromastudio.client.ui.ChromaScreen;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
@@ -14,11 +15,12 @@ public final class ChromaStudioClient {
 
     public static ClientPlatform platform;
 
-    /** Loads the settings and creates the keys. The loader then registers {@link Keys#ALL} and {@link Keys#CATEGORY}. */
+    /** Loads the settings, creates the keys and adds the subcommands of {@code /chroma}. The loader then registers {@link Keys#ALL} and {@link Keys#CATEGORY}. */
     public static void init(ClientPlatform loader) {
         platform = loader;
         ModSettings.load();
         Keys.create();
+        ExportCommand.register();
     }
 
     /** The tab to open the window on at the next tick, or null. */
