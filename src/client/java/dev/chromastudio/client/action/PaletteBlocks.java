@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -54,6 +55,16 @@ public final class PaletteBlocks {
     }
 
     public static PaletteEntry of(Entry e) { return new PaletteEntry(e.id(), e.properties()); }
+
+    /** A state as a palette entry: its block's id, and every property that differs from the block's default state. */
+    public static PaletteEntry of(BlockState state) {
+        BlockState byDefault = state.getBlock().defaultBlockState();
+        List<String> properties = new ArrayList<>();
+        state.getValues().forEach(v -> {
+            if (!v.value().equals(byDefault.getValue(v.property()))) properties.add(v.property().getName() + "=" + v.valueName());
+        });
+        return new PaletteEntry(BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(), String.join(",", properties));
+    }
 
     /** The block's name, or its id for a block this game doesn't have. */
     public static Component name(PaletteEntry e) {
@@ -120,10 +131,20 @@ public final class PaletteBlocks {
     /** An index entry's look on the settings' face in the settings' biome. */
     public static TextureStats stats(Entry e) { return e.face(face(), tint()); }
 
+    /**
+     * A palette entry's look on the settings' face in the settings' biome, or null for a block the index doesn't
+     * have. The tint is the entry's own state's, though the index may keep its textures under another state.
+     */
+    public static TextureStats stats(PaletteEntry e) {
+        BlockState state = state(e);
+        Entry entry = state == null ? null : entry(state);
+        return entry == null ? null : entry.face(face(), state, tint());
+    }
+
     /** The entry's average colour at the settings' viewing distance, or null for a block the index doesn't have. */
     public static Color colour(PaletteEntry e) {
-        Entry entry = entry(e);
-        return entry == null ? null : stats(entry).mean(scale());
+        TextureStats stats = stats(e);
+        return stats == null ? null : stats.mean(scale());
     }
 
     /**

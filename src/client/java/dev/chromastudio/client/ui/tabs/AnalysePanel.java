@@ -2,7 +2,6 @@ package dev.chromastudio.client.ui.tabs;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.action.PaletteBlocks;
-import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Handoff;
@@ -48,12 +47,11 @@ final class AnalysePanel {
         Scale scale = PaletteBlocks.scale();
         int missing = 0;
         for (PaletteEntry e : entries) {
-            Entry entry = PaletteBlocks.entry(e);
-            if (entry == null) {
+            TextureStats stats = PaletteBlocks.stats(e);
+            if (stats == null) {
                 missing++;
                 continue;
             }
-            TextureStats stats = PaletteBlocks.stats(entry);
             colours.add(stats.mean(scale));
             lch.add(stats.mean(scale).oklch());
             badges.add(stats.badge());

@@ -76,14 +76,16 @@ public final class GradientTab extends PanelTab {
     /** Each solve takes the next number, and its answer is dropped when a later one has been asked for. */
     private static final AtomicInteger ASKED = new AtomicInteger();
 
-    /** One step of the answer: the colour wanted, the block chosen and how far apart they are. */
+    /** One step of the answer: the colour wanted, the block chosen and how far apart they are, as ΔE in OKLab. */
     private record Step(Color ideal, Entry entry, Color mean, double deltaE) {}
 
     private List<Step> result = List.of();
     private double meanDeltaE;
     /** Why there's no answer, or null while there is one or one is on its way. */
     private Component problem;
-    private boolean solving, wasReady;
+    private boolean solving, wasReady, wasBuilding;
+    /** The {@link #inputs} the last solve was asked with. */
+    private String solvedFor = "";
     private Bounds stopsArea, stripArea;
     private int badgeY;
 
@@ -114,6 +116,7 @@ public final class GradientTab extends PanelTab {
     @Override
     protected void layout(Bounds b) {
         // A block sent over from a Match result becomes a stop, once.
+        boolean seeded = Handoff.gradientSeed instanceof Entry;
         if (Handoff.gradientSeed instanceof Entry seed) addStop(seed);
         Handoff.gradientSeed = null;
         selectedStop = Math.clamp(selectedStop, 0, STOPS.size() - 1);
@@ -206,8 +209,15 @@ public final class GradientTab extends PanelTab {
         badgeY = actionsY - GAP - 10;
         int top = y + ROW + GAP;
         stripArea = new Bounds(b.x() + PAD, top, b.w() - 2 * PAD, badgeY - GAP - top);
-        wasReady = BlockIndex.get().ready();
-        if (result.isEmpty() && problem == null && !solving) solve();
+        // A new stop, or settings changed on the settings screen, make the answer on show a stale one.
+        if (seeded || !inputs().equals(solvedFor) || result.isEmpty() && problem == null && !solving) solve();
+    }
+
+    /** Everything outside the tab that the answer depends on, to tell when it has changed. */
+    private static String inputs() {
+        return String.join("|", ModSettings.defaultFace.name(), ModSettings.metric, String.valueOf(ModSettings.viewingDistance), ModSettings.biomeMode.name(),
+                ModSettings.biome, String.valueOf(ModSettings.filterSurvival), String.valueOf(ModSettings.technicalBlocks),
+                String.valueOf(ModSettings.statesSeparately), PaletteBlocks.scale().name());
     }
 
     private static int widest(List<Component> labels) { return labels.stream().mapToInt(Widgets::tw).max().orElse(40) + 10; }
@@ -256,6 +266,9 @@ public final class GradientTab extends PanelTab {
      */
     private void solve() {
         int number = ASKED.incrementAndGet();
+        solvedFor = inputs();
+        wasReady = BlockIndex.get().ready();
+        wasBuilding = BlockIndex.get().building();
         if (!BlockIndex.get().ready()) {
             fail(tr("palettes.chromastudio.index_building"));
             return;
@@ -285,14 +298,16 @@ public final class GradientTab extends PanelTab {
         problem = null;
         WORKER.execute(() -> {
             List<Step> found = new ArrayList<>();
-            double mean;
+            double mean = 0;
             try {
                 Gradient.Result solved = Gradient.solve(ideal, candidates, metric, matchSpread);
-                mean = solved.meanDeltaE();
+                // The blocks are chosen by the settings' metric, but the badge's bands are OKLab's, so it is measured in that.
                 for (int i = 0; i < solved.steps().size(); i++) {
                     Gradient.Candidate c = solved.steps().get(i);
                     Color wanted = Color.ofOklch(solved.ideal().get(i));
-                    found.add(new Step(wanted, byId.get((String) c.key()), looks.get((String) c.key()).mean(scale), Distribution.of(wanted).emd(c.distribution(), metric)));
+                    double deltaE = Distribution.of(wanted).emd(c.distribution(), Metric.OKLAB);
+                    mean += deltaE / solved.steps().size();
+                    found.add(new Step(wanted, byId.get((String) c.key()), looks.get((String) c.key()).mean(scale), deltaE));
                 }
             } catch (RuntimeException e) {
                 ChromaStudioClient.LOGGER.warn("Couldn't work the gradient out", e);
@@ -301,11 +316,12 @@ public final class GradientTab extends PanelTab {
                 });
                 return;
             }
+            double meanOklab = mean;
             Minecraft.getInstance().execute(() -> {
                 if (number != ASKED.get()) return;
                 solving = false;
                 result = List.copyOf(found);
-                meanDeltaE = mean;
+                meanDeltaE = meanOklab;
                 rebuild();
             });
         });
@@ -413,11 +429,10 @@ public final class GradientTab extends PanelTab {
     @Override
     public void tick() {
         super.tick();
-        // The index finished, or was rebuilt, since the last answer.
-        boolean ready = BlockIndex.get().ready();
-        if (ready != wasReady && !dialogOpen()) {
-            wasReady = ready;
-            solve();
-        }
+        // The index finished, or was rebuilt, or a setting the answer hangs on changed, since the last solve.
+        boolean ready = BlockIndex.get().ready(), building = BlockIndex.get().building();
+        boolean rebuilt = wasBuilding && !building;
+        wasBuilding = building;
+        if (!dialogOpen() && (ready != wasReady || rebuilt || !inputs().equals(solvedFor))) solve();
     }
 }

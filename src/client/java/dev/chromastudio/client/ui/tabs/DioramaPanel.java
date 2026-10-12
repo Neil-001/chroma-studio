@@ -5,10 +5,10 @@ import com.mojang.blaze3d.platform.NativeImage;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.action.PaletteBlocks;
-import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Scale;
+import dev.chromastudio.core.color.TextureStats;
 import dev.chromastudio.core.export.Arrangement;
 import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.export.LayoutOptions;
@@ -47,7 +47,8 @@ final class DioramaPanel implements AutoCloseable {
 
     private final List<PaletteEntry> kept = new ArrayList<>();
     private final List<BlockState> states = new ArrayList<>();
-    private final List<Entry> looks = new ArrayList<>();
+    /** Each kept entry's face, or null for a block the index has no texture for. */
+    private final List<TextureStats> looks = new ArrayList<>();
     private long seed = System.nanoTime();
     private Arrangement arrangement;
     private DynamicTexture texture;
@@ -64,7 +65,7 @@ final class DioramaPanel implements AutoCloseable {
             if (state == null) continue;
             kept.add(e);
             states.add(state);
-            looks.add(PaletteBlocks.entry(state));
+            looks.add(PaletteBlocks.stats(e));
         }
         arrange();
     }
@@ -148,7 +149,7 @@ final class DioramaPanel implements AutoCloseable {
                 int entry = arrangement.at(x, y, 0);
                 int[] face = null;
                 if (entry >= 0 && looks.get(entry) != null) {
-                    if (faces[entry] == null) faces[entry] = PaletteBlocks.stats(looks.get(entry)).pixels(Scale.T16);
+                    if (faces[entry] == null) faces[entry] = looks.get(entry).pixels(Scale.T16);
                     face = faces[entry];
                 }
                 int ox = x * TEXELS, oy = (h - 1 - y) * TEXELS;

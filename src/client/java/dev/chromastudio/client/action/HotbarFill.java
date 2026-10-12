@@ -34,6 +34,13 @@ public final class HotbarFill {
     private record Was(int slot, ItemStack stack) {}
 
     private static List<Was> last = List.of();
+    /** The connection the last fill was made on. Its slots are another inventory's once the player is in another world. */
+    private static Object lastOn;
+
+    /** Forgets a fill made in a world the player has since left. */
+    private static void forgetOtherWorlds() {
+        if (!last.isEmpty() && lastOn != Minecraft.getInstance().getConnection()) last = List.of();
+    }
 
     /** Why the hotbar can't be filled now, or nothing when it can. */
     public static Optional<Component> unavailable() {
@@ -41,7 +48,10 @@ public final class HotbarFill {
         return Give.canGive() ? Optional.empty() : Optional.of(Component.translatable("hotbar.chromastudio.no_permission"));
     }
 
-    public static boolean canUndo() { return !last.isEmpty() && Give.canGive(); }
+    public static boolean canUndo() {
+        forgetOtherWorlds();
+        return !last.isEmpty() && Give.canGive();
+    }
 
     /**
      * Fills the hotbar and says what happened. Entries with no item, such as water, are passed over. The slots past
@@ -83,6 +93,7 @@ public final class HotbarFill {
             }
         }
         last = List.copyOf(before);
+        lastOn = Minecraft.getInstance().getConnection();
 
         List<ItemStack> strip = new ArrayList<>(Collections.nCopies(HOTBAR, ItemStack.EMPTY));
         for (int i = 0; i < placed; i++) strip.set(i, stacks.get(i));
@@ -96,6 +107,7 @@ public final class HotbarFill {
 
     /** Puts back what the last fill replaced, and says so. */
     public static Component undo() {
+        forgetOtherWorlds();
         if (last.isEmpty()) return Component.translatable("hotbar.chromastudio.nothing_to_undo");
         Optional<Component> why = unavailable();
         if (why.isPresent()) return why.get();

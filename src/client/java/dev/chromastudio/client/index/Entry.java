@@ -88,6 +88,12 @@ public final class Entry {
     /** A face's stats with the tint applied. {@link Face#ANY} isn't a face: ask {@link #bestFace} which one first. */
     public TextureStats face(Face f, TintContext tint) { return sampled(f, tint).stats; }
 
+    /**
+     * A face's stats as another state of this block shows it. States that share their textures share an entry, but a
+     * tint may still tell them apart, as redstone dust's does by its power.
+     */
+    public TextureStats face(Face f, BlockState as, TintContext tint) { return layers(f).sample(as, tint).stats; }
+
     /** The face closest to a target. Among equals, the top comes first and the bottom last. */
     public Face bestFace(Target t, Scale s, Metric m, TintContext tint) {
         Face best = Face.UP;

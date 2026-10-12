@@ -88,7 +88,8 @@ final class PaletteDialogs {
         protected void build(Bounds in) {
             boolean first = field == null;
             field = widgets.search(in.x(), in.y(), in.w(), tr("palettes.chromastudio.name_hint"), s -> text = s);
-            field.setMaxLength(64);
+            // A name may be any length. Only the file's name is cut short.
+            field.setMaxLength(Integer.MAX_VALUE);
             field.setValue(text);
             if (first) {
                 field.setFocused(true);

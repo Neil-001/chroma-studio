@@ -114,6 +114,9 @@ public final class PaletteStore implements PaletteSink {
         return out;
     }
 
+    /** Whether a palette of the player's own has reached its file. False after a save that failed. */
+    public boolean saved(Palette p) { return files.containsKey(p); }
+
     /** A preset's file name, which is also the end of its translation key, or null for a palette that isn't one. */
     public String presetId(Palette p) { return presetIds.get(p); }
 

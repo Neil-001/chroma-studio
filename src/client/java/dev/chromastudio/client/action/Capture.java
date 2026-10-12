@@ -10,7 +10,6 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
-import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
@@ -27,7 +26,6 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -49,6 +47,8 @@ public final class Capture {
 
     private static boolean armed;
     private static BlockPos first;
+    /** The world the capture was armed in. Coordinates picked there mean nothing in another. */
+    private static ClientLevel armedIn;
     /** What the eyedropper key did before the capture borrowed it. */
     private static Runnable eyedropper;
 
@@ -88,6 +88,7 @@ public final class Capture {
         if (armed || Minecraft.getInstance().player == null) return;
         armed = true;
         first = null;
+        armedIn = Minecraft.getInstance().level;
         eyedropper = Keys.onEyedropper;
         Keys.onEyedropper = Capture::corner;
         prompt();
@@ -102,6 +103,7 @@ public final class Capture {
     private static void disarm() {
         armed = false;
         first = null;
+        armedIn = null;
         Keys.onEyedropper = eyedropper;
         eyedropper = null;
     }
@@ -133,11 +135,14 @@ public final class Capture {
         if (result.made) ChromaStudioClient.openWindow();
     }
 
-    /** Call every client tick. Keeps the prompt up while armed, and cancels on Escape, which opens the pause menu, or on leaving the world. */
+    /**
+     * Call every client tick. Keeps the prompt up while armed, and cancels on Escape, which opens the pause menu, on
+     * leaving the world, and on going to another dimension.
+     */
     public static void tick(Minecraft mc) {
         if (!armed) return;
         if (mc.player == null) disarm();
-        else if (mc.gui.screen() instanceof PauseScreen) cancel();
+        else if (mc.level != armedIn || mc.gui.screen() instanceof PauseScreen) cancel();
         else prompt();
     }
 
@@ -163,7 +168,8 @@ public final class Capture {
 
     /**
      * Counts the block states in the loaded chunks of the box between two corners, air left out, and makes a palette
-     * of the commonest, each weighted by how often it turned up against the rarest kept.
+     * of the commonest, each weighted by how often it turned up against the rarest kept. A state is kept as it stands
+     * in the world, with every property that isn't its block's default.
      */
     public static Result capture(BlockPos a, BlockPos b) {
         Minecraft mc = Minecraft.getInstance();
@@ -172,19 +178,26 @@ public final class Capture {
         if (level == null || sink == null) return new Result(Component.translatable("palettes.chromastudio.no_world"), false);
         int x0 = Math.min(a.getX(), b.getX()), y0 = Math.max(level.getMinY(), Math.min(a.getY(), b.getY())), z0 = Math.min(a.getZ(), b.getZ());
         int x1 = Math.max(a.getX(), b.getX()), y1 = Math.min(level.getMaxY(), Math.max(a.getY(), b.getY())), z1 = Math.max(a.getZ(), b.getZ());
-        long volume = (x1 - x0 + 1L) * Math.max(0, y1 - y0 + 1L) * (z1 - z0 + 1L);
-        if (volume > MAX_VOLUME) return new Result(Component.translatable("capture.chromastudio.too_big", volume, MAX_VOLUME), false);
+        // A box wholly above or below the world holds nothing, however wide it is.
+        if (y1 < y0) return new Result(Component.translatable("capture.chromastudio.empty"), false);
+        // Each side is checked on its own first: three sides typed into the command can multiply past what a long holds.
+        long sx = (long) x1 - x0 + 1, sy = (long) y1 - y0 + 1, sz = (long) z1 - z0 + 1;
+        if (sx > MAX_VOLUME || sz > MAX_VOLUME || sx * sz > MAX_VOLUME || sx * sz * sy > MAX_VOLUME) {
+            return new Result(Component.translatable("capture.chromastudio.too_big", MAX_VOLUME), false);
+        }
 
         Map<BlockState, PaletteEntry> entries = new IdentityHashMap<>();
         Map<PaletteEntry, Integer> counts = new HashMap<>();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (int x = x0; x <= x1; x++)
-            for (int z = z0; z <= z1; z++) {
+        // Counted by offset from the corner: a coordinate at the very end of the int range can't be stepped past.
+        for (int dx = 0; dx < sx; dx++)
+            for (int dz = 0; dz < sz; dz++) {
+                int x = x0 + dx, z = z0 + dz;
                 if (!level.getChunkSource().hasChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z))) continue;
                 for (int y = y0; y <= y1; y++) {
                     BlockState state = level.getBlockState(pos.set(x, y, z));
                     if (state.isAir()) continue;
-                    counts.merge(entries.computeIfAbsent(state, Capture::entryFor), 1, Integer::sum);
+                    counts.merge(entries.computeIfAbsent(state, PaletteBlocks::of), 1, Integer::sum);
                 }
             }
         if (counts.isEmpty()) return new Result(Component.translatable("capture.chromastudio.empty"), false);
@@ -199,12 +212,6 @@ public final class Capture {
         String name = Component.translatable("capture.chromastudio.name", x0, y0, z0, x1, y1, z1).getString();
         if (!sink.createPalette(name, kept)) return new Result(Component.translatable("capture.chromastudio.failed"), false);
         return new Result(Component.translatable("capture.chromastudio.done", kept.size(), counts.size()), true);
-    }
-
-    /** The palette entry a state counts as: the index's entry for it, so states that look alike count together. */
-    private static PaletteEntry entryFor(BlockState state) {
-        Entry entry = PaletteBlocks.entry(state);
-        return entry != null ? PaletteBlocks.of(entry) : new PaletteEntry(BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(), "");
     }
 
     /** Whether a capture could start: only in a world. */

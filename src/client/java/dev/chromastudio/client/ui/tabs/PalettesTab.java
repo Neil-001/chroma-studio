@@ -17,7 +17,6 @@ import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -57,6 +56,8 @@ public final class PalettesTab extends PanelTab {
     private AnalysePanel analyse;
     private DioramaPanel diorama;
     private boolean dirty;
+    /** The palette the unsaved changes are in, which another tab may since have deselected. */
+    private Palette edited;
     private long saveAt;
     /** What the layout was last built for, so a change from outside the tab, such as an added block, lays it out again. */
     private Palette shown;
@@ -82,6 +83,8 @@ public final class PalettesTab extends PanelTab {
     }
 
     private void showEntries() {
+        Palette p = selected();
+        if (p != null && !p.preset && !store.saved(p)) say(tr("palettes.chromastudio.save_failed"), BAD);
         panel = Panel.ENTRIES;
         analyse = null;
         if (diorama != null) diorama.close();
@@ -241,7 +244,9 @@ public final class PalettesTab extends PanelTab {
             p.notes = s;
             touch();
         });
-        notes.setMaxLength(1024);
+        // A palette's tags and notes may be any length, and a shorter limit would cut an imported one on its first edit.
+        tags.setMaxLength(Integer.MAX_VALUE);
+        notes.setMaxLength(Integer.MAX_VALUE);
         if (p != null) {
             // The responders are told of these too, and would mark an untouched palette changed.
             boolean was = dirty;
@@ -305,14 +310,16 @@ public final class PalettesTab extends PanelTab {
 
     private void touch() {
         dirty = true;
+        edited = selected();
         saveAt = Util.getMillis() + SAVE_AFTER_MS;
     }
 
     private void flush() {
         if (!dirty) return;
         dirty = false;
-        Palette p = selected();
-        if (p != null && !p.preset && !store.save(p)) say(tr("palettes.chromastudio.save_failed"), BAD);
+        Palette p = edited;
+        edited = null;
+        if (p != null && !p.preset && store.own().contains(p) && !store.save(p)) say(tr("palettes.chromastudio.save_failed"), BAD);
     }
 
     /** One entry's icon, name, state note and colour. It takes no clicks; its tooltip is the block's id. */
