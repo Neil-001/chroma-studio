@@ -90,6 +90,7 @@ public final class MatchTab extends Tab {
     });
 
     private enum Panel { NONE, FILTERS, BIOMES, FIND_BIOME, DYE }
+    private static final int TINT_BADGE = 0xFF6FC45A;
 
     /** The matches on show, and what they were matched with, which the rows are drawn with too. */
     private record Shown(List<BlockIndex.Match> matches, Target target, Scale scale, TintContext tint, Metric metric) {}
@@ -392,6 +393,13 @@ public final class MatchTab extends Tab {
         build();
     }
 
+    /** A filter's name, cut to the room left of its control. A translation can be twice the English, and the tooltip then has the whole of it. */
+    private static void filterLabel(Widgets w, int x, int y, int room, Component name) {
+        String fitted = ellipsis(Minecraft.getInstance().font, name.getString(), room);
+        AbstractWidget label = w.label(x, y + 4, Component.literal(fitted), TEXT);
+        if (!fitted.equals(name.getString())) label.setTooltip(Tooltip.create(name));
+    }
+
     private void buildFilters(Bounds body) {
         MatchFilters f = MatchState.filters();
         Widgets w = panelWidgets;
@@ -399,22 +407,25 @@ public final class MatchTab extends Tab {
         List<Tri> tris = List.of(Tri.values());
         Function<Tri, Component> triName = t -> lower("match.chromastudio.filter.tri.", t);
 
-        w.label(x, y + 4, tr("filter.same_texture"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.same_texture"));
         w.toggle(cx, y, cw, null, f.sameTexture, v -> { f.sameTexture = v; MatchState.changed(); }, tr("filter.same_texture.tip"));
         y += ROW;
-        w.label(x, y + 4, tr("filter.tinted"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.tinted"));
         w.cycler(cx, y, cw, null, tris, f.tinted, triName, v -> { f.tinted = v; MatchState.changed(); }, tr("filter.tinted.tip"));
         y += ROW;
-        w.label(x, y + 4, tr("filter.creative_only"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.creative_only"));
         w.cycler(cx, y, cw, null, tris, f.creativeOnly, triName, v -> { f.creativeOnly = v; MatchState.changed(); }, tr("filter.creative_only.tip"));
         y += ROW;
-        w.label(x, y + 4, tr("filter.light"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.light"));
         w.cycler(cx, y, cw, null, tris, f.lightSource, triName, v -> { f.lightSource = v; MatchState.changed(); }, tr("filter.light.tip"));
         y += ROW;
-        w.label(x, y + 4, tr("filter.technical"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.technical"));
         w.toggle(cx, y, cw, null, f.technical, v -> { f.technical = v; MatchState.changed(); }, tr("filter.technical.tip"));
         y += ROW;
-        w.label(x, y + 4, tr("filter.tone"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.block_entity"));
+        w.toggle(cx, y, cw, null, f.blockEntityRendered, v -> { f.blockEntityRendered = v; MatchState.changed(); }, tr("filter.block_entity.tip"));
+        y += ROW;
+        filterLabel(w, x, y, cx - x - 3, tr("filter.tone"));
         List<String> tones = new ArrayList<>(List.of(ALL));
         for (Tone t : Tone.values()) tones.add(t.name());
         w.cycler(cx, y, cw, null, tones, f.tone == null ? ALL : f.tone.name(), t -> Component.translatable("tone.chromastudio." + t.toLowerCase(Locale.ROOT)), t -> {
@@ -423,15 +434,15 @@ public final class MatchTab extends Tab {
         }, tr("filter.tone.tip"));
         y += ROW;
         int sw = (cw - GAP) / 2;
-        w.label(x, y + 4, tr("filter.lightness"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.lightness"));
         w.spin(cx, y, sw, f.lightnessMin, 0.05, 0, 1, false, v -> { f.lightnessMin = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.lightness.tip")));
         w.spin(cx + sw + GAP, y, cw - sw - GAP, f.lightnessMax, 0.05, 0, 1, false, v -> { f.lightnessMax = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.lightness.tip")));
         y += ROW;
-        w.label(x, y + 4, tr("filter.chroma"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.chroma"));
         w.spin(cx, y, sw, f.chromaMin, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMin = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.chroma.tip")));
         w.spin(cx + sw + GAP, y, cw - sw - GAP, f.chromaMax, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMax = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.chroma.tip")));
         y += ROW;
-        w.label(x, y + 4, tr("filter.badge"), TEXT);
+        filterLabel(w, x, y, cx - x - 3, tr("filter.badge"));
         int bx = cx;
         for (Badge badge : Badge.values()) {
             Component label = lower("badge.chromastudio.", badge);
@@ -709,7 +720,7 @@ public final class MatchTab extends Tab {
         int kx = x0 + (int) Math.round(distanceAt(ModSettings.viewingDistance) * track);
         g.fill(kx - 1, d.y() + 1, kx + 2, d.bottom() - 1, over ? 0xFFFFFFFF : 0xFF8EC2F2);
         boolean far = ModSettings.viewingDistance >= ModSettings.VIEW_FAR;
-        Component label = far ? tr("distance.far") : tr("distance.blocks", ModSettings.viewingDistance);
+        Component label = far ? tr("distance.far") : ModSettings.viewingDistance == 1 ? tr("distance.block") : tr("distance.blocks", ModSettings.viewingDistance);
         // The label keeps clear of the handle: on whichever side has the room.
         int lw = font.width(label), lx = kx < d.x() + d.w() / 2 ? d.right() - lw - 4 : d.x() + 4;
         g.text(font, label, lx, d.y() + 4, TEXT, false);
@@ -793,6 +804,11 @@ public final class MatchTab extends Tab {
         ItemStack icon = new ItemStack(e.block());
         if (icon.isEmpty()) Widgets.swatch(g, left + 2, y + 3, 12, 12, e.face(row.face, shown.tint).mean(shown.scale).rgb());
         else Widgets.blockIcon(g, icon, left, y + 1);
+        // The tint badge: a green corner on the icon of a block the game tints, as it does grass by its biome.
+        if (e.tinted()) {
+            g.fill(left + 11, y + 11, left + 16, y + 16, ARGB.multiplyAlpha(0xFF10140F, opacity));
+            g.fill(left + 12, y + 12, left + 16, y + 16, ARGB.multiplyAlpha(TINT_BADGE, opacity));
+        }
         left += 18;
 
         int right = x + w - 1;
@@ -885,6 +901,7 @@ public final class MatchTab extends Tab {
         tip.add(Component.literal(e.toString()).withColor((DIM) & 0xFFFFFF));
         tip.add(tr("row.facts", deltaE(row.distance, shown.metric), Eyedropper.faceName(row.face), lower("badge.chromastudio.", stats.badge()),
                 kindName(e.kind().name()), stats.mean(shown.scale).hex()).withColor((DIM) & 0xFFFFFF));
+        if (e.tinted()) tip.add(tr("row.tinted").withColor(TINT_BADGE & 0xFFFFFF));
         Optional<Component> noGive = Give.whyNot();
         tip.add(noGive.isPresent() ? tr("row.give.off", noGive.get()).withColor(GREYED) : tr("row.give").withColor((DIM) & 0xFFFFFF));
         tip.add(tr("row.copy").withColor((DIM) & 0xFFFFFF));
@@ -1160,6 +1177,14 @@ public final class MatchTab extends Tab {
             return true;
         }
         return controls.keyPressed(e);
+    }
+
+    /** Escape closes the panel over the results, when one is open. */
+    @Override
+    public boolean dismiss() {
+        if (panel == Panel.NONE) return false;
+        toggle(panel);
+        return true;
     }
 
     @Override

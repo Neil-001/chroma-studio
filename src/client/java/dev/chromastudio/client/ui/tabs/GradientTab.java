@@ -297,6 +297,8 @@ public final class GradientTab extends PanelTab {
         for (Entry e : BlockIndex.get().entries()) {
             if (!kind.equals(ANY_KIND) && !e.kind().name().equals(kind)) continue;
             if (ModSettings.filterSurvival && e.creativeOnly()) continue;
+            // A chest would stand for the planks it breaks into, and a barrier for the sign on its item.
+            if (!e.modelDraws()) continue;
             // One block fills at most one step, whichever of its states is listed first.
             if (byId.putIfAbsent(e.id(), e) != null) continue;
             TextureStats stats = PaletteBlocks.stats(e);

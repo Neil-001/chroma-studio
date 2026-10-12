@@ -36,6 +36,8 @@ public final class ExploreTab extends Tab {
     private static final int PAD = 3, GAP = 2, AXIS = 6;
     private static final int TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, WELL = 0xFF0B0D10, BORDER = 0xFF3A424D, BACKING = 0x80101317;
     private static final double MAX_ZOOM = 32;
+    /** How far right of the cursor the game starts a tooltip, and the room it wants past the tooltip's text before it changes sides. */
+    private static final int TIP_OFFSET = 12, TIP_MARGIN = 4;
     /** How near the cursor a dot must be to be the one hovered, and how far a press may move and still be a click. */
     private static final int REACH = 5, CLICK_SLOP = 3;
 
@@ -151,14 +153,17 @@ public final class ExploreTab extends Tab {
         g.text(font, count, b.right() - PAD - font.width(count), b.y() + PAD + 4, DIM, false);
         if (over != null && !panned) {
             Entry e = over.entry;
-            // The icon sits up and to the left of the cursor, where the tooltip, which goes to the right, never covers it.
-            int ix = Math.max(b.x() + 1, mouseX - 22), iy = Math.max(b.y() + 1, mouseY - 22);
-            g.fill(ix - 1, iy - 1, ix + 17, iy + 17, 0xE0000000);
-            Widgets.blockIcon(g, e.block(), ix, iy);
             List<Component> tip = new ArrayList<>();
             tip.add(e.properties().isEmpty() ? e.name() : Component.translatable("match.chromastudio.name_with_state", e.name(), e.properties()));
             tip.add(Component.literal(String.format("#%06X", over.rgb)).withColor(DIM & 0xFFFFFF));
             tip.add(tr("click").withColor(DIM & 0xFFFFFF));
+            // The icon sits up and to the left of the cursor, where the tooltip, which goes to the right, doesn't cover it.
+            // Near the screen's right edge the game puts the tooltip on the left instead, so the icon changes sides too.
+            int tipWidth = tip.stream().mapToInt(font::width).max().orElse(0);
+            boolean tipOnLeft = mouseX + TIP_OFFSET + tipWidth + TIP_MARGIN > Minecraft.getInstance().getWindow().getGuiScaledWidth();
+            int ix = tipOnLeft ? Math.min(b.right() - 17, mouseX + 6) : Math.max(b.x() + 1, mouseX - 22), iy = Math.max(b.y() + 1, mouseY - 22);
+            g.fill(ix - 1, iy - 1, ix + 17, iy + 17, 0xE0000000);
+            Widgets.blockIcon(g, e.block(), ix, iy);
             g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
         }
     }

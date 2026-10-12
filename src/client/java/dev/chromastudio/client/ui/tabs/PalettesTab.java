@@ -8,7 +8,6 @@ import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Bounds;
-import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.export.Layout;
@@ -40,6 +39,8 @@ import net.minecraft.world.item.Items;
  */
 public final class PalettesTab extends PanelTab {
     private enum Panel { ENTRIES, ANALYSE, DIORAMA }
+    /** A weight's field with its arrows: room for three digits, as a capture often counts a hundred of a block. */
+    private static final int WEIGHT_W = 40;
 
     private static final int LIST_ROW = 12, ENTRY_ROW = 18, TITLE_H = 11, LEFT_MIN = 110;
     /** How long after the last change a palette is written, so typing a weight or a note doesn't write on every key. */
@@ -167,13 +168,19 @@ public final class PalettesTab extends PanelTab {
         return leftW;
     }
 
+    /** A field's whole text over the reason it can't be changed, or the reason alone when the field is empty. */
+    private static Component whole(String text, Component reason) {
+        if (text == null || text.isBlank()) return reason;
+        return Component.empty().append(text).append("\n").append(reason.copy().withColor(DIM & 0xFFFFFF));
+    }
+
     private record Tool(String key, ItemStack icon, Runnable run, Component unavailable, boolean lit) {}
 
     private void layoutToolbar(int x0, int y, int width, Palette p) {
         Component needsBlocks = p == null ? tr("palettes.chromastudio.need_palette") : p.entries.isEmpty() ? tr("palettes.chromastudio.need_entries") : null;
         Component needsIndex = PaletteDialogs.indexReady() ? null : tr("palettes.chromastudio.index_building");
         List<Tool> tools = List.of(
-                new Tool("generate", new ItemStack(Items.AMETHYST_SHARD), () -> open(new PaletteDialogs.Generate(matchTarget(), _ -> showEntries())), needsIndex, false),
+                new Tool("generate", new ItemStack(Items.AMETHYST_SHARD), () -> open(new PaletteDialogs.Generate(MatchState.colour(), _ -> showEntries())), needsIndex, false),
                 new Tool("capture", new ItemStack(Items.SPYGLASS), this::capture, Capture.unavailable().orElse(null), Capture.armed()),
                 new Tool("image", new ItemStack(Items.PAINTING), () -> open(new PaletteDialogs.Image(_ -> showEntries())), needsIndex, false),
                 new Tool("analyse", new ItemStack(Items.WRITABLE_BOOK), () -> togglePanel(Panel.ANALYSE), needsBlocks != null ? needsBlocks : needsIndex, panel == Panel.ANALYSE),
@@ -199,12 +206,6 @@ public final class PalettesTab extends PanelTab {
         }
     }
 
-    /**
-     * The colour the Match tab is matching, for Generate to start from. The Match tab keeps its target to itself
-     * until it has a way to share it, so for now this is what {@code /chroma} last asked for, if that was a colour.
-     */
-    private static Color matchTarget() { return ChromaScreen.pendingTarget instanceof Integer rgb ? Color.ofRgb(rgb) : null; }
-
     private void capture() {
         if (Capture.armed()) {
             Capture.cancel();
@@ -215,6 +216,14 @@ public final class PalettesTab extends PanelTab {
         Capture.arm();
         // The corners are picked in the world, so the window gets out of the way.
         Minecraft.getInstance().gui.setScreen(null);
+    }
+
+    /** Escape leaves Analyse or the diorama for the entries. */
+    @Override
+    protected boolean dismissPanel() {
+        if (panel == Panel.ENTRIES) return false;
+        showEntries();
+        return true;
     }
 
     private void togglePanel(Panel which) {
@@ -260,8 +269,9 @@ public final class PalettesTab extends PanelTab {
             loading = false;
         }
         if (fixed != null) {
-            Widgets.disable(tags, fixed);
-            Widgets.disable(notes, fixed);
+            // A greyed field can't be scrolled, so its tooltip carries the whole of a preset's text.
+            Widgets.disable(tags, whole(String.join(", ", p == null ? List.of() : p.tags), fixed));
+            Widgets.disable(notes, whole(p == null ? "" : p.notes, fixed));
         } else {
             tags.setTooltip(Tooltip.create(tr("palettes.chromastudio.tags.tip")));
             notes.setTooltip(Tooltip.create(tr("palettes.chromastudio.notes.tip")));
@@ -271,12 +281,12 @@ public final class PalettesTab extends PanelTab {
         int n = p.entries.size();
         boolean scrolls = n * ENTRY_ROW > entriesArea.h();
         int right = entriesArea.right() - (scrolls ? 6 : 0), x = entriesArea.x();
-        int removeX = right - 12, downX = removeX - 13, upX = downX - 13, spinX = upX - 2 - 34;
+        int removeX = right - 12, downX = removeX - 13, upX = downX - 13, spinX = upX - 2 - WEIGHT_W;
         for (int i = 0; i < n; i++) {
             int index = i, y = entriesArea.y() + i * ENTRY_ROW;
             PaletteEntry e = p.entries.get(i);
             rows.add(new EntryCell(x, y, spinX - 3 - x, ENTRY_ROW - 1, e));
-            EditBox weight = rows.spin(spinX, y + 1, 34, e.weight(), 1, 1, 999, true, v -> {
+            EditBox weight = rows.spin(spinX, y + 1, WEIGHT_W, e.weight(), 1, 1, 999, true, v -> {
                 p.entries.set(index, p.entries.get(index).withWeight((int) v));
                 touch();
             });

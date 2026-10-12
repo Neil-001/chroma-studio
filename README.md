@@ -1,8 +1,10 @@
-# Chroma Studio
+<div align="center">
+<h1>Chroma Studio</h1>
 
-A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics.
+![The Chroma Studio window over a village, listing the blocks closest to a teal colour.](listing/gallery/01-match.jpg)
+</div>
 
-In development. There is no release yet.
+A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. [`listing/description.md`](listing/description.md) says how to use it.
 
 Building requires JDK 25.
 
@@ -11,6 +13,13 @@ Building requires JDK 25.
 ./gradlew :fabric:runClient     # starts a Fabric dev client with the mod
 ./gradlew :neoforge:runClient   # starts a NeoForge dev client with the mod
 ```
+
+On Windows, use `gradlew.bat`. The jars end up in `fabric/build/libs/` and `neoforge/build/libs/`. The Minecraft, Fabric and NeoForge versions are in `gradle.properties`.
+
+- The shared code is in `src/`. `fabric/` and `neoforge/` each hold only that loader's entrypoints and metadata.
+- `dev.chromastudio.core` holds the colour maths, palettes, gradients and schematic layouts. It has no Minecraft imports, so its tests run without the game. Keep it that way.
+- `dev.chromastudio.api` is the API for other mods, and the only package that follows semantic versioning.
+- Run `./gradlew build` before pushing.
 
 ---
 

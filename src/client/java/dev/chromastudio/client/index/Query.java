@@ -11,7 +11,7 @@ import java.util.Set;
 
 /**
  * How to search the index and what to leave out. Set the fields, or chain the setters for the common ones. A fresh
- * query filters nothing but technical blocks, which follow the setting.
+ * query filters nothing but technical blocks, which follow the setting, and the blocks a block entity draws.
  */
 public final class Query {
     /** A filter on something an entry either is or isn't. */
@@ -45,6 +45,8 @@ public final class Query {
     public final Set<String> namespacesExcluded = new HashSet<>();
     /** Whether blocks outside the creative tabs are kept. */
     public boolean technical = IndexOptions.current().technical();
+    /** Whether blocks a block entity draws are kept. Their colours are a guess from the texture they break into. */
+    public boolean blockEntityRendered = false;
     /** The tone of the matched face's average colour, or null for any. */
     public Tone tone;
     /** The OKLCH lightness and chroma the matched face's average colour must lie within. */
@@ -73,6 +75,7 @@ public final class Query {
         if (fullCube && !e.fullCube() || solid && !e.solid() || opaque && !e.opaque() || sameTexture && !e.sameTextureAllRound()) return false;
         if (!tinted.allows(e.tinted()) || !creativeOnly.allows(e.creativeOnly()) || !lightSource.allows(e.lightSource())) return false;
         if (!technical && e.technical()) return false;
+        if (!blockEntityRendered && e.blockEntityRendered()) return false;
         if (namespaces.isEmpty() && namespacesExcluded.isEmpty()) return true;
         String namespace = e.id().substring(0, e.id().indexOf(':'));
         return (namespaces.isEmpty() || namespaces.contains(namespace)) && !namespacesExcluded.contains(namespace);

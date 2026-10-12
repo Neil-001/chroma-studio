@@ -5,6 +5,7 @@ import dev.chromastudio.client.ClientPlatform;
 import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.action.Capture;
+import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.client.ui.Tooltips;
@@ -16,6 +17,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -48,6 +50,8 @@ public class ChromaStudioFabricClient implements ClientModInitializer, ClientPla
                 BlockIndex.install(FabricLoader.getInstance().getAllMods().stream()
                         .map(mod -> mod.getMetadata().getId() + " " + mod.getMetadata().getVersion().getFriendlyString()).toList()));
         ClientPlayConnectionEvents.JOIN.register((_, _, _) -> BlockIndex.get().worldJoined());
+        // Keeps the game's replies to an operator's hotbar fill out of chat.
+        ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> !HotbarFill.hidesFeedback(message, overlay));
         PictureInPictureRendererRegistry.register(_ -> new DioramaPip());
         LevelRenderEvents.COLLECT_SUBMITS.register(ctx -> Capture.render(ctx.submitNodeCollector(), ctx.poseStack(), ctx.levelState().cameraRenderState.pos));
     }

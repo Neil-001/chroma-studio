@@ -192,7 +192,6 @@ final class PaletteDialogs {
 
     /** Makes a palette from a seed colour, a harmony and a count. */
     static final class Generate extends Dialog {
-        private static String lastHex = "#4C8FD6";
         private static Harmony harmony = Harmony.ANALOGOUS;
 
         private final Consumer<Palette> done;
@@ -200,12 +199,11 @@ final class PaletteDialogs {
         private int count = ModSettings.generateCount;
         private int labelW;
 
-        /** {@code seed} is the colour to start from, or null for the block in hand, or failing that the last one used. */
+        /** {@code seed} is the colour to start from: the one the Match tab is matching. A button takes the block in hand's instead. */
         Generate(Color seed, Consumer<Palette> done) {
             super(tr("palettes.chromastudio.generate.title"), 250, 106);
             this.done = done;
-            Color start = seed != null ? seed : inHand();
-            hex = start != null ? start.hex() : lastHex;
+            hex = seed.hex();
         }
 
         /** The colour of the block the player holds, or null when they hold none the index knows. */
@@ -272,7 +270,6 @@ final class PaletteDialogs {
                 status(tr("palettes.chromastudio.generate.bad_hex"), PanelTab.BAD);
                 return true;
             }
-            lastHex = seed.hex();
             List<PaletteEntry> entries = PaletteBlocks.closest(Generator.targets(seed.oklch(), harmony, count, new Random()));
             if (entries.isEmpty()) {
                 status(tr("palettes.chromastudio.no_matches"), PanelTab.BAD);
@@ -447,6 +444,15 @@ final class PaletteDialogs {
             return full.startsWith(game) ? game.relativize(full).toString() : full.toString();
         }
 
+        /** Text cut to a width by leaving out its middle, so a file's folder and the end of its name both show. */
+        static String middle(String text, int width) {
+            if (PanelTab.font().width(text) <= width) return text;
+            String dots = "...";
+            int room = Math.max(0, width - PanelTab.font().width(dots)), tail = room * 3 / 5;
+            String end = PanelTab.font().plainSubstrByWidth(text, tail, true);
+            return PanelTab.font().plainSubstrByWidth(text, room - PanelTab.font().width(end)) + dots + end;
+        }
+
         private void run(boolean place) {
             skipped = null;
             LayoutOptions options = new LayoutOptions(layout, height, patch, width, gap, seed);
@@ -461,7 +467,8 @@ final class PaletteDialogs {
                 return;
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
-            status(tr("command.chromastudio.export.done", shortPath(result.file())), PanelTab.GOOD);
+            // A path has no spaces to wrap at. The name is what tells two exports apart, and its end holds the layout and the number.
+            status(tr("command.chromastudio.export.done", middle(shortPath(result.file()), box.w() - 10)), PanelTab.GOOD);
             if (!place) return;
             BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
             String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
