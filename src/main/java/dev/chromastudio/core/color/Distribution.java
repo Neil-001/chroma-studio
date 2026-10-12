@@ -29,13 +29,16 @@ public final class Distribution {
         if (n != weights.size()) throw new IllegalArgumentException("Each colour needs one weight");
         if (n < 1 || n > MAX_ENTRIES) throw new IllegalArgumentException("A distribution holds 1 to " + MAX_ENTRIES + " colours");
         double[] w = new double[n];
-        double total = 0;
+        double largest = 0;
         for (int i = 0; i < n; i++) {
             w[i] = weights.get(i);
             if (!(w[i] >= 0) || Double.isInfinite(w[i])) throw new IllegalArgumentException("Bad weight: " + w[i]);
-            total += w[i];
+            largest = Math.max(largest, w[i]);
         }
-        if (total <= 0) throw new IllegalArgumentException("The weights are all zero");
+        if (largest <= 0) throw new IllegalArgumentException("The weights are all zero");
+        // Dividing by the largest first keeps the sum of very large weights from overflowing.
+        double total = 0;
+        for (int i = 0; i < n; i++) total += w[i] /= largest;
         for (int i = 0; i < n; i++) w[i] /= total;
         return new Distribution(colours.toArray(new Color[0]), w);
     }
@@ -46,7 +49,15 @@ public final class Distribution {
      * count by their alpha. With nothing opaque enough the result is black alone, so check coverage first.
      */
     public static Distribution ofPixels(int[] argb, int alphaCutoff) {
-        Kmeans.Clusters clusters = Kmeans.clusters(argb, PIXEL_CLUSTERS, alphaCutoff);
+        return ofClusters(Kmeans.clusters(argb, PIXEL_CLUSTERS, alphaCutoff));
+    }
+
+    /** As {@link #ofPixels}, with each pixel counting by its weight in place of its alpha. */
+    static Distribution ofPixels(int[] argb, double[] weights) {
+        return ofClusters(Kmeans.clusters(argb, weights, PIXEL_CLUSTERS));
+    }
+
+    private static Distribution ofClusters(Kmeans.Clusters clusters) {
         List<Oklab> means = new ArrayList<>(List.of(clusters.means()));
         List<Double> shares = new ArrayList<>();
         for (double w : clusters.weights()) shares.add(w);

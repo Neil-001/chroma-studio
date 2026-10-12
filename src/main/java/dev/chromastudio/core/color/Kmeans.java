@@ -31,22 +31,30 @@ public final class Kmeans {
     }
 
     static Clusters clusters(int[] argb, int k, int alphaCutoff) {
+        double[] weights = new double[argb.length];
+        for (int i = 0; i < argb.length; i++) {
+            int alpha = argb[i] >>> 24;
+            if (alpha >= alphaCutoff) weights[i] = alpha / 255.0;
+        }
+        return clusters(argb, weights, k);
+    }
+
+    /** Clusters the colour channels of {@code argb}, each pixel counting by its weight. Pixels of no weight are left out. */
+    static Clusters clusters(int[] argb, double[] weights, int k) {
         if (k < 1) throw new IllegalArgumentException("k must be at least 1");
         // Equal pixels are pooled first: textures and pixel art have few distinct colours.
         Map<Integer, double[]> pooled = new LinkedHashMap<>();
-        for (int p : argb) {
-            int alpha = p >>> 24;
-            if (alpha < alphaCutoff || alpha == 0) continue;
-            pooled.computeIfAbsent(p & 0xFFFFFF, _ -> new double[1])[0] += alpha / 255.0;
+        for (int i = 0; i < argb.length; i++) {
+            if (weights[i] > 0) pooled.computeIfAbsent(argb[i] & 0xFFFFFF, _ -> new double[1])[0] += weights[i];
         }
         Oklab[] points = new Oklab[pooled.size()];
-        double[] weights = new double[pooled.size()];
+        double[] pooledWeights = new double[pooled.size()];
         int n = 0;
         for (Map.Entry<Integer, double[]> e : pooled.entrySet()) {
             points[n] = Color.ofRgb(e.getKey()).oklab();
-            weights[n++] = e.getValue()[0];
+            pooledWeights[n++] = e.getValue()[0];
         }
-        return run(points, weights, k, new Random(SEED));
+        return run(points, pooledWeights, k, new Random(SEED));
     }
 
     private static Clusters run(Oklab[] points, double[] weights, int k, Random random) {

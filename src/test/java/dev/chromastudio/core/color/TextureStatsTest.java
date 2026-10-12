@@ -119,6 +119,23 @@ class TextureStatsTest {
     }
 
     @Test
+    void oneFaintPixelStillGivesItsColour() {
+        // Alpha 16 on one pixel of 256 is far below one 8-bit step of alpha once averaged, but it is all there is.
+        TextureStats s = texture(16, (x, y) -> x == 0 && y == 0 ? 0x10FF0000 : 0);
+        assertEquals(16 / 255.0 / 256, s.coverage(), 1e-15);
+        for (Scale scale : Scale.values()) {
+            assertEquals(0xFF0000, s.mean(scale).rgb());
+            assertEquals(List.of(Color.ofRgb(0xFF0000)), s.distribution(scale).colours());
+        }
+        assertEquals(0x10FF0000, s.pixels(Scale.T16)[0]);
+        // The thumbnail has no alpha left to show it with.
+        assertEquals(0, s.pixels(Scale.T1)[0] >>> 24);
+        assertEquals(0, s.spread());
+        assertEquals(List.of(Color.ofRgb(0x800000)), s.tinted(0x808080).distribution(Scale.T1).colours());
+        assertEquals(0x800000, s.tinted(0x808080).mean(Scale.T1).rgb());
+    }
+
+    @Test
     void nothingOpaqueGivesEmptyStats() {
         TextureStats s = texture(16, (_, _) -> 0x00FFFFFF);
         assertEquals(0, s.coverage());
@@ -132,7 +149,7 @@ class TextureStatsTest {
     void theDistributionAtEachScaleIsOfItsPixels() {
         TextureStats s = texture(16, (x, y) -> 0xFF000000 | (x * 16) << 16 | (y * 16) << 8 | (x * y) & 0xFF);
         for (Scale scale : Scale.values()) {
-            Distribution direct = Distribution.ofPixels(s.pixels(scale), 1);
+            Distribution direct = Distribution.ofPixels(s.pixels(scale), 16);
             assertEquals(direct.colours(), s.distribution(scale).colours());
             assertEquals(direct.weights(), s.distribution(scale).weights());
         }

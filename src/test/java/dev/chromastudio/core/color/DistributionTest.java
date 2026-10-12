@@ -28,6 +28,8 @@ class DistributionTest {
         assertEquals(List.of(0.75, 0.25), d.weights());
         assertEquals(List.of(Color.ofRgb(0xFF0000), Color.ofRgb(0x0000FF)), d.colours());
         assertEquals(List.of(1.0), Distribution.of(Color.ofRgb(0x123456)).weights());
+        // Weights too large to add up still scale.
+        assertEquals(List.of(0.5, 0.5), Distribution.of(List.of(Color.ofRgb(0), Color.ofRgb(1)), List.of(Double.MAX_VALUE, Double.MAX_VALUE)).weights());
     }
 
     @Test

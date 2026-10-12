@@ -14,13 +14,17 @@ public final class TextureStats {
     private final Color mean;
     private final double coverage;
     private final double spread;
+    // The exact alpha of each full-scale pixel. Statistics use it, because a faint pixel's alpha can round to
+    // nothing in the 8-bit thumbnail while it still counts.
+    private final double[] fullAlpha;
 
-    private TextureStats(int[][] pixels, Distribution[] distributions, Color mean, double coverage, double spread) {
+    private TextureStats(int[][] pixels, Distribution[] distributions, Color mean, double coverage, double[] fullAlpha) {
+        this.fullAlpha = fullAlpha;
+        this.spread = spread(pixels[Scale.T16.ordinal()], fullAlpha);
         this.pixels = pixels;
         this.distributions = distributions;
         this.mean = mean;
         this.coverage = coverage;
-        this.spread = spread;
     }
 
     /**
@@ -53,14 +57,17 @@ public final class TextureStats {
 
         int[][] pixels = new int[SCALES.length][];
         Distribution[] distributions = new Distribution[SCALES.length];
+        double[] fullAlpha = null;
         for (Scale s : SCALES) {
             if (s != Scale.T16) grid = halved(grid, s.texels);
+            double[] alpha = new double[grid.length];
+            for (int i = 0; i < alpha.length; i++) alpha[i] = grid[i][3];
+            if (s == Scale.T16) fullAlpha = alpha;
             pixels[s.ordinal()] = packed(grid);
             // The cutoff has been applied already; what is left counts however faint.
-            distributions[s.ordinal()] = Distribution.ofPixels(pixels[s.ordinal()], 1);
+            distributions[s.ordinal()] = Distribution.ofPixels(pixels[s.ordinal()], alpha);
         }
-        int[] full = pixels[Scale.T16.ordinal()];
-        return new TextureStats(pixels, distributions, Color.ofRgb(pixels[Scale.T1.ordinal()][0]), grid[0][3], spread(full));
+        return new TextureStats(pixels, distributions, Color.ofRgb(pixels[Scale.T1.ordinal()][0]), grid[0][3], fullAlpha);
     }
 
     private static double[][] halved(double[][] grid, int side) {
@@ -74,29 +81,29 @@ public final class TextureStats {
         return out;
     }
 
+    /** ARGB for each cell. A cell too faint for 8-bit alpha keeps its colour under an alpha of 0; an empty one is 0. */
     private static int[] packed(double[][] grid) {
         int[] out = new int[grid.length];
         for (int i = 0; i < out.length; i++) {
             double a = grid[i][3];
+            if (a == 0) continue;
             int alpha = (int) Math.round(a * 255);
-            if (alpha == 0) continue;
             out[i] = alpha << 24 | Color.pack(new double[] {grid[i][0] / a, grid[i][1] / a, grid[i][2] / a});
         }
         return out;
     }
 
-    /** The root mean square OKLab distance of the pixels from their mean, counting each by its alpha. */
-    private static double spread(int[] argb) {
+    /** The root mean square OKLab distance of the pixels from their mean, counting each by its weight. */
+    private static double spread(int[] argb, double[] weights) {
         double l = 0, a = 0, b = 0, total = 0;
         Oklab[] labs = new Oklab[argb.length];
         for (int i = 0; i < argb.length; i++) {
-            double w = (argb[i] >>> 24) / 255.0;
-            if (w == 0) continue;
+            if (weights[i] == 0) continue;
             labs[i] = Color.ofRgb(argb[i]).oklab();
-            l += labs[i].l() * w;
-            a += labs[i].a() * w;
-            b += labs[i].b() * w;
-            total += w;
+            l += labs[i].l() * weights[i];
+            a += labs[i].a() * weights[i];
+            b += labs[i].b() * weights[i];
+            total += weights[i];
         }
         if (total == 0) return 0;
         Oklab centre = new Oklab(l / total, a / total, b / total);
@@ -104,7 +111,7 @@ public final class TextureStats {
         for (int i = 0; i < argb.length; i++) {
             if (labs[i] == null) continue;
             double d = labs[i].distance(centre);
-            squares += d * d * (argb[i] >>> 24) / 255.0;
+            squares += d * d * weights[i];
         }
         return Math.sqrt(squares / total);
     }
@@ -138,6 +145,6 @@ public final class TextureStats {
             for (int i = 0; i < tintedPixels[s].length; i++) tintedPixels[s][i] = Color.tint(pixels[s][i], rgb);
             tintedDistributions[s] = distributions[s].tinted(rgb);
         }
-        return new TextureStats(tintedPixels, tintedDistributions, mean.tinted(rgb), coverage, spread(tintedPixels[Scale.T16.ordinal()]));
+        return new TextureStats(tintedPixels, tintedDistributions, mean.tinted(rgb), coverage, fullAlpha);
     }
 }
