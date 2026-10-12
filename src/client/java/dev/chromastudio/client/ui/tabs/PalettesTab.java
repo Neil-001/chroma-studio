@@ -311,6 +311,8 @@ public final class PalettesTab extends PanelTab {
     }
 
     private void touch() {
+        // Another palette's edit may still be waiting, if the selection changed from outside the tab. It goes to its file first.
+        if (dirty && edited != selected()) flush();
         dirty = true;
         edited = selected();
         saveAt = Util.getMillis() + SAVE_AFTER_MS;
@@ -492,8 +494,10 @@ public final class PalettesTab extends PanelTab {
         // Something outside the tab changed what it shows: a block added from Match, a capture, or the index finishing.
         boolean ready = BlockIndex.get().ready();
         if (!dialogOpen() && (p != shown || (p == null ? 0 : p.entries.size()) != shownSize || ready != shownReady)) {
-            if (p != shown) showEntries();
-            else rebuild();
+            if (p != shown) {
+                flush();
+                showEntries();
+            } else rebuild();
         }
     }
 
