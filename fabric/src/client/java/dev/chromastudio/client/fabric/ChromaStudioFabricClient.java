@@ -4,9 +4,11 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ClientPlatform;
 import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.Keys;
+import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.client.ui.Tooltips;
+import dev.chromastudio.client.ui.tabs.DioramaPip;
 import java.nio.file.Path;
 import java.util.List;
 import net.fabricmc.api.ClientModInitializer;
@@ -15,7 +17,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
@@ -44,6 +48,8 @@ public class ChromaStudioFabricClient implements ClientModInitializer, ClientPla
                 BlockIndex.install(FabricLoader.getInstance().getAllMods().stream()
                         .map(mod -> mod.getMetadata().getId() + " " + mod.getMetadata().getVersion().getFriendlyString()).toList()));
         ClientPlayConnectionEvents.JOIN.register((_, _, _) -> BlockIndex.get().worldJoined());
+        PictureInPictureRendererRegistry.register(_ -> new DioramaPip());
+        LevelRenderEvents.COLLECT_SUBMITS.register(ctx -> Capture.render(ctx.submitNodeCollector(), ctx.poseStack(), ctx.levelState().cameraRenderState.pos));
     }
 
     @Override public Path configDir() { return FabricLoader.getInstance().getConfigDir(); }

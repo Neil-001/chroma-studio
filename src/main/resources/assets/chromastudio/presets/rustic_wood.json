@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "name": "Rustic wood",
+  "tags": [
+    "rustic",
+    "wood",
+    "cabin"
+  ],
+  "notes": "Warm planks and logs for cabins and barns.",
+  "entries": [
+    {
+      "block": "minecraft:spruce_planks",
+      "properties": "",
+      "weight": 4
+    },
+    {
+      "block": "minecraft:oak_planks",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:stripped_oak_log",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:spruce_log",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:dark_oak_planks",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:barrel",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:composter",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:hay_block",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:coarse_dirt",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:mossy_cobblestone",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:lantern",
+      "properties": "",
+      "weight": 1
+    }
+  ]
+}

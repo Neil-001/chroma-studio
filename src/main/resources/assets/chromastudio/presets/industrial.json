@@ -1,0 +1,72 @@
+{
+  "format": 1,
+  "name": "Industrial",
+  "tags": [
+    "industrial",
+    "metal",
+    "factory"
+  ],
+  "notes": "Greys, iron and weathered copper for factories and workshops.",
+  "entries": [
+    {
+      "block": "minecraft:gray_concrete",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:light_gray_concrete",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:smooth_stone",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:polished_andesite",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:iron_block",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:bricks",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:cut_copper",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:weathered_cut_copper",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:iron_bars",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:iron_chain",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:black_concrete",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:yellow_concrete",
+      "properties": "",
+      "weight": 1
+    }
+  ]
+}

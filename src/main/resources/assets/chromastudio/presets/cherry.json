@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "name": "Cherry",
+  "tags": [
+    "cherry",
+    "pink",
+    "spring"
+  ],
+  "notes": "Soft pinks with pale stone and a dark frame.",
+  "entries": [
+    {
+      "block": "minecraft:cherry_planks",
+      "properties": "",
+      "weight": 4
+    },
+    {
+      "block": "minecraft:stripped_cherry_log",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:cherry_log",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:cherry_leaves",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:pink_terracotta",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:white_terracotta",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:calcite",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:diorite",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:pink_concrete_powder",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:dark_oak_planks",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:pink_petals",
+      "properties": "",
+      "weight": 1
+    }
+  ]
+}
