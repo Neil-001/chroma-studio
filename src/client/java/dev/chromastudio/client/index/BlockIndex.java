@@ -70,6 +70,7 @@ public final class BlockIndex {
     // Each build takes the next number, and gives up when it sees a later one has been asked for.
     private final AtomicInteger asked = new AtomicInteger();
     private volatile Built built;
+    private volatile int version;
     // The build and the world's registries the creative tabs were last read for. Client thread only.
     private Built listedBuild;
     private HolderLookup.Provider listedFor;
@@ -95,6 +96,9 @@ public final class BlockIndex {
             if (!INSTANCE.ready() || IndexOptions.current().rebuildOnReload()) INSTANCE.start(true);
         };
     }
+
+    /** A number that changes with every finished build, so a caller knows when what it worked out is out of date. */
+    public int version() { return version; }
 
     /** False until the first build finishes. It stays true while a later build runs, and the earlier one answers. */
     public boolean ready() { return built != null; }
@@ -181,6 +185,7 @@ public final class BlockIndex {
         Comparator<Entry> inSet = Comparator.comparingInt(e -> MaterialSets.order(e.id()));
         for (List<Entry> set : materials.values()) set.sort(inSet.thenComparing(Entry::id));
         built = new Built(List.copyOf(blocks), byBlock, byState, Collections.unmodifiableSet(namespaces), materials);
+        version++;
     }
 
     /**
@@ -293,7 +298,7 @@ public final class BlockIndex {
     private static Match match(Entry e, Distribution wanted, Query q, Map<Sampled, double[]> scores) {
         Match best = null;
         for (Face f : Entry.BY_PREFERENCE) {
-            if (q.face != Face.ANY && q.face != f) continue;
+            if (!q.scores(f)) continue;
             Sampled face = e.sampled(f, q.tint);
             if (!q.keeps(face)) continue;
             double[] byFace = scores.computeIfAbsent(face, _ -> {
@@ -327,22 +332,29 @@ public final class BlockIndex {
     }
 
     /**
+     * The entry that stands for a block state: its own, or the one it was folded into for showing the same
+     * textures, or the block's default when the cap left the state out. Null when the block isn't indexed.
+     */
+    public Entry entryOf(BlockState state) {
+        Built b = current();
+        if (b == null) return null;
+        Entry e = b.byState.get(state);
+        if (e == null && state.getOptionalValue(BlockStateProperties.WATERLOGGED).orElse(false)) {
+            e = b.byState.get(state.setValue(BlockStateProperties.WATERLOGGED, false));
+        }
+        if (e != null) return e;
+        List<Entry> states = b.byBlock.get(state.getBlock());
+        return states == null ? null : states.getFirst();
+    }
+
+    /**
      * The average colour of a block state's face, for the public API. A state the index folded into another that
      * shows the same textures answers from that one's, with its own tint. {@link Face#ANY} gives the average of all six. Empty when the block
      * isn't indexed.
      */
     public Optional<Color> colourOf(BlockState state, Face face, TintContext tint) {
-        Built b = current();
-        if (b == null) return Optional.empty();
-        Entry e = b.byState.get(state);
-        if (e == null && state.getOptionalValue(BlockStateProperties.WATERLOGGED).orElse(false)) {
-            e = b.byState.get(state.setValue(BlockStateProperties.WATERLOGGED, false));
-        }
-        if (e == null) {
-            List<Entry> states = b.byBlock.get(state.getBlock());
-            if (states == null) return Optional.empty();
-            e = states.getFirst();
-        }
+        Entry e = entryOf(state);
+        if (e == null) return Optional.empty();
         if (face != Face.ANY) return Optional.of(e.mean(face, state, tint));
         List<Color> means = new ArrayList<>();
         for (Face f : Entry.SIDES) means.add(e.mean(f, state, tint));

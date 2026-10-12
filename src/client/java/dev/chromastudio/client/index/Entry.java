@@ -55,6 +55,9 @@ public final class Entry {
     /** The properties that differ from the block's default state, as {@code axis=x,lit=true}. Empty for the default. */
     public String properties() { return properties; }
 
+    /** Any state's properties that differ from its block's default, written as {@link #properties()} writes an entry's own. */
+    public static String properties(BlockState state) { return IndexBuilder.properties(state, state.getBlock().defaultBlockState()); }
+
     public boolean isDefaultState() { return state == state.getBlock().defaultBlockState(); }
 
     /** The block's id, such as {@code minecraft:stone}. */

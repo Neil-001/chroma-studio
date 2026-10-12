@@ -23,6 +23,8 @@ public final class Query {
 
     /** The face to match. {@link Face#ANY} scores all six and keeps the best. */
     public Face face = Face.ANY;
+    /** The faces to choose between when {@link #face} is {@link Face#ANY}, as the four sides are. Empty means all six. */
+    public final Set<Face> faces = EnumSet.noneOf(Face.class);
     public Scale scale = Scale.T8;
     public Metric metric = Metric.OKLAB;
     /** Whether faces are darkened as the game lights them before they are scored. */
@@ -61,6 +63,9 @@ public final class Query {
     public Query tint(TintContext t) { tint = t; return this; }
 
     public Query limit(int n) { limit = n; return this; }
+
+    /** Whether a face is one the query scores. */
+    boolean scores(Face f) { return face == Face.ANY ? faces.isEmpty() || faces.contains(f) : face == f; }
 
     /** Whether an entry passes the filters that don't depend on which face matched. */
     boolean keeps(Entry e) {

@@ -14,6 +14,29 @@ repositories {
 		url = 'https://masa.dy.fi/maven/sakura-ryoko'
 		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
 	}
+	// Each of these groups is asked for from its own Maven alone, so another repository's outage can't fail the build.
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'BlameJared'
+				url = 'https://maven.blamejared.com/'
+			}
+		}
+		filter { includeGroup 'mezz.jei' }
+	}
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Shedaniel'
+				url = 'https://maven.shedaniel.me/'
+			}
+		}
+		filter {
+			includeGroup 'me.shedaniel'
+			includeGroup 'me.shedaniel.cloth'
+			includeGroup 'dev.architectury'
+		}
+	}
 }
 
 loom {
@@ -60,6 +83,18 @@ dependencies {
 	compileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
 	localRuntime("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
 	localRuntime("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
+	// The recipe viewers are optional as well: only RecipeViewers and JEI's own plugin class refer to them.
+	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
+	compileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:${project.rei_version}") { transitive = false }
+	// REI's API names Architectury's types in the methods used.
+	compileOnly("dev.architectury:architectury-fabric:${project.architectury_version}") { transitive = false }
+	// To try the recipe key, run the dev client with one of them: ./gradlew :fabric:runClient -Pviewer=jei (or rei)
+	if (findProperty('viewer') == 'jei') {
+		localRuntime("mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}") { transitive = false }
+	}
+	if (findProperty('viewer') == 'rei') {
+		localRuntime("me.shedaniel:RoughlyEnoughItems-fabric:${project.rei_version}")
+	}
 
 	// Tests cover the pure-Java core (dev.chromastudio.core), the settings file, and the block index against the game's own assets.
 	testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"

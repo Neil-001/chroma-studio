@@ -1,6 +1,7 @@
 package dev.chromastudio.client.index;
 
 import net.minecraft.client.color.block.BlockTintSource;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
@@ -15,6 +16,13 @@ public interface TintContext {
      * client thread only.
      */
     TintContext HERE = Tints.HERE;
+
+    /**
+     * One spot in the world the player is in now, with the game's biome blending. It keeps hold of that world, so a
+     * search on another thread reads the same place throughout. Make it on the client thread. Outside a world it
+     * applies no tint.
+     */
+    static TintContext at(BlockPos pos) { return Tints.at(pos); }
 
     /** No tint: tinted textures keep the grey they are drawn in. */
     static TintContext none() { return Tints.NONE; }

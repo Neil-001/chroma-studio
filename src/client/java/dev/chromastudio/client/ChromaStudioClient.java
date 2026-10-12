@@ -1,9 +1,12 @@
 package dev.chromastudio.client;
 
 import dev.chromastudio.client.action.Capture;
+import dev.chromastudio.client.action.Eyedropper;
 import dev.chromastudio.client.export.ExportCommand;
 import dev.chromastudio.client.ui.ChromaScreen;
+import dev.chromastudio.client.ui.tabs.ExploreTab;
 import dev.chromastudio.client.ui.tabs.GradientTab;
+import dev.chromastudio.client.ui.tabs.MatchTab;
 import dev.chromastudio.client.ui.tabs.PalettesTab;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
@@ -18,16 +21,19 @@ public final class ChromaStudioClient {
 
     public static ClientPlatform platform;
 
-    /** Loads the settings, creates the keys, adds the subcommands of {@code /chroma} and registers the Gradient and Palettes tabs. The loader then registers {@link Keys#ALL} and {@link Keys#CATEGORY}. */
+    /** Loads the settings, creates the keys, adds the subcommands of {@code /chroma}, registers the four tabs and hooks up the eyedropper. The loader then registers {@link Keys#ALL} and {@link Keys#CATEGORY}. */
     public static void init(ClientPlatform loader) {
         platform = loader;
         ModSettings.load();
         Keys.create();
         ExportCommand.register();
         PaletteSink.setCurrent(PaletteStore.get());
+        Keys.onEyedropper = Eyedropper::press;
         Capture.install();
+        ChromaScreen.registerTab("match", MatchTab::new, 0);
         ChromaScreen.registerTab("gradient", GradientTab::new, 10);
         ChromaScreen.registerTab("palettes", PalettesTab::new, 20);
+        ChromaScreen.registerTab("explore", ExploreTab::new, 30);
     }
 
     /** The tab to open the window on at the next tick, or null. */

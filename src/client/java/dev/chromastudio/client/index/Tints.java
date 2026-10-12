@@ -37,6 +37,14 @@ public final class Tints {
         return colour(source, state, mc.level, mc.player.blockPosition());
     };
 
+    static TintContext at(BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.level == null) return NONE;
+        BlockAndTintGetter level = mc.level;
+        BlockPos spot = pos.immutable();
+        return (source, state) -> colour(source, state, level, spot);
+    }
+
     static TintContext biome(ResourceKey<Biome> key) {
         return (source, state) -> {
             Optional<Holder.Reference<Biome>> biome = registries().lookupOrThrow(Registries.BIOME).get(key);

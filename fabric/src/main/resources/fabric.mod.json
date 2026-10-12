@@ -15,7 +15,8 @@
   "environment": "client",
   "entrypoints": {
     "client": ["dev.chromastudio.client.fabric.ChromaStudioFabricClient"],
-    "modmenu": ["dev.chromastudio.client.fabric.ModMenuIntegration"]
+    "modmenu": ["dev.chromastudio.client.fabric.ModMenuIntegration"],
+    "jei_mod_plugin": ["dev.chromastudio.client.action.JeiHook"]
   },
   "depends": {
     "fabricloader": ">=0.18.4",

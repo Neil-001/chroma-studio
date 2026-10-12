@@ -8,6 +8,38 @@ repositories {
 		url = 'https://masa.dy.fi/maven/sakura-ryoko'
 		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
 	}
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Fabric'
+				url = 'https://maven.fabricmc.net/'
+			}
+		}
+		filter { includeModule 'net.fabricmc', 'fabric-loader' }
+	}
+	// Each of these groups is asked for from its own Maven alone, so another repository's outage can't fail the build.
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'BlameJared'
+				url = 'https://maven.blamejared.com/'
+			}
+		}
+		filter { includeGroup 'mezz.jei' }
+	}
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Shedaniel'
+				url = 'https://maven.shedaniel.me/'
+			}
+		}
+		filter {
+			includeGroup 'me.shedaniel'
+			includeGroup 'me.shedaniel.cloth'
+			includeGroup 'dev.architectury'
+		}
+	}
 }
 
 neoForge {
@@ -40,6 +72,21 @@ dependencies {
 	// and Minecraft's names are the same on both loaders.
 	compileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
 	compileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
+	// The recipe viewers' APIs, only to compile RecipeViewers and JEI's plugin class against. JEI's is the loader-neutral jar.
+	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
+	compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:${project.rei_version}") { transitive = false }
+	// REI's API names Architectury's types in the methods used.
+	compileOnly("dev.architectury:architectury-neoforge:${project.architectury_version}") { transitive = false }
+	// REI's classes carry Fabric's @Environment annotation on every loader, and the compiler warns when it can't
+	// read it. Nothing here may import from this jar: it is on the path for that annotation alone.
+	compileOnly("net.fabricmc:fabric-loader:${project.loader_version}") { transitive = false }
+	// To try the recipe key, run the dev client with one of them: ./gradlew :neoforge:runClient -Pviewer=jei (or rei)
+	if (findProperty('viewer') == 'jei') {
+		runtimeOnly("mezz.jei:jei-${project.minecraft_version}-neoforge:${project.jei_version}") { transitive = false }
+	}
+	if (findProperty('viewer') == 'rei') {
+		runtimeOnly("me.shedaniel:RoughlyEnoughItems-neoforge:${project.rei_version}")
+	}
 }
 
 processResources {
