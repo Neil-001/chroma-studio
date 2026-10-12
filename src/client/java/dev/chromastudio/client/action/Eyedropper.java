@@ -69,12 +69,13 @@ public final class Eyedropper {
         Face face = Face.values()[hit.getDirection().ordinal()];
         TintContext tint = TintContext.at(pos);
         Color colour = index.colourOf(state, face, tint).orElseThrow();
-        MatchState.setEntry(entry, face, tint);
+        MatchState.setEntry(entry, state, face, tint);
         MatchState.remember();
         mc.keyboardHandler.setClipboard(colour.hex());
 
-        Component name = entry.properties().isEmpty() ? entry.name()
-                : Component.translatable("match.chromastudio.name_with_state", entry.name(), entry.properties());
+        // The state as placed, which may be one the index folded into another's entry.
+        String properties = Entry.properties(state);
+        Component name = properties.isEmpty() ? entry.name() : Component.translatable("match.chromastudio.name_with_state", entry.name(), properties);
         Hud.readout(name, Component.translatable("eyedropper.chromastudio.readout", faceName(face), colour.hex()), ModSettings.readoutSeconds);
         if (open) ChromaScreen.open("match");
     }

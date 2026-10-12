@@ -114,7 +114,7 @@ final class IndexBuilder {
     }
 
     /** The properties that differ from the default state, in the game's {@code name=value} form. */
-    private static String properties(BlockState state, BlockState byDefault) {
+    static String properties(BlockState state, BlockState byDefault) {
         List<String> out = new ArrayList<>();
         state.getValues().forEach(v -> {
             if (!v.value().equals(byDefault.getValue(v.property()))) out.add(v.property().getName() + "=" + v.valueName());

@@ -45,6 +45,7 @@ public final class Tooltips {
     /** A block's lines, each behind its setting: the swatch and hex, the kind and texture badge, and how far it is from the target. */
     static List<Component> lines(Entry entry) {
         List<Component> out = new ArrayList<>();
+        MatchState.follow();
         TintContext tint = MatchState.tint();
         Scale scale = MatchState.scale();
         Metric metric = MatchState.metric();

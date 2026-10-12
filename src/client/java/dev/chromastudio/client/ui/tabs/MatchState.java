@@ -3,6 +3,7 @@ package dev.chromastudio.client.ui.tabs;
 import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.FaceChoice;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Query;
 import dev.chromastudio.client.index.Target;
@@ -17,6 +18,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * What the player is matching and how, shared by the Match and Explore tabs, the eyedropper and the item tooltips.
@@ -32,6 +34,8 @@ public final class MatchState {
     private static Color colour = START;
     private static Entry entry;
     private static Face entryFace;
+    private static BlockState entryState;
+    private static int indexVersion = -1;
     private static TintContext entryTint;
     private static Color lastFlat;
     private static MatchFilters filters;
@@ -41,14 +45,41 @@ public final class MatchState {
     /** A number that changes whenever the target, a filter or a matching setting does. */
     public static int revision() { return revision; }
 
-    /** Tells the tabs something they show has changed. The setters here call it; call it after changing a filter or a setting. */
-    public static void changed() { revision++; }
+    /**
+     * Tells the tabs something they show has changed. The setters here call it; call it after changing a filter or a
+     * setting. A block target's colour is worked out again, as the biome control may have moved it.
+     */
+    public static void changed() {
+        if (entry != null) colour = target().colour();
+        revision++;
+    }
+
+    /**
+     * Keeps a block target on the index's current build. A rebuild makes new entries, and one kept from before
+     * would go on showing the textures of a pack that has since changed. Each tab calls this before it draws.
+     */
+    public static void follow() {
+        BlockIndex index = BlockIndex.get();
+        if (index.version() == indexVersion) return;
+        indexVersion = index.version();
+        if (entry == null) return;
+        Entry now = index.entryOf(entryState);
+        if (now == null || now == entry) return;
+        entry = now;
+        changed();
+    }
 
     /** The target's colour: the flat colour, or the block face's average. */
     public static Color colour() { return colour; }
 
     /** The block the target is, or null for a flat colour. */
     public static Entry entry() { return entry; }
+
+    /** The state of the block that is matched: the entry's own, or the one the eyedropper read when the index folds it into another's entry. */
+    public static BlockState entryState() { return entryState; }
+
+    /** The target block's name, with the properties of its state that aren't the default. */
+    public static String entryProperties() { return entryState == null ? "" : Entry.properties(entryState); }
 
     /** The face of {@link #entry()} that is matched. */
     public static Face entryFace() { return entryFace; }
@@ -77,6 +108,7 @@ public final class MatchState {
         lastFlat = c;
         entry = null;
         entryFace = null;
+        entryState = null;
         entryTint = null;
         changed();
     }
@@ -85,17 +117,20 @@ public final class MatchState {
      * Makes the target a block's face. {@code tint} is where the block was looked at, or null to follow the biome
      * control. {@link Face#ANY} takes the face the face control would show first.
      */
-    public static void setEntry(Entry e, Face face, TintContext tint) {
+    public static void setEntry(Entry e, Face face, TintContext tint) { setEntry(e, e.state(), face, tint); }
+
+    /** The same, for a state of the block that the index folded into this entry: its own tint is the one matched. */
+    public static void setEntry(Entry e, BlockState state, Face face, TintContext tint) {
         entry = e;
+        entryState = state;
         entryFace = face == Face.ANY ? firstFace() : face;
         entryTint = tint;
-        colour = Target.of(e, entryFace, tint != null ? tint : tint()).colour();
         changed();
     }
 
     /** The target as the index takes it. */
     public static Target target() {
-        return entry == null ? Target.of(colour) : Target.of(entry, entryFace, entryTint != null ? entryTint : tint());
+        return entry == null ? Target.of(colour) : Target.of(entry, entryState, entryFace, entryTint != null ? entryTint : tint());
     }
 
     /** The face a block shows when the face control leaves a choice: its top, or north for the sides. */
@@ -135,7 +170,7 @@ public final class MatchState {
             return id == null ? TintContext.none() : TintContext.biome(ResourceKey.create(Registries.BIOME, id));
         }
         Minecraft mc = Minecraft.getInstance();
-        return mc.player == null ? TintContext.none() : TintContext.at(mc.player.blockPosition());
+        return mc == null || mc.player == null ? TintContext.none() : TintContext.at(mc.player.blockPosition());
     }
 
     /** A query with the controls and the filters as they stand. */

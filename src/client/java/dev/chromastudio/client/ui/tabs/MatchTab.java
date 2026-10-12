@@ -377,7 +377,7 @@ public final class MatchTab extends Tab {
         Metric metric = MatchState.metric();
         List<BiomeFit> all = new ArrayList<>();
         for (ResourceKey<Biome> key : Tints.biomes()) {
-            Color c = Target.of(e, MatchState.entryFace(), TintContext.biome(key)).colour();
+            Color c = Target.of(e, MatchState.entryState(), MatchState.entryFace(), TintContext.biome(key)).colour();
             all.add(new BiomeFit(key, c, metric.distance(wanted, c)));
         }
         all.sort(Comparator.comparingDouble(BiomeFit::distance).thenComparing(f -> f.biome.identifier().toString()));
@@ -510,6 +510,7 @@ public final class MatchTab extends Tab {
     /** Takes what another tab or {@code /chroma} left for this one, follows the target, and starts a search when one is due. */
     private void sync() {
         BlockIndex index = BlockIndex.get();
+        MatchState.follow();
         if (Handoff.matchTarget != null || Handoff.matchFilter != null) {
             Object target = Handoff.matchTarget;
             String filter = Handoff.matchFilter;
@@ -651,7 +652,7 @@ public final class MatchTab extends Tab {
         if (entry != null) Widgets.blockIcon(g, entry.block(), slot.x() + 1, slot.y() + 1);
         if (slot.contains(mouseX, mouseY)) {
             g.fill(slot.x() + 1, slot.y() + 1, slot.right() - 1, slot.bottom() - 1, 0x40FFFFFF);
-            if (entry != null) tip.add(entryName(entry));
+            if (entry != null) tip.add(targetName());
             tip.add(tr("slot.tip").withColor((DIM) & 0xFFFFFF));
             tip.add(tr("slot.tip.scroll").withColor((DIM) & 0xFFFFFF));
         }
@@ -659,7 +660,7 @@ public final class MatchTab extends Tab {
         g.fill(swatch.x() + 1, swatch.y() + 1, swatch.right() - 1, swatch.bottom() - 1, ARGB.multiplyAlpha(0xFF000000 | MatchState.colour().rgb(), opacity));
         if (swatch.contains(mouseX, mouseY)) {
             tip.add(entry == null ? tr("target.colour", MatchState.colour().hex())
-                    : tr("target.block", entryName(entry), Eyedropper.faceName(MatchState.entryFace()), MatchState.colour().hex()));
+                    : tr("target.block", targetName(), Eyedropper.faceName(MatchState.entryFace()), MatchState.colour().hex()));
         }
         picker.render(g, font, opacity);
 
@@ -675,6 +676,12 @@ public final class MatchTab extends Tab {
                 }
             } else g.outline(rx, recent.y(), cw - 1, recent.h(), ARGB.multiplyAlpha(0xFF262C34, opacity));
         }
+    }
+
+    /** The target block's name with the state that is matched, which may not be its entry's own. */
+    private static Component targetName() {
+        String properties = MatchState.entryProperties();
+        return properties.isEmpty() ? MatchState.entry().name() : tr("name_with_state", MatchState.entry().name(), properties);
     }
 
     private static Component entryName(Entry e) {

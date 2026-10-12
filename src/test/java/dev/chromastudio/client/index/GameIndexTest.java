@@ -1,7 +1,9 @@
 package dev.chromastudio.client.index;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.ui.tabs.MatchState;
 import dev.chromastudio.core.color.Badge;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Face;
@@ -541,6 +543,70 @@ class GameIndexTest {
 
         // Outside a world there is nowhere to stand, so a place in it tints nothing.
         assertSame(TintContext.none(), TintContext.at(BlockPos.ZERO));
+    }
+
+    /** An entry whose every face is one texture, tinted as the game tints the block. */
+    private static Entry tinted(Block block, String sprite) {
+        BlockState state = block.defaultBlockState();
+        BlockTintSource source = BlockColors.createDefault().getTintSource(state, 0);
+        FaceLayers layers = new FaceLayers(List.of(new FaceLayers.Layer("minecraft:" + sprite, new Sampled(frame(sprite)), 0, source, 1)));
+        return new Entry(state, BuiltInRegistries.BLOCK.getKey(block).toString(), "", false, true,
+                new FaceLayers[] {layers, layers, layers, layers, layers, layers});
+    }
+
+    /** The Match target is a block as it was found: in its state, in the biome the control names, on the index's latest build. */
+    @Test
+    void aBlockTargetKeepsItsStateAndFollowsTheBiomeAndTheIndex() {
+        try {
+            ModSettings.biomeMode = BiomeMode.CHOSEN;
+            ModSettings.biome = "minecraft:plains";
+            Entry grass = tinted(block("grass_block"), "block/grass_block_top");
+            index(List.of(List.of(grass)));
+            MatchState.follow();
+            MatchState.setEntry(grass, Face.UP, null);
+            Color plains = MatchState.colour();
+            assertEquals(MatchState.target().colour(), plains);
+            ModSettings.biome = "minecraft:badlands";
+            MatchState.changed();
+            assertNotEquals(plains, MatchState.colour(), "the swatch follows the biome control");
+            assertEquals(MatchState.target().colour(), MatchState.colour(), "and is the colour that is searched for");
+
+            // Redstone dust's sixteen powers share their texture, so they share an entry, but not a tint.
+            Entry dust = tinted(block("redstone_wire"), "block/redstone_dust_dot");
+            BlockState powered = dust.state().setValue(BlockStateProperties.POWER, 15);
+            Map<BlockState, Entry> byState = new IdentityHashMap<>();
+            byState.put(dust.state(), dust);
+            byState.put(powered, dust);
+            BlockIndex.get().adopt(List.of(List.of(dust)), byState);
+            BlockIndex index = BlockIndex.get();
+            TintContext here = TintContext.biome(Biomes.PLAINS);
+            Color seen = index.colourOf(powered, Face.UP, here).orElseThrow();
+            MatchState.setEntry(index.entryOf(powered), powered, Face.UP, here);
+            assertEquals(seen, MatchState.colour(), "the target is the dust as it was powered");
+            assertEquals(seen, MatchState.target().colour());
+            assertNotEquals(seen, Target.of(dust, Face.UP, here).colour(), "which unpowered dust is not");
+            assertEquals("power=15", MatchState.entryProperties());
+            assertEquals("", Entry.properties(dust.state()));
+
+            // A resource pack changes stone, and the index builds again.
+            Entry before = entry(block("stone"), "block/red_concrete");
+            index(List.of(List.of(before)));
+            MatchState.follow();
+            MatchState.setEntry(before, Face.UP, null);
+            int revision = MatchState.revision();
+            Entry after = entry(block("stone"), "block/blue_concrete");
+            index(List.of(List.of(after)));
+            MatchState.follow();
+            assertSame(after, MatchState.entry());
+            assertEquals(stats("block/blue_concrete").mean(Scale.T1), MatchState.colour());
+            assertEquals(MatchState.colour(), MatchState.target().colour());
+            assertNotEquals(revision, MatchState.revision(), "the tabs are told to search again");
+            MatchState.follow();
+            assertSame(after, MatchState.entry(), "with no new build there is nothing to follow");
+        } finally {
+            ModSettings.reset();
+            MatchState.setColour(Color.ofRgb(0x808080));
+        }
     }
 
     private static List<String> ids(List<BlockIndex.Match> matches) { return matches.stream().map(m -> m.entry().id()).toList(); }

@@ -96,6 +96,7 @@ public final class ExploreTab extends Tab {
     /** Works the dots out again when the index, the filters or the highlighted palette have changed. */
     private void sync() {
         BlockIndex index = BlockIndex.get();
+        MatchState.follow();
         if (Handoff.exploreHighlight != highlight) {
             highlight = Handoff.exploreHighlight;
             seenRevision = -1;
