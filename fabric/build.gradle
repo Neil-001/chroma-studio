@@ -61,13 +61,15 @@ dependencies {
 	localRuntime("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
 	localRuntime("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
 
-	// Tests cover the pure-Java core (dev.chromastudio.core) and the settings file.
+	// Tests cover the pure-Java core (dev.chromastudio.core), the settings file, and the block index against the game's own assets.
 	testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 test {
 	useJUnitPlatform()
+	// Timing tests are off unless asked for: ./gradlew :fabric:test -Dchroma.timing=true
+	systemProperty 'chroma.timing', System.getProperty('chroma.timing', 'false')
 	testLogging {
 		events "failed"
 		exceptionFormat = "full"
