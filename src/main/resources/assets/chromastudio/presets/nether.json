@@ -1,0 +1,72 @@
+{
+  "format": 1,
+  "name": "Nether",
+  "tags": [
+    "nether",
+    "red",
+    "dark"
+  ],
+  "notes": "Deep reds and blacks with a glowing accent.",
+  "entries": [
+    {
+      "block": "minecraft:nether_bricks",
+      "properties": "",
+      "weight": 4
+    },
+    {
+      "block": "minecraft:red_nether_bricks",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:netherrack",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:blackstone",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:polished_blackstone_bricks",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:basalt",
+      "properties": "axis=y",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:crimson_planks",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:crimson_stem",
+      "properties": "axis=y",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:nether_wart_block",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:magma_block",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:shroomlight",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:gilded_blackstone",
+      "properties": "",
+      "weight": 1
+    }
+  ]
+}

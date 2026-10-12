@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "name": "Desert",
+  "tags": [
+    "desert",
+    "sandstone",
+    "warm"
+  ],
+  "notes": "Sand and sandstone with terracotta for trim.",
+  "entries": [
+    {
+      "block": "minecraft:sandstone",
+      "properties": "",
+      "weight": 4
+    },
+    {
+      "block": "minecraft:smooth_sandstone",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:cut_sandstone",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:chiseled_sandstone",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:sand",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:terracotta",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:orange_terracotta",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:yellow_terracotta",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:birch_planks",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:red_sandstone",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:cut_red_sandstone",
+      "properties": "",
+      "weight": 1
+    }
+  ]
+}

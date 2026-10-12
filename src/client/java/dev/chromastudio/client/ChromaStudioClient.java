@@ -1,7 +1,10 @@
 package dev.chromastudio.client;
 
+import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.export.ExportCommand;
 import dev.chromastudio.client.ui.ChromaScreen;
+import dev.chromastudio.client.ui.tabs.GradientTab;
+import dev.chromastudio.client.ui.tabs.PalettesTab;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,12 +18,16 @@ public final class ChromaStudioClient {
 
     public static ClientPlatform platform;
 
-    /** Loads the settings, creates the keys and adds the subcommands of {@code /chroma}. The loader then registers {@link Keys#ALL} and {@link Keys#CATEGORY}. */
+    /** Loads the settings, creates the keys, adds the subcommands of {@code /chroma} and registers the Gradient and Palettes tabs. The loader then registers {@link Keys#ALL} and {@link Keys#CATEGORY}. */
     public static void init(ClientPlatform loader) {
         platform = loader;
         ModSettings.load();
         Keys.create();
         ExportCommand.register();
+        PaletteSink.setCurrent(PaletteStore.get());
+        Capture.install();
+        ChromaScreen.registerTab("gradient", GradientTab::new, 10);
+        ChromaScreen.registerTab("palettes", PalettesTab::new, 20);
     }
 
     /** The tab to open the window on at the next tick, or null. */
@@ -39,6 +46,7 @@ public final class ChromaStudioClient {
         while (Keys.FULLSCREEN.consumeClick()) { }
         while (Keys.EYEDROPPER.consumeClick()) if (mc.gui.screen() == null) Keys.onEyedropper.run();
         while (Keys.CAPTURE.consumeClick()) if (mc.gui.screen() == null) Keys.onCapture.run();
+        Capture.tick(mc);
     }
 
     /** Opens the window on the tab it last showed, or brings a pinned one back. */

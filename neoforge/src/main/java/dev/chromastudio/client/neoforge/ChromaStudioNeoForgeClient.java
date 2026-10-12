@@ -4,10 +4,12 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ClientPlatform;
 import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.Keys;
+import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.client.ui.SettingsScreen;
 import dev.chromastudio.client.ui.Tooltips;
+import dev.chromastudio.client.ui.tabs.DioramaPip;
 import java.nio.file.Path;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -32,6 +34,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RegisterPictureInPictureRenderersEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
@@ -52,9 +56,12 @@ public final class ChromaStudioNeoForgeClient implements ClientPlatform {
                 Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "hud"), (graphics, _) -> Hud.render(graphics)));
         modBus.addListener(AddClientReloadListenersEvent.class, event -> event.addListener(Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "index"),
                 BlockIndex.install(ModList.get().getMods().stream().map(mod -> mod.getModId() + " " + mod.getVersion()).toList())));
+        modBus.addListener(RegisterPictureInPictureRenderersEvent.class, event -> event.register(DioramaPip.State.class, DioramaPip::new));
         NeoForge.EVENT_BUS.addListener(ClientPlayerNetworkEvent.LoggingIn.class, _ -> BlockIndex.get().worldJoined());
         NeoForge.EVENT_BUS.addListener(RegisterClientCommandsEvent.class, event -> event.getDispatcher().register(ChromaCommand.build()));
         NeoForge.EVENT_BUS.addListener(ItemTooltipEvent.class, event -> Tooltips.append(event.getItemStack(), event.getToolTip()));
+        NeoForge.EVENT_BUS.addListener(SubmitCustomGeometryEvent.class,
+                event -> Capture.render(event.getSubmitNodeCollector(), event.getPoseStack(), event.getLevelRenderState().cameraRenderState.pos));
         NeoForge.EVENT_BUS.addListener(ClientTickEvent.Post.class, _ -> ChromaStudioClient.tick(Minecraft.getInstance()));
     }
 

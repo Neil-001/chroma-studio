@@ -128,7 +128,7 @@ public final class SchematicExporter {
      * The entry's block state: the block's default with each named property set. Null when the game has no such
      * block, property or value, so a palette from a modded game never comes out with a different block in its place.
      */
-    static BlockState stateFor(PaletteEntry e) {
+    public static BlockState stateFor(PaletteEntry e) {
         Identifier id = Identifier.tryParse(e.blockId());
         Block block = id == null ? null : BuiltInRegistries.BLOCK.getOptional(id).orElse(null);
         if (block == null) return null;

@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "name": "Gothic",
+  "tags": [
+    "gothic",
+    "dark",
+    "cathedral"
+  ],
+  "notes": "Dark stone with a few cold highlights for windows and trim.",
+  "entries": [
+    {
+      "block": "minecraft:deepslate_bricks",
+      "properties": "",
+      "weight": 4
+    },
+    {
+      "block": "minecraft:polished_deepslate",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:deepslate_tiles",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:cobbled_deepslate",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:blackstone",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:polished_blackstone_bricks",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:chiseled_deepslate",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:tuff_bricks",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:gray_stained_glass",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:purple_stained_glass",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:soul_lantern",
+      "properties": "",
+      "weight": 1
+    }
+  ]
+}

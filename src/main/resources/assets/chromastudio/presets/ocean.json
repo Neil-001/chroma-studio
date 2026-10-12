@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "name": "Ocean",
+  "tags": [
+    "ocean",
+    "prismarine",
+    "blue"
+  ],
+  "notes": "Sea greens and blues for monuments and underwater builds.",
+  "entries": [
+    {
+      "block": "minecraft:prismarine_bricks",
+      "properties": "",
+      "weight": 4
+    },
+    {
+      "block": "minecraft:prismarine",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:dark_prismarine",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:sea_lantern",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:cyan_terracotta",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:light_blue_concrete",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:blue_stained_glass",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:warped_planks",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:oxidized_copper",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:sponge",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:sand",
+      "properties": "",
+      "weight": 1
+    }
+  ]
+}

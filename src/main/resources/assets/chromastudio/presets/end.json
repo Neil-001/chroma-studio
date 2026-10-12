@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "name": "End",
+  "tags": [
+    "end",
+    "pale",
+    "purple"
+  ],
+  "notes": "Pale stone and purpur with dark obsidian.",
+  "entries": [
+    {
+      "block": "minecraft:end_stone_bricks",
+      "properties": "",
+      "weight": 4
+    },
+    {
+      "block": "minecraft:end_stone",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:purpur_block",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:purpur_pillar",
+      "properties": "axis=y",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:obsidian",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:crying_obsidian",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:magenta_stained_glass",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:purple_concrete",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:end_rod",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:chorus_flower",
+      "properties": "",
+      "weight": 1
+    }
+  ]
+}

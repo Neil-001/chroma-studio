@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "name": "Medieval",
+  "tags": [
+    "medieval",
+    "stone",
+    "timber"
+  ],
+  "notes": "Stone walls with timber framing and a dark roof.",
+  "entries": [
+    {
+      "block": "minecraft:stone_bricks",
+      "properties": "",
+      "weight": 4
+    },
+    {
+      "block": "minecraft:cobblestone",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:andesite",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:mossy_stone_bricks",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:cracked_stone_bricks",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:spruce_planks",
+      "properties": "",
+      "weight": 3
+    },
+    {
+      "block": "minecraft:stripped_spruce_log",
+      "properties": "",
+      "weight": 1
+    },
+    {
+      "block": "minecraft:dark_oak_log",
+      "properties": "axis=y",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:white_terracotta",
+      "properties": "",
+      "weight": 2
+    },
+    {
+      "block": "minecraft:deepslate_tiles",
+      "properties": "",
+      "weight": 2
+    }
+  ]
+}
