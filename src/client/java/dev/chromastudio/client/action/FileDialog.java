@@ -3,9 +3,12 @@ package dev.chromastudio.client.action;
 import dev.chromastudio.client.ChromaStudioClient;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.sdl.SDLDialog;
+import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_DialogFileCallback;
 import org.lwjgl.sdl.SDL_DialogFileFilter;
 import org.lwjgl.system.MemoryStack;
@@ -18,20 +21,36 @@ import org.lwjgl.system.MemoryUtil;
 public final class FileDialog {
     private FileDialog() {}
 
-    /** Kept while the dialog is open, so the native side still has something to call. */
-    private static SDL_DialogFileCallback callback;
+    /**
+     * The callbacks whose dialogs have answered, to be freed when the next dialog opens. One can't be freed from
+     * inside its own call, nor before its dialog answers, however long the player leaves it open.
+     */
+    private static final List<SDL_DialogFileCallback> ANSWERED = new ArrayList<>();
 
     /**
      * Opens the dialog and hands the chosen file to {@code picked} on the client thread. Cancelling calls nothing.
-     * {@code extensions} are separated by semicolons, without dots. Returns false when no dialog could be opened.
+     * {@code extensions} are separated by semicolons, without dots. When no dialog could be opened, {@code failed}
+     * runs instead, at once or a moment later on the client thread, as the system may only find out after trying.
      */
-    public static boolean choose(String filterName, String extensions, Consumer<Path> picked) {
+    public static void choose(String filterName, String extensions, Consumer<Path> picked, Runnable failed) {
         Minecraft mc = Minecraft.getInstance();
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            if (callback != null) callback.free();
-            callback = SDL_DialogFileCallback.create((_, files, _) -> {
-                // A null list is an error and an empty one a cancel: either way there's nothing to open.
-                long first = files == 0 ? 0 : MemoryUtil.memGetAddress(files);
+            synchronized (ANSWERED) {
+                ANSWERED.forEach(SDL_DialogFileCallback::free);
+                ANSWERED.clear();
+            }
+            SDL_DialogFileCallback[] self = new SDL_DialogFileCallback[1];
+            SDL_DialogFileCallback callback = self[0] = SDL_DialogFileCallback.create((_, files, _) -> {
+                synchronized (ANSWERED) {
+                    ANSWERED.add(self[0]);
+                }
+                // A null list is an error: the system has no dialog to show. An empty one is a cancel.
+                if (files == 0) {
+                    ChromaStudioClient.LOGGER.warn("The system couldn't show a file dialog: {}", SDLError.SDL_GetError());
+                    mc.execute(failed);
+                    return;
+                }
+                long first = MemoryUtil.memGetAddress(files);
                 if (first == 0) return;
                 String path = MemoryUtil.memUTF8(first);
                 mc.execute(() -> {
@@ -45,10 +64,9 @@ public final class FileDialog {
             SDL_DialogFileFilter.Buffer filters = SDL_DialogFileFilter.malloc(1, stack);
             filters.get(0).set(stack.UTF8(filterName), stack.UTF8(extensions));
             SDLDialog.SDL_ShowOpenFileDialog(callback, 0, mc.getWindow().handle(), filters, (CharSequence) null, false);
-            return true;
         } catch (Throwable t) {
             ChromaStudioClient.LOGGER.warn("Couldn't open a file dialog", t);
-            return false;
+            failed.run();
         }
     }
 }

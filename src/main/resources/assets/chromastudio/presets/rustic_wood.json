@@ -20,12 +20,12 @@
     },
     {
       "block": "minecraft:stripped_oak_log",
-      "properties": "axis=y",
+      "properties": "",
       "weight": 2
     },
     {
       "block": "minecraft:spruce_log",
-      "properties": "axis=y",
+      "properties": "",
       "weight": 2
     },
     {

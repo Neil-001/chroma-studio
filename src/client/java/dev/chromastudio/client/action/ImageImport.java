@@ -20,10 +20,10 @@ public final class ImageImport {
     private static final int SAMPLE_SIDE = 256;
 
     /**
-     * Asks for an image with the system's file dialog and hands it to {@code picked}. Returns false when no dialog
-     * could be opened, and the caller's path field is the way in.
+     * Asks for an image with the system's file dialog and hands it to {@code picked}. When no dialog could be
+     * opened {@code failed} runs, and the caller's path field is the way in.
      */
-    public static boolean choose(Consumer<Path> picked) { return FileDialog.choose("Images", "png;jpg;jpeg;gif;bmp", picked); }
+    public static void choose(Consumer<Path> picked, Runnable failed) { FileDialog.choose("Images", "png;jpg;jpeg;gif;bmp", picked, failed); }
 
     /** The {@code count} main colours of an image, most common first, with transparent pixels left out. */
     public static List<Color> colours(Path file, int count) throws IOException {

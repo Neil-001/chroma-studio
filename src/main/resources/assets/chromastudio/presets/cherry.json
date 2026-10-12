@@ -15,12 +15,12 @@
     },
     {
       "block": "minecraft:stripped_cherry_log",
-      "properties": "axis=y",
+      "properties": "",
       "weight": 2
     },
     {
       "block": "minecraft:cherry_log",
-      "properties": "axis=y",
+      "properties": "",
       "weight": 2
     },
     {

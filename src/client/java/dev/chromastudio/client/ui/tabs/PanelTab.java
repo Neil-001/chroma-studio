@@ -18,7 +18,7 @@ import net.minecraft.util.Util;
  */
 abstract class PanelTab extends Tab {
     static final int PAD = 3, GAP = 2, ROW = Widgets.H + GAP;
-    static final int PANEL = 0xF0161A20, BORDER = 0xFF3A424D, TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, GREYED = 0xFF4E5560,
+    static final int PANEL = 0xFF161A20, BORDER = 0xFF3A424D, TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, GREYED = 0xFF4E5560,
             SELECTED = 0xFF2C343E, HOVER = 0xFF222830, WELL = 0xFF0B0D10, GOOD = 0xFF5BD06A, FAIR = 0xFFFFB84D, BAD = 0xFFE5534B;
 
     protected final Widgets widgets = new Widgets();

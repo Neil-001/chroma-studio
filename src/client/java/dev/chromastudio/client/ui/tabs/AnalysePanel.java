@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.ui.Bounds;
@@ -27,7 +28,7 @@ import net.minecraft.util.FormattedCharSequence;
  * colour would mend it, a Fix button that opens Match on that colour.
  */
 final class AnalysePanel {
-    private static final int ROW_H = 22, STRIP_H = 8;
+    private static final int ROW_H = 31, STRIP_H = 8;
 
     private final List<PaletteEntry> entries;
     private final List<Color> colours = new ArrayList<>();
@@ -90,6 +91,7 @@ final class AnalysePanel {
             g.fill(x0, stripY, x1, stripY + STRIP_H, 0xFF000000 | sorted.get(i).rgb());
         }
         fixes.clear();
+        g.fill(list.area.x(), list.area.y(), list.area.right(), list.area.bottom(), PanelTab.WELL);
         if (findings.isEmpty()) {
             g.centeredText(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.none"), area.x() + area.w() / 2, list.area.y() + 12, PanelTab.GOOD);
             return;
@@ -102,9 +104,9 @@ final class AnalysePanel {
             boolean fixable = f.suggestedTarget() != null;
             int textW = w - 10 - (fixable ? fixW + 6 + 14 : 0);
             List<FormattedCharSequence> lines = PanelTab.font().split(Component.translatable(f.key()), textW);
-            int lineY = y + (lines.size() > 1 ? 1 : 6);
-            for (int k = 0; k < Math.min(2, lines.size()); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, lineY + k * 10, PanelTab.TEXT, false);
-            if (lines.size() > 2 && hovered) gg.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
+            int lineY = y + (ROW_H - 1 - Math.min(3, lines.size()) * 10) / 2 + 1;
+            for (int k = 0; k < Math.min(3, lines.size()); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, lineY + k * 10, PanelTab.TEXT, false);
+            if (lines.size() > 3 && hovered) gg.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
             if (!fixable) return;
             Bounds b = fix(x, y, w);
             fixes.add(new Fix(b, f));
@@ -118,7 +120,7 @@ final class AnalysePanel {
 
     boolean clicked(MouseButtonEvent e) {
         if (list.mouseClicked(e)) return true;
-        if (e.button() != 0 || !list.area.contains(e.x(), e.y())) return false;
+        if (e.button() != InputConstants.MOUSE_BUTTON_LEFT || !list.area.contains(e.x(), e.y())) return false;
         for (Fix fix : fixes) {
             if (!fix.button.contains(e.x(), e.y())) continue;
             Handoff.matchTarget = Color.ofOklch(fix.finding.suggestedTarget());

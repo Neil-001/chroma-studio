@@ -45,7 +45,7 @@
     },
     {
       "block": "minecraft:dark_oak_log",
-      "properties": "axis=y",
+      "properties": "",
       "weight": 2
     },
     {

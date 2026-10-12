@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
@@ -402,7 +403,7 @@ public final class GradientTab extends PanelTab {
         int i = (int) ((e.x() - stopsArea.x()) / (CHIP + 1));
         if (i >= STOPS.size()) return false;
         selectedStop = i;
-        if (e.button() == 1 && STOPS.size() > 2) {
+        if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT && STOPS.size() > 2) {
             STOPS.remove(i);
             changed();
         } else rebuild();

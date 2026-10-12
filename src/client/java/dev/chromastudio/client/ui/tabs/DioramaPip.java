@@ -58,7 +58,8 @@ public final class DioramaPip extends PictureInPictureRenderer<DioramaPip.State>
                 if (block == null) continue;
                 resolver.update(model, block, context);
                 pose.pushPose();
-                pose.translate(x, y, 0);
+                // Turned upright, the wall's x runs right to left, so the cells are laid the other way to match the flat view.
+                pose.translate(state.width - 1 - x, y, 0);
                 model.submit(pose, out, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
                 pose.popPose();
             }

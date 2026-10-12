@@ -243,7 +243,7 @@
   "palettes.chromastudio.entry.last": "It's already last.",
   "palettes.chromastudio.entry.weight.tip": "How often this block turns up next to the others, in a diorama, an export or a WorldEdit pattern.",
   "palettes.chromastudio.entry.unknown": "%s isn't a block in this game. It's kept, and left out of exports.",
-  "palettes.chromastudio.panel.close": "Back to the blocks",
+  "palettes.chromastudio.panel.close": "Back",
   "palettes.chromastudio.tool.generate": "Generate",
   "palettes.chromastudio.tool.generate.tip": "Makes a palette from a colour and a harmony.",
   "palettes.chromastudio.tool.capture": "Capture",

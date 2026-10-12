@@ -77,7 +77,7 @@ final class PaletteDialogs {
         private String text;
 
         Name(Component title, Component action, String initial, Consumer<String> done) {
-            super(title, 200, 62);
+            super(title, 200, 70);
             this.initial = initial;
             this.action = action;
             this.done = done;
@@ -144,7 +144,7 @@ final class PaletteDialogs {
         private EditBox field;
 
         Import(Consumer<Palette> done) {
-            super(tr("palettes.chromastudio.import.title"), 280, 78);
+            super(tr("palettes.chromastudio.import.title"), 280, 86);
             this.done = done;
         }
 
@@ -160,9 +160,8 @@ final class PaletteDialogs {
             }
             Component browse = tr("palettes.chromastudio.browse"), go = tr("palettes.chromastudio.import");
             int y = in.y() + PanelTab.ROW;
-            widgets.button(in.x(), y, browse, () -> {
-                if (!FileDialog.choose("JSON", "json", path -> field.setValue(path.toString()))) status(tr("palettes.chromastudio.no_dialog"), PanelTab.FAIR);
-            }).setTooltip(Tooltip.create(tr("palettes.chromastudio.import.browse.tip")));
+            widgets.button(in.x(), y, browse, () -> FileDialog.choose("JSON", "json", path -> field.setValue(path.toString()),
+                    () -> status(tr("palettes.chromastudio.no_dialog"), PanelTab.FAIR))).setTooltip(Tooltip.create(tr("palettes.chromastudio.import.browse.tip")));
             widgets.button(in.right() - Widgets.buttonWidth(go), y, go, this::confirm);
         }
 
@@ -202,7 +201,7 @@ final class PaletteDialogs {
 
         /** {@code seed} is the colour to start from, or null for the block in hand, or failing that the last one used. */
         Generate(Color seed, Consumer<Palette> done) {
-            super(tr("palettes.chromastudio.generate.title"), 250, 100);
+            super(tr("palettes.chromastudio.generate.title"), 250, 106);
             this.done = done;
             Color start = seed != null ? seed : inHand();
             hex = start != null ? start.hex() : lastHex;
@@ -295,7 +294,7 @@ final class PaletteDialogs {
         private int labelW;
 
         Image(Consumer<Palette> done) {
-            super(tr("palettes.chromastudio.image.title"), 280, 84);
+            super(tr("palettes.chromastudio.image.title"), 280, 90);
             this.done = done;
         }
 
@@ -312,9 +311,8 @@ final class PaletteDialogs {
                 field.setFocused(true);
                 widgets.setFocused(field);
             }
-            widgets.button(in.right() - browseW, in.y(), browse, () -> {
-                if (!ImageImport.choose(file -> field.setValue(file.toString()))) status(tr("palettes.chromastudio.no_dialog"), PanelTab.FAIR);
-            });
+            widgets.button(in.right() - browseW, in.y(), browse, () -> ImageImport.choose(file -> field.setValue(file.toString()),
+                    () -> status(tr("palettes.chromastudio.no_dialog"), PanelTab.FAIR)));
             int y = in.y() + PanelTab.ROW;
             widgets.spin(x, y, 40, count, 1, 2, 32, true, v -> count = (int) v);
             widgets.button(in.right() - Widgets.buttonWidth(go), y, go, this::confirm);
@@ -371,7 +369,7 @@ final class PaletteDialogs {
 
         /** {@code seed} places the diorama layouts, so an export from the Diorama panel comes out as it shows. */
         Export(Palette palette, Layout layout, long seed) {
-            super(tr("palettes.chromastudio.export.title"), 290, 132);
+            super(tr("palettes.chromastudio.export.title"), 290, 140);
             this.palette = palette;
             this.layout = layout;
             this.seed = seed;
@@ -433,13 +431,19 @@ final class PaletteDialogs {
             label(g, "palettes.chromastudio.export.width", half, y);
             y += PanelTab.ROW;
             label(g, "palettes.chromastudio.export.patch", half, y);
-            if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - 18, PanelTab.FAIR, false);
+            if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, PanelTab.FAIR, false);
         }
 
         @Override
         protected boolean confirm() {
             run(false);
             return true;
+        }
+
+        /** A file inside the game's folder is named from there, which is short enough to read in the dialog. */
+        private static String shortPath(Path file) {
+            Path game = ChromaStudioClient.platform.gameDir().toAbsolutePath().normalize(), full = file.toAbsolutePath().normalize();
+            return full.startsWith(game) ? game.relativize(full).toString() : full.toString();
         }
 
         private void run(boolean place) {
@@ -456,7 +460,7 @@ final class PaletteDialogs {
                 return;
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
-            status(tr("command.chromastudio.export.done", result.file().toString()), PanelTab.GOOD);
+            status(tr("command.chromastudio.export.done", shortPath(result.file())), PanelTab.GOOD);
             if (!place) return;
             BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
             String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
@@ -475,7 +479,7 @@ final class PaletteDialogs {
         private Button copy, send;
 
         WorldEdit(Palette palette) {
-            super(tr("palettes.chromastudio.worldedit.title"), 300, 124);
+            super(tr("palettes.chromastudio.worldedit.title"), 320, 170);
             this.palette = palette;
         }
 
@@ -494,20 +498,21 @@ final class PaletteDialogs {
             int x = in.x() + labelW, y = in.y();
             widgets.cycler(x, y, 80, null, WorldEditPattern.COMMANDS, which, c -> Component.literal("//" + c), c -> { which = c; refresh(); });
             y += PanelTab.ROW;
-            EditBox field = widgets.search(x, y, in.right() - x, tr("palettes.chromastudio.worldedit.from.hint"), s -> { from = s; enable(); });
-            field.setValue(from);
-            if (!which.equals("replace")) Widgets.disable(field, tr("palettes.chromastudio.worldedit.from.na"));
             Component copyLabel = tr("palettes.chromastudio.copy"), sendLabel = tr("palettes.chromastudio.worldedit.send");
             int sendW = Widgets.buttonWidth(sendLabel), copyW = Widgets.buttonWidth(copyLabel);
-            send = widgets.button(in.right() - sendW, in.bottom() - Widgets.H - 11, sendLabel, () -> {
+            send = widgets.button(in.right() - sendW, in.bottom() - Widgets.H - STATUS_H, sendLabel, () -> {
                 // Chat commands go without their first slash, so a WorldEdit command keeps its second.
                 ChromaStudioClient.platform.sendChatCommand(command().substring(1));
                 status(tr("palettes.chromastudio.worldedit.sent"), PanelTab.GOOD);
             });
-            copy = widgets.button(in.right() - sendW - PanelTab.GAP - copyW, in.bottom() - Widgets.H - 11, copyLabel, () -> {
+            copy = widgets.button(in.right() - sendW - PanelTab.GAP - copyW, in.bottom() - Widgets.H - STATUS_H, copyLabel, () -> {
                 Minecraft.getInstance().keyboardHandler.setClipboard(command());
                 status(tr("palettes.chromastudio.worldedit.copied"), PanelTab.GOOD);
             });
+            // The field comes last: giving it its text tells its responder, which greys the buttons.
+            EditBox field = widgets.search(x, y, in.right() - x, tr("palettes.chromastudio.worldedit.from.hint"), s -> { from = s; enable(); });
+            field.setValue(from);
+            if (!which.equals("replace")) Widgets.disable(field, tr("palettes.chromastudio.worldedit.from.na"));
             enable();
         }
 
@@ -524,13 +529,19 @@ final class PaletteDialogs {
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
             label(g, "palettes.chromastudio.worldedit.command", in.x(), in.y());
             label(g, "palettes.chromastudio.worldedit.from", in.x(), in.y() + PanelTab.ROW);
-            int top = in.y() + 2 * PanelTab.ROW, bottom = in.bottom() - Widgets.H - 13;
+            int top = in.y() + 2 * PanelTab.ROW, bottom = in.bottom() - Widgets.H - STATUS_H - PanelTab.GAP;
             g.fill(in.x(), top, in.right(), bottom, PanelTab.WELL);
             String command = command();
             Component shown = command != null ? Component.literal(command) : tr("palettes.chromastudio.worldedit.from.needed");
             List<FormattedCharSequence> lines = PanelTab.font().split(shown, in.w() - 6);
-            for (int i = 0; i < lines.size() && top + 3 + (i + 1) * 9 <= bottom; i++) {
+            int fit = Math.max(1, (bottom - top - 4) / 9);
+            for (int i = 0; i < Math.min(fit, lines.size()); i++) {
                 g.text(PanelTab.font(), lines.get(i), in.x() + 3, top + 3 + i * 9, command != null ? PanelTab.TEXT : PanelTab.FAIR, false);
+            }
+            // A long palette's command runs past the box. Copy still takes all of it, and pointing at the box shows it.
+            if (lines.size() > fit) {
+                g.text(PanelTab.font(), "...", in.right() - 12, bottom - 10, PanelTab.DIM, false);
+                if (mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < bottom) g.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
             }
         }
     }
@@ -540,14 +551,14 @@ final class PaletteDialogs {
         private final List<PaletteEntry> entries;
 
         Hotbar(List<PaletteEntry> entries) {
-            super(tr("palettes.chromastudio.hotbar.title"), 250, 96);
+            super(tr("palettes.chromastudio.hotbar.title"), 260, 112);
             this.entries = List.copyOf(entries);
         }
 
         @Override
         protected void build(Bounds in) {
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo");
-            int y = in.bottom() - Widgets.H - 11, undoW = Widgets.buttonWidth(undo), fillW = Widgets.buttonWidth(fill);
+            int y = in.bottom() - Widgets.H - STATUS_H, undoW = Widgets.buttonWidth(undo), fillW = Widgets.buttonWidth(fill);
             Button fillButton = widgets.button(in.right() - undoW - PanelTab.GAP - fillW, y, fill, () -> {
                 status(HotbarFill.fill(entries), PanelTab.TEXT);
                 refresh();

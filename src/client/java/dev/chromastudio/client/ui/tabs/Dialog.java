@@ -2,16 +2,20 @@ package dev.chromastudio.client.ui.tabs;
 
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Widgets;
+import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 
 /** A small panel of controls over a tab, with a title and a close button. A click outside it closes it. */
 abstract class Dialog {
-    static final int TITLE_H = 13;
+    static final int TITLE_H = 13, STATUS_LINES = 2;
+    /** The room the status lines take at the bottom of a dialog. */
+    static final int STATUS_H = STATUS_LINES * 9 + 2;
 
     protected final Widgets widgets = new Widgets();
     private final Component title;
@@ -67,10 +71,11 @@ abstract class Dialog {
         draw(g, in, mouseX, mouseY);
         widgets.render(g, mouseX, mouseY, delta);
         if (status != null) {
-            String line = PanelTab.fit(status.getString(), in.w());
-            g.text(PanelTab.font(), line, in.x(), in.bottom() - 8, statusColour, false);
-            // A line too long to show whole can still be read by pointing at it.
-            if (!line.equals(status.getString()) && mouseY >= in.bottom() - 9 && mouseY < in.bottom() + 1 && mouseX >= in.x() && mouseX < in.right())
+            // Two lines at the bottom, the second cut short if there's more. Pointing at them shows the whole of it.
+            List<FormattedCharSequence> lines = PanelTab.font().split(status, in.w());
+            int shown = Math.min(STATUS_LINES, lines.size()), top = in.bottom() - shown * 9;
+            for (int i = 0; i < shown; i++) g.text(PanelTab.font(), lines.get(i), in.x(), top + i * 9, statusColour, false);
+            if (lines.size() > shown && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
                 g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
         }
     }

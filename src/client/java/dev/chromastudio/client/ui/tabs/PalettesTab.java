@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.Capture;
@@ -246,6 +247,9 @@ public final class PalettesTab extends PanelTab {
             boolean was = dirty;
             tags.setValue(String.join(", ", p.tags));
             notes.setValue(p.notes == null ? "" : p.notes);
+            // From the start, so a long line shows its beginning rather than its end.
+            tags.moveCursorToStart(false);
+            notes.moveCursorToStart(false);
             dirty = was;
         }
         if (fixed != null) {
@@ -365,13 +369,14 @@ public final class PalettesTab extends PanelTab {
             gg.text(font(), fit(name(row).getString(), w - 6), x + 3, y + 2, row.preset ? DIM : TEXT, false);
         });
 
+        // A note about what just happened takes the whole line for its few seconds; else the name and the count share it.
         Component note = note();
-        String right = note != null ? note.getString() : p == null ? "" : tr(p.preset ? "palettes.chromastudio.count_preset" : "palettes.chromastudio.count", p.entries.size()).getString();
-        String title = p == null ? "" : fit(name(p).getString(), Math.max(40, titleArea.w() / 2));
-        g.text(font(), title, titleArea.x(), titleArea.y() + 1, TEXT, false);
-        int room = titleArea.w() - font().width(title) - 8;
-        right = fit(right, room);
-        g.text(font(), right, titleArea.right() - font().width(right), titleArea.y() + 1, note != null ? noteColour() : DIM, false);
+        if (note != null) g.text(font(), fit(note.getString(), titleArea.w()), titleArea.x(), titleArea.y() + 1, noteColour(), false);
+        else if (p != null) {
+            String count = tr(p.preset ? "palettes.chromastudio.count_preset" : "palettes.chromastudio.count", p.entries.size()).getString();
+            g.text(font(), count, titleArea.right() - font().width(count), titleArea.y() + 1, DIM, false);
+            g.text(font(), fit(name(p).getString(), titleArea.w() - font().width(count) - 8), titleArea.x(), titleArea.y() + 1, TEXT, false);
+        }
 
         switch (panel) {
             case ANALYSE -> analyse.draw(g, mouseX, mouseY);
@@ -418,7 +423,7 @@ public final class PalettesTab extends PanelTab {
     protected boolean clicked(MouseButtonEvent e, boolean doubled) {
         if (list.mouseClicked(e)) return true;
         int row = list.rowAt(e.x(), e.y());
-        if (row >= 0 && e.button() == 0) {
+        if (row >= 0 && e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             Palette p = listed.get(row);
             if (p != null && p != selected()) select(p);
             return p != null;

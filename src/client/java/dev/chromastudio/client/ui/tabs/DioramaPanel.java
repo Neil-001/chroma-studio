@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
@@ -167,7 +168,7 @@ final class DioramaPanel implements AutoCloseable {
     }
 
     boolean clicked(MouseButtonEvent e) {
-        orbiting = threeD && e.button() == 0 && view.contains(e.x(), e.y());
+        orbiting = threeD && e.button() == InputConstants.MOUSE_BUTTON_LEFT && view.contains(e.x(), e.y());
         return orbiting;
     }
 
