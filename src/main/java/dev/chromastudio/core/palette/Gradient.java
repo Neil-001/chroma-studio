@@ -6,7 +6,9 @@ import dev.chromastudio.core.color.Metric;
 import dev.chromastudio.core.color.Oklch;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /** Picks the blocks of a gradient: one for each ideal colour, none used twice, as close overall as can be. */
 public final class Gradient {
@@ -28,11 +30,14 @@ public final class Gradient {
      * the target being the mean spread of the closest candidates to the first and last colours, so that the
      * steps in between look as busy as the ends.
      *
-     * <p>Candidates count as different by their place in the list, whatever their keys.
+     * <p>Candidates with equal keys are the same block: only the first of them in the list is used.
      */
-    public static Result solve(List<Oklch> ideal, List<Candidate> candidates, Metric metric, boolean matchSpread) {
+    public static Result solve(List<Oklch> ideal, List<Candidate> all, Metric metric, boolean matchSpread) {
+        List<Candidate> candidates = new ArrayList<>(all.size());
+        Set<Object> keys = new HashSet<>();
+        for (Candidate c : all) if (keys.add(c.key())) candidates.add(c);
         int n = ideal.size(), m = candidates.size();
-        if (m < n) throw new IllegalArgumentException("A gradient of " + n + " steps needs at least " + n + " blocks, and there are " + m);
+        if (m < n) throw new IllegalArgumentException("A gradient of " + n + " steps needs at least " + n + " different blocks, and there are " + m);
         if (n == 0) return new Result(List.of(), List.of(), 0);
 
         double[][] colour = new double[n][m];

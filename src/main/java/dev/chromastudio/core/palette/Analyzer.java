@@ -87,7 +87,7 @@ public final class Analyzer {
         if (!chromatic.isEmpty()) {
             Fit fit = nearestHarmony(chromatic);
             if (fit.worst > HUE_TOLERANCE) {
-                out.add(new Finding(HUES_STRAY, Severity.INFO, cast(chromatic).withHue(fit.missingHue), NO_FILTER));
+                out.add(new Finding(HUES_STRAY, Severity.INFO, cast.withHue(fit.missingHue), NO_FILTER));
             }
         }
 

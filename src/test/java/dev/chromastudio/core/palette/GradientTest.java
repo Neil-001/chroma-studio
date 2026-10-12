@@ -129,10 +129,16 @@ class GradientTest {
     }
 
     @Test
-    void candidatesWithTheSameKeyStillCountAsDifferent() {
-        Candidate same = flat("same", grey(0.5), 0);
-        Result result = Gradient.solve(List.of(grey(0.5), grey(0.5)), List.of(same, same), Metric.OKLAB, false);
-        assertEquals(List.of("same", "same"), keys(result));
+    void candidatesWithTheSameKeyAreOneBlock() {
+        Candidate same = flat("same", grey(0.5), 0), other = flat("other", grey(0.9), 0);
+        List<Oklch> ideal = List.of(grey(0.5), grey(0.5));
+        // Listed twice, the block still fills one step only, and the first of two with its key is the one used.
+        Result result = Gradient.solve(ideal, List.of(same, same, other, flat("same", grey(0.51), 0)), Metric.OKLAB, false);
+        assertEquals(2, new HashSet<>(keys(result)).size());
+        assertTrue(result.steps().contains(same));
+        assertTrue(result.steps().contains(other));
+        // Two of the same block are not enough for two steps.
+        assertThrows(IllegalArgumentException.class, () -> Gradient.solve(ideal, List.of(same, same), Metric.OKLAB, false));
     }
 
     @Test
