@@ -46,6 +46,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
 
 /**
  * The Gradient tab: a row of stops, each a colour or a block; the steps, easing, hue arc, spread and kind controls; a
@@ -83,7 +84,9 @@ public final class GradientTab extends PanelTab {
     private double meanDeltaE;
     /** Why there's no answer, or null while there is one or one is on its way. */
     private Component problem;
-    private boolean solving, wasReady, wasBuilding;
+    private boolean solving;
+    /** The index build the last solve read, by {@link #build}. */
+    private Object solvedBuild;
     /** The {@link #inputs} the last solve was asked with. */
     private String solvedFor = "";
     private Bounds stopsArea, stripArea;
@@ -210,8 +213,20 @@ public final class GradientTab extends PanelTab {
         int top = y + ROW + GAP;
         stripArea = new Bounds(b.x() + PAD, top, b.w() - 2 * PAD, badgeY - GAP - top);
         // A new stop, or settings changed on the settings screen, make the answer on show a stale one.
-        if (seeded || !inputs().equals(solvedFor) || result.isEmpty() && problem == null && !solving) solve();
+        if (seeded || stale() || result.isEmpty() && problem == null && !solving) solve();
     }
+
+    /**
+     * Something only the index's current build holds, or null before the first. A later build holds another, so this
+     * tells a rebuild that finished while the tab wasn't looking, pinned or behind another tab.
+     */
+    private static Object build() {
+        List<Entry> stone = BlockIndex.get().statesOf(Blocks.STONE);
+        return stone.isEmpty() ? null : stone.getFirst();
+    }
+
+    /** Whether the index or a setting the answer hangs on has changed since the last solve. */
+    private boolean stale() { return build() != solvedBuild || !inputs().equals(solvedFor); }
 
     /** Everything outside the tab that the answer depends on, to tell when it has changed. */
     private static String inputs() {
@@ -267,8 +282,7 @@ public final class GradientTab extends PanelTab {
     private void solve() {
         int number = ASKED.incrementAndGet();
         solvedFor = inputs();
-        wasReady = BlockIndex.get().ready();
-        wasBuilding = BlockIndex.get().building();
+        solvedBuild = build();
         if (!BlockIndex.get().ready()) {
             fail(tr("palettes.chromastudio.index_building"));
             return;
@@ -429,10 +443,7 @@ public final class GradientTab extends PanelTab {
     @Override
     public void tick() {
         super.tick();
-        // The index finished, or was rebuilt, or a setting the answer hangs on changed, since the last solve.
-        boolean ready = BlockIndex.get().ready(), building = BlockIndex.get().building();
-        boolean rebuilt = wasBuilding && !building;
-        wasBuilding = building;
-        if (!dialogOpen() && (ready != wasReady || rebuilt || !inputs().equals(solvedFor))) solve();
+        // Checked by what is so now, so nothing is missed while a dialog is open or another tab is showing.
+        if (!dialogOpen() && stale()) solve();
     }
 }

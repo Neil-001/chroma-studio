@@ -56,6 +56,8 @@ public final class PalettesTab extends PanelTab {
     private AnalysePanel analyse;
     private DioramaPanel diorama;
     private boolean dirty;
+    /** Set while the fields are given a palette's own text, which isn't an edit. */
+    private boolean loading;
     /** The palette the unsaved changes are in, which another tab may since have deselected. */
     private Palette edited;
     private long saveAt;
@@ -235,12 +237,12 @@ public final class PalettesTab extends PanelTab {
 
         int tagsW = body.w() * 2 / 5;
         EditBox tags = widgets.search(body.x(), fieldsY, tagsW, tr("palettes.chromastudio.tags.hint"), s -> {
-            if (p == null || p.preset) return;
+            if (loading || p == null || p.preset) return;
             p.tags = new ArrayList<>(Arrays.stream(s.split(",")).map(String::strip).filter(t -> !t.isEmpty()).toList());
             touch();
         });
         EditBox notes = widgets.search(body.x() + tagsW + GAP, fieldsY, body.w() - tagsW - GAP, tr("palettes.chromastudio.notes.hint"), s -> {
-            if (p == null || p.preset) return;
+            if (loading || p == null || p.preset) return;
             p.notes = s;
             touch();
         });
@@ -248,14 +250,14 @@ public final class PalettesTab extends PanelTab {
         tags.setMaxLength(Integer.MAX_VALUE);
         notes.setMaxLength(Integer.MAX_VALUE);
         if (p != null) {
-            // The responders are told of these too, and would mark an untouched palette changed.
-            boolean was = dirty;
+            // The responders are told of these too, and would mark this palette changed in place of one still waiting to be saved.
+            loading = true;
             tags.setValue(String.join(", ", p.tags));
             notes.setValue(p.notes == null ? "" : p.notes);
             // From the start, so a long line shows its beginning rather than its end.
             tags.moveCursorToStart(false);
             notes.moveCursorToStart(false);
-            dirty = was;
+            loading = false;
         }
         if (fixed != null) {
             Widgets.disable(tags, fixed);
