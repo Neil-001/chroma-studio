@@ -4,6 +4,7 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ClientPlatform;
 import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.Keys;
+import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.client.ui.SettingsScreen;
 import dev.chromastudio.client.ui.Tooltips;
@@ -25,6 +26,8 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -47,6 +50,9 @@ public final class ChromaStudioNeoForgeClient implements ClientPlatform {
         // Hud.render checks for a hidden HUD (F1) itself: NeoForge draws modded layers even then.
         modBus.addListener(RegisterGuiLayersEvent.class, event -> event.registerAboveAll(
                 Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "hud"), (graphics, _) -> Hud.render(graphics)));
+        modBus.addListener(AddClientReloadListenersEvent.class, event -> event.addListener(Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "index"),
+                BlockIndex.install(ModList.get().getMods().stream().map(mod -> mod.getModId() + " " + mod.getVersion()).toList())));
+        NeoForge.EVENT_BUS.addListener(ClientPlayerNetworkEvent.LoggingIn.class, _ -> BlockIndex.get().worldJoined());
         NeoForge.EVENT_BUS.addListener(RegisterClientCommandsEvent.class, event -> event.getDispatcher().register(ChromaCommand.build()));
         NeoForge.EVENT_BUS.addListener(ItemTooltipEvent.class, event -> Tooltips.append(event.getItemStack(), event.getToolTip()));
         NeoForge.EVENT_BUS.addListener(ClientTickEvent.Post.class, _ -> ChromaStudioClient.tick(Minecraft.getInstance()));
