@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 import org.junit.jupiter.api.Test;
 
 class CommandRepliesTest {
-    private static final String REPLACED = "commands.item.entity.set.success.single", GAVE = "commands.give.success.single";
+    private static final String REPLACED = "commands.item.entity.replace.success.single.known_item", EMPTIED = "commands.item.entity.replace.success.single", GAVE = "commands.give.success.single";
 
     @Test
     void oneReplyIsHiddenForEachCommandSent() {
@@ -21,6 +21,8 @@ class CommandRepliesTest {
         assertFalse(r.hides("chat.type.text"));
         assertTrue(r.hides(GAVE));
         assertFalse(r.hides(REPLACED), "both are answered");
+        r.sent();
+        assertTrue(r.hides(EMPTIED), "an undo that empties a slot names no item");
         assertEquals(0, r.awaiting());
     }
 
