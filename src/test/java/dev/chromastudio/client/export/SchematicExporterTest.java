@@ -45,6 +45,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -247,6 +248,17 @@ class SchematicExporterTest {
         assertEquals("Alex", read(second).getCompoundOrEmpty("Metadata").getStringOr("Author", ""));
         try (Stream<Path> files = Files.list(dir)) {
             assertEquals(4, files.count());
+        }
+    }
+
+    /** A schematic is the player's to share, so it is as readable as any file they save, not kept to its owner. */
+    @Test
+    void anExportedFileHasTheFoldersUsualPermissions() throws IOException {
+        Assumptions.assumeTrue(Files.getFileStore(dir).supportsFileAttributeView("posix"));
+        Path usual = Files.createFile(dir.resolve("usual.txt"));
+        for (Format format : Format.values()) {
+            Path file = SchematicExporter.export(six(), options(Layout.STRIP, false), format, dir, "Steve").file();
+            assertEquals(Files.getPosixFilePermissions(usual), Files.getPosixFilePermissions(file), format.toString());
         }
     }
 

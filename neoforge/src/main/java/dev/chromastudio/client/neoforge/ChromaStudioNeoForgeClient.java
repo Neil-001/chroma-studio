@@ -5,6 +5,7 @@ import dev.chromastudio.client.ClientPlatform;
 import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.action.Capture;
+import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.client.ui.SettingsScreen;
@@ -29,6 +30,7 @@ import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.ClientChatReceivedEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
@@ -62,6 +64,10 @@ public final class ChromaStudioNeoForgeClient implements ClientPlatform {
         NeoForge.EVENT_BUS.addListener(ItemTooltipEvent.class, event -> Tooltips.append(event.getItemStack(), event.getToolTip()));
         NeoForge.EVENT_BUS.addListener(SubmitCustomGeometryEvent.class,
                 event -> Capture.render(event.getSubmitNodeCollector(), event.getPoseStack(), event.getLevelRenderState().cameraRenderState.pos));
+        // Keeps the game's replies to an operator's hotbar fill out of chat.
+        NeoForge.EVENT_BUS.addListener(ClientChatReceivedEvent.System.class, event -> {
+            if (HotbarFill.hidesFeedback(event.getMessage(), event.isOverlay())) event.setCanceled(true);
+        });
         NeoForge.EVENT_BUS.addListener(ClientTickEvent.Post.class, _ -> ChromaStudioClient.tick(Minecraft.getInstance()));
     }
 

@@ -57,6 +57,8 @@ class MatchFiltersTest {
         f.chromaMax = 0.2;
         f.badges.add(Badge.FLAT);
 
+        f.blockEntityRendered = true;
+
         Query q = new Query();
         q.kinds.add(Kind.SLAB);
         q.namespaces.add("stale");
@@ -75,7 +77,8 @@ class MatchFiltersTest {
         assertEquals(0.05, q.chromaMin);
         assertEquals(0.2, q.chromaMax);
         assertEquals(Set.of(Badge.FLAT), q.badges);
-        assertEquals(11, f.extras(), "nine filters behind More and two mods, each counted once");
+        assertTrue(q.blockEntityRendered);
+        assertEquals(12, f.extras(), "ten filters behind More and two mods, each counted once");
     }
 
     @Test
@@ -84,6 +87,7 @@ class MatchFiltersTest {
         new MatchFilters().apply(q);
         assertTrue(q.kinds.isEmpty() && q.namespaces.isEmpty() && q.namespacesExcluded.isEmpty() && q.badges.isEmpty());
         assertNull(q.tone);
+        assertFalse(q.blockEntityRendered, "chests and the like stay out until asked for");
         assertEquals(Double.POSITIVE_INFINITY, q.chromaMax, "the chroma slider's top is no limit at all");
         assertEquals(1, q.lightnessMax);
     }

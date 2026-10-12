@@ -65,6 +65,7 @@ public final class DebugCommand {
         if (e.lightSource()) flags.add("light source");
         if (e.technical()) flags.add("technical");
         if (e.creativeOnly()) flags.add("creative only");
+        if (e.blockEntityRendered()) flags.add("drawn by a block entity");
         lines.add(e + ": kind " + e.kind() + ", " + (flags.isEmpty() ? "no flags" : String.join(", ", flags)));
         for (Face f : Entry.SIDES) {
             TextureStats stats = e.face(f, tint);

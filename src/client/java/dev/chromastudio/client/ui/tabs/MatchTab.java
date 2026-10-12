@@ -414,6 +414,9 @@ public final class MatchTab extends Tab {
         w.label(x, y + 4, tr("filter.technical"), TEXT);
         w.toggle(cx, y, cw, null, f.technical, v -> { f.technical = v; MatchState.changed(); }, tr("filter.technical.tip"));
         y += ROW;
+        w.label(x, y + 4, tr("filter.block_entity"), TEXT);
+        w.toggle(cx, y, cw, null, f.blockEntityRendered, v -> { f.blockEntityRendered = v; MatchState.changed(); }, tr("filter.block_entity.tip"));
+        y += ROW;
         w.label(x, y + 4, tr("filter.tone"), TEXT);
         List<String> tones = new ArrayList<>(List.of(ALL));
         for (Tone t : Tone.values()) tones.add(t.name());
@@ -1160,6 +1163,14 @@ public final class MatchTab extends Tab {
             return true;
         }
         return controls.keyPressed(e);
+    }
+
+    /** Escape closes the panel over the results, when one is open. */
+    @Override
+    public boolean dismiss() {
+        if (panel == Panel.NONE) return false;
+        toggle(panel);
+        return true;
     }
 
     @Override

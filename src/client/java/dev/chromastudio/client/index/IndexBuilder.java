@@ -27,6 +27,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -46,11 +47,11 @@ final class IndexBuilder {
     /**
      * What a model shows: each face's textures with the area their quads cover, in the model's order, and the key
      * that two models share when they show the same textures. Only the names are in the key: a stair's states
-     * cover different areas with the same textures.
+     * cover different areas with the same textures. {@code drawn} is false when the model has no quads at all.
      */
-    private record Look(List<Map<Tex, Double>> faces, String key) {
-        Look(List<Map<Tex, Double>> faces) {
-            this(faces, faces.stream().map(f -> f.keySet().toString()).collect(Collectors.joining()));
+    private record Look(List<Map<Tex, Double>> faces, String key, boolean drawn) {
+        Look(List<Map<Tex, Double>> faces, boolean drawn) {
+            this(faces, faces.stream().map(f -> f.keySet().toString()).collect(Collectors.joining()), drawn);
         }
     }
 
@@ -99,7 +100,7 @@ final class IndexBuilder {
             Look look = liquid ? fluidLook(state) : byModel.computeIfAbsent(models.get(state), model -> modelLook(model, state));
             Entry entry = kept.get(look.key);
             if (entry == null && kept.size() < Math.max(1, options.statesCap())) {
-                entry = new Entry(state, id, properties(state, byDefault), technical, solid(state), layers(state, look.faces));
+                entry = new Entry(state, id, properties(state, byDefault), technical, solid(state), blockEntityRendered(state, look.drawn), layers(state, look.faces));
                 kept.put(look.key, entry);
             }
             byState.put(state, entry != null ? entry : kept.values().iterator().next());
@@ -122,6 +123,12 @@ final class IndexBuilder {
         return String.join(",", out);
     }
 
+    /**
+     * Whether something other than the model draws the block: it has a block entity and its model is empty, as a
+     * chest's, a banner's and a sign's are. A block entity beside a model of its own, as a furnace has, doesn't count.
+     */
+    static boolean blockEntityRendered(BlockState state, boolean modelDraws) { return !modelDraws && state.getBlock() instanceof EntityBlock; }
+
     private static boolean solid(BlockState state) {
         try {
             return !state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
@@ -140,13 +147,14 @@ final class IndexBuilder {
             for (Direction side : DIRECTIONS) for (BakedQuad q : part.getQuads(side)) add(faces, q);
             for (BakedQuad q : part.getQuads(null)) add(faces, q);
         }
+        boolean drawn = faces.stream().anyMatch(f -> !f.isEmpty());
         // What a face with nothing drawn on it is taken to look like: the texture the block breaks into.
         TextureAtlasSprite particle = ChromaStudioClient.platform.particleMaterial(model, state).sprite();
         Identifier name = particle.contents().name();
         int tintIndex = -1;
         for (Map<Tex, Double> face : faces) for (Tex t : face.keySet()) if (t.sprite.equals(name)) tintIndex = Math.max(tintIndex, t.tintIndex);
         for (Map<Tex, Double> face : faces) if (face.isEmpty()) face.put(new Tex(name, tintIndex), 1.0);
-        return new Look(faces);
+        return new Look(faces, drawn);
     }
 
     private static void add(List<Map<Tex, Double>> faces, BakedQuad q) {
@@ -170,7 +178,7 @@ final class IndexBuilder {
             TextureAtlasSprite sprite = (side.getAxis().isVertical() ? model.stillMaterial() : model.flowingMaterial()).sprite();
             faces.get(side.ordinal()).put(new Tex(sprite.contents().name(), tintIndex), 1.0);
         }
-        return new Look(faces);
+        return new Look(faces, true);
     }
 
     // NeoForge deprecates this for its own fluid tint source, which is still a block tint source.

@@ -32,6 +32,12 @@ public abstract class Tab {
     public boolean keyPressed(KeyEvent e) { return false; }
     public boolean charTyped(CharacterEvent e) { return false; }
 
+    /**
+     * Escape was pressed. Closes whatever the tab has open over itself, such as a dialog, and says whether there was
+     * anything: when there wasn't, the window closes.
+     */
+    public boolean dismiss() { return false; }
+
     /** Whether the player is typing into one of the tab's fields. While they are, the window's own keys (open, pin, fullscreen) are theirs to type. */
     public boolean typing() { return false; }
 

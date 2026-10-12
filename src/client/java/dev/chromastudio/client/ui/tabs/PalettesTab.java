@@ -8,7 +8,6 @@ import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Bounds;
-import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.export.Layout;
@@ -173,7 +172,7 @@ public final class PalettesTab extends PanelTab {
         Component needsBlocks = p == null ? tr("palettes.chromastudio.need_palette") : p.entries.isEmpty() ? tr("palettes.chromastudio.need_entries") : null;
         Component needsIndex = PaletteDialogs.indexReady() ? null : tr("palettes.chromastudio.index_building");
         List<Tool> tools = List.of(
-                new Tool("generate", new ItemStack(Items.AMETHYST_SHARD), () -> open(new PaletteDialogs.Generate(matchTarget(), _ -> showEntries())), needsIndex, false),
+                new Tool("generate", new ItemStack(Items.AMETHYST_SHARD), () -> open(new PaletteDialogs.Generate(MatchState.colour(), _ -> showEntries())), needsIndex, false),
                 new Tool("capture", new ItemStack(Items.SPYGLASS), this::capture, Capture.unavailable().orElse(null), Capture.armed()),
                 new Tool("image", new ItemStack(Items.PAINTING), () -> open(new PaletteDialogs.Image(_ -> showEntries())), needsIndex, false),
                 new Tool("analyse", new ItemStack(Items.WRITABLE_BOOK), () -> togglePanel(Panel.ANALYSE), needsBlocks != null ? needsBlocks : needsIndex, panel == Panel.ANALYSE),
@@ -198,12 +197,6 @@ public final class PalettesTab extends PanelTab {
             x += w + GAP;
         }
     }
-
-    /**
-     * The colour the Match tab is matching, for Generate to start from. The Match tab keeps its target to itself
-     * until it has a way to share it, so for now this is what {@code /chroma} last asked for, if that was a colour.
-     */
-    private static Color matchTarget() { return ChromaScreen.pendingTarget instanceof Integer rgb ? Color.ofRgb(rgb) : null; }
 
     private void capture() {
         if (Capture.armed()) {

@@ -9,16 +9,19 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.ShareString;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -168,7 +171,8 @@ public final class SchematicExporter {
     /**
      * Writes under the first free name of {@code base}, {@code base-2}, {@code base-3} and so on. The name is
      * claimed by creating it empty, which fails when something else has it. The blocks go to a temporary file
-     * that is also newly created, and that then takes the claimed name's place in one move, so neither another file nor half a file is ever at that name.
+     * that is also newly created, and that then takes the claimed name's place in one move, so neither another file
+     * nor half a file is ever at that name.
      */
     private static Path write(CompoundTag root, Path dir, String base, String extension) throws IOException {
         Files.createDirectories(dir);
@@ -183,9 +187,7 @@ public final class SchematicExporter {
         }
         Path temp = null;
         try {
-            // A new file of its own, so a leftover or a link at a guessable name is never written through.
-            temp = Files.createTempFile(dir, base + "-", ".tmp");
-            NbtIo.writeCompressed(root, temp);
+            temp = writeNew(root, dir, base);
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException | RuntimeException e) {
             if (temp != null) Files.deleteIfExists(temp);
@@ -193,6 +195,26 @@ public final class SchematicExporter {
             throw e;
         }
         return file;
+    }
+
+    /**
+     * Writes to a new file of its own, so a leftover or a link at a guessable name is never written through. It is
+     * made as any file the player saves is, where {@link Files#createTempFile} would let only its owner read it, and
+     * the move would carry that over to the schematic.
+     */
+    private static Path writeNew(CompoundTag root, Path dir, String base) throws IOException {
+        while (true) {
+            Path temp = dir.resolve(base + "-" + Long.toHexString(ThreadLocalRandom.current().nextLong()) + ".tmp");
+            try (OutputStream out = Files.newOutputStream(temp, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+                NbtIo.writeCompressed(root, out);
+                return temp;
+            } catch (FileAlreadyExistsException _) {
+                // Somebody else's: leave it and try another name.
+            } catch (IOException | RuntimeException e) {
+                Files.deleteIfExists(temp);
+                throw e;
+            }
+        }
     }
 
     /** One region, with its blocks as palette indices in Litematica's order: x fastest, then z, then y. */

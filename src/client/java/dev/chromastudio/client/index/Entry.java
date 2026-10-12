@@ -22,15 +22,20 @@ public final class Entry {
     private final Kind kind;
     // Set again when the creative tabs are read, which only a world makes possible.
     private volatile boolean technical;
-    private final boolean creativeOnly, tinted, animated, lightSource, fullCube, solid, opaque, sameTextureAllRound;
+    private final boolean creativeOnly, tinted, animated, lightSource, fullCube, solid, opaque, sameTextureAllRound, blockEntityRendered;
     private final FaceLayers[] faces;
 
     Entry(BlockState state, String id, String properties, boolean technical, boolean solid, FaceLayers[] faces) {
+        this(state, id, properties, technical, solid, false, faces);
+    }
+
+    Entry(BlockState state, String id, String properties, boolean technical, boolean solid, boolean blockEntityRendered, FaceLayers[] faces) {
         this.state = state;
         this.id = id;
         this.properties = properties;
         this.technical = technical;
         this.solid = solid;
+        this.blockEntityRendered = blockEntityRendered;
         this.faces = faces;
         this.kind = Kind.of(state);
         this.creativeOnly = CreativeOnly.is(state.getBlock());
@@ -87,6 +92,12 @@ public final class Entry {
     public boolean opaque() { return opaque; }
 
     public boolean sameTextureAllRound() { return sameTextureAllRound; }
+
+    /**
+     * Whether a block entity draws the block rather than its model, as with a chest, a banner, a sign or a bed. Its
+     * faces then hold only the texture it breaks into, which is a guess at how it looks.
+     */
+    public boolean blockEntityRendered() { return blockEntityRendered; }
 
     /** A face's stats with the tint applied. {@link Face#ANY} isn't a face: ask {@link #bestFace} which one first. */
     public TextureStats face(Face f, TintContext tint) { return sampled(f, tint).stats; }

@@ -1,6 +1,7 @@
 package dev.chromastudio.client.index;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.chromastudio.api.ChromaStudioApi;
 import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ui.tabs.MatchState;
@@ -17,6 +18,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -510,6 +512,45 @@ class GameIndexTest {
         assertEquals(Optional.of(litColour), index.colourOf(lit, Face.NORTH, TintContext.none()));
         assertEquals(Optional.of(red), index.colourOf(block("red_concrete").defaultBlockState(), Face.ANY, TintContext.none()));
         assertEquals(Optional.empty(), index.colourOf(block("diamond_block").defaultBlockState(), Face.UP, TintContext.none()));
+
+        // And the API itself, which other mods call.
+        assertEquals(Optional.of(red.rgb()), ChromaStudioApi.colourOf(block("red_concrete").defaultBlockState(), Direction.UP, null));
+        assertEquals(Optional.of(red.rgb()), ChromaStudioApi.colourOf(block("red_concrete").defaultBlockState(), Direction.EAST, Biomes.PLAINS));
+        assertEquals(Optional.of(stats("block/bookshelf").mean(Scale.T1).rgb()), ChromaStudioApi.colourOf(block("bookshelf").defaultBlockState(), Direction.WEST, null),
+                "the game's directions and the index's faces are in the same order");
+        assertEquals(Optional.of(litColour.rgb()), ChromaStudioApi.colourOf(lit, Direction.NORTH, null));
+        assertEquals(Optional.empty(), ChromaStudioApi.colourOf(block("diamond_block").defaultBlockState(), Direction.UP, null));
+        assertEquals(List.of(block("red_concrete").defaultBlockState()), ChromaStudioApi.closest(red.rgb(), 1));
+        assertEquals(List.of(block("red_concrete").defaultBlockState()), ChromaStudioApi.closest(0xFF000000 | red.rgb(), 1), "alpha is ignored");
+        assertEquals(lit, ChromaStudioApi.closest(litColour.rgb(), 60).stream().filter(s -> s.getBlock() == block("redstone_lamp")).findFirst().orElseThrow(),
+                "a block answers with its closest state");
+        assertEquals(9, ChromaStudioApi.closest(red.rgb(), 60).size(), "technical blocks follow the setting, which starts off");
+        assertTrue(ChromaStudioApi.closest(red.rgb(), 0).isEmpty());
+    }
+
+    /** A chest is drawn by its block entity, so all the index has of it is the planks it breaks into. */
+    @Test
+    void blocksABlockEntityDrawsAreLeftOutUnlessAskedFor() {
+        BlockState chest = block("chest").defaultBlockState();
+        assertTrue(IndexBuilder.blockEntityRendered(chest, false));
+        assertFalse(IndexBuilder.blockEntityRendered(block("furnace").defaultBlockState(), true), "a furnace has a block entity and a model of its own");
+        assertFalse(IndexBuilder.blockEntityRendered(block("barrier").defaultBlockState(), false), "nothing draws a barrier");
+
+        FaceLayers[] faces = new FaceLayers[6];
+        Arrays.fill(faces, new FaceLayers(List.of(new FaceLayers.Layer("minecraft:block/oak_planks", sampled("block/oak_planks"), -1, null, 1))));
+        Entry drawn = new Entry(chest, "minecraft:chest", "", false, true, true, faces);
+        assertTrue(drawn.blockEntityRendered());
+        BlockIndex index = index(List.of(List.of(entry(block("oak_planks"), "block/oak_planks")), List.of(drawn)));
+        assertFalse(index.statesOf(block("oak_planks")).getFirst().blockEntityRendered());
+
+        Target planks = Target.of(stats("block/oak_planks").mean(Scale.T1));
+        assertEquals(List.of("minecraft:oak_planks"), ids(index.closest(planks, query())));
+        Query q = query();
+        q.blockEntityRendered = true;
+        assertEquals(List.of("minecraft:chest", "minecraft:oak_planks"), ids(index.closest(planks, q)));
+        // The eyedropper and the API still read it.
+        assertEquals(drawn, index.entryOf(chest));
+        assertTrue(DebugCommand.describe(drawn, TintContext.none()).getFirst().contains("drawn by a block entity"));
     }
 
     /** What the Match tab and the eyedropper lean on: a choice of faces, a state's entry, and knowing when a build is new. */

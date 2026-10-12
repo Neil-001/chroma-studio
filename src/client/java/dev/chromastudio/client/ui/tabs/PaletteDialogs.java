@@ -192,7 +192,6 @@ final class PaletteDialogs {
 
     /** Makes a palette from a seed colour, a harmony and a count. */
     static final class Generate extends Dialog {
-        private static String lastHex = "#4C8FD6";
         private static Harmony harmony = Harmony.ANALOGOUS;
 
         private final Consumer<Palette> done;
@@ -200,12 +199,11 @@ final class PaletteDialogs {
         private int count = ModSettings.generateCount;
         private int labelW;
 
-        /** {@code seed} is the colour to start from, or null for the block in hand, or failing that the last one used. */
+        /** {@code seed} is the colour to start from: the one the Match tab is matching. A button takes the block in hand's instead. */
         Generate(Color seed, Consumer<Palette> done) {
             super(tr("palettes.chromastudio.generate.title"), 250, 106);
             this.done = done;
-            Color start = seed != null ? seed : inHand();
-            hex = start != null ? start.hex() : lastHex;
+            hex = seed.hex();
         }
 
         /** The colour of the block the player holds, or null when they hold none the index knows. */
@@ -272,7 +270,6 @@ final class PaletteDialogs {
                 status(tr("palettes.chromastudio.generate.bad_hex"), PanelTab.BAD);
                 return true;
             }
-            lastHex = seed.hex();
             List<PaletteEntry> entries = PaletteBlocks.closest(Generator.targets(seed.oklch(), harmony, count, new Random()));
             if (entries.isEmpty()) {
                 status(tr("palettes.chromastudio.no_matches"), PanelTab.BAD);

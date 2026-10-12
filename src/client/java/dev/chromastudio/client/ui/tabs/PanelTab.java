@@ -143,6 +143,13 @@ abstract class PanelTab extends Tab {
     }
 
     @Override
+    public final boolean dismiss() {
+        if (dialog == null) return false;
+        closeDialog();
+        return true;
+    }
+
+    @Override
     public final boolean charTyped(CharacterEvent e) {
         if (dialog != null) return dialog.widgets.charTyped(e);
         return typed(e) || widgets.charTyped(e);

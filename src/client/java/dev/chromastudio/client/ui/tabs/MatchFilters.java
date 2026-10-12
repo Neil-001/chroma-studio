@@ -26,6 +26,8 @@ public final class MatchFilters {
     public Tri tinted = Tri.ANY, creativeOnly = Tri.ANY, lightSource = Tri.ANY;
     /** Whether blocks outside the creative tabs are kept. */
     public boolean technical;
+    /** Whether blocks a block entity draws, such as chests and banners, are kept. */
+    public boolean blockEntityRendered;
     /** Mod namespaces that are kept alone ({@link Tri#ONLY}) or left out ({@link Tri#EXCLUDE}). One not listed is {@link Tri#ANY}. */
     public final Map<String, Tri> namespaces = new TreeMap<>();
     /** The tone to keep, or null for any. */
@@ -84,6 +86,7 @@ public final class MatchFilters {
         q.creativeOnly = creativeOnly;
         q.lightSource = lightSource;
         q.technical = technical;
+        q.blockEntityRendered = blockEntityRendered;
         q.namespaces.clear();
         q.namespacesExcluded.clear();
         namespaces.forEach((namespace, how) -> {
@@ -108,6 +111,7 @@ public final class MatchFilters {
         if (creativeOnly != Tri.ANY) n++;
         if (lightSource != Tri.ANY) n++;
         if (technical != ModSettings.technicalBlocks) n++;
+        if (blockEntityRendered) n++;
         if (tone != null) n++;
         if (lightnessMin > 0 || lightnessMax < 1) n++;
         if (chromaMin > 0 || chromaMax < TargetModel.CHROMA_MAX) n++;

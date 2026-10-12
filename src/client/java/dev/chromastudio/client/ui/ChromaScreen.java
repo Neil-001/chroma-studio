@@ -437,11 +437,11 @@ public final class ChromaScreen extends Screen {
             if (event.isEscape()) ScreenPicker.cancel();
             return true;
         }
+        Tab tab = tab();
         if (event.isEscape()) {
-            onClose();
+            if (!tab.dismiss()) onClose();
             return true;
         }
-        Tab tab = tab();
         if (tab.keyPressed(event)) return true;
         return !tab.typing() && windowKey(key -> key.matches(event));
     }

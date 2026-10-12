@@ -16,6 +16,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -36,6 +37,20 @@ public final class HotbarFill {
     private static List<Was> last = List.of();
     /** The connection the last fill was made on. Its slots are another inventory's once the player is in another world. */
     private static Object lastOn;
+
+    /** The replies still due to the commands an operator's fill sent. */
+    private static final CommandReplies REPLIES = new CommandReplies();
+
+    /**
+     * Whether a system message should be kept out of chat, as the game's reply to one of the fill's own commands.
+     * Each loader asks this for every system message. The fill says what it did in the window instead.
+     */
+    public static boolean hidesFeedback(Component message, boolean overlay) {
+        return !overlay && message.getSiblings().isEmpty() && message.getContents() instanceof TranslatableContents t && REPLIES.hides(t.getKey());
+    }
+
+    /** Call at the end of every client tick. */
+    public static void tick() { REPLIES.tick(); }
 
     /** Forgets a fill made in a world the player has since left. */
     private static void forgetOtherWorlds() {
@@ -75,6 +90,7 @@ public final class HotbarFill {
             ItemStack old = inventory.getItem(i).copy();
             Optional<Component> problem = Give.stack(stacks.get(i), i);
             if (problem.isPresent()) return problem.get();
+            if (!player.hasInfiniteMaterials()) REPLIES.sent();
             before.add(new Was(i, old));
         }
 
@@ -129,6 +145,7 @@ public final class HotbarFill {
         String where = slot < HOTBAR ? "hotbar." + slot : "inventory." + (slot - HOTBAR);
         String what = stack.isEmpty() ? "minecraft:air" : commandItem(stack) + (stack.getCount() == 1 ? "" : " " + stack.getCount());
         ChromaStudioClient.platform.sendChatCommand("item replace entity @s " + where + " with " + what);
+        REPLIES.sent();
     }
 
     /**

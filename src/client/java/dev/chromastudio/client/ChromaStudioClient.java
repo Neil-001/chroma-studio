@@ -2,6 +2,7 @@ package dev.chromastudio.client;
 
 import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.action.Eyedropper;
+import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.export.ExportCommand;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.tabs.ExploreTab;
@@ -53,6 +54,7 @@ public final class ChromaStudioClient {
         while (Keys.EYEDROPPER.consumeClick()) if (mc.gui.screen() == null) Keys.onEyedropper.run();
         while (Keys.CAPTURE.consumeClick()) if (mc.gui.screen() == null) Keys.onCapture.run();
         Capture.tick(mc);
+        HotbarFill.tick();
     }
 
     /** Opens the window on the tab it last showed, or brings a pinned one back. */
