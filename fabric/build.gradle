@@ -52,6 +52,8 @@ dependencies {
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	// Mod Menu is optional: only its entrypoint class refers to it, and only Mod Menu loads that class.
 	compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	// The dev client runs with it, to try the settings screen from its mod list.
+	localRuntime("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
 	// Litematica is optional too: only the bridge class refers to it, and only once the mod is known to be loaded.
 	// The dev client runs with both, to try the bridge. Their own dependencies are left out: the jars carry what they need.
 	compileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
