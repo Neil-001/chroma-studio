@@ -226,6 +226,31 @@ class SchematicExporterTest {
     }
 
     @Test
+    void otherPeoplesTemporaryFilesAndLinksAreLeftAlone() throws IOException {
+        Path leftover = dir.resolve("chroma-six-blocks-strip.litematic.tmp");
+        Files.writeString(leftover, "a leftover");
+        Path first = SchematicExporter.export(six(), options(Layout.STRIP, false), dir, "Steve").file();
+        assertEquals("a leftover", Files.readString(leftover));
+        byte[] before = Files.readAllBytes(first);
+
+        // A link at the next export's old temporary name must not lead the writer to the first file.
+        Path link = dir.resolve("chroma-six-blocks-strip-2.litematic.tmp");
+        try {
+            Files.createSymbolicLink(link, first);
+        } catch (IOException | UnsupportedOperationException _) {
+            return;
+        }
+        Path second = SchematicExporter.export(ShareString.decode("chroma1:dirt/Six Blocks"), options(Layout.STRIP, false), dir, "Alex").file();
+        assertArrayEquals(before, Files.readAllBytes(first));
+        assertTrue(Files.isSymbolicLink(link));
+        assertFalse(Files.isSymbolicLink(second));
+        assertEquals("Alex", read(second).getCompoundOrEmpty("Metadata").getStringOr("Author", ""));
+        try (Stream<Path> files = Files.list(dir)) {
+            assertEquals(4, files.count());
+        }
+    }
+
+    @Test
     void theFileNameIsSafe() {
         LayoutOptions strip = LayoutOptions.of(Layout.STRIP), clusters = LayoutOptions.of(Layout.NOISE_CLUSTERS);
         assertEquals("chroma-warm-stone-strip", SchematicExporter.fileName(new Palette("Warm Stone"), strip));

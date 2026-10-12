@@ -167,8 +167,8 @@ public final class SchematicExporter {
 
     /**
      * Writes under the first free name of {@code base}, {@code base-2}, {@code base-3} and so on. The name is
-     * claimed by creating it empty, which fails when something else has it, and the finished file then takes its
-     * place in one move, so neither another file nor half a file is ever at that name.
+     * claimed by creating it empty, which fails when something else has it. The blocks go to a temporary file
+     * that is also newly created, and that then takes the claimed name's place in one move, so neither another file nor half a file is ever at that name.
      */
     private static Path write(CompoundTag root, Path dir, String base, String extension) throws IOException {
         Files.createDirectories(dir);
@@ -181,12 +181,14 @@ public final class SchematicExporter {
                 // Taken: try the next number.
             }
         }
-        Path temp = dir.resolve(file.getFileName() + ".tmp");
+        Path temp = null;
         try {
+            // A new file of its own, so a leftover or a link at a guessable name is never written through.
+            temp = Files.createTempFile(dir, base + "-", ".tmp");
             NbtIo.writeCompressed(root, temp);
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException | RuntimeException e) {
-            Files.deleteIfExists(temp);
+            if (temp != null) Files.deleteIfExists(temp);
             Files.deleteIfExists(file);
             throw e;
         }
