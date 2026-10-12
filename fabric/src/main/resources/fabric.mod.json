@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "chromastudio",
+  "version": "${version}",
+  "name": "Chroma Studio",
+  "description": "Find blocks by colour, build palettes and gradients, and export them as schematics.",
+  "authors": ["Neil C."],
+  "contact": {
+    "homepage": "https://modrinth.com/mod/chroma-studio",
+    "sources": "https://github.com/Neil-001/chroma-studio",
+    "issues": "https://github.com/Neil-001/chroma-studio/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/chromastudio/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.chromastudio.client.fabric.ChromaStudioFabricClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-api": ">=0.160.6"
+  }
+}

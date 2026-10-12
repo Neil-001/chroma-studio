@@ -1,0 +1,50 @@
+plugins {
+	id 'net.neoforged.moddev' version '2.0.148'
+}
+
+repositories {
+	maven {
+		name = 'Masa'
+		url = 'https://masa.dy.fi/maven/sakura-ryoko'
+		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
+	}
+}
+
+neoForge {
+	version = project.neoforge_version
+	runs {
+		client {
+			client()
+			gameDirectory = rootProject.file('run/neoforge')
+		}
+	}
+	mods {
+		"chromastudio" {
+			sourceSet sourceSets.main
+		}
+	}
+}
+
+// The shared code, next to this project's own NeoForge entrypoints. NeoForge has no separate client source set,
+// so the client code goes into the same jar.
+sourceSets {
+	main {
+		java.srcDir rootProject.file('src/main/java')
+		java.srcDir rootProject.file('src/client/java')
+		resources.srcDir rootProject.file('src/main/resources')
+	}
+}
+
+dependencies {
+	// Litematica's Fabric jars, only to compile the bridge against. Forgematica keeps the same package and class names,
+	// and Minecraft's names are the same on both loaders.
+	compileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
+	compileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
+}
+
+processResources {
+	inputs.property "version", project.version
+	filesMatching("META-INF/neoforge.mods.toml") {
+		expand "version": project.version
+	}
+}

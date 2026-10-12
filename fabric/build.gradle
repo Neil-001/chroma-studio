@@ -1,0 +1,80 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version '1.18.2'
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		name = 'TerraformersMC'
+		url = 'https://maven.terraformersmc.com/releases/'
+		content { includeGroup 'com.terraformersmc' }
+	}
+	maven {
+		name = 'Masa'
+		url = 'https://masa.dy.fi/maven/sakura-ryoko'
+		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
+	}
+}
+
+loom {
+	splitEnvironmentSourceSets()
+	mods {
+		"chromastudio" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+	runs {
+		client { runDir = '../run/fabric' }
+	}
+}
+
+// The shared code, next to this project's own Fabric entrypoints.
+sourceSets {
+	main {
+		java.srcDir rootProject.file('src/main/java')
+		resources.srcDir rootProject.file('src/main/resources')
+	}
+	client {
+		java.srcDir rootProject.file('src/client/java')
+	}
+	test {
+		java.srcDir rootProject.file('src/test/java')
+		// For the client classes that don't need the game running, such as ModSettings.
+		compileClasspath += sourceSets.client.output
+		runtimeClasspath += sourceSets.client.output
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	// Mod Menu is optional: only its entrypoint class refers to it, and only Mod Menu loads that class.
+	compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	// Litematica is optional too: only the bridge class refers to it, and only once the mod is known to be loaded.
+	// The dev client runs with both, to try the bridge. Their own dependencies are left out: the jars carry what they need.
+	compileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
+	compileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
+	localRuntime("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
+	localRuntime("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
+
+	// Tests cover the pure-Java core (dev.chromastudio.core) and the settings file.
+	testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+	useJUnitPlatform()
+	testLogging {
+		events "failed"
+		exceptionFormat = "full"
+	}
+}
+
+processResources {
+	inputs.property "version", project.version
+	filesMatching("fabric.mod.json") {
+		expand "version": project.version
+	}
+}
