@@ -24,6 +24,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
+import net.minecraft.util.FormattedCharSequence;
 
 /**
  * The mod's window: a title bar with the tabs and the fullscreen, pin and close buttons, over the selected tab. The
@@ -229,7 +230,12 @@ public final class ChromaScreen extends Screen {
         cog(g, cog, overCog ? TEXT : DIM);
         if (overCog) tip = Component.translatable("window.chromastudio.settings");
 
-        if (tip != null) g.setTooltipForNextFrame(font, Tooltip.splitTooltip(minecraft, tip), mouseX, mouseY);   // wrapped, as widgets' own are
+        if (tip != null) {
+            // Wrapped, as widgets' own are. The game draws a tooltip a little above the cursor and doesn't mind the
+            // screen's top, so one for a button up there is asked for lower down, where all its lines fit.
+            List<FormattedCharSequence> lines = Tooltip.splitTooltip(minecraft, tip);
+            g.setTooltipForNextFrame(font, lines, mouseX, Math.max(mouseY, 16 + (lines.size() - 1) * 2));
+        }
         CursorType cursor = cursor(free ? window.gripAt(mouseX, mouseY, width, height) : Window.Grip.NONE);
         if (cursor != null && !overCog) g.requestCursor(cursor);
     }

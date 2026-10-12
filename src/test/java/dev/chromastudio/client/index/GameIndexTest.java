@@ -532,14 +532,15 @@ class GameIndexTest {
     @Test
     void blocksABlockEntityDrawsAreLeftOutUnlessAskedFor() {
         BlockState chest = block("chest").defaultBlockState();
-        assertTrue(IndexBuilder.blockEntityRendered(chest, false));
-        assertFalse(IndexBuilder.blockEntityRendered(block("furnace").defaultBlockState(), true), "a furnace has a block entity and a model of its own");
-        assertFalse(IndexBuilder.blockEntityRendered(block("barrier").defaultBlockState(), false), "nothing draws a barrier");
-
         FaceLayers[] faces = new FaceLayers[6];
         Arrays.fill(faces, new FaceLayers(List.of(new FaceLayers.Layer("minecraft:block/oak_planks", sampled("block/oak_planks"), -1, null, 1))));
-        Entry drawn = new Entry(chest, "minecraft:chest", "", false, true, true, faces);
-        assertTrue(drawn.blockEntityRendered());
+        Entry drawn = new Entry(chest, "minecraft:chest", "", false, true, false, faces);
+        assertTrue(drawn.blockEntityRendered() && !drawn.modelDraws());
+        Entry barrier = new Entry(block("barrier").defaultBlockState(), "minecraft:barrier", "", true, true, false, faces);
+        assertFalse(barrier.blockEntityRendered(), "nothing draws a barrier, so it isn't a block entity's");
+        assertFalse(barrier.modelDraws());
+        assertFalse(new Entry(block("furnace").defaultBlockState(), "minecraft:furnace", "", false, true, true, faces).blockEntityRendered(),
+                "a furnace has a block entity and a model of its own");
         BlockIndex index = index(List.of(List.of(entry(block("oak_planks"), "block/oak_planks")), List.of(drawn)));
         assertFalse(index.statesOf(block("oak_planks")).getFirst().blockEntityRendered());
 

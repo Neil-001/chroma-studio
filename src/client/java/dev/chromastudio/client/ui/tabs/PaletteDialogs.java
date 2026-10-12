@@ -444,6 +444,15 @@ final class PaletteDialogs {
             return full.startsWith(game) ? game.relativize(full).toString() : full.toString();
         }
 
+        /** Text cut to a width by leaving out its middle, so a file's folder and the end of its name both show. */
+        static String middle(String text, int width) {
+            if (PanelTab.font().width(text) <= width) return text;
+            String dots = "...";
+            int room = Math.max(0, width - PanelTab.font().width(dots)), tail = room * 3 / 5;
+            String end = PanelTab.font().plainSubstrByWidth(text, tail, true);
+            return PanelTab.font().plainSubstrByWidth(text, room - PanelTab.font().width(end)) + dots + end;
+        }
+
         private void run(boolean place) {
             skipped = null;
             LayoutOptions options = new LayoutOptions(layout, height, patch, width, gap, seed);
@@ -458,7 +467,8 @@ final class PaletteDialogs {
                 return;
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
-            status(tr("command.chromastudio.export.done", shortPath(result.file())), PanelTab.GOOD);
+            // A path has no spaces to wrap at. The name is what tells two exports apart, and its end holds the layout and the number.
+            status(tr("command.chromastudio.export.done", middle(shortPath(result.file()), box.w() - 10)), PanelTab.GOOD);
             if (!place) return;
             BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
             String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;

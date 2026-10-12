@@ -27,7 +27,6 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -100,7 +99,7 @@ final class IndexBuilder {
             Look look = liquid ? fluidLook(state) : byModel.computeIfAbsent(models.get(state), model -> modelLook(model, state));
             Entry entry = kept.get(look.key);
             if (entry == null && kept.size() < Math.max(1, options.statesCap())) {
-                entry = new Entry(state, id, properties(state, byDefault), technical, solid(state), blockEntityRendered(state, look.drawn), layers(state, look.faces));
+                entry = new Entry(state, id, properties(state, byDefault), technical, solid(state), look.drawn, layers(state, look.faces));
                 kept.put(look.key, entry);
             }
             byState.put(state, entry != null ? entry : kept.values().iterator().next());
@@ -122,12 +121,6 @@ final class IndexBuilder {
         });
         return String.join(",", out);
     }
-
-    /**
-     * Whether something other than the model draws the block: it has a block entity and its model is empty, as a
-     * chest's, a banner's and a sign's are. A block entity beside a model of its own, as a furnace has, doesn't count.
-     */
-    static boolean blockEntityRendered(BlockState state, boolean modelDraws) { return !modelDraws && state.getBlock() instanceof EntityBlock; }
 
     private static boolean solid(BlockState state) {
         try {
