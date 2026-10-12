@@ -144,10 +144,13 @@ abstract class PanelTab extends Tab {
 
     @Override
     public final boolean dismiss() {
-        if (dialog == null) return false;
+        if (dialog == null) return dismissPanel();
         closeDialog();
         return true;
     }
+
+    /** Escape with no dialog open. Closes what the tab shows in place of its usual content, and says whether there was anything. */
+    protected boolean dismissPanel() { return false; }
 
     @Override
     public final boolean charTyped(CharacterEvent e) {

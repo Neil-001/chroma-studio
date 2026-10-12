@@ -526,6 +526,12 @@ class GameIndexTest {
                 "a block answers with its closest state");
         assertEquals(9, ChromaStudioApi.closest(red.rgb(), 60).size(), "technical blocks follow the setting, which starts off");
         assertTrue(ChromaStudioApi.closest(red.rgb(), 0).isEmpty());
+        try {
+            ModSettings.statesSeparately = true;
+            assertEquals(9, ChromaStudioApi.closest(red.rgb(), 60).size(), "still one state a block when the player lists states separately");
+        } finally {
+            ModSettings.reset();
+        }
     }
 
     /** A chest is drawn by its block entity, so all the index has of it is the planks it breaks into. */

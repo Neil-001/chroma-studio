@@ -218,6 +218,14 @@ public final class PalettesTab extends PanelTab {
         Minecraft.getInstance().gui.setScreen(null);
     }
 
+    /** Escape leaves Analyse or the diorama for the entries. */
+    @Override
+    protected boolean dismissPanel() {
+        if (panel == Panel.ENTRIES) return false;
+        showEntries();
+        return true;
+    }
+
     private void togglePanel(Panel which) {
         if (panel == which) {
             showEntries();

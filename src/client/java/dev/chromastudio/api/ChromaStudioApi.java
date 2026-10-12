@@ -53,8 +53,11 @@ public final class ChromaStudioApi {
      */
     public static List<BlockState> closest(int rgb, int limit) {
         if (limit <= 0) return List.of();
+        Query query = new Query().limit(limit);
+        // One state a block, whatever the player's setting lists in the Match tab.
+        query.statesSeparately = false;
         List<BlockState> out = new ArrayList<>();
-        for (BlockIndex.Match m : BlockIndex.get().closest(Target.of(Color.ofRgb(rgb & 0xFFFFFF)), new Query().limit(limit))) out.add(m.entry().state());
+        for (BlockIndex.Match m : BlockIndex.get().closest(Target.of(Color.ofRgb(rgb & 0xFFFFFF)), query)) out.add(m.entry().state());
         return List.copyOf(out);
     }
 
