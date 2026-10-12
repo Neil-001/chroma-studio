@@ -101,7 +101,7 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 - Grey out inapplicable controls with a tooltip explaining why. Don't hide them.
 - Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
 - Use plain, sentence case UI copy without jargon.
-- Size buttons with the text's width. Use cyclers for options, so right-click steps backwards, and spinners for numbers. The mouse wheel steps a spinner while the cursor is over it.
+- Size buttons with the text's width. Use cyclers for options, so right-click steps backwards, and spinners for numbers. The mouse wheel steps a spinner while the cursor is over it. In a list that scrolls, such as the settings, it only steps a spinner the player has clicked into and scrolls the list otherwise, so scrolling past a number doesn't change it.
 - Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
 - Visual fixes must preserve other behaviour. Prove it, for example by comparing pixels.
 - Test new core logic. Change a test's reference numbers only on purpose.

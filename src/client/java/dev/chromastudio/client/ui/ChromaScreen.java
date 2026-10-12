@@ -10,7 +10,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -375,9 +377,19 @@ public final class ChromaScreen extends Screen {
                 return true;
             }
         }
-        if (!content().contains(mx, my)) return false;
-        tabHasMouse = tab().mouseClicked(event, doubled);
-        return tabHasMouse;
+        tabHasMouse = content().contains(mx, my) && tab().mouseClicked(event, doubled);
+        // A window key bound to a mouse button: the game doesn't count presses for key binds while a screen is open.
+        return tabHasMouse || windowKey(key -> key.matchesMouse(event));
+    }
+
+    /** Does what the open, pin or fullscreen key does inside the window, if the press is one of them. */
+    private boolean windowKey(Predicate<KeyMapping> pressed) {
+        if (pressed.test(Keys.OPEN)) onClose();
+        else if (pressed.test(Keys.PIN)) {
+            if (minecraft.level != null) pin();
+        } else if (pressed.test(Keys.FULLSCREEN)) toggleFullscreen();
+        else return false;
+        return true;
     }
 
     @Override
@@ -414,20 +426,7 @@ public final class ChromaScreen extends Screen {
         }
         Tab tab = tab();
         if (tab.keyPressed(event)) return true;
-        if (tab.typing()) return false;
-        if (Keys.OPEN.matches(event)) {
-            onClose();
-            return true;
-        }
-        if (Keys.PIN.matches(event)) {
-            if (minecraft.level != null) pin();
-            return true;
-        }
-        if (Keys.FULLSCREEN.matches(event)) {
-            toggleFullscreen();
-            return true;
-        }
-        return false;
+        return !tab.typing() && windowKey(key -> key.matches(event));
     }
 
     @Override

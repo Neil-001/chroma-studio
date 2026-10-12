@@ -9,6 +9,7 @@ import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -59,8 +60,7 @@ public final class SettingsScreen extends Screen {
             for (String name : group.getValue()) {
                 if (ModSettings.WINDOW_MEMORY.contains(name)) continue;
                 list.label(left + 4, y + 4, Component.translatable("settings.chromastudio." + name), TEXT);
-                control(name, left + colW - CONTROL_W, y)
-                        .setTooltip(Tooltip.create(Component.translatable("settings.chromastudio." + name + ".tip")));
+                control(name, left + colW - CONTROL_W, y, Component.translatable("settings.chromastudio." + name + ".tip"));
                 y += ROW;
             }
             y += 4;
@@ -76,11 +76,16 @@ public final class SettingsScreen extends Screen {
         addRenderableWidget(Button.builder(done, _ -> onClose()).bounds(left + colW - doneW, by, doneW, 18).build());
     }
 
-    /** The control for one setting, chosen by the setting's type. */
-    private AbstractWidget control(String name, int x, int y) {
-        Class<?> type = ModSettings.type(name);
+    /** The control for one setting, chosen by the setting's type, with its tooltip. */
+    private void control(String name, int x, int y, Component tip) {
+        AbstractWidget made = control(name, x, y, tip, ModSettings.type(name));
+        // An option button already has its tooltip, and would lose one set here the first time it's clicked.
+        if (!(made instanceof CycleButton)) made.setTooltip(Tooltip.create(tip));
+    }
+
+    private AbstractWidget control(String name, int x, int y, Component tip, Class<?> type) {
         Object value = ModSettings.get(name);
-        if (type == boolean.class) return list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v));
+        if (type == boolean.class) return list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v), tip);
         if (type == int.class || type == double.class) {
             boolean whole = type == int.class;
             return list.spin(x, y, CONTROL_W, ((Number) value).doubleValue(), whole ? 1 : 0.05, ModSettings.min(name), ModSettings.max(name),
@@ -89,17 +94,17 @@ public final class SettingsScreen extends Screen {
         if (type.isEnum()) {
             String prefix = "option.chromastudio." + type.getSimpleName().toLowerCase(Locale.ROOT) + ".";
             return list.cycler(x, y, CONTROL_W, null, List.of((Object[]) type.getEnumConstants()), value,
-                    v -> Component.translatable(prefix + ((Enum<?>) v).name().toLowerCase(Locale.ROOT)), v -> ModSettings.set(name, v));
+                    v -> Component.translatable(prefix + ((Enum<?>) v).name().toLowerCase(Locale.ROOT)), v -> ModSettings.set(name, v), tip);
         }
         String text = (String) value;
         if (ModSettings.names(name) != null)
             return list.cycler(x, y, CONTROL_W, null, ModSettings.names(name), text,
                     v -> Component.translatable("option.chromastudio." + name.toLowerCase(Locale.ROOT) + "." + v.toLowerCase(Locale.ROOT)),
-                    v -> ModSettings.set(name, v));
+                    v -> ModSettings.set(name, v), tip);
         if (name.equals("startTab")) {
             List<String> ids = new ArrayList<>(ChromaScreen.tabIds());
             if (!ids.contains(text)) ids.add(text);   // a tab from a mod that's gone: keep it listed rather than change it silently
-            return list.cycler(x, y, CONTROL_W, null, ids, text, v -> Component.translatable("tab.chromastudio." + v), v -> ModSettings.set(name, v));
+            return list.cycler(x, y, CONTROL_W, null, ids, text, v -> Component.translatable("tab.chromastudio." + v), v -> ModSettings.set(name, v), tip);
         }
         if (name.equals("recipeKey")) {
             Component shown = name.equals(listening) ? Component.translatable("settings.chromastudio.press_a_key") : keyName(text);

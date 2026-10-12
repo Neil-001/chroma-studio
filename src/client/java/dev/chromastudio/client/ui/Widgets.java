@@ -89,8 +89,21 @@ public final class Widgets extends AbstractContainerEventHandler {
     /** A button that steps through options: click for the next one, right-click for the previous one. */
     public <T> CycleButton<T> cycler(int x, int y, int w, Component label, List<T> values, T initial,
                                      Function<T, Component> names, Consumer<T> onChange) {
+        return cycler(x, y, w, label, values, initial, names, onChange, null);
+    }
+
+    /**
+     * The same, with a tooltip. It has to be given here rather than set afterwards: the button takes its tooltip
+     * afresh from its builder every time its value changes.
+     */
+    public <T> CycleButton<T> cycler(int x, int y, int w, Component label, List<T> values, T initial,
+                                     Function<T, Component> names, Consumer<T> onChange, Component tip) {
         CycleButton.Builder<T> builder = CycleButton.builder(names, initial).withValues(values);
         if (label == null) builder.displayOnlyValue();
+        if (tip != null) {
+            Tooltip tooltip = Tooltip.create(tip);
+            builder.withTooltip(_ -> tooltip);
+        }
         CycleButton<T> b = builder.create(x, y, w, H, label == null ? Component.empty() : label, (_, v) -> onChange.accept(v));
         reverse.put(b, () -> {
             T prev = values.get((values.indexOf(b.getValue()) - 1 + values.size()) % values.size());
@@ -101,7 +114,11 @@ public final class Widgets extends AbstractContainerEventHandler {
     }
 
     public CycleButton<Boolean> toggle(int x, int y, int w, Component label, boolean initial, Consumer<Boolean> onChange) {
-        return cycler(x, y, w, label, List.of(true, false), initial, CommonComponents::optionStatus, onChange);
+        return toggle(x, y, w, label, initial, onChange, null);
+    }
+
+    public CycleButton<Boolean> toggle(int x, int y, int w, Component label, boolean initial, Consumer<Boolean> onChange, Component tip) {
+        return cycler(x, y, w, label, List.of(true, false), initial, CommonComponents::optionStatus, onChange, tip);
     }
 
     private record Spinner(EditBox field, Arrow up, Arrow down, double[] value, double min, double max) {}
