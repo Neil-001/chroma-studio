@@ -22,6 +22,8 @@ import java.util.Optional;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.color.block.BlockTintSource;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -387,7 +389,7 @@ class GameIndexTest {
     @Test
     void closestFindsBlocksByColourAndKeepsToTheFilters() {
         BlockState lit = block("redstone_lamp").defaultBlockState().setValue(BlockStateProperties.LIT, true);
-        BlockState logX = block("oak_log").defaultBlockState().setValue(BlockStateProperties.AXIS, net.minecraft.core.Direction.Axis.X);
+        BlockState logX = block("oak_log").defaultBlockState().setValue(BlockStateProperties.AXIS, Direction.Axis.X);
         BlockIndex index = index(List.of(
                 List.of(entry(block("stone"), "block/stone")),
                 List.of(entry(block("red_concrete"), "block/red_concrete")),
@@ -506,6 +508,39 @@ class GameIndexTest {
         assertEquals(Optional.of(litColour), index.colourOf(lit, Face.NORTH, TintContext.none()));
         assertEquals(Optional.of(red), index.colourOf(block("red_concrete").defaultBlockState(), Face.ANY, TintContext.none()));
         assertEquals(Optional.empty(), index.colourOf(block("diamond_block").defaultBlockState(), Face.UP, TintContext.none()));
+    }
+
+    /** What the Match tab and the eyedropper lean on: a choice of faces, a state's entry, and knowing when a build is new. */
+    @Test
+    void aQueryCanChooseAmongTheSidesAndAStateFindsItsEntry() {
+        // Red on top and bottom, white round the sides.
+        Entry twoTone = entry(block("oak_log"), "block/red_concrete", "block/red_concrete", "block/white_concrete", "block/white_concrete",
+                "block/white_concrete", "block/white_concrete");
+        Entry lantern = entry(block("lantern"), "block/stone");
+        int before = BlockIndex.get().version();
+        BlockIndex index = index(List.of(List.of(twoTone), List.of(lantern)));
+        assertNotEquals(before, index.version(), "a build is a new version");
+
+        Target red = Target.of(stats("block/red_concrete").mean(Scale.T1));
+        Query q = query();
+        assertEquals(Face.UP, index.closest(red, q).getFirst().face(), "any face finds the red top");
+        q.faces.addAll(List.of(Face.NORTH, Face.SOUTH, Face.WEST, Face.EAST));
+        BlockIndex.Match side = index.closest(red, q).stream().filter(m -> m.entry() == twoTone).findFirst().orElseThrow();
+        assertEquals(Face.NORTH, side.face(), "among the sides only, the first side is the best there is");
+        assertTrue(side.distance() > 0.1, "and it is far from red");
+        q.face(Face.DOWN);
+        assertEquals(Face.DOWN, index.closest(red, q).getFirst().face(), "one named face overrides the choice");
+
+        BlockState log = block("oak_log").defaultBlockState();
+        assertSame(twoTone, index.entryOf(log));
+        assertSame(twoTone, index.entryOf(log.setValue(BlockStateProperties.AXIS, Direction.Axis.X)),
+                "a state the build left out answers as the block's first entry");
+        assertSame(lantern, index.entryOf(block("lantern").defaultBlockState().setValue(BlockStateProperties.WATERLOGGED, true)),
+                "a waterlogged state answers as the dry one");
+        assertNull(index.entryOf(block("diamond_block").defaultBlockState()));
+
+        // Outside a world there is nowhere to stand, so a place in it tints nothing.
+        assertSame(TintContext.none(), TintContext.at(BlockPos.ZERO));
     }
 
     private static List<String> ids(List<BlockIndex.Match> matches) { return matches.stream().map(m -> m.entry().id()).toList(); }

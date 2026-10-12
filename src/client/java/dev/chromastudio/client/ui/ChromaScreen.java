@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.cursor.CursorType;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.action.ScreenPicker;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -172,7 +173,8 @@ public final class ChromaScreen extends Screen {
     /** Windowed, the world shows as it is: no blur and no dimming. Fullscreen has the game's usual blurred backdrop. */
     @Override
     public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-        if (fullscreen()) super.extractBackground(g, mouseX, mouseY, delta);
+        // The screen picker reads the frame, so while it aims nothing of the window may be in it, the blur included.
+        if (fullscreen() && !ScreenPicker.armed()) super.extractBackground(g, mouseX, mouseY, delta);
         else minecraft.gui.hud.extractDeferredSubtitles();
     }
 
@@ -208,6 +210,11 @@ public final class ChromaScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+        if (ScreenPicker.armed()) {
+            ScreenPicker.render(g, mouseX, mouseY);
+            g.requestCursor(CursorTypes.CROSSHAIR);
+            return;
+        }
         Bounds frame = frame(), content = content();
         // A drag in progress keeps hold of the cursor's meaning, wherever the cursor has got to.
         boolean free = !window.dragging() && !tabHasMouse;
@@ -341,6 +348,12 @@ public final class ChromaScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         double mx = event.x(), my = event.y();
+        if (ScreenPicker.armed()) {
+            // The click that picks, anywhere at all. Any other button calls it off.
+            if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) ScreenPicker.click(mx, my);
+            else ScreenPicker.cancel();
+            return true;
+        }
         Bounds frame = frame();
         tabHasMouse = false;
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
@@ -420,6 +433,10 @@ public final class ChromaScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (ScreenPicker.armed()) {
+            if (event.isEscape()) ScreenPicker.cancel();
+            return true;
+        }
         if (event.isEscape()) {
             onClose();
             return true;
@@ -460,6 +477,7 @@ public final class ChromaScreen extends Screen {
 
     @Override
     public void removed() {
+        ScreenPicker.cancel();
         window.release();
         tabHasMouse = false;
         store();

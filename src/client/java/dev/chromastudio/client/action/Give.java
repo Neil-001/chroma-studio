@@ -29,6 +29,12 @@ public final class Give {
         return player != null && (player.hasInfiniteMaterials() || operator(player));
     }
 
+    /** Why an item can't be given now, for a greyed-out button's tooltip, or nothing when it can. */
+    public static Optional<Component> whyNot() {
+        if (Minecraft.getInstance().player == null) return Optional.of(Component.translatable("give.chromastudio.no_world"));
+        return canGive() ? Optional.empty() : Optional.of(Component.translatable("give.chromastudio.no_permission"));
+    }
+
     private static boolean operator(LocalPlayer player) { return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER); }
 
     /**
@@ -40,6 +46,9 @@ public final class Give {
         LocalPlayer player = mc.player;
         if (player == null || mc.gameMode == null) return Optional.of(Component.translatable("give.chromastudio.no_world"));
         if (stack.isEmpty()) return Optional.of(Component.translatable("give.chromastudio.no_item"));
+        if (!stack.isItemEnabled(player.connection.enabledFeatures())) {
+            return Optional.of(Component.translatable("give.chromastudio.disabled", stack.getHoverName()));
+        }
         if (player.hasInfiniteMaterials()) {
             int slot = hotbarSlot >= 0 ? hotbarSlot : player.getInventory().getFreeSlot();
             if (slot < 0) return Optional.of(Component.translatable("give.chromastudio.full"));

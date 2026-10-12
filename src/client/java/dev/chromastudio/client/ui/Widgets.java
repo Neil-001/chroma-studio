@@ -70,6 +70,9 @@ public final class Widgets extends AbstractContainerEventHandler {
         return widget;
     }
 
+    /** Gives a widget something to do on a right-click, as the option buttons step backwards on one. */
+    public void onRightClick(AbstractWidget widget, Runnable action) { reverse.put(widget, action); }
+
     /** Empties the group, ready to lay out again. The scroll position stays. */
     public void clear() {
         setFocused(null);

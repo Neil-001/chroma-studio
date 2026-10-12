@@ -1,2 +1,2 @@
-/** What the player does outside the window: eyedroppers, hotbar fill, dyeing, capture and recipe lookup. */
+/** What the mod does for the player in the game: reading colours off blocks and the screen, giving items and looking up recipes. */
 package dev.chromastudio.client.action;
