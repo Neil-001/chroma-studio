@@ -18,12 +18,21 @@ final class Sampled {
 
     final TextureStats stats;
     final boolean animated;
+    /** The frame the stats came from, or null for one that is another's stats tinted. */
+    final Textures.Frame frame;
     // By scale, then by face. Filled on first use; a race only repeats the work.
     private final Distribution[][] shaded = new Distribution[Scale.values().length][FACES.length];
+
+    Sampled(Textures.Frame frame) {
+        this.stats = frame.stats();
+        this.animated = frame.animated();
+        this.frame = frame;
+    }
 
     Sampled(TextureStats stats, boolean animated) {
         this.stats = stats;
         this.animated = animated;
+        this.frame = null;
     }
 
     /** The colours at a scale, darkened as the game lights that face, or as they are when {@code shadeAs} is null. */

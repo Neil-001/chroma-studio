@@ -216,7 +216,7 @@ final class IndexBuilder {
             if (frame != null) frames.put(name, frame);
         }
         long started = System.nanoTime();
-        Sampled s = frame == null ? null : new Sampled(frame.stats(), frame.animated());
+        Sampled s = frame == null ? null : new Sampled(frame);
         statsNanos += System.nanoTime() - started;
         sampled.put(name, s);
         return s;
@@ -225,9 +225,11 @@ final class IndexBuilder {
     private Sampled mapColour(BlockState state) {
         int rgb = state.getMapColor(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).col;
         return sampled.computeIfAbsent("map colour " + rgb, _ -> {
-            int[] argb = new int[Textures.SIDE * Textures.SIDE];
-            Arrays.fill(argb, 0xFF000000 | rgb);
-            return new Sampled(new Textures.Frame(argb, false).stats(), false);
+            int[] colour = new int[Textures.SIDE * Textures.SIDE];
+            float[] alpha = new float[colour.length];
+            Arrays.fill(colour, rgb);
+            Arrays.fill(alpha, 1);
+            return new Sampled(new Textures.Frame(colour, alpha, false));
         });
     }
 }

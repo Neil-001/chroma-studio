@@ -27,12 +27,49 @@ final class Textures {
         }
     }
 
+    // How many pixels a side each cell becomes when a frame is handed to TextureStats. See Frame.stats.
+    private static final int SUB = 8;
+
     /**
-     * A texture as the index keeps it: 16 by 16 ARGB in rows from the top. The stats are always worked out from
-     * this, so a texture read from the cache gives the same numbers as one read from its image.
+     * A texture as the index keeps it: 16 by 16 cells in rows from the top, each with its colour, packed 0xRRGGBB,
+     * and how much of it is filled, 0 to 1. The stats are always worked out from this, so a texture read from the
+     * cache gives the same numbers as one read from its image.
      */
-    record Frame(int[] argb, boolean animated) {
-        TextureStats stats() { return TextureStats.of(argb, SIDE, SIDE); }
+    record Frame(int[] rgb, float[] alpha, boolean animated) {
+        /** A frame from cells of alpha-multiplied linear light and alpha. */
+        static Frame of(double[][] cells, boolean animated) {
+            int[] rgb = new int[cells.length];
+            float[] alpha = new float[cells.length];
+            for (int i = 0; i < cells.length; i++) {
+                double a = cells[i][3];
+                if (a <= 0) continue;
+                rgb[i] = encode(cells[i][0] / a) << 16 | encode(cells[i][1] / a) << 8 | encode(cells[i][2] / a);
+                alpha[i] = (float) Math.min(1, a);
+            }
+            return new Frame(rgb, alpha, animated);
+        }
+
+        /**
+         * TextureStats takes 8-bit alpha and counts none under its cutoff, but a cell of a large texture can be far
+         * less filled than that: one texel in 64 is 4 in 255. So a cell that isn't simply full or empty is handed
+         * over as 8 by 8 pixels, of which as many are filled as the cell's alpha asks for. That keeps coverage and
+         * the colours' weights true to within a thousandth.
+         */
+        TextureStats stats() {
+            boolean plain = true;
+            for (float a : alpha) plain &= a == 0 || a == 1;
+            int side = plain ? SIDE : SIDE * SUB, per = plain ? 1 : SUB;
+            int[] argb = new int[side * side];
+            for (int i = 0; i < alpha.length; i++) {
+                if (alpha[i] <= 0) continue;
+                double wanted = alpha[i] * per * per;
+                int filled = (int) Math.ceil(wanted - 1e-6);
+                int each = Math.clamp(Math.round(wanted / filled * 255), TextureStats.ALPHA_CUTOFF, 255);
+                int x0 = i % SIDE * per, y0 = i / SIDE * per;
+                for (int n = 0; n < filled; n++) argb[(y0 + n / per) * side + x0 + n % per] = each << 24 | rgb[i];
+            }
+            return TextureStats.of(argb, side, side);
+        }
     }
 
     /**
@@ -46,7 +83,7 @@ final class Textures {
         try (InputStream in = found.get().open(); NativeImage image = NativeImage.read(in)) {
             int w = image.getWidth(), h = image.getHeight();
             Optional<AnimationMetadataSection> animation = found.get().metadata().getSection(AnimationMetadataSection.TYPE);
-            if (animation.isEmpty()) return new Frame(reduce(image, List.of(new int[] {0, 0, 1}), w, h), false);
+            if (animation.isEmpty()) return Frame.of(reduce(image, List.of(new int[] {0, 0, 1}), w, h), false);
 
             FrameSize size = animation.get().calculateFrameSize(w, h);
             int fw = size.width(), fh = size.height();
@@ -64,7 +101,7 @@ final class Textures {
             }
             if (frames.isEmpty()) return null;
             boolean animated = frames.size() > 1;
-            return new Frame(reduce(image, averageFrames ? frames : frames.subList(0, 1), fw, fh), animated);
+            return Frame.of(reduce(image, averageFrames ? frames : frames.subList(0, 1), fw, fh), animated);
         } catch (Exception _) {
             return null;
         }
@@ -74,7 +111,7 @@ final class Textures {
      * Averages the frames into 16 by 16 cells, in linear light and weighted by alpha, as {@link TextureStats} does.
      * A frame of any size fits: a cell covers the pixels that fall in it, and at least one.
      */
-    private static int[] reduce(NativeImage image, List<int[]> frames, int fw, int fh) {
+    private static double[][] reduce(NativeImage image, List<int[]> frames, int fw, int fh) {
         double[][] cells = new double[SIDE * SIDE][4];
         double totalTime = 0;
         for (int[] frame : frames) totalTime += frame[2];
@@ -100,17 +137,7 @@ final class Textures {
                 }
             }
         }
-        int[] out = new int[cells.length];
-        for (int i = 0; i < out.length; i++) out[i] = pack(cells[i]);
-        return out;
-    }
-
-    /** ARGB for a cell of alpha-multiplied linear light and alpha. A cell with anything in it stays above the cutoff. */
-    static int pack(double[] cell) {
-        double a = cell[3];
-        if (a <= 0) return 0;
-        int alpha = Math.clamp(Math.round(a * 255), TextureStats.ALPHA_CUTOFF, 255);
-        return alpha << 24 | encode(cell[0] / a) << 16 | encode(cell[1] / a) << 8 | encode(cell[2] / a);
+        return cells;
     }
 
     static double linear(int channel) { return LINEAR[channel]; }

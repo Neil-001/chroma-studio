@@ -1,12 +1,9 @@
 package dev.chromastudio.client.index;
 
-import dev.chromastudio.core.color.Scale;
-import dev.chromastudio.core.color.TextureStats;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -83,10 +80,10 @@ final class FaceLayers {
             Layer layer = layers.get(n);
             animated |= layer.plain.animated;
             int tint = tints == null ? TintContext.NO_TINT : tints.get(n);
-            int[] pixels = layer.plain.stats.pixels(Scale.T16);
-            for (int i = 0; i < pixels.length; i++) {
-                int p = pixels[i];
-                double a = (p >>> 24) / 255.0;
+            Textures.Frame frame = layer.plain.frame;
+            for (int i = 0; i < cells.length; i++) {
+                int p = frame.rgb()[i];
+                double a = frame.alpha()[i];
                 if (a == 0) continue;
                 double r = channel(p >> 16 & 0xFF, tint >> 16 & 0xFF, tint), g = channel(p >> 8 & 0xFF, tint >> 8 & 0xFF, tint),
                         b = channel(p & 0xFF, tint & 0xFF, tint);
@@ -105,8 +102,7 @@ final class FaceLayers {
                 }
             }
         }
-        int[] argb = IntStream.range(0, cells.length).map(i -> Textures.pack(cells[i])).toArray();
-        return new Sampled(TextureStats.of(argb, Textures.SIDE, Textures.SIDE), animated);
+        return new Sampled(Textures.Frame.of(cells, animated));
     }
 
     /** A channel in linear light after the tint, which the game multiplies into the stored value. */

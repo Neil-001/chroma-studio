@@ -328,7 +328,7 @@ public final class BlockIndex {
 
     /**
      * The average colour of a block state's face, for the public API. A state the index folded into another that
-     * looks the same answers as that one. {@link Face#ANY} gives the average of all six. Empty when the block
+     * shows the same textures answers from that one's, with its own tint. {@link Face#ANY} gives the average of all six. Empty when the block
      * isn't indexed.
      */
     public Optional<Color> colourOf(BlockState state, Face face, TintContext tint) {
@@ -343,9 +343,9 @@ public final class BlockIndex {
             if (states == null) return Optional.empty();
             e = states.getFirst();
         }
-        if (face != Face.ANY) return Optional.of(e.face(face, tint).mean(Scale.T1));
+        if (face != Face.ANY) return Optional.of(e.mean(face, state, tint));
         List<Color> means = new ArrayList<>();
-        for (Face f : Entry.SIDES) means.add(e.face(f, tint).mean(Scale.T1));
+        for (Face f : Entry.SIDES) means.add(e.mean(f, state, tint));
         return Optional.of(Distribution.of(means, Collections.nCopies(means.size(), 1.0)).mean());
     }
 }

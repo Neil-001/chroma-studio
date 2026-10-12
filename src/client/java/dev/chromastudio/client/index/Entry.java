@@ -1,5 +1,6 @@
 package dev.chromastudio.client.index;
 
+import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Face;
 import dev.chromastudio.core.color.Metric;
 import dev.chromastudio.core.color.Scale;
@@ -110,6 +111,12 @@ public final class Entry {
     void technical(boolean value) { technical = value; }
 
     Sampled sampled(Face f, TintContext tint) { return layers(f).sample(state, tint); }
+
+    /**
+     * A face's average colour as another state of the block shows it. States that share their textures share an
+     * entry, but a tint may still tell them apart, as redstone dust's does by its power.
+     */
+    Color mean(Face f, BlockState as, TintContext tint) { return layers(f).sample(as, tint).stats.mean(Scale.T1); }
 
     FaceLayers layers(Face f) {
         if (f == Face.ANY) throw new IllegalArgumentException("ANY is not one face");

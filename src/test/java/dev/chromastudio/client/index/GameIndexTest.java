@@ -81,7 +81,7 @@ class GameIndexTest {
     private static TextureStats stats(String sprite) { return frame(sprite).stats(); }
 
     private static Sampled sampled(String sprite) {
-        return SAMPLED.computeIfAbsent(sprite, s -> new Sampled(stats(s), frame(s).animated()));
+        return SAMPLED.computeIfAbsent(sprite, s -> new Sampled(frame(s)));
     }
 
     /** An entry whose faces are these textures, in the order down, up, north, south, west, east. One name does for all six. */
@@ -200,7 +200,7 @@ class GameIndexTest {
     void animatedTexturesAreAveragedAndFlagged() {
         Textures.Frame water = frame("block/water_still");
         assertTrue(water.animated());
-        assertEquals(256, water.argb().length);
+        assertEquals(256, water.rgb().length);
         assertFalse(frame("block/stone").animated());
         // A flowing texture's frame is 32 pixels wide, and is brought down like any other.
         assertTrue(frame("block/water_flow").animated());
@@ -209,6 +209,48 @@ class GameIndexTest {
         assertTrue(first.animated());
         assertTrue(first.stats().spread() > water.stats().spread());
         assertNull(Textures.read(resources, Identifier.withDefaultNamespace("block/no_such_texture"), true));
+    }
+
+    @Test
+    void aSparseCellKeepsItsTrueWeight() {
+        // One texel in 64 filled, as in a 128 pixel texture brought down to 16 cells: too faint for 8-bit alpha
+        // to pass the stats' cutoff, yet it must still count for what it is.
+        double[][] cells = new double[256][4];
+        for (double[] cell : cells) {
+            cell[0] = 1.0 / 64;
+            cell[3] = 1.0 / 64;
+        }
+        Textures.Frame sparse = Textures.Frame.of(cells, false);
+        assertEquals(1.0 / 64, sparse.stats().coverage(), 1e-4);
+        assertEquals(0xFF0000, sparse.stats().mean(Scale.T1).rgb());
+        // Half a cell and a sliver of one.
+        for (double[] cell : cells) cell[3] = cell[0] = 0;
+        cells[0][0] = cells[0][3] = 0.5;
+        cells[1][0] = cells[1][3] = 0.001;
+        assertEquals((0.5 + 0.001) / 256, Textures.Frame.of(cells, false).stats().coverage(), 1e-5);
+        assertEquals(1, frame("block/stone").stats().coverage(), 0);
+        assertEquals(180 / 255.0, frame("block/water_still").stats().coverage(), 0.01);
+    }
+
+    @Test
+    void aFoldedStateKeepsItsOwnTint() {
+        // Redstone dust's sixteen powers share their textures, so one entry stands for them all, but each has its tint.
+        Block wire = block("redstone_wire");
+        BlockTintSource source = BlockColors.createDefault().getTintSource(wire.defaultBlockState(), 0);
+        FaceLayers[] faces = new FaceLayers[6];
+        for (int i = 0; i < 6; i++) {
+            faces[i] = new FaceLayers(List.of(new FaceLayers.Layer("minecraft:block/white_concrete", sampled("block/white_concrete"), 0, source, 1)));
+        }
+        Entry entry = new Entry(wire.defaultBlockState(), "minecraft:redstone_wire", "", false, false, faces);
+        BlockState powered = wire.defaultBlockState().setValue(BlockStateProperties.POWER, 15);
+        Map<BlockState, Entry> byState = new IdentityHashMap<>(Map.of(entry.state(), entry, powered, entry));
+        BlockIndex.get().adopt(List.of(List.of(entry)), byState);
+        Color white = stats("block/white_concrete").mean(Scale.T1);
+        TintContext ownTint = (tintSource, state) -> tintSource.color(state) & 0xFFFFFF;
+        assertEquals(Optional.of(white.tinted(source.color(powered))), BlockIndex.get().colourOf(powered, Face.UP, ownTint));
+        assertEquals(Optional.of(white.tinted(source.color(powered))), BlockIndex.get().colourOf(powered, Face.ANY, ownTint));
+        assertEquals(Optional.of(white.tinted(source.color(wire.defaultBlockState()))), BlockIndex.get().colourOf(wire.defaultBlockState(), Face.UP, ownTint));
+        assertNotEquals(source.color(powered), source.color(wire.defaultBlockState()));
     }
 
     @Test
@@ -227,7 +269,8 @@ class GameIndexTest {
         assertFalse(Files.exists(stale), "other sets' files go");
         Map<String, Textures.Frame> loaded = TextureCache.load(file);
         assertEquals(frames.keySet(), loaded.keySet());
-        assertArrayEquals(frames.get("minecraft:block/stone").argb(), loaded.get("minecraft:block/stone").argb());
+        assertArrayEquals(frames.get("minecraft:block/stone").rgb(), loaded.get("minecraft:block/stone").rgb());
+        assertArrayEquals(frames.get("minecraft:block/water_still").alpha(), loaded.get("minecraft:block/water_still").alpha());
         assertTrue(loaded.get("minecraft:block/water_still").animated());
         assertEquals(frames.get("minecraft:block/stone").stats().spread(), loaded.get("minecraft:block/stone").stats().spread());
 

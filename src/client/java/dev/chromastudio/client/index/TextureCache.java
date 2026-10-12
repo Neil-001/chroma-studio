@@ -25,7 +25,7 @@ final class TextureCache {
     private TextureCache() {}
 
     // Raise this when the frames are worked out differently, so old files stop being read.
-    private static final int FORMAT = 1;
+    private static final int FORMAT = 2;
     private static final int MAGIC = 0x43485258;
     private static final String PREFIX = "index-", SUFFIX = ".bin";
 
@@ -60,9 +60,13 @@ final class TextureCache {
             for (int n = 0; n < count; n++) {
                 String sprite = in.readUTF();
                 boolean animated = in.readBoolean();
-                int[] argb = new int[Textures.SIDE * Textures.SIDE];
-                for (int i = 0; i < argb.length; i++) argb[i] = in.readInt();
-                frames.put(sprite, new Textures.Frame(argb, animated));
+                int[] rgb = new int[Textures.SIDE * Textures.SIDE];
+                float[] alpha = new float[rgb.length];
+                for (int i = 0; i < rgb.length; i++) {
+                    rgb[i] = in.readInt();
+                    alpha[i] = in.readFloat();
+                }
+                frames.put(sprite, new Textures.Frame(rgb, alpha, animated));
             }
         } catch (IOException | RuntimeException e) {
             ChromaStudioClient.LOGGER.warn("Couldn't read the index cache {}, so the textures are read again", file.getFileName(), e);
@@ -83,7 +87,10 @@ final class TextureCache {
                 for (Map.Entry<String, Textures.Frame> e : frames.entrySet()) {
                     out.writeUTF(e.getKey());
                     out.writeBoolean(e.getValue().animated());
-                    for (int p : e.getValue().argb()) out.writeInt(p);
+                    for (int i = 0; i < e.getValue().rgb().length; i++) {
+                        out.writeInt(e.getValue().rgb()[i]);
+                        out.writeFloat(e.getValue().alpha()[i]);
+                    }
                 }
             }
             try {
