@@ -169,7 +169,7 @@ public final class Capture {
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
         PaletteSink sink = PaletteSink.current();
-        if (level == null || sink == null) return new Result(Component.translatable("give.chromastudio.no_world"), false);
+        if (level == null || sink == null) return new Result(Component.translatable("palettes.chromastudio.no_world"), false);
         int x0 = Math.min(a.getX(), b.getX()), y0 = Math.max(level.getMinY(), Math.min(a.getY(), b.getY())), z0 = Math.min(a.getZ(), b.getZ());
         int x1 = Math.max(a.getX(), b.getX()), y1 = Math.min(level.getMaxY(), Math.max(a.getY(), b.getY())), z1 = Math.max(a.getZ(), b.getZ());
         long volume = (x1 - x0 + 1L) * Math.max(0, y1 - y0 + 1L) * (z1 - z0 + 1L);
@@ -209,6 +209,6 @@ public final class Capture {
 
     /** Whether a capture could start: only in a world. */
     public static Optional<Component> unavailable() {
-        return Minecraft.getInstance().player == null ? Optional.of(Component.translatable("give.chromastudio.no_world")) : Optional.empty();
+        return Minecraft.getInstance().player == null ? Optional.of(Component.translatable("palettes.chromastudio.no_world")) : Optional.empty();
     }
 }

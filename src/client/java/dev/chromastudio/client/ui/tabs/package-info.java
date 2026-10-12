@@ -1,2 +1,2 @@
-/** The Palettes and Gradient tabs, their panels and their dialogs. */
+/** The window's tabs and the state they share. */
 package dev.chromastudio.client.ui.tabs;

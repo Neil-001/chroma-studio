@@ -1,5 +1,6 @@
 package dev.chromastudio.client.action;
 
+import com.mojang.serialization.DynamicOps;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ui.Hud;
@@ -11,6 +12,9 @@ import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -33,8 +37,8 @@ public final class HotbarFill {
 
     /** Why the hotbar can't be filled now, or nothing when it can. */
     public static Optional<Component> unavailable() {
-        if (Minecraft.getInstance().player == null) return Optional.of(Component.translatable("give.chromastudio.no_world"));
-        return Give.canGive() ? Optional.empty() : Optional.of(Component.translatable("give.chromastudio.no_permission"));
+        if (Minecraft.getInstance().player == null) return Optional.of(Component.translatable("palettes.chromastudio.no_world"));
+        return Give.canGive() ? Optional.empty() : Optional.of(Component.translatable("hotbar.chromastudio.no_permission"));
     }
 
     public static boolean canUndo() { return !last.isEmpty() && Give.canGive(); }
@@ -111,7 +115,27 @@ public final class HotbarFill {
             return;
         }
         String where = slot < HOTBAR ? "hotbar." + slot : "inventory." + (slot - HOTBAR);
-        String what = stack.isEmpty() ? "minecraft:air" : Give.commandItem(stack) + (stack.getCount() == 1 ? "" : " " + stack.getCount());
+        String what = stack.isEmpty() ? "minecraft:air" : commandItem(stack) + (stack.getCount() == 1 ? "" : " " + stack.getCount());
         ChromaStudioClient.platform.sendChatCommand("item replace entity @s " + where + " with " + what);
+    }
+
+    /**
+     * A stack as commands take one: its id, then any components it has of its own in brackets, which is how the
+     * shulker box carries its contents. {@link Give} only promises whole stacks into the hotbar or the next free
+     * slot, so the box, which goes to a slot of its own that Undo can empty again, is written out here.
+     */
+    private static String commandItem(ItemStack stack) {
+        String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        Minecraft mc = Minecraft.getInstance();
+        if (stack.getComponentsPatch().isEmpty() || mc.level == null) return id;
+        DynamicOps<Tag> ops = mc.level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
+        List<String> parts = new ArrayList<>();
+        var patch = stack.getComponentsPatch().split();
+        for (var added : patch.added()) {
+            if (added.type().codec() == null) continue;   // only ever sent over the network, so no command can set it
+            added.encodeValue(ops).result().ifPresent(value -> parts.add(BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(added.type()) + "=" + value));
+        }
+        for (var removed : patch.removed()) parts.add("!" + BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(removed));
+        return parts.isEmpty() ? id : id + "[" + String.join(",", parts) + "]";
     }
 }

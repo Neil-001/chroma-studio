@@ -520,7 +520,7 @@ final class PaletteDialogs {
             boolean ready = command() != null, inWorld = Minecraft.getInstance().player != null;
             copy.active = ready;
             send.active = ready && inWorld;
-            Component why = !ready ? tr("palettes.chromastudio.worldedit.from.needed") : !inWorld ? tr("give.chromastudio.no_world") : tr("palettes.chromastudio.worldedit.send.tip");
+            Component why = !ready ? tr("palettes.chromastudio.worldedit.from.needed") : !inWorld ? tr("palettes.chromastudio.no_world") : tr("palettes.chromastudio.worldedit.send.tip");
             send.setTooltip(Tooltip.create(why));
             copy.setTooltip(ready ? null : Tooltip.create(why));
         }

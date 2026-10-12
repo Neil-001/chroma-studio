@@ -56,7 +56,7 @@ public final class Give {
     }
 
     /** A stack as commands take one: its id, then any components it has of its own in brackets. */
-    public static String commandItem(ItemStack stack) {
+    private static String commandItem(ItemStack stack) {
         String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         Minecraft mc = Minecraft.getInstance();
         if (stack.getComponentsPatch().isEmpty() || mc.level == null) return id;

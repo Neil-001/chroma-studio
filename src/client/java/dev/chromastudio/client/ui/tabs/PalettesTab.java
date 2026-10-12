@@ -123,7 +123,7 @@ public final class PalettesTab extends PanelTab {
                 new Action("rename", () -> open(new PaletteDialogs.Name(tr("palettes.chromastudio.rename.title"), tr("palettes.chromastudio.rename"), p.name,
                         name -> { flush(); store.rename(p, name); rebuild(); })), editable),
                 new Action("delete", () -> open(new PaletteDialogs.Confirm(tr("palettes.chromastudio.delete.title"), tr("palettes.chromastudio.delete.question", p.name),
-                        tr("palettes.chromastudio.delete"), () -> { dirty = false; store.delete(p); showEntries(); })), editable));
+                        tr("palettes.chromastudio.delete"), () -> { dirty = false; store.delete(p); say(tr("palettes.chromastudio.deleted", p.name)); showEntries(); })), editable));
         List<Action> bottom = List.of(
                 new Action("import", () -> open(new PaletteDialogs.Import(made -> { say(tr("palettes.chromastudio.imported", made.name), GOOD); showEntries(); })), null),
                 new Action("share", () -> {
