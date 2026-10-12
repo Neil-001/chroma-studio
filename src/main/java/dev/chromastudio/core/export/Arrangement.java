@@ -98,13 +98,13 @@ public final class Arrangement {
     private void noiseClusters(double[] ends, long seed) {
         int count = cells.length;
         // About three blobs along the shorter side, and never so fine that it reads as dither.
-        double feature = Math.max(2.0, Math.min(sizeX, sizeY) / 3.0);
+        double feature = Math.max(3.0, Math.min(sizeX, sizeY) / 3.0);
         double[] field = new double[count];
         Integer[] order = new Integer[count];
         for (int i = 0; i < count; i++) {
             double x = i % sizeX / feature, y = i / sizeX / feature;
             // The second, finer layer roughens the edges. The last term only settles ties.
-            field[i] = valueNoise(x, y, seed) + 0.5 * valueNoise(2 * x, 2 * y, seed + 1) + 1e-9 * unit(seed + 2, i, 0);
+            field[i] = valueNoise(x, y, seed) + 0.3 * valueNoise(2 * x, 2 * y, seed + 1) + 1e-9 * unit(seed + 2, i, 0);
             order[i] = i;
         }
         Arrays.sort(order, (p, q) -> Double.compare(field[p], field[q]));
