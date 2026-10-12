@@ -36,6 +36,7 @@ public final class MatchState {
     private static Face entryFace;
     private static BlockState entryState;
     private static int indexVersion = -1;
+    private static List<Object> settingsSeen = List.of();
     private static TintContext entryTint;
     private static Color lastFlat;
     private static MatchFilters filters;
@@ -54,19 +55,35 @@ public final class MatchState {
         revision++;
     }
 
+    /** The settings a match depends on, as one value to compare. The settings screen changes them without telling anyone. */
+    private static List<Object> settings() {
+        return List.of(ModSettings.defaultFace, ModSettings.metric, ModSettings.viewingDistance, ModSettings.shading, ModSettings.biomeMode,
+                ModSettings.biome, ModSettings.resultCount, ModSettings.statesSeparately);
+    }
+
     /**
-     * Keeps a block target on the index's current build. A rebuild makes new entries, and one kept from before
-     * would go on showing the textures of a pack that has since changed. Each tab calls this before it draws.
+     * Brings the target up to date with what changed behind its back, and tells the tabs if anything did. Each tab
+     * calls this before it draws. A setting changed in the settings screen counts as a change made here. And a block
+     * target moves to the index's current build: a rebuild makes new entries, and one kept from before would go on
+     * showing the textures of a pack that has since changed.
      */
     public static void follow() {
+        boolean stale = false;
+        List<Object> now = settings();
+        if (!now.equals(settingsSeen)) {
+            settingsSeen = now;
+            stale = true;
+        }
         BlockIndex index = BlockIndex.get();
-        if (index.version() == indexVersion) return;
-        indexVersion = index.version();
-        if (entry == null) return;
-        Entry now = index.entryOf(entryState);
-        if (now == null || now == entry) return;
-        entry = now;
-        changed();
+        if (index.version() != indexVersion) {
+            indexVersion = index.version();
+            Entry current = entry == null ? null : index.entryOf(entryState);
+            if (current != null && current != entry) {
+                entry = current;
+                stale = true;
+            }
+        }
+        if (stale) changed();
     }
 
     /** The target's colour: the flat colour, or the block face's average. */

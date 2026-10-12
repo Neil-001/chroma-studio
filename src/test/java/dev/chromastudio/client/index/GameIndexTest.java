@@ -571,6 +571,24 @@ class GameIndexTest {
             assertNotEquals(plains, MatchState.colour(), "the swatch follows the biome control");
             assertEquals(MatchState.target().colour(), MatchState.colour(), "and is the colour that is searched for");
 
+            // The settings screen changes the biome without a word to anyone.
+            MatchState.follow();
+            int before = MatchState.revision();
+            Color badlands = MatchState.colour();
+            assertTrue(ModSettings.set("biome", "minecraft:plains"));
+            MatchState.follow();
+            assertEquals(plains, MatchState.colour(), "a biome set in the settings screen is followed too");
+            assertEquals(MatchState.target().colour(), MatchState.colour());
+            assertNotEquals(before, MatchState.revision(), "and the tabs search again");
+            ModSettings.reset("biome");
+            ModSettings.biomeMode = BiomeMode.CHOSEN;
+            ModSettings.biome = "minecraft:badlands";
+            MatchState.follow();
+            assertEquals(badlands, MatchState.colour());
+            int settled = MatchState.revision();
+            MatchState.follow();
+            assertEquals(settled, MatchState.revision(), "with nothing changed there is nothing to tell");
+
             // Redstone dust's sixteen powers share their texture, so they share an entry, but not a tint.
             Entry dust = tinted(block("redstone_wire"), "block/redstone_dust_dot");
             BlockState powered = dust.state().setValue(BlockStateProperties.POWER, 15);
@@ -589,10 +607,10 @@ class GameIndexTest {
             assertEquals("", Entry.properties(dust.state()));
 
             // A resource pack changes stone, and the index builds again.
-            Entry before = entry(block("stone"), "block/red_concrete");
-            index(List.of(List.of(before)));
+            Entry old = entry(block("stone"), "block/red_concrete");
+            index(List.of(List.of(old)));
             MatchState.follow();
-            MatchState.setEntry(before, Face.UP, null);
+            MatchState.setEntry(old, Face.UP, null);
             int revision = MatchState.revision();
             Entry after = entry(block("stone"), "block/blue_concrete");
             index(List.of(List.of(after)));
