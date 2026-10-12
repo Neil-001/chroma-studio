@@ -2,12 +2,18 @@ package dev.chromastudio.client.fabric;
 
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ClientPlatform;
+import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.Keys;
+import dev.chromastudio.client.ui.Hud;
+import dev.chromastudio.client.ui.Tooltips;
 import java.nio.file.Path;
 import java.util.List;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -15,6 +21,7 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -26,6 +33,9 @@ public class ChromaStudioFabricClient implements ClientModInitializer, ClientPla
         KeyMapping.Category.register(Keys.CATEGORY.id());
         Keys.ALL.forEach(KeyMappingHelper::registerKeyMapping);
         ClientTickEvents.END_CLIENT_TICK.register(ChromaStudioClient::tick);
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "hud"), (graphics, _) -> Hud.render(graphics));
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, _) -> dispatcher.register(ChromaCommand.build()));
+        ItemTooltipCallback.EVENT.register((stack, _, _, lines) -> Tooltips.append(stack, lines));
     }
 
     @Override public Path configDir() { return FabricLoader.getInstance().getConfigDir(); }

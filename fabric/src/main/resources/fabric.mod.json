@@ -14,7 +14,8 @@
   "icon": "assets/chromastudio/icon.png",
   "environment": "client",
   "entrypoints": {
-    "client": ["dev.chromastudio.client.fabric.ChromaStudioFabricClient"]
+    "client": ["dev.chromastudio.client.fabric.ChromaStudioFabricClient"],
+    "modmenu": ["dev.chromastudio.client.fabric.ModMenuIntegration"]
   },
   "depends": {
     "fabricloader": ">=0.18.4",

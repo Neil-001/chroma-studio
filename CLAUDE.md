@@ -10,7 +10,7 @@ Needs JDK 25. Versions are in `gradle.properties`. Run build and test after ever
 
 - `./gradlew build` builds both jars in `fabric/build/libs/` and `neoforge/build/libs/` and runs the tests. It compiles with `-Xlint:all,-classfile` and must stay free of warnings. The IDE's own, such as unused imports, count too: name a lambda or catch parameter that isn't used `_`.
 - `./gradlew :fabric:test` runs the JUnit tests for the core and for client classes that don't need the game running, such as `ModSettings`. Only Fabric hosts them.
-- `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` starts a dev client. The Fabric one runs with Litematica and MaLiLib, to try the bridge. There is no `runServer`.
+- `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` starts a dev client. The Fabric one runs with Litematica and MaLiLib, to try the bridge, and Mod Menu, to try the settings screen from it. There is no `runServer`.
 
 Both jars target 26.3 only. Minecraft is unobfuscated, so use its own names without mappings. Builds use the minimum supported Fabric API and NeoForge versions; CI also compiles against newer ones.
 
@@ -23,7 +23,7 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 | `dev.chromastudio.core.color` | Colour maths: spaces, metrics, harmonies, distributions, texture statistics | `src/main` |
 | `dev.chromastudio.core.palette` | Palettes, share strings, gradients, generation, analysis | `src/main` |
 | `dev.chromastudio.core.export` | Schematic bit packing and layouts | `src/main` |
-| `dev.chromastudio.client` | `ChromaStudioClient`, `ClientPlatform`, `ModSettings`, `Keys` | `src/client` |
+| `dev.chromastudio.client` | `ChromaStudioClient`, `ClientPlatform`, `ModSettings`, `Keys`, `ChromaCommand`, `PaletteSink` and the settings' enums | `src/client` |
 | `dev.chromastudio.client.index` | The block index | `src/client` |
 | `dev.chromastudio.client.ui` | The window, tabs, widgets, HUD and settings screen | `src/client` |
 | `dev.chromastudio.client.action` | Eyedroppers, hotbar fill, dyeing, capture, recipe lookup | `src/client` |
@@ -33,8 +33,11 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 - `dev/chromastudio/core/` must have no Minecraft imports.
 - Only `fabric/src/` and `neoforge/src/` may import their loader's classes. Shared client code uses `ClientPlatform`; changes to that contract must go into both loaders. `ClientPlatform.modelParts` and `particleMaterial` read a block's model, because NeoForge deprecates the game's methods that take no world.
 - The mod is client-only. Fabric's `environment` is `client` with only a `client` entrypoint. NeoForge's one `@Mod` class has `dist = Dist.CLIENT`, and the mod registers no payloads, so a server never checks for it. Don't add a server entrypoint, a payload or a registry entry.
-- `ChromaStudioClient.init` loads the settings and creates the keys in `Keys`. Each loader then registers `Keys.ALL` and `Keys.CATEGORY` in its own way and calls `ChromaStudioClient.tick` at the end of every client tick.
-- `ModSettings` holds the mod's own options as static fields, loaded at client start and saved atomically to `config/chromastudio/settings.json`. A missing, mistyped or out-of-range value gets its default. `ModSettingsTest` covers it.
+- `ChromaStudioClient.init` loads the settings and creates the keys in `Keys`. Each loader then registers `Keys.ALL` and `Keys.CATEGORY` in its own way and calls `ChromaStudioClient.tick` at the end of every client tick. `Keys.onEyedropper` and `Keys.onCapture` are what those two keys run.
+- Each loader also hooks these to shared code: its HUD layer to `Hud.render`, its client command event to `ChromaCommand.build()`, its item tooltip event to `Tooltips.append`, and its settings entry (Mod Menu's entrypoint, NeoForge's `IConfigScreenFactory`) to `SettingsScreen`. Another task adds a `/chroma` subcommand through `ChromaCommand.SUBCOMMANDS`.
+- `ModSettings` holds the mod's own options as static fields, loaded at client start and saved atomically to `config/chromastudio/settings.json`. A missing, mistyped or out-of-range value gets its default. `ModSettingsTest` covers it. A new setting is a field with its default, a name in `ModSettings.GROUPS`, limits if it's a number, and a label and a `.tip` in the language file; the file, the reset and the settings screen's row all follow from those. A setting that names a core enum (`metric`, `easing`, `hueArc`) is a string holding the constant's name.
+- `ChromaScreen` owns the window: the title bar, the tabs registered with `registerTab`, and input, which goes to the selected `Tab` inside its `Bounds`. `Window` holds the position, size and mode, and the drag and resize rules; `WindowTest` covers it. A pinned window is drawn by `Hud.render` and takes no input. `pendingTarget` carries what `/chroma` asked for to the Match tab.
+- A tab or screen builds its controls through a `Widgets` group, which also draws them and takes their input. `Widgets.ScrollList` is the scrolling list.
 - There are no mixins yet. A task that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
 - Mod Menu, Litematica and MaLiLib are optional and only compiled against. NeoForge compiles against Litematica's Fabric jars, because Forgematica keeps the package and class names. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them.
 - `dev.chromastudio.api` is the only package under semantic versioning.

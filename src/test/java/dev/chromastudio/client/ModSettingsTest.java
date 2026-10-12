@@ -21,6 +21,13 @@ class ModSettingsTest {
         assertEquals(400, ModSettings.windowW);
         assertEquals(220, ModSettings.windowH);
         assertFalse(ModSettings.fullscreen);
+        assertEquals(FaceChoice.SIDE, ModSettings.defaultFace);
+        assertEquals("OKLAB", ModSettings.metric);
+        assertEquals(12, ModSettings.resultCount);
+        assertEquals(0.8, ModSettings.pinOpacity);
+        assertEquals(TooltipMode.SHIFT, ModSettings.tooltipMode);
+        assertEquals("match", ModSettings.startTab);
+        assertEquals("", ModSettings.exportFolder);
     }
 
     private static void change() {
@@ -29,6 +36,13 @@ class ModSettingsTest {
         ModSettings.windowW = 640;
         ModSettings.windowH = 360;
         ModSettings.fullscreen = true;
+        ModSettings.defaultFace = FaceChoice.TOP;
+        ModSettings.metric = "CIEDE2000";
+        ModSettings.resultCount = 30;
+        ModSettings.pinOpacity = 0.5;
+        ModSettings.tooltipMode = TooltipMode.NEVER;
+        ModSettings.startTab = "palettes";
+        ModSettings.exportFolder = "/tmp/exports";
     }
 
     @Test
@@ -54,6 +68,13 @@ class ModSettingsTest {
         assertEquals(640, ModSettings.windowW);
         assertEquals(360, ModSettings.windowH);
         assertTrue(ModSettings.fullscreen);
+        assertEquals(FaceChoice.TOP, ModSettings.defaultFace);
+        assertEquals("CIEDE2000", ModSettings.metric);
+        assertEquals(30, ModSettings.resultCount);
+        assertEquals(0.5, ModSettings.pinOpacity);
+        assertEquals(TooltipMode.NEVER, ModSettings.tooltipMode);
+        assertEquals("palettes", ModSettings.startTab);
+        assertEquals("/tmp/exports", ModSettings.exportFolder);
     }
 
     @Test
@@ -66,5 +87,57 @@ class ModSettingsTest {
         assertFalse(ModSettings.read("[]"));
         assertFalse(ModSettings.read("not json"));
         assertDefaults();
+    }
+
+    @Test
+    void badValuesOfEveryKindGetTheirDefaults() {
+        assertTrue(ModSettings.read("""
+                {"defaultFace": "SIDEWAYS", "metric": "oklab", "resultCount": 2, "pinOpacity": 1.5, "tooltipMode": 3,
+                 "startTab": "Not A Tab", "biome": "plains", "shading": "yes", "easing": 4, "recipeKey": "r",
+                 "exportFolder": 12, "gradientSteps": 33, "viewingDistance": 0}"""));
+        assertDefaults();
+        assertEquals("minecraft:plains", ModSettings.biome);
+        assertFalse(ModSettings.shading);
+        assertEquals("SMOOTH", ModSettings.easing);
+        assertEquals("key.keyboard.r", ModSettings.recipeKey);
+        assertEquals(9, ModSettings.gradientSteps);
+        assertEquals(24, ModSettings.viewingDistance);
+    }
+
+    @Test
+    void theFileUsesTheFieldNamesAndPlainNamesForChoices() {
+        ModSettings.defaultLayout = LayoutChoice.PATCH_GRID;
+        var o = com.google.gson.JsonParser.parseString(ModSettings.write()).getAsJsonObject();
+        assertEquals("PATCH_GRID", o.get("defaultLayout").getAsString());
+        assertEquals("SHORTEST", o.get("hueArc").getAsString());
+        assertEquals("HERE", o.get("biomeMode").getAsString());
+        assertEquals(24, o.get("viewingDistance").getAsInt());
+        int settings = ModSettings.GROUPS.values().stream().mapToInt(List::size).sum();
+        assertEquals(settings, o.size(), "every setting is written once");
+    }
+
+    @Test
+    void settingByNameKeepsWithinTheLimitsAndRefusesTheWrongKind() {
+        assertTrue(ModSettings.set("resultCount", 99.0));
+        assertEquals(60, ModSettings.resultCount);
+        assertTrue(ModSettings.set("pinOpacity", 0.05));
+        assertEquals(0.2, ModSettings.pinOpacity);
+        assertFalse(ModSettings.set("metric", "RGB"));
+        assertFalse(ModSettings.set("biome", "not an id"));
+        assertFalse(ModSettings.set("shading", "true"));
+        assertFalse(ModSettings.set("defaultFace", TooltipMode.ALWAYS));
+        assertEquals("OKLAB", ModSettings.metric);
+        assertTrue(ModSettings.set("defaultFace", FaceChoice.ANY));
+        assertEquals(FaceChoice.ANY, ModSettings.get("defaultFace"));
+    }
+
+    @Test
+    void aGroupResetsOnItsOwn() {
+        change();
+        ModSettings.reset("matching");
+        assertEquals(12, ModSettings.resultCount);
+        assertEquals(FaceChoice.SIDE, ModSettings.defaultFace);
+        assertEquals(640, ModSettings.windowW, "another group's setting is left alone");
+        assertEquals(TooltipMode.NEVER, ModSettings.tooltipMode);
     }
 }

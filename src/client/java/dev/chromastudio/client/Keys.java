@@ -12,7 +12,12 @@ public final class Keys {
 
     /** The heading for the keys in the Controls screen. */
     public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "main"));
-    public static KeyMapping OPEN;
+    public static KeyMapping OPEN, EYEDROPPER, PIN, FULLSCREEN, CAPTURE;
+    /**
+     * What the eyedropper and capture keys do when pressed in the world. They do nothing until the tasks that own
+     * those actions set these.
+     */
+    public static Runnable onEyedropper = () -> { }, onCapture = () -> { };
     /** Every key, in the order the Controls screen lists them. */
     public static final List<KeyMapping> ALL = new ArrayList<>();
 
@@ -24,5 +29,9 @@ public final class Keys {
 
     static void create() {
         OPEN = key("open", InputConstants.KEY_C);
+        EYEDROPPER = key("eyedropper", InputConstants.KEY_X);
+        PIN = key("pin", InputConstants.UNKNOWN.getValue());
+        FULLSCREEN = key("fullscreen", InputConstants.UNKNOWN.getValue());
+        CAPTURE = key("capture", InputConstants.UNKNOWN.getValue());
     }
 }

@@ -2,7 +2,11 @@ package dev.chromastudio.client.neoforge;
 
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ClientPlatform;
+import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.Keys;
+import dev.chromastudio.client.ui.Hud;
+import dev.chromastudio.client.ui.SettingsScreen;
+import dev.chromastudio.client.ui.Tooltips;
 import java.nio.file.Path;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -12,26 +16,39 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 /** NeoForge's client entrypoint, and the mod's only one: a server loads nothing from the jar. */
 @Mod(value = ChromaStudioClient.MOD_ID, dist = Dist.CLIENT)
 public final class ChromaStudioNeoForgeClient implements ClientPlatform {
-    public ChromaStudioNeoForgeClient(IEventBus modBus) {
+    public ChromaStudioNeoForgeClient(IEventBus modBus, ModContainer container) {
         ChromaStudioClient.init(this);
+        // The mod list's Config button.
+        container.registerExtensionPoint(IConfigScreenFactory.class, (_, modList) -> new SettingsScreen(modList));
         modBus.addListener(RegisterKeyMappingsEvent.class, event -> {
             event.registerCategory(Keys.CATEGORY);
             Keys.ALL.forEach(event::register);
         });
+        // Hud.render checks for a hidden HUD (F1) itself: NeoForge draws modded layers even then.
+        modBus.addListener(RegisterGuiLayersEvent.class, event -> event.registerAboveAll(
+                Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "hud"), (graphics, _) -> Hud.render(graphics)));
+        NeoForge.EVENT_BUS.addListener(RegisterClientCommandsEvent.class, event -> event.getDispatcher().register(ChromaCommand.build()));
+        NeoForge.EVENT_BUS.addListener(ItemTooltipEvent.class, event -> Tooltips.append(event.getItemStack(), event.getToolTip()));
         NeoForge.EVENT_BUS.addListener(ClientTickEvent.Post.class, _ -> ChromaStudioClient.tick(Minecraft.getInstance()));
     }
 
