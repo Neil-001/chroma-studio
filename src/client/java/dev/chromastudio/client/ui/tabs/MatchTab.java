@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -75,7 +76,7 @@ import net.minecraft.world.level.block.Block;
 public final class MatchTab extends Tab {
     private static final int PAD = 3, ROW = 18, CELL = 20, HEAD = 13, GAP = 2, LINE = Widgets.H + 1;
     private static final int TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, GREYED = 0xFF4E5560, BAD = 0xFFFF6B6B,
-            PANEL = 0xFF161A20, BORDER = 0xFF3A424D, WELL = 0xFF0B0D10;
+            PANEL = 0xFF161A20, BORDER = 0xFF3A424D, WELL = 0xFF0B0D10, BACKING = 0x80101317;
     private static final long STATUS_MS = 2500;
     private static final int RESULT = 0, MEMBER = 1, MAKE = 2;
     private static final int BODY = 0, EXPAND = 1, ADD = 2;
@@ -112,6 +113,7 @@ public final class MatchTab extends Tab {
     private boolean grid;
     private Shown shown;
     private List<Row> rows = List.of();
+    private int kindWidth;
     /** The entry whose material set is open under its row, or null. */
     private Entry expanded;
     private Row hovered;
@@ -189,15 +191,15 @@ public final class MatchTab extends Tab {
         int lw = Math.clamp(b.w() * 36 / 100, 146, 210), x = b.x() + PAD, w = lw - 2 * PAD, y = b.y() + PAD;
         slot = new Bounds(x, y - 1, 18, 18);
         swatch = new Bounds(x + 20, y, 16, 16);
-        hexField = controls.field(x + 38, y, w - 38, model.hex(), text -> typed(hexField, model.typeHex(text)));
+        hexField = controls.field(x + 38, y, w - 38, model.hex(), text -> typed(hexField, text, model::typeHex));
         hexField.setMaxLength(7);
         hexField.setTooltip(Tooltip.create(tr("hex.tip")));
         y += ROW;
         int half = (w - GAP) / 2;
-        rgbField = controls.field(x, y, half, model.rgbText(), text -> typed(rgbField, model.typeRgb(text)));
+        rgbField = controls.field(x, y, half, model.rgbText(), text -> typed(rgbField, text, model::typeRgb));
         rgbField.setMaxLength(13);
         rgbField.setTooltip(Tooltip.create(tr("rgb.tip")));
-        hslField = controls.field(x + half + GAP, y, w - half - GAP, model.hslText(), text -> typed(hslField, model.typeHsl(text)));
+        hslField = controls.field(x + half + GAP, y, w - half - GAP, model.hslText(), text -> typed(hslField, text, model::typeHsl));
         hslField.setMaxLength(13);
         hslField.setTooltip(Tooltip.create(tr("hsl.tip")));
         y += ROW;
@@ -474,9 +476,13 @@ public final class MatchTab extends Tab {
         filling = false;
     }
 
-    /** A field's text changed. Text that isn't a colour shows red and changes nothing. */
-    private void typed(EditBox field, boolean valid) {
+    /**
+     * A field's text changed. Text that isn't a colour shows red and changes nothing. Text the tab put there itself
+     * isn't read back: a colour rounded to whole numbers and taken again would drift.
+     */
+    private void typed(EditBox field, String text, Predicate<String> take) {
         if (filling || field == null) return;
+        boolean valid = take.test(text);
         field.setTextColor(valid ? EditBox.DEFAULT_TEXT_COLOR : BAD);
         if (!valid) return;
         fill(field);
@@ -597,6 +603,9 @@ public final class MatchTab extends Tab {
             }
         }
         rows = out;
+        Font font = Minecraft.getInstance().font;
+        kindWidth = 0;
+        for (Row row : out) kindWidth = Math.max(kindWidth, font.width(kindName(row.entry.kind().name())));
     }
 
     // ---- Drawing ----
@@ -634,6 +643,9 @@ public final class MatchTab extends Tab {
     /** The left column but for its widgets: the slot, the swatch, the pickers and the recent colours. */
     private void target(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
         Entry entry = MatchState.entry();
+        // Fullscreen has no panel of its own, only the blurred world, so everything outside the results gets a backing to be read against.
+        g.fill(area.x(), area.y(), results.x() - 1, area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
+        g.fill(results.x() - 1, area.y(), area.right(), results.y(), ARGB.multiplyAlpha(BACKING, opacity));
         g.fill(slot.x(), slot.y(), slot.right(), slot.bottom(), ARGB.multiplyAlpha(BORDER, opacity));
         g.fill(slot.x() + 1, slot.y() + 1, slot.right() - 1, slot.bottom() - 1, ARGB.multiplyAlpha(WELL, opacity));
         if (entry != null) Widgets.blockIcon(g, entry.block(), slot.x() + 1, slot.y() + 1);
@@ -789,9 +801,9 @@ public final class MatchTab extends Tab {
         g.fill(right - 12, y + 3, right, y + 15, ARGB.multiplyAlpha(0xFF000000, opacity));
         g.fill(right - 11, y + 4, right - 1, y + 14, ARGB.multiplyAlpha(0xFF000000 | stats.mean(shown.scale).rgb(), opacity));
         right -= 15;
-        String kind = kindName(e.kind().name()).getString();
-        right -= font.width(kind);
-        g.text(font, kind, right, y + 5, dim, false);
+        // Every line gives the kind the width of the widest on show, so the columns to its left line up.
+        right -= kindWidth;
+        g.text(font, kindName(e.kind().name()), right, y + 5, dim, false);
         right -= 10;
         badge(g, right, y + 5, stats.badge(), dim);
         right -= 4;

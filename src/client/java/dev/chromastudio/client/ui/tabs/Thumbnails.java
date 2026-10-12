@@ -5,6 +5,7 @@ import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.TintContext;
 import dev.chromastudio.core.color.Face;
 import dev.chromastudio.core.color.Scale;
+import dev.chromastudio.core.color.TextureStats;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -35,7 +36,11 @@ final class Thumbnails {
         Pixels pixels = CACHE.get(key);
         if (pixels == null) {
             pixels = new Pixels(scale.texels, scale.texels);
-            pixels.set(entry.face(face, tint).pixels(scale));
+            int[] argb = entry.face(face, tint).pixels(scale);
+            // Shown solid wherever there is anything to see: glass drawn at its own alpha over the dark list would
+            // look far darker than the colour it is matched by.
+            for (int i = 0; i < argb.length; i++) argb[i] = argb[i] >>> 24 < TextureStats.ALPHA_CUTOFF ? 0 : argb[i] | 0xFF000000;
+            pixels.set(argb);
             CACHE.put(key, pixels);
             Iterator<Pixels> oldest = CACHE.values().iterator();
             while (CACHE.size() > KEPT) {

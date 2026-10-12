@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.util.ARGB;
 
 /**
  * The Match tab's pickers: a saturation and value square with a hue bar, and three sliders for OKLCH lightness,
@@ -72,7 +73,7 @@ final class ColourPicker implements AutoCloseable {
                 Math.round(lch.h()) % 360 + "°"};
         for (int i = 0; i < 3; i++) {
             Bounds s = sliders[i];
-            g.text(font, LETTERS[i], s.x() - LABEL_W, s.y() + 1, 0xFF9AA5B3, false);
+            g.text(font, LETTERS[i], s.x() - LABEL_W, s.y() + 1, ARGB.multiplyAlpha(0xFF9AA5B3, opacity), false);
             sliderPixels[i].draw(g, s.x(), s.y(), s.w(), s.h(), opacity);
             for (double edge : edges.get(i)) {
                 int ex = s.x() + (int) Math.round(edge * (s.w() - 1));
@@ -81,7 +82,7 @@ final class ColourPicker implements AutoCloseable {
             int kx = s.x() + (int) Math.round(at[i] * (s.w() - 1));
             g.fill(kx - 1, s.y() - 1, kx + 2, s.bottom() + 1, 0xFF000000);
             g.fill(kx, s.y() - 1, kx + 1, s.bottom() + 1, 0xFFFFFFFF);
-            g.text(font, values[i], s.right() + VALUE_W - font.width(values[i]), s.y() + 1, 0xFFE4E9EF, false);
+            g.text(font, values[i], s.right() + VALUE_W - font.width(values[i]), s.y() + 1, ARGB.multiplyAlpha(0xFFE4E9EF, opacity), false);
         }
     }
 

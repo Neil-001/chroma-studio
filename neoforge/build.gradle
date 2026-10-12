@@ -8,20 +8,33 @@ repositories {
 		url = 'https://masa.dy.fi/maven/sakura-ryoko'
 		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
 	}
-	maven {
-		name = 'Fabric'
-		url = 'https://maven.fabricmc.net/'
-		content { includeModule 'net.fabricmc', 'fabric-loader' }
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Fabric'
+				url = 'https://maven.fabricmc.net/'
+			}
+		}
+		filter { includeModule 'net.fabricmc', 'fabric-loader' }
 	}
-	maven {
-		name = 'BlameJared'
-		url = 'https://maven.blamejared.com/'
-		content { includeGroup 'mezz.jei' }
+	// Each of these groups is asked for from its own Maven alone, so another repository's outage can't fail the build.
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'BlameJared'
+				url = 'https://maven.blamejared.com/'
+			}
+		}
+		filter { includeGroup 'mezz.jei' }
 	}
-	maven {
-		name = 'Shedaniel'
-		url = 'https://maven.shedaniel.me/'
-		content {
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Shedaniel'
+				url = 'https://maven.shedaniel.me/'
+			}
+		}
+		filter {
 			includeGroup 'me.shedaniel'
 			includeGroup 'me.shedaniel.cloth'
 			includeGroup 'dev.architectury'

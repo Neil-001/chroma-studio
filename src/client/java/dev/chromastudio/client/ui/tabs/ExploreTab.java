@@ -34,7 +34,7 @@ import net.minecraft.util.ARGB;
  */
 public final class ExploreTab extends Tab {
     private static final int PAD = 3, GAP = 2, AXIS = 6;
-    private static final int TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, WELL = 0xFF0B0D10, BORDER = 0xFF3A424D;
+    private static final int TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, WELL = 0xFF0B0D10, BORDER = 0xFF3A424D, BACKING = 0x80101317;
     private static final double MAX_ZOOM = 32;
     /** How near the cursor a dot must be to be the one hovered, and how far a press may move and still be a click. */
     private static final int REACH = 5, CLICK_SLOP = 3;
@@ -144,13 +144,14 @@ public final class ExploreTab extends Tab {
     public void render(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
         sync();
         Font font = Minecraft.getInstance().font;
-        controls.render(g, mouseX, mouseY, delta);
         Dot over = draw(g, font, 1, mouseX, mouseY);
+        controls.render(g, mouseX, mouseY, delta);
         Component count = tr("count", dots.size());
         g.text(font, count, b.right() - PAD - font.width(count), b.y() + PAD + 4, DIM, false);
         if (over != null && !panned) {
             Entry e = over.entry;
-            int ix = Math.min(mouseX + 10, b.right() - 18), iy = Math.max(b.y(), mouseY - 20);
+            // The icon sits up and to the left of the cursor, where the tooltip, which goes to the right, never covers it.
+            int ix = Math.max(b.x() + 1, mouseX - 22), iy = Math.max(b.y() + 1, mouseY - 22);
             g.fill(ix - 1, iy - 1, ix + 17, iy + 17, 0xE0000000);
             Widgets.blockIcon(g, e.block(), ix, iy);
             List<Component> tip = new ArrayList<>();
@@ -170,6 +171,8 @@ public final class ExploreTab extends Tab {
     /** Draws the plot, and returns the dot nearest the cursor when one is within reach. */
     private Dot draw(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY) {
         Bounds p = plot;
+        // Fullscreen has no panel of its own, so the controls and the axes get a backing to be read against.
+        g.fill(area.x(), area.y(), area.right(), area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
         g.fill(p.x() - 1, p.y() - 1, p.right() + 1, p.bottom() + 1, ARGB.multiplyAlpha(BORDER, opacity));
         g.fill(p.x(), p.y(), p.right(), p.bottom(), ARGB.multiplyAlpha(WELL, opacity));
         // The axes: the hues along the bottom and the lightness up the side, each as the part of it in view.

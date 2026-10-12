@@ -546,7 +546,7 @@
   "face.chromastudio.west": "West",
   "face.chromastudio.east": "East",
   "kind.chromastudio.all": "All kinds",
-  "kind.chromastudio.full": "Full block",
+  "kind.chromastudio.full": "Block",
   "kind.chromastudio.slab": "Slab",
   "kind.chromastudio.stairs": "Stairs",
   "kind.chromastudio.wall": "Wall",
