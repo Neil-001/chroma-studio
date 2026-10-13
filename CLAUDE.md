@@ -60,6 +60,10 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 - `listing/description.md` is the description on both Modrinth and CurseForge, used as it is. It loads its pictures from `main`: the gallery screenshots in `listing/gallery/`, whose `README.md` has the title and description to enter for each, and anything else from `listing/media/`.
 - `listing/art/icon.py picture.png` makes the icon: it snaps a picture of any size to 40 by 40 pixels, keeps at most 32 colours and writes it at 320 by 320 to the mod's resources and `listing/media/`. The icon is a plain placeholder until the art is supplied.
 
+## Docs
+
+The [wiki](https://github.com/Neil-001/chroma-studio/wiki) must be updated with any change a player would notice.
+
 ## Spec
 
 ### Engine

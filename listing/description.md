@@ -116,3 +116,5 @@ Every block is a dot, with hue across and lightness up. Scroll to zoom, drag to 
 | JEI, REI or EMI | Optional. **R** over a block looks up its recipe |
 
 Chroma Studio 1.0 is for Minecraft 26.3.
+
+The [wiki](https://github.com/Neil-001/chroma-studio/wiki) covers matching, palettes, gradients, exports, settings, and how resource packs and modded blocks work.

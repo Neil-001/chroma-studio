@@ -4,7 +4,7 @@
 ![The Chroma Studio window over a village, listing the blocks closest to a teal colour.](listing/gallery/01-match.jpg)
 </div>
 
-A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. [`listing/description.md`](listing/description.md) says how to use it.
+A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. The [wiki](https://github.com/Neil-001/chroma-studio/wiki) covers matching, palettes, gradients, exports and settings.
 
 Building requires JDK 25.
 
