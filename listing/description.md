@@ -1,13 +1,21 @@
+<center>
+
 <a href="https://fabricmc.net/"><img alt="Supported on Fabric" height="48" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/fabric_vector.svg"></a>
 <a href="https://neoforged.net/"><img alt="Supported on NeoForge" height="48" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/neoforge_vector.svg"></a>
 <a href="https://modrinth.com/mod/fabric-api"><img alt="Requires Fabric API" height="48" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/requires/fabric-api_vector.svg"></a>
 <a href="https://github.com/Neil-001/chroma-studio"><img alt="Source on GitHub" height="48" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/github_vector.svg"></a>
 
+</center>
+
 Chroma Studio finds the blocks closest to a colour. Pick a colour, or point at a block, and it lists every block in the game by how close its texture comes, modded blocks and resource packs included. From there it builds palettes and gradients, and exports them as schematics.
+
+<center>
 
 <img alt="The Chroma Studio window over a village. On the left a colour picker set to teal. On the right a list of the twelve closest blocks, from warped shelf to cyan stained glass, each with its distance, kind and texture." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/01-match.jpg">
 
 *The Match tab. Each row has the block's distance from the colour, a badge for how busy its texture is, and the texture as it looks from the viewing distance you set.*
+
+</center>
 
 It compares whole textures, not only average colours, so a speckled block and a flat block of the same average don't count as the same. It matches in OKLab by default, which follows what the eye sees more closely than RGB does. Grass, leaves and water are matched with the tint of the biome you stand in, or of any biome you choose.
 
@@ -26,17 +34,25 @@ Press **C** for the window. It has four tabs. You can drag it, resize it, make i
 
 Out in the world, press **X** on a block to read its colour. The hex code goes to your clipboard. Shift and **X** opens the window on that block.
 
+<center>
+
 <img alt="The Match tab on cherry planks, with its row opened to show cherry log, wood, slab, stairs, signs, fence, gate and trapdoor beneath." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/02-material-set.jpg">
 
 *Matching a block instead of a colour, with its material set open.*
+
+</center>
 
 ### Gradient
 
 Give it two or more colours or blocks and a number of steps, from 2 to 32. It finds a different block for every step so that the whole run is as close as it can be. Then fill your hotbar with it, copy the list, save it as a palette or export it.
 
+<center>
+
 <img alt="The Gradient tab with a sixteen-step run from dark blue through red and orange to pale sandstone. A strip shows the colour wanted at each step, with the chosen block below it." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/03-gradient.jpg">
 
 *Sixteen steps between three colours. The strip on top is the colour each step wants, and the one below is what its block gives.*
+
+</center>
 
 ### Palettes
 
@@ -53,17 +69,25 @@ A palette is a list of blocks, each with a weight. Ten come with the mod, and yo
 
 **Share** copies a palette as one line of text, like `chroma1:stone,andesite*3,oak_log[axis=y]/Castle`, and **Import** reads one.
 
+<center>
+
 <img alt="The Palettes tab showing the Medieval preset as a wall of stone bricks, cobblestone, spruce planks, dark oak logs and terracotta, drawn in 3D." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/05-diorama.jpg">
 
 *The Medieval preset as a 3D diorama. Drag to turn it.*
+
+</center>
 
 ### Explore
 
 Every block is a dot, with hue across and lightness up. Scroll to zoom, drag to move, and click a dot to match it. The filters you set in Match apply here too.
 
+<center>
+
 <img alt="The Explore tab: about a thousand coloured dots spread by hue from red on the left to pink on the right, with ten dots outlined." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/07-explore.jpg">
 
 *Every block by hue and lightness. The outlined dots are the blocks of one palette.*
+
+</center>
 
 ## Commands
 

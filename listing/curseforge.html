@@ -1,0 +1,90 @@
+<p style="text-align: center;"><a href="https://fabricmc.net/"><img alt="Supported on Fabric" height="48" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/fabric_vector.svg"></a>
+<a href="https://neoforged.net/"><img alt="Supported on NeoForge" height="48" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/neoforge_vector.svg"></a>
+<a href="https://modrinth.com/mod/fabric-api"><img alt="Requires Fabric API" height="48" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/requires/fabric-api_vector.svg"></a>
+<a href="https://github.com/Neil-001/chroma-studio"><img alt="Source on GitHub" height="48" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/github_vector.svg"></a></p>
+<p>Chroma Studio finds the blocks closest to a colour. Pick a colour, or point at a block, and it lists every block in the game by how close its texture comes, modded blocks and resource packs included. From there it builds palettes and gradients, and exports them as schematics.</p>
+<p style="text-align: center;"><img alt="The Chroma Studio window over a village. On the left a colour picker set to teal. On the right a list of the twelve closest blocks, from warped shelf to cyan stained glass, each with its distance, kind and texture." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/01-match.jpg"></p>
+<p style="text-align: center;"><em>The Match tab. Each row has the block's distance from the colour, a badge for how busy its texture is, and the texture as it looks from the viewing distance you set.</em></p>
+<p>It compares whole textures, not only average colours, so a speckled block and a flat block of the same average don't count as the same. It matches in OKLab by default, which follows what the eye sees more closely than RGB does. Grass, leaves and water are matched with the tint of the biome you stand in, or of any biome you choose.</p>
+<p>The mod runs on your client only. It never places or changes a block. A server doesn't need it.</p>
+<h2>How to use it</h2>
+<p>Press <strong>C</strong> for the window. It has four tabs. You can drag it, resize it, make it fullscreen, or pin a tab so it stays on screen while you build.</p>
+<h3>Match</h3>
+<ol>
+<li>Pick a colour with the square, the sliders or a hex code. Or press <strong>Block</strong> to pick a block in the world, or <strong>Screen</strong> to click any pixel of the game. The slot at the top left takes the block in your hand.</li>
+<li>Read the list. Click a row to get the block, in creative mode or as an operator. Shift-click copies its id. The <strong>+</strong> button adds it to your palette.</li>
+<li>Narrow the list with the row of filters: one kind of block, full cubes only, one mod, a tone, a lightness range and more.</li>
+<li>Click the arrow beside a row to see the other blocks of its material, such as the slab, stairs and wall. One more click makes a palette of them.</li>
+</ol>
+<p>Out in the world, press <strong>X</strong> on a block to read its colour. The hex code goes to your clipboard. Shift and <strong>X</strong> opens the window on that block.</p>
+<p style="text-align: center;"><img alt="The Match tab on cherry planks, with its row opened to show cherry log, wood, slab, stairs, signs, fence, gate and trapdoor beneath." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/02-material-set.jpg"></p>
+<p style="text-align: center;"><em>Matching a block instead of a colour, with its material set open.</em></p>
+<h3>Gradient</h3>
+<p>Give it two or more colours or blocks and a number of steps, from 2 to 32. It finds a different block for every step so that the whole run is as close as it can be. Then fill your hotbar with it, copy the list, save it as a palette or export it.</p>
+<p style="text-align: center;"><img alt="The Gradient tab with a sixteen-step run from dark blue through red and orange to pale sandstone. A strip shows the colour wanted at each step, with the chosen block below it." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/03-gradient.jpg"></p>
+<p style="text-align: center;"><em>Sixteen steps between three colours. The strip on top is the colour each step wants, and the one below is what its block gives.</em></p>
+<h3>Palettes</h3>
+<p>A palette is a list of blocks, each with a weight. Ten come with the mod, and you can make your own in several ways.</p>
+<ul>
+<li><strong>Generate</strong> makes one from a colour and a harmony, such as analogous or triadic.</li>
+<li><strong>Capture</strong> counts the blocks in a box you mark in the world with two presses of <strong>X</strong>.</li>
+<li><strong>Image</strong> takes the main colours of a picture.</li>
+<li><strong>Analyse</strong> says what a palette lacks, such as a dark shade or an accent, and <strong>Fix</strong> opens Match on a colour that would fill the gap.</li>
+<li><strong>Diorama</strong> shows the palette as a wall of blocks, flat or in 3D, mixed by its weights.</li>
+<li><strong>Export</strong> writes a <code>.litematic</code> or vanilla <code>.nbt</code> file, as a strip, a wall, a grid of patches or one of the diorama's walls.</li>
+<li><strong>WorldEdit</strong> writes a pattern such as <code>70%stone,30%andesite</code> and the <code>//set</code> or <code>//replace</code> command to go with it.</li>
+<li><strong>Hotbar</strong> puts the palette in your hotbar, with the rest in a shulker box. Undo puts back what was there.</li>
+</ul>
+<p><strong>Share</strong> copies a palette as one line of text, like <code>chroma1:stone,andesite*3,oak_log[axis=y]/Castle</code>, and <strong>Import</strong> reads one.</p>
+<p style="text-align: center;"><img alt="The Palettes tab showing the Medieval preset as a wall of stone bricks, cobblestone, spruce planks, dark oak logs and terracotta, drawn in 3D." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/05-diorama.jpg"></p>
+<p style="text-align: center;"><em>The Medieval preset as a 3D diorama. Drag to turn it.</em></p>
+<h3>Explore</h3>
+<p>Every block is a dot, with hue across and lightness up. Scroll to zoom, drag to move, and click a dot to match it. The filters you set in Match apply here too.</p>
+<p style="text-align: center;"><img alt="The Explore tab: about a thousand coloured dots spread by hue from red on the left to pink on the right, with ten dots outlined." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/07-explore.jpg"></p>
+<p style="text-align: center;"><em>Every block by hue and lightness. The outlined dots are the blocks of one palette.</em></p>
+<h2>Commands</h2>
+<ul>
+<li><code>/chroma #ff8800</code> and <code>/chroma oak_planks</code> open Match on a colour or a block.</li>
+<li><code>/chroma capture x1 y1 z1 x2 y2 z2</code> makes a palette from a box.</li>
+<li><code>/chroma export &lt;share string&gt; [layout] [format] [place]</code> writes a schematic, and <code>/chroma place &lt;file name&gt;</code> places one with Litematica.</li>
+</ul>
+<h2>Good to know</h2>
+<ul>
+<li>Getting blocks, filling the hotbar and dyeing need creative mode or operator rights. Everything else works anywhere, including on servers without the mod.</li>
+<li>Schematics go to Litematica's schematics folder when you have it, and to <code>schematics</code> in the game folder otherwise. The mod never overwrites a file.</li>
+<li>With Litematica installed, <strong>Export and place</strong> loads the schematic as a placement where you look, ready to move.</li>
+<li>Item tooltips show a block's colour, kind and distance from your current colour while you hold Shift.</li>
+<li>Chests, banners, shulker boxes and heads have no block model to read, so the list leaves them out unless you turn them on under <strong>More…</strong></li>
+<li><strong>Dye…</strong> gives leather armour, leather horse armour or wolf armour in exactly your colour.</li>
+<li>The cog at the top right of the screen opens the settings. On Fabric they are also in Mod Menu, and on NeoForge behind the Config button in the mod list.</li>
+<li>The mod is translated into Chinese, Russian, Portuguese, German, Spanish, French, Japanese, Korean and Polish. A program wrote those translations, so corrections are welcome.</li>
+</ul>
+<h2>Works with</h2>
+<table>
+<thead>
+<tr>
+<th>Mod</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://modrinth.com/mod/fabric-api">Fabric API</a></td>
+<td>Required on Fabric</td>
+</tr>
+<tr>
+<td><a href="https://modrinth.com/mod/modmenu">Mod Menu</a></td>
+<td>Optional. Opens the settings from the mod list</td>
+</tr>
+<tr>
+<td><a href="https://modrinth.com/mod/litematica">Litematica</a>, or Forgematica on NeoForge</td>
+<td>Optional. Places exported schematics</td>
+</tr>
+<tr>
+<td>JEI, REI or EMI</td>
+<td>Optional. <strong>R</strong> over a block looks up its recipe</td>
+</tr>
+</tbody>
+</table>
+<p>Chroma Studio 1.0 is for Minecraft 26.3.</p>
+<p>The <a href="https://github.com/Neil-001/chroma-studio/wiki">wiki</a> covers matching, palettes, gradients, exports, settings, and how resource packs and modded blocks work.</p>
