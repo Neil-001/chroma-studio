@@ -130,6 +130,7 @@ Only `main` releases. Run `.github/workflows/release.yml` from `main` to publish
 1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases.
 2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes.
 3. Run `gh workflow run release.yml` to publish.
+4. Run `gh workflow run listing.yml` when the description, gallery or icon changed. It puts `listing/description.md`, the pictures `listing/gallery/README.md` lists and `listing/media/icon.png` on the Modrinth page (`.github/scripts/listing-modrinth.py`; a picture whose title is already there is kept unless `-f replace=true`). CurseForge has no API for its page: paste `listing/curseforge.html` and upload the gallery by hand.
 
 Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. For `main` the line is `minecraft_version` in `gradle.properties`; a stable branch's is its name without `/stable`. A branch whose tag exists is skipped. The workflow creates the tag last, after publishing. The two jars have distinct identifiers, `1.0.0+mc26.3-fabric` and `1.0.0+mc26.3-neoforge`; GitHub holds both jars in one release.
 
