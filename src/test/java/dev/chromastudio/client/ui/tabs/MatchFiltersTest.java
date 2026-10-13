@@ -64,6 +64,21 @@ class MatchFiltersTest {
         assertTrue(f.solid && f.technical);
     }
 
+    /** What the Match tab does before it builds its controls on the way back from the settings screen. */
+    @Test
+    void theMatchStateBringsItsFiltersUpToDate() {
+        MatchState.resetFilters();
+        ModSettings.technicalBlocks = true;
+        int before = MatchState.revision();
+        MatchState.follow();
+        assertTrue(MatchState.filters().technical);
+        assertNotEquals(before, MatchState.revision(), "the tabs are told");
+        ModSettings.reset("index");
+        MatchState.follow();
+        assertFalse(MatchState.filters().technical);
+        assertEquals(0, MatchState.filters().extras());
+    }
+
     @Test
     void everyFilterReachesTheQuery() {
         MatchFilters f = new MatchFilters();

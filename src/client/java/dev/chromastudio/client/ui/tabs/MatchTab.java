@@ -146,6 +146,8 @@ public final class MatchTab extends Tab {
     @Override
     public void init(Bounds b) {
         area = b;
+        // The settings screen may have changed a filter's setting. The controls are built from the filters, so those catch up first.
+        MatchState.follow();
         build();
         search.request();
     }
