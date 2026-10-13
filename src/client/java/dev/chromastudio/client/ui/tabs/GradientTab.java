@@ -450,6 +450,8 @@ public final class GradientTab extends PanelTab {
             Minecraft.getInstance().execute(() -> {
                 if (number != ASKED.get()) return;
                 solving = false;
+                // A list opened while this solve was on its way offers blocks from the answer before it.
+                swapStep = -1;
                 result = List.copyOf(found);
                 meanDeltaE = meanOklab;
                 pool = candidates;
@@ -464,6 +466,7 @@ public final class GradientTab extends PanelTab {
 
     private void fail(Component why) {
         solving = false;
+        swapStep = -1;
         result = List.of();
         problem = why;
         rebuild();
@@ -553,6 +556,13 @@ public final class GradientTab extends PanelTab {
         if (i == -1 && back == 1) putBack(swapStep);
         else if (i >= 0 && i < swapOptions.size()) {
             Entry chosen = swapOptions.get(i).entry;
+            // Never a block another step has, whatever the list was made from.
+            for (int other = 0; other < result.size(); other++) {
+                if (other != swapStep && result.get(other).entry.id().equals(chosen.id())) {
+                    swapStep = -1;
+                    return;
+                }
+            }
             say(tr("gradient.chromastudio.swap.done", result.get(swapStep).entry.name(), chosen.name()), GOOD);
             PINS.put(swapStep, chosen);
             // The other steps are solved again around it, in case one of them would now do better with the block it gave up.
