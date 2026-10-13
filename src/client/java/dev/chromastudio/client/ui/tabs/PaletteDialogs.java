@@ -36,6 +36,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
+import java.util.function.Function;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -569,17 +570,21 @@ final class PaletteDialogs {
 
         @Override
         protected void build(Bounds in) {
-            Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo");
-            int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo), fillW = Widgets.buttonWidth(fill);
+            Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo"), boxes = tr("palettes.chromastudio.hotbar.boxes");
+            int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo);
             // The mode is the settings' own, shown and changed here, so the dialog always says which one a fill goes by.
+            // It takes only the room its widest name needs; Fill is the point of the dialog, so Fill gets the rest.
             List<OverflowMode> modes = List.of(OverflowMode.values());
-            widgets.cycler(in.x(), y, in.w() - undoW - fillW - 3 * PanelTab.GAP, tr("palettes.chromastudio.hotbar.boxes"), modes, ModSettings.hotbarOverflowMode,
-                    m -> tr("option.chromastudio.overflowmode." + m.name().toLowerCase(Locale.ROOT)), m -> {
+            Function<OverflowMode, Component> names = m -> tr("option.chromastudio.overflowmode." + m.name().toLowerCase(Locale.ROOT));
+            int modeW = modes.stream().mapToInt(m -> Widgets.buttonWidth(CommonComponents.optionNameValue(boxes, names.apply(m)))).max().orElse(0);
+            modeW = Math.min(modeW, in.w() - undoW - Widgets.buttonWidth(fill) - 2 * PanelTab.GAP);   // a long translation never squeezes Fill below its text
+            widgets.cycler(in.x(), y, modeW, boxes, modes, ModSettings.hotbarOverflowMode, names, m -> {
                         ModSettings.hotbarOverflowMode = m;
                         ModSettings.save();
                         result = null;
                     }, tr("settings.chromastudio.hotbarOverflowMode.tip"));
-            Button fillButton = widgets.button(in.right() - undoW - PanelTab.GAP - fillW, y, fill, () -> {
+            int fillX = in.x() + modeW + PanelTab.GAP, fillW = in.right() - undoW - PanelTab.GAP - fillX;
+            Button fillButton = widgets.button(fillX, y, fillW, fill, () -> {
                 result = HotbarFill.fill(entries);
                 refresh();
             });
