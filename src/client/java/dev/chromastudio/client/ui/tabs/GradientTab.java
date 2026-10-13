@@ -1,5 +1,14 @@
 package dev.chromastudio.client.ui.tabs;
 
+import static dev.chromastudio.client.ui.Theme.BAD;
+import static dev.chromastudio.client.ui.Theme.BORDER;
+import static dev.chromastudio.client.ui.Theme.DIM;
+import static dev.chromastudio.client.ui.Theme.FAIR;
+import static dev.chromastudio.client.ui.Theme.GOOD;
+import static dev.chromastudio.client.ui.Theme.PANEL;
+import static dev.chromastudio.client.ui.Theme.TEXT;
+import static dev.chromastudio.client.ui.Theme.WELL;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
@@ -11,6 +20,7 @@ import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Handoff;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Distribution;
@@ -427,7 +437,7 @@ public final class GradientTab extends PanelTab {
             g.fill(x, y + IDEAL_H + 16, x + grid.cellW, y + IDEAL_H + 16 + BLOCK_H, ARGB.multiplyAlpha(0xFF000000 | s.mean.rgb(), opacity));
             if (mouseX >= x && mouseX < x + grid.cellW && mouseY >= y && mouseY < y + CELL_H - 4) {
                 g.setComponentTooltipForNextFrame(font(), List.of(s.entry.name(), tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE))
-                        .copy().withColor(DIM & 0xFFFFFF)), mouseX, mouseY);
+                        .copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
             }
         }
     }
@@ -439,12 +449,12 @@ public final class GradientTab extends PanelTab {
         for (int i = 0; i < STOPS.size(); i++) {
             int x = stopsArea.x() + i * (CHIP + 1), y = stopsArea.y();
             Object stop = STOPS.get(i);
-            g.fill(x, y, x + CHIP, y + Widgets.H, i == selectedStop ? 0xFFFFB84D : BORDER);
+            g.fill(x, y, x + CHIP, y + Widgets.H, i == selectedStop ? Theme.ACCENT : BORDER);
             g.fill(x + 1, y + 1, x + CHIP - 1, y + Widgets.H - 1, 0xFF000000 | colourOf(stop).rgb());
             if (stop instanceof Entry e) Widgets.blockIcon(g, e.block(), x + 1, y);
             if (mouseX >= x && mouseX < x + CHIP && mouseY >= y && mouseY < y + Widgets.H) {
                 Component what = stop instanceof Entry e ? e.name() : Component.literal(colourOf(stop).hex());
-                g.setComponentTooltipForNextFrame(font(), List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(DIM & 0xFFFFFF)), mouseX, mouseY);
+                g.setComponentTooltipForNextFrame(font(), List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
             }
         }
 
@@ -478,7 +488,7 @@ public final class GradientTab extends PanelTab {
         g.fill(a.x(), a.y(), a.right(), a.bottom(), PANEL);
         g.outline(a.x(), a.y(), a.w(), a.h(), BORDER);
         g.text(font(), tr("match.chromastudio.panel.filters"), a.x() + 5, a.y() + 3, TEXT, false);
-        int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = close.contains(mouseX, mouseY) ? 0xFFFFFFFF : DIM;
+        int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = close.contains(mouseX, mouseY) ? Theme.STRONG : DIM;
         for (int i = -3; i <= 2; i++) {
             g.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, c);
             g.fill(cx + i, cy - 1 - i, cx + i + 1, cy - i, c);
@@ -490,7 +500,7 @@ public final class GradientTab extends PanelTab {
     @Override
     public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
         if (result.isEmpty()) {
-            g.centeredText(font(), problem != null ? problem : tr("gradient.chromastudio.working"), b.x() + b.w() / 2, b.y() + b.h() / 2 - 4, ARGB.multiplyAlpha(DIM, opacity));
+            Widgets.centred(g, problem != null ? problem : tr("gradient.chromastudio.working"), b.x() + b.w() / 2, b.y() + b.h() / 2 - 4, ARGB.multiplyAlpha(DIM, opacity));
             return;
         }
         strip(g, new Bounds(b.x() + PAD, b.y() + PAD, b.w() - 2 * PAD, b.h() - 2 * PAD - 12), opacity, -1, -1);

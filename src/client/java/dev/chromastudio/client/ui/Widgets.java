@@ -45,12 +45,14 @@ public final class Widgets extends AbstractContainerEventHandler {
     private final List<AbstractWidget> children = new ArrayList<>();
     /** What a right-click does on buttons that step through options: step backwards. */
     private final Map<AbstractWidget, Runnable> reverse = new HashMap<>();
+    /** What a wheel notch does on those buttons: forwards for a notch down, backwards for one up. */
+    private final Map<AbstractWidget, Consumer<Boolean>> wheel = new HashMap<>();
     private final List<Spinner> spinners = new ArrayList<>();
     /** Each widget's y before scrolling. */
     private final Map<AbstractWidget, Integer> baseY = new HashMap<>();
     private Bounds viewport;
     private int contentHeight, scroll;
-    private boolean draggingBar;
+    private boolean draggingBar, wheelNeedsClick;
 
     private static Font font() { return Minecraft.getInstance().font; }
 
@@ -78,6 +80,7 @@ public final class Widgets extends AbstractContainerEventHandler {
         setFocused(null);
         children.clear();
         reverse.clear();
+        wheel.clear();
         spinners.clear();
         baseY.clear();
     }
@@ -108,11 +111,13 @@ public final class Widgets extends AbstractContainerEventHandler {
             builder.withTooltip(_ -> tooltip);
         }
         CycleButton<T> b = builder.create(x, y, w, H, label == null ? Component.empty() : label, (_, v) -> onChange.accept(v));
-        reverse.put(b, () -> {
-            T prev = values.get((values.indexOf(b.getValue()) - 1 + values.size()) % values.size());
-            b.setValue(prev);
-            onChange.accept(prev);
-        });
+        Consumer<Boolean> step = forwards -> {
+            T to = values.get((values.indexOf(b.getValue()) + (forwards ? 1 : values.size() - 1)) % values.size());
+            b.setValue(to);
+            onChange.accept(to);
+        };
+        reverse.put(b, () -> step.accept(false));
+        wheel.put(b, step);
         return add(b);
     }
 
@@ -196,6 +201,12 @@ public final class Widgets extends AbstractContainerEventHandler {
         scrollTo(scroll);
     }
 
+    /**
+     * Makes the wheel scroll the group wherever the cursor is, and step only a number field the player has clicked
+     * into. For a long list such as the settings, where scrolling past a control mustn't change it.
+     */
+    public void wheelNeedsClick() { wheelNeedsClick = true; }
+
     private int maxScroll() { return viewport == null ? 0 : Math.max(0, contentHeight - viewport.h()); }
 
     private void scrollTo(int to) {
@@ -265,8 +276,9 @@ public final class Widgets extends AbstractContainerEventHandler {
     }
 
     /**
-     * Steps the number field under the cursor, a notch to an arrow click. In a group that scrolls, the wheel only
-     * steps a field the player has clicked into, and scrolls the group otherwise.
+     * Steps the number field or option button under the cursor: a notch is an arrow click on a field, and on a button
+     * a notch down is a click and a notch up a right-click. Anywhere else the wheel scrolls a group that scrolls.
+     * After {@link #wheelNeedsClick} it steps only a field the player has clicked into.
      */
     @Override
     public boolean mouseScrolled(double mx, double my, double h, double v) {
@@ -274,10 +286,17 @@ public final class Widgets extends AbstractContainerEventHandler {
         for (Spinner sp : spinners) {
             EditBox f = sp.field;
             if (mx < f.getX() || mx >= sp.up.getRight() || my < f.getY() || my >= f.getBottom()) continue;
-            if (viewport != null && !f.isFocused()) break;
+            if (wheelNeedsClick && !f.isFocused()) break;
             if (f.active) (v > 0 ? sp.up : sp.down).action.run();
             return true;
         }
+        if (!wheelNeedsClick)
+            for (var e : wheel.entrySet()) {
+                AbstractWidget w = e.getKey();
+                if (!w.visible || mx < w.getX() || mx >= w.getRight() || my < w.getY() || my >= w.getBottom()) continue;
+                if (w.active) e.getValue().accept(v < 0);   // may rebuild the group, so stop looking straight away
+                return true;
+            }
         if (viewport == null) return super.mouseScrolled(mx, my, h, v);
         scrollTo(scroll - (int) Math.round(v * 20));
         return true;
@@ -299,8 +318,8 @@ public final class Widgets extends AbstractContainerEventHandler {
         @Override
         protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
             int x = getX(), y = getY();
-            g.fill(x, y, x + width, y + height, !active ? 0xFF22262C : isHovered() ? 0xFF55606E : 0xFF3A424D);
-            int c = active ? 0xFFE4E9EF : 0xFF4E5560, cx = x + width / 2, cy = y + height / 2;
+            g.fill(x, y, x + width, y + height, !active ? Theme.CONTROL_OFF : isHovered() ? Theme.CONTROL_HOVER : Theme.CONTROL);
+            int c = active ? Theme.TEXT : Theme.GREYED, cx = x + width / 2, cy = y + height / 2;
             for (int r = 0; r < 3; r++) {          // a 5-pixel-wide triangle
                 int half = up ? r : 2 - r, yy = cy - 1 + r - (up ? 1 : 0);
                 g.fill(cx - half, yy, cx + half + 1, yy + 1, c);
@@ -345,7 +364,7 @@ public final class Widgets extends AbstractContainerEventHandler {
     private static void scrollbar(GuiGraphicsExtractor g, Bounds area, int scroll, int max) {
         if (max <= 0) return;
         int bar = barLength(area, max), by = area.y() + (int) ((long) (area.h() - bar) * scroll / max);
-        g.fill(area.right() - BAR_W, by, area.right() - 1, by + bar, 0x80FFFFFF);
+        g.fill(area.right() - BAR_W, by, area.right() - 1, by + bar, Theme.veil(0x80));
     }
 
     /**
@@ -424,6 +443,11 @@ public final class Widgets extends AbstractContainerEventHandler {
             draggingBar = false;
             return was;
         }
+    }
+
+    /** Text centred on {@code x}, with the game's drop shadow where the theme's text is light enough for one. */
+    public static void centred(GuiGraphicsExtractor g, Component text, int x, int y, int colour) {
+        g.text(font(), text, x - tw(text) / 2, y, colour, Theme.shadowed());
     }
 
     /** A square of one colour, packed 0xRRGGBB, with a dark rim so it shows on any background. */

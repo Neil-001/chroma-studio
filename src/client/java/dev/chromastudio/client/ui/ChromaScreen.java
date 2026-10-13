@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.cursor.CursorType;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.ThemeChoice;
 import dev.chromastudio.client.action.ScreenPicker;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,6 +26,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
+import org.lwjgl.sdl.SDLMouse;
 
 /**
  * The mod's window: a title bar with the tabs and the fullscreen, pin and close buttons, over the selected tab. The
@@ -40,8 +42,6 @@ public final class ChromaScreen extends Screen {
     public static Object pendingTarget;
 
     private static final int BUTTON_W = 16, COG = 16, COG_MARGIN = 2;
-    private static final int PANEL = 0xF0101317, BAR = 0xFF1B2027, BORDER = 0xFF3A424D, HOVER = 0xFF2C343E,
-            TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, GREYED = 0xFF4E5560, ACCENT = 0xFFFFB84D;
 
     private record Registered(String id, Supplier<Tab> factory, int order) {}
     private static final List<Registered> REGISTRY = new ArrayList<>();
@@ -216,6 +216,7 @@ public final class ChromaScreen extends Screen {
             g.requestCursor(CursorTypes.CROSSHAIR);
             return;
         }
+        Theme.sync();
         Bounds frame = frame(), content = content();
         // A drag in progress keeps hold of the cursor's meaning, wherever the cursor has got to.
         boolean free = !window.dragging() && !tabHasMouse;
@@ -227,7 +228,7 @@ public final class ChromaScreen extends Screen {
 
         Bounds cog = cog();
         boolean overCog = free && cog.contains(mouseX, mouseY);
-        cog(g, cog, overCog ? TEXT : DIM);
+        cog(g, cog, overCog ? Theme.TEXT : Theme.DIM);
         if (overCog) tip = Component.translatable("window.chromastudio.settings");
 
         if (tip != null) {
@@ -236,15 +237,26 @@ public final class ChromaScreen extends Screen {
             List<FormattedCharSequence> lines = Tooltip.splitTooltip(minecraft, tip);
             g.setTooltipForNextFrame(font, lines, mouseX, Math.max(mouseY, 16 + (lines.size() - 1) * 2));
         }
+        // The game shows the arrow again by itself on any frame that asks for nothing, so also once the screen has closed.
         CursorType cursor = cursor(free ? window.gripAt(mouseX, mouseY, width, height) : Window.Grip.NONE);
         if (cursor != null && !overCog) g.requestCursor(cursor);
+    }
+
+    /**
+     * The two diagonal arrows, which the game has no use for and so doesn't make. Made on first use and kept, as the
+     * game keeps its own; where the system has no such shape, each is the arrow.
+     */
+    private static final class Diagonal {
+        static final CursorType NWSE = CursorType.createStandardCursor(SDLMouse.SDL_SYSTEM_CURSOR_NWSE_RESIZE, "resize_nwse", CursorTypes.ARROW);
+        static final CursorType NESW = CursorType.createStandardCursor(SDLMouse.SDL_SYSTEM_CURSOR_NESW_RESIZE, "resize_nesw", CursorTypes.ARROW);
     }
 
     private static CursorType cursor(Window.Grip grip) {
         return switch (grip) {
             case N, S -> CursorTypes.RESIZE_NS;
             case E, W -> CursorTypes.RESIZE_EW;
-            case NE, NW, SE, SW -> CursorTypes.RESIZE_ALL;
+            case NW, SE -> Diagonal.NWSE;
+            case NE, SW -> Diagonal.NESW;
             default -> null;
         };
     }
@@ -260,20 +272,24 @@ public final class ChromaScreen extends Screen {
         Font font = mc.font;
         int screenW = g.guiWidth(), screenH = g.guiHeight();
         if (!fullscreen) {
-            g.fill(f.x(), f.y(), f.right(), f.bottom(), ARGB.multiplyAlpha(PANEL, opacity));
-            g.outline(f.x(), f.y(), f.w(), f.h(), ARGB.multiplyAlpha(BORDER, opacity));
+            g.fill(f.x(), f.y(), f.right(), f.bottom(), ARGB.multiplyAlpha(Theme.WINDOW, opacity));
+            g.outline(f.x(), f.y(), f.w(), f.h(), ARGB.multiplyAlpha(Theme.BORDER, opacity));
+        } else if (ModSettings.theme != ThemeChoice.DEFAULT) {
+            // The default's light text reads on the game's blurred backdrop, as it always has. Another theme's colours
+            // need their own background under them.
+            g.fill(f.x(), f.y(), f.right(), f.bottom(), ARGB.multiplyAlpha(Theme.WINDOW, opacity));
         }
         g.fill(f.x() + (fullscreen ? 0 : 1), f.y() + (fullscreen ? 0 : 1), f.right() - (fullscreen ? 0 : 1), f.y() + Window.TITLE_H,
-                ARGB.multiplyAlpha(BAR, opacity));
+                ARGB.multiplyAlpha(Theme.BAR, opacity));
 
         List<Bounds> rects = tabRects(f, font);
         for (int i = 0; i < rects.size(); i++) {
             Bounds r = rects.get(i);
             String id = REGISTRY.get(i).id;
             boolean on = id.equals(selected), over = r.contains(mouseX, mouseY);
-            if (over && !on) g.fill(r.x(), r.y() + 1, r.right(), r.bottom(), ARGB.multiplyAlpha(HOVER, opacity));
-            g.text(font, Component.translatable("tab.chromastudio." + id), r.x() + 6, r.y() + 4, ARGB.multiplyAlpha(on ? TEXT : DIM, opacity), false);
-            if (on) g.fill(r.x() + 3, r.bottom() - 2, r.right() - 3, r.bottom() - 1, ARGB.multiplyAlpha(ACCENT, opacity));
+            if (over && !on) g.fill(r.x(), r.y() + 1, r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.SELECTED, opacity));
+            g.text(font, Component.translatable("tab.chromastudio." + id), r.x() + 6, r.y() + 4, ARGB.multiplyAlpha(on ? Theme.TEXT : Theme.DIM, opacity), false);
+            if (on) g.fill(r.x() + 3, r.bottom() - 2, r.right() - 3, r.bottom() - 1, ARGB.multiplyAlpha(Theme.ACCENT, opacity));
         }
 
         Component tip = null;
@@ -283,8 +299,8 @@ public final class ChromaScreen extends Screen {
             Bounds b = button(f, screenW, which);
             boolean usable = which == FULLSCREEN ? !forced : which != PIN || inWorld;
             boolean over = b.contains(mouseX, mouseY);
-            if (over && usable) g.fill(b.x(), b.y() + 1, b.right(), b.bottom(), ARGB.multiplyAlpha(which == CLOSE ? 0xFFB3403A : HOVER, opacity));
-            int c = ARGB.multiplyAlpha(!usable ? GREYED : over ? TEXT : DIM, opacity);
+            if (over && usable) g.fill(b.x(), b.y() + 1, b.right(), b.bottom(), ARGB.multiplyAlpha(which == CLOSE ? Theme.DANGER : Theme.SELECTED, opacity));
+            int c = ARGB.multiplyAlpha(!usable ? Theme.GREYED : over ? Theme.TEXT : Theme.DIM, opacity);
             int cx = b.x() + b.w() / 2, cy = b.y() + b.h() / 2;
             switch (which) {
                 case CLOSE -> {
@@ -301,7 +317,7 @@ public final class ChromaScreen extends Screen {
                 default -> {
                     if (fullscreen) {   // two overlapping squares: back to a window
                         g.outline(cx - 2, cy - 4, 6, 6, c);
-                        g.fill(cx - 4, cy - 2, cx + 2, cy + 4, ARGB.multiplyAlpha(BAR, opacity));
+                        g.fill(cx - 4, cy - 2, cx + 2, cy + 4, ARGB.multiplyAlpha(Theme.BAR, opacity));
                         g.outline(cx - 4, cy - 2, 6, 6, c);
                     } else {
                         g.outline(cx - 4, cy - 4, 8, 8, c);
@@ -321,8 +337,8 @@ public final class ChromaScreen extends Screen {
     /** A small cog: a ring with a tooth on each side and corner. */
     private static void cog(GuiGraphicsExtractor g, Bounds b, int colour) {
         int cx = b.x() + b.w() / 2, cy = b.y() + b.h() / 2;
-        // A dark plate behind it, so it shows against a bright sky as well as on the title bar.
-        g.fill(b.x(), b.y(), b.right(), b.bottom(), BAR);
+        // A plate behind it, so it shows against the sky as well as on the title bar.
+        g.fill(b.x(), b.y(), b.right(), b.bottom(), Theme.BAR);
         g.fill(cx - 4, cy - 4, cx + 4, cy + 4, colour);
         g.fill(cx - 1, cy - 6, cx + 1, cy + 6, colour);
         g.fill(cx - 6, cy - 1, cx + 6, cy + 1, colour);
@@ -330,13 +346,14 @@ public final class ChromaScreen extends Screen {
         g.fill(cx + 3, cy - 5, cx + 5, cy - 3, colour);
         g.fill(cx - 5, cy + 3, cx - 3, cy + 5, colour);
         g.fill(cx + 3, cy + 3, cx + 5, cy + 5, colour);
-        g.fill(cx - 2, cy - 2, cx + 2, cy + 2, BAR);
+        g.fill(cx - 2, cy - 2, cx + 2, cy + 2, Theme.BAR);
     }
 
     /** Draws the pinned window over the world. {@link Hud#render} calls it. */
     static void renderPinned(GuiGraphicsExtractor g) {
         ChromaScreen s = pinned;
         if (s == null || current() != null) return;
+        Theme.sync();
         // The screen isn't open, so nothing else keeps its size up to date.
         s.width = g.guiWidth();
         s.height = g.guiHeight();

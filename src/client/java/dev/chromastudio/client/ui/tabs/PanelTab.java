@@ -1,7 +1,10 @@
 package dev.chromastudio.client.ui.tabs;
 
+import static dev.chromastudio.client.ui.Theme.TEXT;
+
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Tab;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -18,8 +21,6 @@ import net.minecraft.util.Util;
  */
 abstract class PanelTab extends Tab {
     static final int PAD = 3, GAP = 2, ROW = Widgets.H + GAP;
-    static final int PANEL = 0xFF161A20, BORDER = 0xFF3A424D, TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, GREYED = 0xFF4E5560,
-            SELECTED = 0xFF2C343E, HOVER = 0xFF222830, WELL = 0xFF0B0D10, GOOD = 0xFF5BD06A, FAIR = 0xFFFFB84D, BAD = 0xFFE5534B;
 
     protected final Widgets widgets = new Widgets();
     protected Bounds bounds;
@@ -94,7 +95,7 @@ abstract class PanelTab extends Tab {
         widgets.render(g, mx, my, delta);
         drawOver(g, b, mx, my, delta);
         if (dialog != null) {
-            g.fill(b.x(), b.y(), b.right(), b.bottom(), 0x90000000);
+            g.fill(b.x(), b.y(), b.right(), b.bottom(), Theme.SCRIM);
             dialog.render(g, mouseX, mouseY, delta);
         }
     }

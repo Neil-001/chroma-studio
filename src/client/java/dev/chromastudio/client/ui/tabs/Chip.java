@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import java.util.function.BooleanSupplier;
 import net.minecraft.client.Minecraft;
@@ -29,9 +30,9 @@ final class Chip extends AbstractButton {
     protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         boolean lit = on.getAsBoolean();
         int x = getX(), y = getY();
-        g.fill(x, y, x + width, y + height, !active ? 0xFF1B1F25 : lit ? (isHovered() ? 0xFF3F78B0 : 0xFF2F5D8A) : isHovered() ? 0xFF3A424D : 0xFF262C34);
-        g.outline(x, y, width, height, lit && active ? 0xFF8EC2F2 : 0xFF3A424D);
-        g.centeredText(Minecraft.getInstance().font, getMessage(), x + width / 2, y + (height - 8) / 2, !active ? 0xFF5A626E : lit ? 0xFFFFFFFF : 0xFFC8CED6);
+        g.fill(x, y, x + width, y + height, !active ? Theme.CHIP_OFF : lit ? (isHovered() ? Theme.LIT_HOVER : Theme.LIT) : isHovered() ? Theme.CONTROL : Theme.CHIP);
+        g.outline(x, y, width, height, lit && active ? Theme.HIGHLIGHT : Theme.BORDER);
+        Widgets.centred(g, getMessage(), x + width / 2, y + (height - 8) / 2, !active ? Theme.CHIP_GREYED : lit ? Theme.ON_LIT : Theme.SOFT);
     }
 
     @Override

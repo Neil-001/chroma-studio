@@ -12,6 +12,7 @@ import dev.chromastudio.client.export.SchematicExporter;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.ui.Bounds;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Harmony;
@@ -59,7 +60,7 @@ final class PaletteDialogs {
 
     /** Draws a label in the dialog's left column, level with a control on the same row. */
     private static void label(GuiGraphicsExtractor g, String key, int x, int y) {
-        g.text(PanelTab.font(), tr(key), x, y + 4, PanelTab.DIM, false);
+        g.text(PanelTab.font(), tr(key), x, y + 4, Theme.DIM, false);
     }
 
     private static int labelWidth(String... keys) {
@@ -102,7 +103,7 @@ final class PaletteDialogs {
         @Override
         protected boolean confirm() {
             if (text.isBlank()) {
-                status(tr("palettes.chromastudio.name_needed"), PanelTab.FAIR);
+                status(tr("palettes.chromastudio.name_needed"), Theme.FAIR);
                 return true;
             }
             close();
@@ -134,7 +135,7 @@ final class PaletteDialogs {
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            g.textWithWordWrap(PanelTab.font(), question, in.x(), in.y(), in.w(), PanelTab.TEXT, false);
+            g.textWithWordWrap(PanelTab.font(), question, in.x(), in.y(), in.w(), Theme.TEXT, false);
         }
     }
 
@@ -162,7 +163,7 @@ final class PaletteDialogs {
             Component browse = tr("palettes.chromastudio.browse"), go = tr("palettes.chromastudio.import");
             int y = in.y() + PanelTab.ROW;
             widgets.button(in.x(), y, browse, () -> FileDialog.choose("JSON", "json", path -> field.setValue(path.toString()),
-                    () -> status(tr("palettes.chromastudio.no_dialog"), PanelTab.FAIR))).setTooltip(Tooltip.create(tr("palettes.chromastudio.import.browse.tip")));
+                    () -> status(tr("palettes.chromastudio.no_dialog"), Theme.FAIR))).setTooltip(Tooltip.create(tr("palettes.chromastudio.import.browse.tip")));
             widgets.button(in.right() - Widgets.buttonWidth(go), y, go, this::confirm);
         }
 
@@ -170,7 +171,7 @@ final class PaletteDialogs {
         protected boolean confirm() {
             String s = text.strip();
             if (s.isEmpty()) {
-                status(tr("palettes.chromastudio.import.empty"), PanelTab.FAIR);
+                status(tr("palettes.chromastudio.import.empty"), Theme.FAIR);
                 return true;
             }
             try {
@@ -182,9 +183,9 @@ final class PaletteDialogs {
                 done.accept(p);
             } catch (IllegalArgumentException e) {
                 // The codecs' own messages are in English only; the line before them is translated.
-                status(tr("palettes.chromastudio.import.bad", e instanceof InvalidPathException ? s : String.valueOf(e.getMessage())), PanelTab.BAD);
+                status(tr("palettes.chromastudio.import.bad", e instanceof InvalidPathException ? s : String.valueOf(e.getMessage())), Theme.BAD);
             } catch (IOException _) {
-                status(tr("palettes.chromastudio.import.no_file", s), PanelTab.BAD);
+                status(tr("palettes.chromastudio.import.no_file", s), Theme.BAD);
             }
             return true;
         }
@@ -260,19 +261,19 @@ final class PaletteDialogs {
             Color seed = seed();
             int x = in.x() + labelW;
             if (seed != null) Widgets.swatch(g, x, in.y(), Widgets.H, Widgets.H, seed.rgb());
-            else g.outline(x, in.y(), Widgets.H, Widgets.H, PanelTab.BAD);
+            else g.outline(x, in.y(), Widgets.H, Widgets.H, Theme.BAD);
         }
 
         @Override
         protected boolean confirm() {
             Color seed = seed();
             if (seed == null) {
-                status(tr("palettes.chromastudio.generate.bad_hex"), PanelTab.BAD);
+                status(tr("palettes.chromastudio.generate.bad_hex"), Theme.BAD);
                 return true;
             }
             List<PaletteEntry> entries = PaletteBlocks.closest(Generator.targets(seed.oklch(), harmony, count, new Random()));
             if (entries.isEmpty()) {
-                status(tr("palettes.chromastudio.no_matches"), PanelTab.BAD);
+                status(tr("palettes.chromastudio.no_matches"), Theme.BAD);
                 return true;
             }
             close();
@@ -310,7 +311,7 @@ final class PaletteDialogs {
                 widgets.setFocused(field);
             }
             widgets.button(in.right() - browseW, in.y(), browse, () -> ImageImport.choose(file -> field.setValue(file.toString()),
-                    () -> status(tr("palettes.chromastudio.no_dialog"), PanelTab.FAIR)));
+                    () -> status(tr("palettes.chromastudio.no_dialog"), Theme.FAIR)));
             int y = in.y() + PanelTab.ROW;
             widgets.spin(x, y, 40, count, 1, 2, 32, true, v -> count = (int) v);
             widgets.button(in.right() - Widgets.buttonWidth(go), y, go, this::confirm);
@@ -326,21 +327,21 @@ final class PaletteDialogs {
         protected boolean confirm() {
             String s = path.strip();
             if (s.isEmpty()) {
-                status(tr("palettes.chromastudio.image.empty"), PanelTab.FAIR);
+                status(tr("palettes.chromastudio.image.empty"), Theme.FAIR);
                 return true;
             }
             try {
                 Path file = Path.of(s);
                 List<Color> colours = ImageImport.colours(file, count);
                 if (colours.isEmpty()) {
-                    status(tr("palettes.chromastudio.image.transparent"), PanelTab.BAD);
+                    status(tr("palettes.chromastudio.image.transparent"), Theme.BAD);
                     return true;
                 }
                 List<Oklch> targets = new ArrayList<>();
                 for (Color c : colours) targets.add(c.oklch());
                 List<PaletteEntry> entries = PaletteBlocks.closest(targets);
                 if (entries.isEmpty()) {
-                    status(tr("palettes.chromastudio.no_matches"), PanelTab.BAD);
+                    status(tr("palettes.chromastudio.no_matches"), Theme.BAD);
                     return true;
                 }
                 String name = file.getFileName().toString();
@@ -348,7 +349,7 @@ final class PaletteDialogs {
                 close();
                 done.accept(PaletteStore.get().create(dot > 0 ? name.substring(0, dot) : name, entries));
             } catch (IOException | InvalidPathException _) {
-                status(tr("palettes.chromastudio.image.unreadable", s), PanelTab.BAD);
+                status(tr("palettes.chromastudio.image.unreadable", s), Theme.BAD);
             }
             return true;
         }
@@ -429,7 +430,7 @@ final class PaletteDialogs {
             label(g, "palettes.chromastudio.export.width", half, y);
             y += PanelTab.ROW;
             label(g, "palettes.chromastudio.export.patch", half, y);
-            if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, PanelTab.FAIR, false);
+            if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.FAIR, false);
         }
 
         @Override
@@ -460,21 +461,21 @@ final class PaletteDialogs {
             try {
                 result = SchematicExporter.export(palette, options, format);
             } catch (SchematicExporter.NoBlocksException _) {
-                status(tr("command.chromastudio.export.empty"), PanelTab.BAD);
+                status(tr("command.chromastudio.export.empty"), Theme.BAD);
                 return;
             } catch (IOException e) {
-                status(tr("command.chromastudio.export.failed", String.valueOf(e.getMessage())), PanelTab.BAD);
+                status(tr("command.chromastudio.export.failed", String.valueOf(e.getMessage())), Theme.BAD);
                 return;
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
             // A path has no spaces to wrap at. The name is what tells two exports apart, and its end holds the layout and the number.
-            status(tr("command.chromastudio.export.done", middle(shortPath(result.file()), box.w() - 10)), PanelTab.GOOD);
+            status(tr("command.chromastudio.export.done", middle(shortPath(result.file()), box.w() - 10)), Theme.GOOD);
             if (!place) return;
             BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
             String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
             Optional<Component> problem = LitematicaBridge.place(result.file(), origin, name);
-            if (problem.isPresent()) status(problem.get(), PanelTab.BAD);
-            else status(tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()), PanelTab.GOOD);
+            if (problem.isPresent()) status(problem.get(), Theme.BAD);
+            else status(tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()), Theme.GOOD);
         }
     }
 
@@ -511,11 +512,11 @@ final class PaletteDialogs {
             send = widgets.button(in.right() - sendW, in.bottom() - Widgets.H - STATUS_H, sendLabel, () -> {
                 // Chat commands go without their first slash, so a WorldEdit command keeps its second.
                 ChromaStudioClient.platform.sendChatCommand(command().substring(1));
-                status(tr("palettes.chromastudio.worldedit.sent"), PanelTab.GOOD);
+                status(tr("palettes.chromastudio.worldedit.sent"), Theme.GOOD);
             });
             copy = widgets.button(in.right() - sendW - PanelTab.GAP - copyW, in.bottom() - Widgets.H - STATUS_H, copyLabel, () -> {
                 Minecraft.getInstance().keyboardHandler.setClipboard(command());
-                status(tr("palettes.chromastudio.worldedit.copied"), PanelTab.GOOD);
+                status(tr("palettes.chromastudio.worldedit.copied"), Theme.GOOD);
             });
             // The field comes last: giving it its text tells its responder, which greys the buttons.
             EditBox field = widgets.search(x, y, in.right() - x, tr("palettes.chromastudio.worldedit.from.hint"), s -> { from = s; enable(); });
@@ -538,17 +539,17 @@ final class PaletteDialogs {
             label(g, "palettes.chromastudio.worldedit.command", in.x(), in.y());
             label(g, "palettes.chromastudio.worldedit.from", in.x(), in.y() + PanelTab.ROW);
             int top = in.y() + 2 * PanelTab.ROW, bottom = in.bottom() - Widgets.H - STATUS_H - PanelTab.GAP;
-            g.fill(in.x(), top, in.right(), bottom, PanelTab.WELL);
+            g.fill(in.x(), top, in.right(), bottom, Theme.WELL);
             String command = command();
             Component shown = command != null ? Component.literal(command) : tr("palettes.chromastudio.worldedit.from.needed");
             List<FormattedCharSequence> lines = PanelTab.font().split(shown, in.w() - 6);
             int fit = Math.max(1, (bottom - top - 4) / 9);
             for (int i = 0; i < Math.min(fit, lines.size()); i++) {
-                g.text(PanelTab.font(), lines.get(i), in.x() + 3, top + 3 + i * 9, command != null ? PanelTab.TEXT : PanelTab.FAIR, false);
+                g.text(PanelTab.font(), lines.get(i), in.x() + 3, top + 3 + i * 9, command != null ? Theme.TEXT : Theme.FAIR, false);
             }
             // A long palette's command runs past the box. Copy still takes all of it, and pointing at the box shows it.
             if (lines.size() > fit) {
-                g.text(PanelTab.font(), "...", in.right() - 12, bottom - 10, PanelTab.DIM, false);
+                g.text(PanelTab.font(), "...", in.right() - 12, bottom - 10, Theme.DIM, false);
                 if (mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < bottom) g.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
             }
         }
@@ -586,7 +587,7 @@ final class PaletteDialogs {
             int over = Math.max(0, entries.size() - 9);
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
                     : tr(ModSettings.hotbarOverflow ? "palettes.chromastudio.hotbar.about_box" : "palettes.chromastudio.hotbar.about_left", over);
-            g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? PanelTab.TEXT : PanelTab.DIM, false);
+            g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
         }
     }
 

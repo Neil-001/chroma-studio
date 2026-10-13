@@ -1,6 +1,7 @@
 package dev.chromastudio.client.ui.tabs;
 
 import dev.chromastudio.client.ui.Bounds;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Oklch;
 import java.util.ArrayList;
@@ -12,18 +13,18 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.util.ARGB;
 
 /**
- * The Match tab's pickers: a saturation and value square with a hue bar, and three sliders for OKLCH lightness,
- * chroma and hue. Each slider is drawn as the colours it would give, with the part outside sRGB greyed and a tick
- * where the gamut ends.
+ * The colour pickers: a saturation and value square with a hue bar, and three sliders for OKLCH lightness, chroma and
+ * hue. Each slider is drawn as the colours it would give, with the part outside sRGB greyed and a tick where the
+ * gamut ends. The Match tab has all of it; the settings' colour dialog has the square and the bar.
  */
-final class ColourPicker implements AutoCloseable {
+public final class ColourPicker implements AutoCloseable {
     private static final int SQUARE_PX = 64, SLIDER_PX = 128;
     private static final int OUT_OF_GAMUT = 0xFF3A3F47;
     private static final int NONE = -1, SQUARE = 0, HUE_BAR = 1, SLIDER = 2;
     static final int SLIDER_H = 9, LABEL_W = 9, VALUE_W = 26;
     private static final String[] LETTERS = {"L", "C", "H"};
 
-    final TargetModel model;
+    public final TargetModel model;
     /** Runs when the player moves a picker. The argument is true once they let go. */
     private final Consumer<Boolean> onChange;
 
@@ -38,23 +39,29 @@ final class ColourPicker implements AutoCloseable {
     private final List<List<Double>> edges = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
     private int dragging = NONE;
 
-    ColourPicker(Color start, Consumer<Boolean> onChange) {
+    public ColourPicker(Color start, Consumer<Boolean> onChange) {
         model = new TargetModel(start);
         this.onChange = onChange;
     }
 
     /** Lays the square and its hue bar out in {@code top}, and the three sliders in the first three rows of {@code below}. */
     void layout(Bounds top, Bounds below) {
-        hueBar = new Bounds(top.right() - 8, top.y(), 8, top.h());
-        square = new Bounds(top.x(), top.y(), top.w() - 10, top.h());
+        layout(top);
         for (int i = 0; i < 3; i++) {
             sliders[i] = new Bounds(below.x() + LABEL_W, below.y() + i * (SLIDER_H + 2), below.w() - LABEL_W - VALUE_W, SLIDER_H);
         }
     }
 
-    boolean dragging() { return dragging != NONE; }
+    /** Lays out the square and its hue bar alone, with no sliders. */
+    public void layout(Bounds top) {
+        hueBar = new Bounds(top.right() - 8, top.y(), 8, top.h());
+        square = new Bounds(top.x(), top.y(), top.w() - 10, top.h());
+        for (int i = 0; i < 3; i++) sliders[i] = new Bounds(0, 0, 0, 0);
+    }
 
-    void render(GuiGraphicsExtractor g, Font font, float opacity) {
+    public boolean dragging() { return dragging != NONE; }
+
+    public void render(GuiGraphicsExtractor g, Font font, float opacity) {
         paint();
         float[] hsv = model.hsv();
         squarePixels.draw(g, square.x(), square.y(), square.w(), square.h(), opacity);
@@ -73,7 +80,8 @@ final class ColourPicker implements AutoCloseable {
                 Math.round(lch.h()) % 360 + "°"};
         for (int i = 0; i < 3; i++) {
             Bounds s = sliders[i];
-            g.text(font, LETTERS[i], s.x() - LABEL_W, s.y() + 1, ARGB.multiplyAlpha(0xFF9AA5B3, opacity), false);
+            if (s.w() == 0) break;
+            g.text(font, LETTERS[i], s.x() - LABEL_W, s.y() + 1, ARGB.multiplyAlpha(Theme.DIM, opacity), false);
             sliderPixels[i].draw(g, s.x(), s.y(), s.w(), s.h(), opacity);
             for (double edge : edges.get(i)) {
                 int ex = s.x() + (int) Math.round(edge * (s.w() - 1));
@@ -82,7 +90,7 @@ final class ColourPicker implements AutoCloseable {
             int kx = s.x() + (int) Math.round(at[i] * (s.w() - 1));
             g.fill(kx - 1, s.y() - 1, kx + 2, s.bottom() + 1, 0xFF000000);
             g.fill(kx, s.y() - 1, kx + 1, s.bottom() + 1, 0xFFFFFFFF);
-            g.text(font, values[i], s.right() + VALUE_W - font.width(values[i]), s.y() + 1, ARGB.multiplyAlpha(0xFFE4E9EF, opacity), false);
+            g.text(font, values[i], s.right() + VALUE_W - font.width(values[i]), s.y() + 1, ARGB.multiplyAlpha(Theme.TEXT, opacity), false);
         }
     }
 
@@ -135,7 +143,7 @@ final class ColourPicker implements AutoCloseable {
         };
     }
 
-    boolean mouseClicked(double mx, double my) {
+    public boolean mouseClicked(double mx, double my) {
         dragging = NONE;
         if (square.contains(mx, my)) dragging = SQUARE;
         else if (hueBar.contains(mx, my)) dragging = HUE_BAR;
@@ -145,13 +153,13 @@ final class ColourPicker implements AutoCloseable {
         return true;
     }
 
-    boolean mouseDragged(double mx, double my) {
+    public boolean mouseDragged(double mx, double my) {
         if (dragging == NONE) return false;
         moveTo(mx, my);
         return true;
     }
 
-    boolean mouseReleased() {
+    public boolean mouseReleased() {
         if (dragging == NONE) return false;
         dragging = NONE;
         onChange.accept(true);

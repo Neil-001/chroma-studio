@@ -1,5 +1,14 @@
 package dev.chromastudio.client.ui.tabs;
 
+import static dev.chromastudio.client.ui.Theme.BAD;
+import static dev.chromastudio.client.ui.Theme.BORDER;
+import static dev.chromastudio.client.ui.Theme.DIM;
+import static dev.chromastudio.client.ui.Theme.GOOD;
+import static dev.chromastudio.client.ui.Theme.HOVER;
+import static dev.chromastudio.client.ui.Theme.SELECTED;
+import static dev.chromastudio.client.ui.Theme.TEXT;
+import static dev.chromastudio.client.ui.Theme.WELL;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteStore;
@@ -8,6 +17,7 @@ import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Bounds;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.export.Layout;
@@ -171,7 +181,7 @@ public final class PalettesTab extends PanelTab {
     /** A field's whole text over the reason it can't be changed, or the reason alone when the field is empty. */
     private static Component whole(String text, Component reason) {
         if (text == null || text.isBlank()) return reason;
-        return Component.empty().append(text).append("\n").append(reason.copy().withColor(DIM & 0xFFFFFF));
+        return Component.empty().append(text).append("\n").append(reason.copy().withColor(Theme.TIP_DIM));
     }
 
     private record Tool(String key, ItemStack icon, Runnable run, Component unavailable, boolean lit) {}
@@ -199,7 +209,7 @@ public final class PalettesTab extends PanelTab {
             ToolButton button = widgets.add(new ToolButton(x, y, w, t.icon, label, labels, t.lit, t.run));
             Component tip = tr("palettes.chromastudio.tool." + t.key + ".tip");
             // With icons alone the tooltip also has to name the tool.
-            Component named = labels ? tip : Component.empty().append(label).append("\n").append(tip.copy().withColor(DIM & 0xFFFFFF));
+            Component named = labels ? tip : Component.empty().append(label).append("\n").append(tip.copy().withColor(Theme.TIP_DIM));
             if (t.unavailable != null) Widgets.disable(button, labels ? t.unavailable : Component.empty().append(label).append("\n").append(t.unavailable));
             else button.setTooltip(Tooltip.create(named));
             x += w + GAP;
@@ -421,7 +431,7 @@ public final class PalettesTab extends PanelTab {
         Palette p = selected();
         int text = ARGB.multiplyAlpha(TEXT, opacity), dim = ARGB.multiplyAlpha(DIM, opacity);
         if (p == null) {
-            g.centeredText(font(), tr("palettes.chromastudio.none_selected_short"), b.x() + b.w() / 2, b.y() + b.h() / 2 - 4, dim);
+            Widgets.centred(g, tr("palettes.chromastudio.none_selected_short"), b.x() + b.w() / 2, b.y() + b.h() / 2 - 4, dim);
             return;
         }
         g.text(font(), fit(name(p).getString(), b.w() - 2 * PAD), b.x() + PAD, b.y() + PAD, text, false);

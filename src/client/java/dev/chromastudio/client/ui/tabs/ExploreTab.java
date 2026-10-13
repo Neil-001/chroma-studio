@@ -1,5 +1,11 @@
 package dev.chromastudio.client.ui.tabs;
 
+import static dev.chromastudio.client.ui.Theme.BACKING;
+import static dev.chromastudio.client.ui.Theme.BORDER;
+import static dev.chromastudio.client.ui.Theme.DIM;
+import static dev.chromastudio.client.ui.Theme.TEXT;
+import static dev.chromastudio.client.ui.Theme.WELL;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
@@ -7,6 +13,7 @@ import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Handoff;
 import dev.chromastudio.client.ui.Tab;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Face;
@@ -34,7 +41,6 @@ import net.minecraft.util.ARGB;
  */
 public final class ExploreTab extends Tab {
     private static final int PAD = 3, GAP = 2, AXIS = 6;
-    private static final int TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, WELL = 0xFF0B0D10, BORDER = 0xFF3A424D, BACKING = 0x80101317;
     private static final double MAX_ZOOM = 32;
     /** How far right of the cursor the game starts a tooltip, and the room it wants past the tooltip's text before it changes sides. */
     private static final int TIP_OFFSET = 12, TIP_MARGIN = 4;
@@ -155,14 +161,14 @@ public final class ExploreTab extends Tab {
             Entry e = over.entry;
             List<Component> tip = new ArrayList<>();
             tip.add(e.properties().isEmpty() ? e.name() : Component.translatable("match.chromastudio.name_with_state", e.name(), e.properties()));
-            tip.add(Component.literal(String.format("#%06X", over.rgb)).withColor(DIM & 0xFFFFFF));
-            tip.add(tr("click").withColor(DIM & 0xFFFFFF));
+            tip.add(Component.literal(String.format("#%06X", over.rgb)).withColor(Theme.TIP_DIM));
+            tip.add(tr("click").withColor(Theme.TIP_DIM));
             // The icon sits up and to the left of the cursor, where the tooltip, which goes to the right, doesn't cover it.
             // Near the screen's right edge the game puts the tooltip on the left instead, so the icon changes sides too.
             int tipWidth = tip.stream().mapToInt(font::width).max().orElse(0);
             boolean tipOnLeft = mouseX + TIP_OFFSET + tipWidth + TIP_MARGIN > Minecraft.getInstance().getWindow().getGuiScaledWidth();
             int ix = tipOnLeft ? Math.min(b.right() - 17, mouseX + 6) : Math.max(b.x() + 1, mouseX - 22), iy = Math.max(b.y() + 1, mouseY - 22);
-            g.fill(ix - 1, iy - 1, ix + 17, iy + 17, 0xE0000000);
+            g.fill(ix - 1, iy - 1, ix + 17, iy + 17, Theme.sink(0xE0));
             Widgets.blockIcon(g, e.block(), ix, iy);
             g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
         }
@@ -194,12 +200,12 @@ public final class ExploreTab extends Tab {
             g.fill(p.x() - AXIS, p.y() + y, p.x() - 2, Math.min(p.bottom(), p.y() + y + 2), ARGB.multiplyAlpha(0xFF000000 | grey * 0x010101, opacity));
         }
         if (!BlockIndex.get().ready()) {
-            g.centeredText(font, Component.translatable("match.chromastudio.building", Math.round(BlockIndex.get().progress() * 100)),
+            Widgets.centred(g, Component.translatable("match.chromastudio.building", Math.round(BlockIndex.get().progress() * 100)),
                     p.x() + p.w() / 2, p.y() + p.h() / 2 - 4, ARGB.multiplyAlpha(DIM, opacity));
             return null;
         }
         if (dots.isEmpty()) {
-            g.centeredText(font, Component.translatable("match.chromastudio.no_results"), p.x() + p.w() / 2, p.y() + p.h() / 2 - 4, ARGB.multiplyAlpha(DIM, opacity));
+            Widgets.centred(g, Component.translatable("match.chromastudio.no_results"), p.x() + p.w() / 2, p.y() + p.h() / 2 - 4, ARGB.multiplyAlpha(DIM, opacity));
             return null;
         }
         Dot nearest = null;
@@ -209,7 +215,7 @@ public final class ExploreTab extends Tab {
             int x = screenX(d.hue), y = screenY(d.lightness), s = d.size, x0 = x - s / 2, y0 = y - s / 2;
             if (x0 + s < p.x() || x0 > p.right() || y0 + s < p.y() || y0 > p.bottom()) continue;
             g.fill(x0, y0, x0 + s, y0 + s, ARGB.multiplyAlpha(0xFF000000 | d.rgb, opacity));
-            if (d.ringed) g.outline(x0 - 2, y0 - 2, s + 4, s + 4, ARGB.multiplyAlpha(0xFFFFFFFF, opacity));
+            if (d.ringed) g.outline(x0 - 2, y0 - 2, s + 4, s + 4, ARGB.multiplyAlpha(Theme.STRONG, opacity));
             int dx = x - mouseX, dy = y - mouseY, far = dx * dx + dy * dy;
             if (far < best && p.contains(mouseX, mouseY)) {
                 best = far;
@@ -218,7 +224,7 @@ public final class ExploreTab extends Tab {
         }
         if (nearest != null) {
             int x = screenX(nearest.hue), y = screenY(nearest.lightness), s = nearest.size;
-            g.outline(x - s / 2 - 1, y - s / 2 - 1, s + 2, s + 2, 0xFFFFFFFF);
+            g.outline(x - s / 2 - 1, y - s / 2 - 1, s + 2, s + 2, Theme.STRONG);
         }
         g.disableScissor();
         return nearest;

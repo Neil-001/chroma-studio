@@ -1,6 +1,7 @@
 package dev.chromastudio.client.ui.tabs;
 
 import dev.chromastudio.client.ui.Bounds;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -24,7 +25,7 @@ abstract class Dialog {
     protected Bounds box;
     /** A line under the controls saying what happened, and its colour. */
     protected Component status;
-    protected int statusColour = PanelTab.TEXT;
+    protected int statusColour = Theme.TEXT;
 
     protected Dialog(Component title, int width, int height) {
         this.title = title;
@@ -63,10 +64,10 @@ abstract class Dialog {
     }
 
     final void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-        g.fill(box.x(), box.y(), box.right(), box.bottom(), PanelTab.PANEL);
-        g.fill(box.x(), box.y(), box.right(), box.y() + TITLE_H, 0xFF1B2027);
-        g.outline(box.x(), box.y(), box.w(), box.h(), PanelTab.BORDER);
-        g.text(PanelTab.font(), PanelTab.fit(title.getString(), box.w() - 22), box.x() + 5, box.y() + 3, PanelTab.TEXT, false);
+        g.fill(box.x(), box.y(), box.right(), box.bottom(), Theme.PANEL);
+        g.fill(box.x(), box.y(), box.right(), box.y() + TITLE_H, Theme.BAR);
+        g.outline(box.x(), box.y(), box.w(), box.h(), Theme.BORDER);
+        g.text(PanelTab.font(), PanelTab.fit(title.getString(), box.w() - 22), box.x() + 5, box.y() + 3, Theme.TEXT, false);
         Bounds in = new Bounds(box.x() + 5, box.y() + TITLE_H + 3, box.w() - 10, box.h() - TITLE_H - 7);
         draw(g, in, mouseX, mouseY);
         widgets.render(g, mouseX, mouseY, delta);
