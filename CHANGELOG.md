@@ -24,6 +24,7 @@ Chroma Studio 1.0.0 is the first release. It finds the blocks closest to a colou
 - Dye leather, leather horse and wolf armour in an exact colour
 - Recipe lookup with JEI, REI or EMI
 - `/chroma` commands to match, capture, export and place
-- A settings screen, also in Mod Menu on Fabric and the mod list on NeoForge
+- A settings screen with a search, and an undo and a reset for each group or for everything, also in Mod Menu on Fabric and the mod list on NeoForge
+- Four window colours, Default, Warm, Vanilla and Dark, or a colour of your own, with text that stays readable on any of them
 - Translations into Chinese, Russian, Portuguese, German, Spanish, French, Japanese, Korean and Polish, written by a program
 - An API for other mods to read block colours, closest blocks and palettes

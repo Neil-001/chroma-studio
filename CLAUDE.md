@@ -30,11 +30,12 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 - The mod is client-only. Fabric's `environment` is `client` with only a `client` entrypoint. NeoForge's one `@Mod` class has `dist = Dist.CLIENT`, and the mod registers no payloads, so a server never checks for it. Don't add a server entrypoint, a payload or a registry entry.
 - There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
 - `client/index/` is the block index, described below.
-- `client/ui/` has `ChromaScreen`, the window, with `Window` for its position and size, `Hud`, `Tooltips` and `SettingsScreen`. A tab or screen builds its controls through a `Widgets` group.
+- `client/ui/` has `ChromaScreen`, the window, with `Window` for its position and size, `Hud`, `Tooltips` and `SettingsScreen`, whose dialogs are `Popup`s. A tab or screen builds its controls through a `Widgets` group.
+- `Theme` holds every colour the window, its tabs and the settings screen draw with, worked out from the `theme` setting's base colour. Its fields change with the setting, so read them while drawing. `ThemeTest` checks that text reads on every theme.
 - `client/ui/tabs/` has the four tabs, their panels and dialogs, and `MatchState`.
 - `client/action/` is what the mod does for the player in the game: `Eyedropper`, `ScreenPicker`, `Give`, `HotbarFill`, `Dye`, `Capture`, `ImageImport` and `RecipeViewers`. `PaletteBlocks` turns palette entries into block states and index entries.
 - `client/export/` has `SchematicExporter`, `LitematicaBridge` and `ExportCommand`, which is `/chroma export` and `/chroma place`.
-- `ModSettings` holds the mod's own options, and its comment says how to add one. A setting also needs a label and a `.tip` in the language file. One that names a core enum (`metric`, `easing`, `hueArc`) is a string holding the constant's name.
+- `ModSettings` holds the mod's own options, and its comment says how to add one. A setting also needs a label and a `.tip` in the language file, which the settings screen's search reads. One that names a core enum (`metric`, `easing`, `hueArc`) is a string holding the constant's name. The screen's Undo goes back to a `ModSettings.snapshot()` taken when it opened.
 - `PaletteStore` keeps the player's palettes and reads the bundled presets. A new preset is a JSON file in `assets/chromastudio/presets/`, its name in `PaletteStore.PRESETS` and a `preset.chromastudio.<file>` key.
 - A new `/chroma` subcommand goes in through `ChromaCommand.SUBCOMMANDS`. `/chroma debug <block id>` prints what the index holds for a block.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
@@ -82,14 +83,16 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 - The game has no `#minecraft:dyeable` tag of its own. What can be dyed is set by `crafting_dye` recipes, which a client isn't sent.
 - The game lays a frame's GUI out before it draws the world, so the frame `ScreenPicker` can read is the last one shown.
 - The game ships SDL but not tinyfd, so `FileDialog` is SDL's, and every caller has a path field too.
+- The mouse cursor is SDL's too, not GLFW's. Ask for one each frame with `g.requestCursor`; a frame that asks for none gets the arrow back. `CursorType.createStandardCursor` makes a shape `CursorTypes` lacks, such as the diagonal arrows, and falls back where the system has none.
 - Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number.
 
 ## Conventions
 
 - Grey out inapplicable controls with a tooltip explaining why. Don't hide them.
 - Use cyclers for options, so right-click steps backwards, and spinners for numbers.
-- The mouse wheel steps a spinner while the cursor is over it. In a list that scrolls, such as the settings, it only steps a spinner the player has clicked into and scrolls the list otherwise, so scrolling past a number doesn't change it.
+- The mouse wheel steps a spinner while the cursor is over it, and a cycler too: a notch down is a click and a notch up a right-click. `Widgets` does both for every control it makes, so make them through it. The settings list is the one exception, through `Widgets.wheelNeedsClick`: there the wheel only steps a spinner the player has clicked into and scrolls the list otherwise, so scrolling past a control doesn't change it.
 - Size buttons with the text's width. Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
+- Take colours from `Theme`, never a hex literal, apart from a colour that is data, such as a swatch, and the black and white marks drawn over one. The game's own tooltips and text fields stay dark on every theme, so text in them uses `Theme.TIP_*` and `Theme.FIELD_BAD`. Centre text with `Widgets.centred`, which leaves the drop shadow off dark text.
 - Use plain, sentence case UI copy without jargon.
 - Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
 - Visual fixes must preserve other behaviour. Prove it, for example by comparing pixels.

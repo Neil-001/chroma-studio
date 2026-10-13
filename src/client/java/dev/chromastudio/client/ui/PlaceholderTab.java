@@ -17,6 +17,6 @@ final class PlaceholderTab extends Tab {
     @Override
     public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
         var font = Minecraft.getInstance().font;
-        g.centeredText(font, title(), b.x() + b.w() / 2, b.y() + (b.h() - font.lineHeight) / 2, ARGB.multiplyAlpha(0xFF9AA5B3, opacity));
+        Widgets.centred(g, title(), b.x() + b.w() / 2, b.y() + (b.h() - font.lineHeight) / 2, ARGB.multiplyAlpha(Theme.DIM, opacity));
     }
 }

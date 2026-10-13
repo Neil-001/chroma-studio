@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.ui.Theme;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Tooltip;
@@ -28,8 +29,8 @@ final class IconButton extends AbstractButton {
     protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY();
         boolean close = glyph == Glyph.CLOSE || glyph == Glyph.REMOVE;
-        g.fill(x, y, x + width, y + height, !active ? 0xFF22262C : isHovered() ? (close ? 0xFFB3403A : 0xFF55606E) : 0xFF3A424D);
-        int c = active ? 0xFFE4E9EF : 0xFF4E5560, cx = x + width / 2, cy = y + height / 2;
+        g.fill(x, y, x + width, y + height, !active ? Theme.CONTROL_OFF : isHovered() ? (close ? Theme.DANGER : Theme.CONTROL_HOVER) : Theme.CONTROL);
+        int c = active ? Theme.TEXT : Theme.GREYED, cx = x + width / 2, cy = y + height / 2;
         switch (glyph) {
             case UP, DOWN -> {
                 boolean up = glyph == Glyph.UP;

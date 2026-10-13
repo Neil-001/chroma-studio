@@ -1,5 +1,13 @@
 package dev.chromastudio.client.ui.tabs;
 
+import static dev.chromastudio.client.ui.Theme.BACKING;
+import static dev.chromastudio.client.ui.Theme.BORDER;
+import static dev.chromastudio.client.ui.Theme.DIM;
+import static dev.chromastudio.client.ui.Theme.GREYED;
+import static dev.chromastudio.client.ui.Theme.PANEL;
+import static dev.chromastudio.client.ui.Theme.TEXT;
+import static dev.chromastudio.client.ui.Theme.WELL;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.ChromaStudioClient;
@@ -23,6 +31,7 @@ import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Handoff;
 import dev.chromastudio.client.ui.Tab;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Badge;
 import dev.chromastudio.core.color.Color;
@@ -74,14 +83,11 @@ import net.minecraft.world.level.block.Block;
  */
 public final class MatchTab extends Tab {
     private static final int PAD = 3, ROW = 18, CELL = 20, HEAD = 13, GAP = 2, LINE = Widgets.H + 1, STATUS_H = 10;
-    private static final int TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, GREYED = 0xFF4E5560, BAD = 0xFFFF6B6B,
-            PANEL = 0xFF161A20, BORDER = 0xFF3A424D, WELL = 0xFF0B0D10, BACKING = 0x80101317;
     private static final long STATUS_MS = 2500;
     private static final int RESULT = 0, MEMBER = 1, MAKE = 2;
     private static final int BODY = 0, EXPAND = 1, ADD = 2, GIVE = 3, RESTORE = 4;
     /** How many blocks the swap list offers, and the most lines of it that show at once. */
     private static final int SWAP_OPTIONS = 20, SWAP_LINES = 6;
-    private static final int SWAPPED = 0xFFFFB84D;
     /** The signs on a line's small buttons, seven pixels square: add, give and put back. */
     private static final String[] PLUS = {"...#...", "...#...", "...#...", "#######", "...#...", "...#...", "...#..."},
             HAND = {"..#.#..", "..#.#.#", "#.#.#.#", "#.#####", "#######", ".#####.", "..###.."},
@@ -96,7 +102,6 @@ public final class MatchTab extends Tab {
     });
 
     private enum Panel { NONE, FILTERS, BIOMES, FIND_BIOME, DYE }
-    private static final int TINT_BADGE = 0xFF6FC45A;
 
     /** The matches on show, and what they were matched with, which the rows are drawn with too. */
     private record Shown(List<BlockIndex.Match> matches, Target target, Scale scale, TintContext tint, Metric metric) {}
@@ -459,7 +464,7 @@ public final class MatchTab extends Tab {
     private void typed(EditBox field, String text, Predicate<String> take) {
         if (filling || field == null) return;
         boolean valid = take.test(text);
-        field.setTextColor(valid ? EditBox.DEFAULT_TEXT_COLOR : BAD);
+        field.setTextColor(valid ? EditBox.DEFAULT_TEXT_COLOR : Theme.FIELD_BAD);
         if (!valid) return;
         fill(field);
         adopt();
@@ -645,10 +650,10 @@ public final class MatchTab extends Tab {
         g.fill(slot.x() + 1, slot.y() + 1, slot.right() - 1, slot.bottom() - 1, ARGB.multiplyAlpha(WELL, opacity));
         if (entry != null) Widgets.blockIcon(g, entry.block(), slot.x() + 1, slot.y() + 1);
         if (slot.contains(mouseX, mouseY)) {
-            g.fill(slot.x() + 1, slot.y() + 1, slot.right() - 1, slot.bottom() - 1, 0x40FFFFFF);
+            g.fill(slot.x() + 1, slot.y() + 1, slot.right() - 1, slot.bottom() - 1, Theme.veil(0x40));
             if (entry != null) tip.add(targetName());
-            tip.add(tr("slot.tip").withColor((DIM) & 0xFFFFFF));
-            tip.add(tr("slot.tip.scroll").withColor((DIM) & 0xFFFFFF));
+            tip.add(tr("slot.tip").withColor(Theme.TIP_DIM));
+            tip.add(tr("slot.tip.scroll").withColor(Theme.TIP_DIM));
         }
         g.fill(swatch.x(), swatch.y(), swatch.right(), swatch.bottom(), ARGB.multiplyAlpha(0xFF000000, opacity));
         g.fill(swatch.x() + 1, swatch.y() + 1, swatch.right() - 1, swatch.bottom() - 1, ARGB.multiplyAlpha(0xFF000000 | MatchState.colour().rgb(), opacity));
@@ -668,7 +673,7 @@ public final class MatchTab extends Tab {
                 if (mouseX >= rx && mouseX < rx + cw - 1 && mouseY >= recent.y() && mouseY < recent.bottom()) {
                     tip.add(tr("recent.tip", String.format("#%06X", colours.get(i))));
                 }
-            } else g.outline(rx, recent.y(), cw - 1, recent.h(), ARGB.multiplyAlpha(0xFF262C34, opacity));
+            } else g.outline(rx, recent.y(), cw - 1, recent.h(), ARGB.multiplyAlpha(Theme.CHIP, opacity));
         }
     }
 
@@ -701,7 +706,7 @@ public final class MatchTab extends Tab {
             g.fill(mx, d.bottom() - 4, mx + 1, d.bottom() - 1, DIM);
         }
         int kx = x0 + (int) Math.round(distanceAt(ModSettings.viewingDistance) * track);
-        g.fill(kx - 1, d.y() + 1, kx + 2, d.bottom() - 1, over ? 0xFFFFFFFF : 0xFF8EC2F2);
+        g.fill(kx - 1, d.y() + 1, kx + 2, d.bottom() - 1, over ? Theme.STRONG : Theme.HIGHLIGHT);
         boolean far = ModSettings.viewingDistance >= ModSettings.VIEW_FAR;
         Component label = far ? tr("distance.far") : ModSettings.viewingDistance == 1 ? tr("distance.block") : tr("distance.blocks", ModSettings.viewingDistance);
         // The label keeps clear of the handle: on whichever side has the room.
@@ -709,7 +714,7 @@ public final class MatchTab extends Tab {
         g.text(font, label, lx, d.y() + 4, TEXT, false);
         if (d.contains(mouseX, mouseY)) {
             tip.add(tr("distance.tip"));
-            tip.add(tr("distance.scale", MatchState.scale().texels).withColor((DIM) & 0xFFFFFF));
+            tip.add(tr("distance.scale", MatchState.scale().texels).withColor(Theme.TIP_DIM));
         }
     }
 
@@ -723,15 +728,15 @@ public final class MatchTab extends Tab {
     private void results(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
         BlockIndex index = BlockIndex.get();
         Bounds r = results;
-        g.fill(r.x(), r.y(), r.right(), r.bottom(), ARGB.multiplyAlpha(0x60000000, opacity));
+        g.fill(r.x(), r.y(), r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.sink(0x60), opacity));
         if (!index.ready() || shown == null) {
             Component text = index.ready() ? tr("searching") : tr("building", Math.round(index.progress() * 100));
-            g.centeredText(font, text, r.x() + r.w() / 2, r.y() + r.h() / 2 - 10, ARGB.multiplyAlpha(DIM, opacity));
+            Widgets.centred(g, text, r.x() + r.w() / 2, r.y() + r.h() / 2 - 10, ARGB.multiplyAlpha(DIM, opacity));
             if (!index.ready()) bar(g, r.x() + 20, r.y() + r.h() / 2 + 4, r.w() - 40, index.progress(), opacity);
             return;
         }
         if (shown.matches.isEmpty()) {
-            g.centeredText(font, tr("no_results"), r.x() + r.w() / 2, r.y() + r.h() / 2 - 4, ARGB.multiplyAlpha(DIM, opacity));
+            Widgets.centred(g, tr("no_results"), r.x() + r.w() / 2, r.y() + r.h() / 2 - 4, ARGB.multiplyAlpha(DIM, opacity));
             return;
         }
         if (grid) {
@@ -744,7 +749,7 @@ public final class MatchTab extends Tab {
                     Thumbnails.draw(g2, cell.entry, cell.face, shown.scale, shown.tint, cx + 2, y + 2, 16, opacity);
                     if (cell.swapped()) swapMark(g2, cx + 2, y + 2, opacity);
                     if (on) {
-                        g2.outline(cx + 1, y + 1, 18, 18, 0xFFFFFFFF);
+                        g2.outline(cx + 1, y + 1, 18, 18, Theme.STRONG);
                         hovered = cell;
                         describe(hovered, BODY, tip);
                     }
@@ -758,8 +763,8 @@ public final class MatchTab extends Tab {
     }
 
     private static void bar(GuiGraphicsExtractor g, int x, int y, int w, float progress, float opacity) {
-        g.fill(x, y, x + w, y + 2, ARGB.multiplyAlpha(0xFF262C34, opacity));
-        g.fill(x, y, x + Math.round(w * Math.clamp(progress, 0, 1)), y + 2, ARGB.multiplyAlpha(0xFF8EC2F2, opacity));
+        g.fill(x, y, x + w, y + 2, ARGB.multiplyAlpha(Theme.CHIP, opacity));
+        g.fill(x, y, x + Math.round(w * Math.clamp(progress, 0, 1)), y + 2, ARGB.multiplyAlpha(Theme.HIGHLIGHT, opacity));
     }
 
     /** A tile of the grid as a line: the match there, or the block swapped in for it. */
@@ -782,7 +787,7 @@ public final class MatchTab extends Tab {
 
     /** One of a line's small buttons, its right edge at {@code right}. */
     private static void rowButton(GuiGraphicsExtractor g, int right, int y, String[] sign, boolean lit, boolean can, float opacity) {
-        g.fill(right - 11, y + 3, right, y + 14, ARGB.multiplyAlpha(lit && can ? 0xFF3F78B0 : 0xFF262C34, opacity));
+        g.fill(right - 11, y + 3, right, y + 14, ARGB.multiplyAlpha(lit && can ? Theme.LIT_HOVER : Theme.CHIP, opacity));
         int colour = ARGB.multiplyAlpha(can ? TEXT : GREYED, opacity);
         for (int j = 0; j < sign.length; j++)
             for (int i = 0; i < sign[j].length(); i++)
@@ -792,24 +797,24 @@ public final class MatchTab extends Tab {
     /** The mark of a block swapped in: an amber corner at the bottom left of its icon, as the tint's green one is at the right. */
     private static void swapMark(GuiGraphicsExtractor g, int x, int y, float opacity) {
         g.fill(x, y + 11, x + 5, y + 16, ARGB.multiplyAlpha(0xFF10140F, opacity));
-        g.fill(x, y + 12, x + 4, y + 16, ARGB.multiplyAlpha(SWAPPED, opacity));
+        g.fill(x, y + 12, x + 4, y + 16, ARGB.multiplyAlpha(0xFF000000 | Theme.TIP_SWAPPED, opacity));
     }
 
     private void row(GuiGraphicsExtractor g, Font font, Row row, int x, int y, int w, int h, boolean over, float opacity, int mouseX, List<Component> tip) {
         int zone = over ? zone(row, x, w, mouseX) : -1;
-        if (row.type != RESULT) g.fill(x, y, x + w, y + h, ARGB.multiplyAlpha(0x38000000, opacity));
-        if (over || swapList != null && swapList.row == row) g.fill(x, y, x + w, y + h, 0x20FFFFFF);
+        if (row.type != RESULT) g.fill(x, y, x + w, y + h, ARGB.multiplyAlpha(Theme.sink(0x38), opacity));
+        if (over || swapList != null && swapList.row == row) g.fill(x, y, x + w, y + h, Theme.veil(0x20));
         int text = ARGB.multiplyAlpha(TEXT, opacity), dim = ARGB.multiplyAlpha(DIM, opacity);
         if (row.type == MAKE) {
             boolean can = PaletteSink.current() != null;
             Component label = tr("make_palette", BlockIndex.get().materialSet(row.entry).size());
-            g.text(font, label, x + 28, y + 5, can ? (over ? 0xFFFFFFFF : ARGB.multiplyAlpha(0xFF8EC2F2, opacity)) : ARGB.multiplyAlpha(GREYED, opacity), false);
+            g.text(font, label, x + 28, y + 5, can ? (over ? Theme.STRONG : ARGB.multiplyAlpha(Theme.HIGHLIGHT, opacity)) : ARGB.multiplyAlpha(GREYED, opacity), false);
             if (over) tip.add(can ? tr("make_palette.tip") : tr("no_palette"));
             return;
         }
         Entry e = row.entry;
         int left = x + (row.type == MEMBER ? 12 : 1);
-        if (row.hasSet) triangle(g, left + 2, y + h / 2, sameBlock(expanded, e), zone == EXPAND ? 0xFFFFFFFF : dim);
+        if (row.hasSet) triangle(g, left + 2, y + h / 2, sameBlock(expanded, e), zone == EXPAND ? Theme.STRONG : dim);
         left += 9;
         ItemStack icon = new ItemStack(e.block());
         if (icon.isEmpty()) Widgets.swatch(g, left + 2, y + 3, 12, 12, e.face(row.face, shown.tint).mean(shown.scale).rgb());
@@ -817,7 +822,7 @@ public final class MatchTab extends Tab {
         // The tint badge: a green corner on the icon of a block the game tints, as it does grass by its biome.
         if (e.tinted()) {
             g.fill(left + 11, y + 11, left + 16, y + 16, ARGB.multiplyAlpha(0xFF10140F, opacity));
-            g.fill(left + 12, y + 12, left + 16, y + 16, ARGB.multiplyAlpha(TINT_BADGE, opacity));
+            g.fill(left + 12, y + 12, left + 16, y + 16, ARGB.multiplyAlpha(0xFF000000 | Theme.TIP_TINT, opacity));
         }
         if (row.swapped()) swapMark(g, left, y, opacity);
         left += 18;
@@ -920,24 +925,24 @@ public final class MatchTab extends Tab {
         }
         Entry e = row.entry;
         facts(e, row.face, row.distance, tip);
-        if (row.swapped()) tip.add(tr("row.swapped", row.original.name()).withColor(SWAPPED & 0xFFFFFF));
+        if (row.swapped()) tip.add(tr("row.swapped", row.original.name()).withColor(Theme.TIP_SWAPPED));
         // A tile of the grid has no buttons, so there a click still gives the block.
-        if (!grid) tip.add(tr("row.swap").withColor((DIM) & 0xFFFFFF));
-        else tip.add(noGive.isPresent() ? tr("row.give.off", noGive.get()).withColor(GREYED) : tr("row.give").withColor((DIM) & 0xFFFFFF));
-        tip.add(tr("row.copy").withColor((DIM) & 0xFFFFFF));
-        tip.add(tr("row.gradient").withColor((DIM) & 0xFFFFFF));
-        if (grid) tip.add(tr("row.add").withColor((PaletteSink.current() != null ? DIM : GREYED) & 0xFFFFFF));
-        tip.add(tr("row.recipe", recipeKeyName()).withColor((RecipeViewers.available() ? DIM : GREYED) & 0xFFFFFF));
+        if (!grid) tip.add(tr("row.swap").withColor(Theme.TIP_DIM));
+        else tip.add(noGive.isPresent() ? tr("row.give.off", noGive.get()).withColor(Theme.TIP_GREYED) : tr("row.give").withColor(Theme.TIP_DIM));
+        tip.add(tr("row.copy").withColor(Theme.TIP_DIM));
+        tip.add(tr("row.gradient").withColor(Theme.TIP_DIM));
+        if (grid) tip.add(tr("row.add").withColor(PaletteSink.current() != null ? Theme.TIP_DIM : Theme.TIP_GREYED));
+        tip.add(tr("row.recipe", recipeKeyName()).withColor(RecipeViewers.available() ? Theme.TIP_DIM : Theme.TIP_GREYED));
     }
 
     /** What a block is and how it matched, as a tooltip's first lines. */
     private void facts(Entry e, Face face, double distance, List<Component> tip) {
         var stats = e.face(face, shown.tint);
         tip.add(entryName(e));
-        tip.add(Component.literal(e.toString()).withColor((DIM) & 0xFFFFFF));
+        tip.add(Component.literal(e.toString()).withColor(Theme.TIP_DIM));
         tip.add(tr("row.facts", deltaE(distance, shown.metric), Eyedropper.faceName(face), lower("badge.chromastudio.", stats.badge()),
-                kindName(e.kind().name()), stats.mean(shown.scale).hex()).withColor((DIM) & 0xFFFFFF));
-        if (e.tinted()) tip.add(tr("row.tinted").withColor(TINT_BADGE & 0xFFFFFF));
+                kindName(e.kind().name()), stats.mean(shown.scale).hex()).withColor(Theme.TIP_DIM));
+        if (e.tinted()) tip.add(tr("row.tinted").withColor(Theme.TIP_TINT));
     }
 
     // ---- The swap list ----
@@ -994,14 +999,14 @@ public final class MatchTab extends Tab {
         SwapList s = swapList;
         Bounds box = s.box;
         g.fill(box.x(), box.y(), box.right(), box.bottom(), PANEL);
-        g.outline(box.x(), box.y(), box.w(), box.h(), 0xFF8EC2F2);
+        g.outline(box.x(), box.y(), box.w(), box.h(), Theme.HIGHLIGHT);
         int back = s.row.swapped() ? 1 : 0;
         s.list.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
-            if (over) g2.fill(x, y, x + w, y + h, 0x20FFFFFF);
+            if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
             if (i < back) {
                 Entry original = s.row.original;
                 Widgets.blockIcon(g2, original.block(), x + 2, y + 1);
-                g2.text(font, ellipsis(font, tr("swap.back", original.name()).getString(), w - 26), x + 22, y + 5, SWAPPED, false);
+                g2.text(font, ellipsis(font, tr("swap.back", original.name()).getString(), w - 26), x + 22, y + 5, Theme.ACCENT, false);
                 if (over) tip.add(tr("swap.restore.tip", original.name()));
             } else if (s.options.isEmpty()) {
                 g2.text(font, ellipsis(font, (s.searching ? tr("searching") : tr("swap.none")).getString(), w - 8), x + 4, y + 5, DIM, false);
@@ -1017,7 +1022,7 @@ public final class MatchTab extends Tab {
                 g2.text(font, ellipsis(font, name, w - 30 - font.width(de)), x + 22, y + 5, TEXT, false);
                 if (over) {
                     facts(e, m.face(), m.distance(), tip);
-                    tip.add(tr("swap.use").withColor((DIM) & 0xFFFFFF));
+                    tip.add(tr("swap.use").withColor(Theme.TIP_DIM));
                 }
             }
         });
@@ -1061,7 +1066,7 @@ public final class MatchTab extends Tab {
         g.text(font, tr("panel." + panel.name().toLowerCase(Locale.ROOT)), r.x() + 5, r.y() + 3, TEXT, false);
         Bounds close = closeButton();
         boolean overClose = close.contains(mouseX, mouseY);
-        int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = overClose ? 0xFFFFFFFF : DIM;
+        int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = overClose ? Theme.STRONG : DIM;
         for (int i = -3; i <= 2; i++) {
             g.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, c);
             g.fill(cx + i, cy - 1 - i, cx + i + 1, cy - i, c);
@@ -1072,15 +1077,15 @@ public final class MatchTab extends Tab {
                 List<ResourceKey<Biome>> listed = matchingBiomes();
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
                     String id = listed.get(i).identifier().toString();
-                    if (over) g2.fill(x, y, x + w, y + h, 0x20FFFFFF);
-                    g2.text(font, ellipsis(font, id, w - 8), x + 4, y + 2, id.equals(ModSettings.biome) ? 0xFF8EC2F2 : TEXT, false);
+                    if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
+                    g2.text(font, ellipsis(font, id, w - 8), x + 4, y + 2, id.equals(ModSettings.biome) ? Theme.HIGHLIGHT : TEXT, false);
                 });
-                if (listed.isEmpty()) g.centeredText(font, tr("biome.none"), r.x() + r.w() / 2, r.y() + r.h() / 2, DIM);
+                if (listed.isEmpty()) Widgets.centred(g, tr("biome.none"), r.x() + r.w() / 2, r.y() + r.h() / 2, DIM);
             }
             case FIND_BIOME -> {
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
                     BiomeFit fit = fits.get(i);
-                    if (over) g2.fill(x, y, x + w, y + h, 0x20FFFFFF);
+                    if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
                     Widgets.swatch(g2, x + 4, y + 3, 12, 12, fit.colour.rgb());
                     String de = deltaE(fit.distance, MatchState.metric());
                     g2.text(font, de, x + w - 4 - font.width(de), y + 5, DIM, false);
@@ -1089,14 +1094,14 @@ public final class MatchTab extends Tab {
                 });
                 if (fits.isEmpty()) {
                     Component why = whyNoFind();
-                    g.centeredText(font, why != null ? why : tr("biome.none"), r.x() + r.w() / 2, r.y() + r.h() / 2, DIM);
+                    Widgets.centred(g, why != null ? why : tr("biome.none"), r.x() + r.w() / 2, r.y() + r.h() / 2, DIM);
                 }
             }
             case DYE -> {
                 Optional<Component> noGive = Give.whyNot();
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
                     ItemStack stack = dyes.get(i);
-                    if (over) g2.fill(x, y, x + w, y + h, 0x20FFFFFF);
+                    if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
                     g2.fakeItem(stack, x + 3, y + 1);
                     g2.text(font, ellipsis(font, stack.getHoverName().getString(), w - 28), x + 24, y + 5, noGive.isPresent() ? GREYED : TEXT, false);
                     if (over) tip.add(noGive.isPresent() ? noGive.get() : tr("dye.give", MatchState.colour().hex()));

@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.ui.Theme;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -33,12 +34,12 @@ final class ToolButton extends AbstractButton {
     @Override
     protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY();
-        g.fill(x, y, x + width, y + height, !active ? 0xFF1A1D22 : isHovered() ? 0xFF55606E : lit ? 0xFF3F5670 : 0xFF2A3038);
-        if (lit) g.fill(x, y + height - 1, x + width, y + height, 0xFFFFB84D);
+        g.fill(x, y, x + width, y + height, !active ? Theme.TOOL_OFF : isHovered() ? Theme.CONTROL_HOVER : lit ? Theme.TOOL_LIT : Theme.TOOL);
+        if (lit) g.fill(x, y + height - 1, x + width, y + height, Theme.ACCENT);
         g.fakeItem(icon, x, y);
         // The game has no greyed-out item drawing, so a veil over the icon stands in for one.
-        if (!active) g.fill(x, y, x + ICON, y + height, 0xB01A1D22);
-        if (labelled) g.text(PanelTab.font(), getMessage(), x + ICON + 2, y + 4, active ? PanelTab.TEXT : PanelTab.GREYED, false);
+        if (!active) g.fill(x, y, x + ICON, y + height, Theme.TOOL_OFF & 0xB0FFFFFF);
+        if (labelled) g.text(PanelTab.font(), getMessage(), x + ICON + 2, y + 4, active ? Theme.TEXT : Theme.GREYED, false);
     }
 
     @Override

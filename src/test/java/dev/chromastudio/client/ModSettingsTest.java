@@ -140,4 +140,92 @@ class ModSettingsTest {
         assertEquals(640, ModSettings.windowW, "another group's setting is left alone");
         assertEquals(TooltipMode.NEVER, ModSettings.tooltipMode);
     }
+
+    @Test
+    void undoPutsAGroupBackToItsSnapshotAndLeavesTheOthers() {
+        ModSettings.resultCount = 20;
+        ModSettings.pinOpacity = 0.6;
+        var atOpen = ModSettings.snapshot();
+        assertFalse(ModSettings.changedSince(atOpen));
+        assertFalse(ModSettings.changedSince("matching", atOpen));
+
+        ModSettings.resultCount = 40;
+        ModSettings.shading = true;
+        ModSettings.pinOpacity = 0.3;
+        assertTrue(ModSettings.changedSince(atOpen));
+        assertTrue(ModSettings.changedSince("matching", atOpen));
+        assertTrue(ModSettings.changedSince("window", atOpen));
+        assertFalse(ModSettings.changedSince("gradient", atOpen));
+
+        ModSettings.restore("matching", atOpen);
+        assertEquals(20, ModSettings.resultCount, "back to the value at the snapshot, not the default");
+        assertFalse(ModSettings.shading);
+        assertEquals(0.3, ModSettings.pinOpacity, "another group's change stays");
+        assertFalse(ModSettings.changedSince("matching", atOpen));
+        assertTrue(ModSettings.changedSince(atOpen));
+
+        ModSettings.restore(atOpen);
+        assertEquals(0.6, ModSettings.pinOpacity);
+        assertFalse(ModSettings.changedSince(atOpen));
+    }
+
+    @Test
+    void aSettingChangedAndChangedBackCountsAsUnchanged() {
+        var atOpen = ModSettings.snapshot();
+        ModSettings.set("exportFolder", "/tmp/a");
+        assertTrue(ModSettings.changedSince("palettes", atOpen));
+        ModSettings.set("exportFolder", "");
+        assertFalse(ModSettings.changedSince("palettes", atOpen));
+    }
+
+    @Test
+    void undoAndResetCoverTheWindowsPlaceAndSize() {
+        ModSettings.windowX = 30;
+        ModSettings.windowW = 500;
+        var atOpen = ModSettings.snapshot();
+        ModSettings.windowX = 90;
+        ModSettings.windowW = 700;
+        assertTrue(ModSettings.changedSince("window", atOpen));
+        ModSettings.restore("window", atOpen);
+        assertEquals(30, ModSettings.windowX);
+        assertEquals(500, ModSettings.windowW);
+
+        ModSettings.reset("window");
+        assertEquals(ModSettings.CENTRED, ModSettings.windowX);
+        assertEquals(400, ModSettings.windowW);
+        assertTrue(ModSettings.changedSince("window", atOpen), "a reset can be undone");
+        ModSettings.restore(atOpen);
+        assertEquals(500, ModSettings.windowW);
+    }
+
+    @Test
+    void resetAllAfterChangesCanBeUndoneToTheSnapshot() {
+        change();
+        ModSettings.theme = ThemeChoice.VANILLA;
+        var atOpen = ModSettings.snapshot();
+        ModSettings.reset();
+        assertDefaults();
+        assertEquals(ThemeChoice.DEFAULT, ModSettings.theme);
+        ModSettings.restore(atOpen);
+        assertEquals(30, ModSettings.resultCount);
+        assertEquals(ThemeChoice.VANILLA, ModSettings.theme);
+        assertEquals("/tmp/exports", ModSettings.exportFolder);
+    }
+
+    @Test
+    void theThemeIsSavedAndABadCustomColourGetsTheDefault() {
+        ModSettings.theme = ThemeChoice.CUSTOM;
+        assertTrue(ModSettings.set("customColour", "#C6C6C6"));
+        assertFalse(ModSettings.set("customColour", "C6C6C6"), "needs its #");
+        assertFalse(ModSettings.set("customColour", "#C6C6"));
+        String saved = ModSettings.write();
+        ModSettings.reset();
+        assertTrue(ModSettings.read(saved));
+        assertEquals(ThemeChoice.CUSTOM, ModSettings.theme);
+        assertEquals("#C6C6C6", ModSettings.customColour);
+
+        assertTrue(ModSettings.read("{\"theme\": \"PURPLE\", \"customColour\": \"grey\"}"));
+        assertEquals(ThemeChoice.DEFAULT, ModSettings.theme);
+        assertEquals("#243447", ModSettings.customColour);
+    }
 }

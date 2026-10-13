@@ -6,6 +6,7 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.ui.Bounds;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Scale;
 import dev.chromastudio.core.color.TextureStats;
@@ -107,7 +108,7 @@ final class DioramaPanel implements AutoCloseable {
     }
 
     void draw(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        g.fill(view.x(), view.y(), view.right(), view.bottom(), PanelTab.WELL);
+        g.fill(view.x(), view.y(), view.right(), view.bottom(), Theme.WELL);
         if (arrangement == null) return;
         int w = arrangement.sizeX(), h = arrangement.sizeY();
         if (threeD) {
@@ -120,7 +121,7 @@ final class DioramaPanel implements AutoCloseable {
             // Room for the corners as the wall turns.
             float scale = Math.min(view.w() / (w * 1.3f), view.h() / (h * 1.4f));
             DioramaPip.submit(view.x(), view.y(), view.w(), view.h(), scale, w, h, cells, yaw, pitch);
-            g.text(PanelTab.font(), Component.translatable("palettes.chromastudio.diorama.orbit"), view.x() + 3, view.bottom() - 10, PanelTab.DIM, false);
+            g.text(PanelTab.font(), Component.translatable("palettes.chromastudio.diorama.orbit"), view.x() + 3, view.bottom() - 10, Theme.DIM, false);
             return;
         }
         if (!painted) paint();
@@ -155,8 +156,8 @@ final class DioramaPanel implements AutoCloseable {
                 int ox = x * TEXELS, oy = (h - 1 - y) * TEXELS;
                 for (int ty = 0; ty < TEXELS; ty++)
                     for (int tx = 0; tx < TEXELS; tx++) {
-                        int under = entry >= 0 ? NO_TEXTURE : PanelTab.WELL;
-                        image.setPixel(ox + tx, oy + ty, face == null ? under : over(face[ty * TEXELS + tx], PanelTab.WELL));
+                        int under = entry >= 0 ? NO_TEXTURE : Theme.WELL;
+                        image.setPixel(ox + tx, oy + ty, face == null ? under : over(face[ty * TEXELS + tx], Theme.WELL));
                     }
             }
         texture.upload();

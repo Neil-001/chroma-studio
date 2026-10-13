@@ -3,10 +3,15 @@ package dev.chromastudio.client.ui;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.ThemeChoice;
 import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.core.color.Color;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -14,6 +19,7 @@ import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsList;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
@@ -23,71 +29,208 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
- * The mod's settings: one scrolling list, grouped under headings, each with its own Reset. A change applies straight
- * away and is saved when the screen closes. The rows come from {@link ModSettings#GROUPS}, so a new setting gets one
- * by being declared there, with its label and tooltip in the language file.
+ * The mod's settings: one scrolling list, grouped under headings, with a search over it. A change applies straight
+ * away and is saved when the screen closes. Each group has a Reset, to its defaults, and an Undo, to what it was when
+ * the screen opened; the bar at the bottom has both for everything. The rows come from {@link ModSettings#GROUPS}, so
+ * a new setting gets one by being declared there, with its label and tooltip in the language file.
  */
 public final class SettingsScreen extends Screen {
-    private static final int TOP = 24, BOTTOM = 26, ROW = 20, HEADING = 22, CONTROL_W = 130, M = 12;
-    private static final int TEXT = 0xFFC8CED6, HEADING_TEXT = 0xFFFFFFFF, BAD = 0xFFFF6B6B;
+    private static final int TOP = 24, BOTTOM = 26, ROW = 20, HEADING = 22, CONTROL_W = 130, M = 12, GAP = 2;
     private static final String UNBOUND = "key.keyboard.unknown";
 
     private final Screen parent;
-    /** The rows. The Done and key binds buttons below them are the screen's own. */
+    /** Every setting as it was when the screen opened, which Undo goes back to. */
+    private final Map<String, Object> atOpen = ModSettings.snapshot();
+    /** The rows. The search field and the buttons along the bottom are the screen's own. */
     private final Widgets list = new Widgets();
+    private String search = "";
+    private EditBox searchField;
+    /** Each group's Undo, and the one for everything under the name "". Each is greyed while it has nothing to undo. */
+    private final Map<String, Button> undos = new HashMap<>();
+    private boolean noRows;
     /** The setting whose key button is waiting for a key press, or null. */
     private String listening;
+    /** Set when the rows no longer show the settings, to lay them out again before the next frame rather than under a click. */
+    private boolean stale;
+    /** The confirmation or the colour dialog, while one is open. */
+    private Popup popup;
 
     /** {@code parent} is the screen to go back to, or null to return to the game. */
     public SettingsScreen(Screen parent) {
         super(Component.translatable("settings.chromastudio.title"));
         this.parent = parent;
+        list.wheelNeedsClick();
     }
+
+    private int columnWidth() { return Math.min(340, width - 2 * M); }
+    private int left() { return (width - columnWidth()) / 2; }
+
+    private static Component tr(String key) { return Component.translatable("settings.chromastudio." + key); }
 
     @Override
     protected void init() {
+        Theme.sync();
+        int colW = columnWidth(), left = left();
+        // The title keeps what the search field can spare, and the field at least half the row.
+        int titleW = Math.min(font.width(title), colW / 2 - 8);
+        searchField = new EditBox(font, left + titleW + 8, 4, colW - titleW - 8, Widgets.H, tr("search"));
+        searchField.setMaxLength(64);
+        searchField.setHint(tr("search"));
+        searchField.setValue(search);
+        searchField.setResponder(text -> {
+            search = text;
+            buildList();
+        });
+        addRenderableWidget(searchField);
+
+        // Bottom bar: each button as wide as its text needs, or all of them narrower when a translation's won't fit.
+        Component keys = tr("keys"), undoAll = tr("undo_all"), resetAll = tr("reset_all"), done = Component.translatable("gui.done");
+        int[] w = {Widgets.buttonWidth(keys) + 6, Widgets.buttonWidth(undoAll), Widgets.buttonWidth(resetAll), Widgets.buttonWidth(done) + 14};
+        int room = colW - 3 * GAP, wanted = w[0] + w[1] + w[2] + w[3];
+        if (wanted > room) for (int i = 0; i < w.length; i++) w[i] = w[i] * room / wanted;
+        int by = height - 22, right = left + colW;
+        addRenderableWidget(Button.builder(keys, _ -> openKeys()).bounds(left, by, w[0], 18).tooltip(Tooltip.create(tr("keys.tip"))).build());
+        addRenderableWidget(Button.builder(done, _ -> onClose()).bounds(right - w[3], by, w[3], 18).build());
+        addRenderableWidget(Button.builder(resetAll, _ -> open(new Confirm())).bounds(right - w[3] - GAP - w[2], by, w[2], 18)
+                .tooltip(Tooltip.create(tr("reset_all.tip"))).build());
+        Button undo = addRenderableWidget(Button.builder(undoAll, _ -> {
+            ModSettings.restore(atOpen);
+            applied(true);
+        }).bounds(right - w[3] - 2 * GAP - w[2] - w[1], by, w[1], 18).build());
+
+        buildList();
+        undos.put("", undo);
+        showUndo("", undo);
+        if (popup != null) popup.layout(width, height);
+    }
+
+    /** What a setting's row says, for the search: its label and its tooltip. */
+    private static String text(String name) { return tr(name).getString() + " " + tr(name + ".tip").getString(); }
+
+    /** Lays the rows out for the search as it stands. */
+    private void buildList() {
+        stale = false;
         list.clear();
-        int colW = Math.min(340, width - 2 * M), left = (width - colW) / 2, y = TOP + 2;
-        for (var group : ModSettings.GROUPS.entrySet()) {
+        undos.keySet().removeIf(group -> !group.isEmpty());
+        Map<String, List<String>> rows = new LinkedHashMap<>();
+        ModSettings.GROUPS.forEach((group, names) -> rows.put(group, names.stream().filter(name -> !ModSettings.WINDOW_MEMORY.contains(name)).toList()));
+        Map<String, List<String>> shown = SettingsFilter.filter(rows, search, SettingsScreen::text);
+        noRows = shown.isEmpty();
+
+        int colW = columnWidth(), left = left(), y = TOP + 2;
+        for (var group : shown.entrySet()) {
             String id = group.getKey();
-            list.label(left, y + 8, Component.translatable("settings.chromastudio.group." + id), HEADING_TEXT);
-            Component reset = Component.translatable("settings.chromastudio.reset");
-            list.button(left + colW - Widgets.buttonWidth(reset), y + 4, reset, () -> {
+            list.label(left, y + 8, tr("group." + id), Theme.STRONG);
+            Component reset = tr("reset"), undo = tr("undo");
+            int x = left + colW - Widgets.buttonWidth(reset);
+            list.button(x, y + 4, reset, () -> {
                 ModSettings.reset(id);
-                if (parent instanceof ChromaScreen window) window.reloadWindow();
-                rebuildWidgets();
-            }).setTooltip(Tooltip.create(Component.translatable("settings.chromastudio.reset.tip")));
+                applied(id.equals("window"));
+            }).setTooltip(Tooltip.create(tr("reset.tip")));
+            x -= GAP + Widgets.buttonWidth(undo);
+            undos.put(id, list.button(x, y + 4, undo, () -> {
+                ModSettings.restore(id, atOpen);
+                applied(id.equals("window"));
+            }));
+            showUndo(id, undos.get(id));
             if (id.equals("index")) {
                 // The cache is keyed by the packs' names, so it can't tell that a pack's files changed where they are.
-                Component refresh = Component.translatable("settings.chromastudio.refresh");
-                list.button(left + colW - Widgets.buttonWidth(reset) - 2 - Widgets.buttonWidth(refresh), y + 4, refresh, () -> BlockIndex.get().rebuild())
-                        .setTooltip(Tooltip.create(Component.translatable("settings.chromastudio.refresh.tip")));
+                Component refresh = tr("refresh");
+                list.button(x - GAP - Widgets.buttonWidth(refresh), y + 4, refresh, () -> BlockIndex.get().rebuild()).setTooltip(Tooltip.create(tr("refresh.tip")));
             }
             y += HEADING;
             for (String name : group.getValue()) {
-                if (ModSettings.WINDOW_MEMORY.contains(name)) continue;
-                list.label(left + 4, y + 4, Component.translatable("settings.chromastudio." + name), TEXT);
-                control(name, left + colW - CONTROL_W, y, Component.translatable("settings.chromastudio." + name + ".tip"));
+                list.label(left + 4, y + 4, tr(name), Theme.SOFT);
+                control(name, left + colW - CONTROL_W, y, tr(name + ".tip"));
                 y += ROW;
             }
             y += 4;
         }
         list.viewport(new Bounds(0, TOP, width, height - TOP - BOTTOM), y - TOP);
+    }
 
-        // Bottom bar: each button as wide as its text needs.
-        int by = height - 22;
-        Component keys = Component.translatable("settings.chromastudio.keys"), done = Component.translatable("gui.done");
-        addRenderableWidget(Button.builder(keys, _ -> openKeys()).bounds(left, by, Widgets.buttonWidth(keys) + 6, 18)
-                .tooltip(Tooltip.create(Component.translatable("settings.chromastudio.keys.tip"))).build());
-        int doneW = Widgets.buttonWidth(done) + 14;
-        addRenderableWidget(Button.builder(done, _ -> onClose()).bounds(left + colW - doneW, by, doneW, 18).build());
+    /**
+     * Settings changed other than through their own controls: a reset or an undo. The rows are laid out again to show
+     * them, and the window behind takes its place and size again when those were among them.
+     */
+    private void applied(boolean window) {
+        listening = null;
+        stale = true;
+        if (window && parent instanceof ChromaScreen screen) screen.reloadWindow();
+    }
+
+    private static boolean changed(String group, Map<String, Object> since) {
+        return group.isEmpty() ? ModSettings.changedSince(since) : ModSettings.changedSince(group, since);
+    }
+
+    /** Greys an Undo out while it has nothing to undo, and has its tooltip say so. */
+    private void showUndo(String group, Button undo) {
+        undo.active = changed(group, atOpen);
+        String key = group.isEmpty() ? "undo_all" : "undo";
+        undo.setTooltip(Tooltip.create(tr(undo.active ? key + ".tip" : key + ".none")));
+    }
+
+    private void open(Popup p) {
+        popup = p;
+        setFocused(null);
+        list.setFocused(null);
+        p.layout(width, height);
+    }
+
+    /** Asks before every setting goes back to its default. */
+    private final class Confirm extends Popup {
+        private static final int W = 200;
+
+        Confirm() {
+            super(tr("reset_all"), W, TITLE_H + 7 + 2 * 9 + 4 + Widgets.H, () -> popup = null);
+        }
+
+        @Override
+        protected void build(Bounds in) {
+            Component yes = tr("reset_all"), no = Component.translatable("gui.cancel");
+            int noW = Widgets.buttonWidth(no), yesW = Widgets.buttonWidth(yes), y = in.bottom() - Widgets.H;
+            widgets.button(in.right() - noW, y, no, this::close);
+            widgets.button(in.right() - noW - GAP - yesW, y, yes, this::confirm);
+        }
+
+        @Override
+        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+            g.textWithWordWrap(font, tr("reset_all.confirm"), in.x(), in.y(), in.w(), Theme.TEXT, false);
+        }
+
+        @Override
+        protected void confirm() {
+            ModSettings.reset();
+            applied(true);
+            close();
+        }
+    }
+
+    /** A square of the colour a setting holds, in its row. It scrolls with the rows and takes no input. */
+    private static final class Swatch extends AbstractWidget {
+        private final String setting;
+
+        Swatch(int x, int y, String setting) {
+            super(x, y, Widgets.H, Widgets.H, Component.empty());
+            this.setting = setting;
+            active = false;
+        }
+
+        @Override
+        protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+            Widgets.swatch(g, getX(), getY(), width, height, Theme.base(ThemeChoice.CUSTOM, (String) ModSettings.get(setting)));
+        }
+
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput builder) { }
     }
 
     /** The control for one setting, chosen by the setting's type, with its tooltip. */
     private void control(String name, int x, int y, Component tip) {
         AbstractWidget made = control(name, x, y, tip, ModSettings.type(name));
-        // An option button already has its tooltip, and would lose one set here the first time it's clicked.
-        if (!(made instanceof CycleButton)) made.setTooltip(Tooltip.create(tip));
+        // An option button already has its tooltip, and would lose one set here the first time it's clicked. A greyed
+        // control's tooltip says why it is.
+        if (!(made instanceof CycleButton) && made.active) made.setTooltip(Tooltip.create(tip));
     }
 
     private AbstractWidget control(String name, int x, int y, Component tip, Class<?> type) {
@@ -101,7 +244,11 @@ public final class SettingsScreen extends Screen {
         if (type.isEnum()) {
             String prefix = "option.chromastudio." + type.getSimpleName().toLowerCase(Locale.ROOT) + ".";
             return list.cycler(x, y, CONTROL_W, null, List.of((Object[]) type.getEnumConstants()), value,
-                    v -> Component.translatable(prefix + ((Enum<?>) v).name().toLowerCase(Locale.ROOT)), v -> ModSettings.set(name, v), tip);
+                    v -> Component.translatable(prefix + ((Enum<?>) v).name().toLowerCase(Locale.ROOT)), v -> {
+                        ModSettings.set(name, v);
+                        // The rows are drawn in the theme's colours, and the custom colour's row is greyed by the theme.
+                        if (name.equals("theme")) stale = true;
+                    }, tip);
         }
         String text = (String) value;
         if (ModSettings.names(name) != null)
@@ -114,15 +261,24 @@ public final class SettingsScreen extends Screen {
             return list.cycler(x, y, CONTROL_W, null, ids, text, v -> Component.translatable("tab.chromastudio." + v), v -> ModSettings.set(name, v), tip);
         }
         if (name.equals("recipeKey")) {
-            Component shown = name.equals(listening) ? Component.translatable("settings.chromastudio.press_a_key") : keyName(text);
+            Component shown = name.equals(listening) ? tr("press_a_key") : keyName(text);
             return list.button(x, y, CONTROL_W, shown, () -> {
                 listening = name;
-                rebuildWidgets();
+                stale = true;
             });
+        }
+        if (name.equals("customColour")) {
+            list.add(new Swatch(x, y, name));
+            Button pick = list.button(x + Widgets.H + GAP, y, CONTROL_W - Widgets.H - GAP, Component.literal(text.toUpperCase(Locale.ROOT)),
+                    () -> open(new ColourDialog(tr(name), Color.ofRgb(Theme.base(ThemeChoice.CUSTOM, ModSettings.customColour)), c -> {
+                        ModSettings.set(name, c.hex());
+                        stale = true;
+                    }, () -> popup = null)));
+            return ModSettings.theme == ThemeChoice.CUSTOM ? pick : Widgets.disable(pick, tr(name + ".off"));
         }
         // Free text. Text the setting can't hold shows red and changes nothing.
         EditBox[] box = new EditBox[1];
-        box[0] = list.field(x, y, CONTROL_W, text, v -> box[0].setTextColor(ModSettings.set(name, v) ? EditBox.DEFAULT_TEXT_COLOR : BAD));
+        box[0] = list.field(x, y, CONTROL_W, text, v -> box[0].setTextColor(ModSettings.set(name, v) ? EditBox.DEFAULT_TEXT_COLOR : Theme.FIELD_BAD));
         return box[0];
     }
 
@@ -155,19 +311,39 @@ public final class SettingsScreen extends Screen {
     }
 
     @Override
+    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+        super.extractBackground(g, mouseX, mouseY, delta);
+        g.fill(0, 0, width, height, Theme.WINDOW);
+        g.fill(0, 0, width, TOP - 1, Theme.BAR);
+        g.fill(0, height - BOTTOM + 1, width, height, Theme.BAR);
+        g.fill(0, TOP - 1, width, TOP, Theme.BORDER);
+        g.fill(0, height - BOTTOM, width, height - BOTTOM + 1, Theme.BORDER);
+    }
+
+    @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-        super.extractRenderState(g, mouseX, mouseY, delta);
-        g.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
-        g.fill(0, TOP - 1, width, TOP, 0x40FFFFFF);
-        g.fill(0, height - BOTTOM, width, height - BOTTOM + 1, 0x40FFFFFF);
-        list.render(g, mouseX, mouseY, delta);
+        Theme.sync();
+        if (stale) buildList();
+        undos.forEach((group, undo) -> {
+            if (changed(group, atOpen) != undo.active) showUndo(group, undo);
+        });
+        // Under a popup nothing reacts to the cursor.
+        int mx = popup == null ? mouseX : -1, my = popup == null ? mouseY : -1;
+        super.extractRenderState(g, mx, my, delta);
+        int left = left();
+        g.text(font, font.plainSubstrByWidth(title.getString(), searchField.getX() - 8 - left), left, 8, Theme.STRONG, false);
+        list.render(g, mx, my, delta);
+        Component none = tr("search.none");
+        if (noRows) g.text(font, none, (width - font.width(none)) / 2, TOP + 16, Theme.DIM, false);
+        if (popup != null) popup.render(g, mouseX, mouseY, delta);
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        if (popup != null) return popup.mouseClicked(event, doubled);
         if (listening != null) {   // a click anywhere calls the key press off
             listening = null;
-            rebuildWidgets();
+            stale = true;
         }
         if (list.mouseClicked(event, doubled)) {
             setFocused(null);
@@ -177,35 +353,51 @@ public final class SettingsScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) { return list.mouseReleased(event) || super.mouseReleased(event); }
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (popup != null) return popup.mouseReleased(event);
+        return list.mouseReleased(event) || super.mouseReleased(event);
+    }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) { return list.mouseDragged(event, dx, dy) || super.mouseDragged(event, dx, dy); }
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (popup != null) return popup.mouseDragged(event, dx, dy);
+        return list.mouseDragged(event, dx, dy) || super.mouseDragged(event, dx, dy);
+    }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double h, double v) { return list.mouseScrolled(mx, my, h, v) || super.mouseScrolled(mx, my, h, v); }
+    public boolean mouseScrolled(double mx, double my, double h, double v) {
+        if (popup != null) return popup.mouseScrolled(mx, my, h, v) || true;
+        return list.mouseScrolled(mx, my, h, v) || super.mouseScrolled(mx, my, h, v);
+    }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (popup != null) return popup.keyPressed(event);
         if (listening != null) {
             // Escape leaves the key unbound, as in the game's own key binds screen.
             ModSettings.set(listening, event.isEscape() ? UNBOUND : InputConstants.getKey(event).getName());
             listening = null;
-            rebuildWidgets();
+            stale = true;
             return true;
         }
         if (event.isEscape()) {
-            onClose();
+            // The first Escape only clears a search.
+            if (search.isEmpty()) onClose();
+            else searchField.setValue("");
             return true;
         }
         return list.keyPressed(event) || super.keyPressed(event);
     }
 
     @Override
-    public boolean charTyped(CharacterEvent event) { return list.charTyped(event) || super.charTyped(event); }
+    public boolean charTyped(CharacterEvent event) {
+        if (popup != null) return popup.charTyped(event);
+        return list.charTyped(event) || super.charTyped(event);
+    }
 
     @Override
     public void removed() {
+        if (popup != null) popup.close();
         ModSettings.save();
         super.removed();
     }

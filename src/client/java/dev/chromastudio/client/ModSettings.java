@@ -50,6 +50,10 @@ public final class ModSettings {
     public static String startTab = "match";
     /** How solid a pinned window is drawn, 0.2 to 1. */
     public static double pinOpacity = 0.8;
+    /** The window's colours. */
+    public static ThemeChoice theme = ThemeChoice.DEFAULT;
+    /** The colour {@link ThemeChoice#CUSTOM} builds the window's colours from, as {@code #RRGGBB}. */
+    public static String customColour = "#243447";
 
     // Matching
     public static FaceChoice defaultFace = FaceChoice.SIDE;
@@ -127,7 +131,8 @@ public final class ModSettings {
     private static final Map<String, Pattern> SHAPES = new HashMap<>();
 
     static {
-        GROUPS.put("window", List.of("windowX", "windowY", "windowW", "windowH", "fullscreen", "rememberWindow", "startTab", "pinOpacity"));
+        GROUPS.put("window", List.of("windowX", "windowY", "windowW", "windowH", "fullscreen", "rememberWindow", "startTab", "pinOpacity",
+                "theme", "customColour"));
         GROUPS.put("matching", List.of("defaultFace", "shading", "metric", "resultCount", "viewingDistance",
                 "filterFullCube", "filterSolid", "filterOpaque", "filterSurvival", "showDeltaE"));
         GROUPS.put("index", List.of("technicalBlocks", "statesSeparately", "statesCap", "animatedAveraging", "cacheFolder", "rebuildOnReload"));
@@ -155,6 +160,7 @@ public final class ModSettings {
         NAMES.put("easing", List.of("LINEAR", "SMOOTH", "EASE_IN", "EASE_OUT"));
         NAMES.put("hueArc", List.of("SHORTEST", "LONGEST"));
         SHAPES.put("startTab", Pattern.compile("[a-z0-9_]{1,64}"));
+        SHAPES.put("customColour", Pattern.compile("#[0-9A-Fa-f]{6}"));
         SHAPES.put("biome", Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+"));
         SHAPES.put("recipeKey", Pattern.compile("key\\.[a-z0-9_.]+"));
 
@@ -240,12 +246,35 @@ public final class ModSettings {
     /** Puts one group's settings back to their defaults. */
     public static void reset(String group) { GROUPS.get(group).forEach(ModSettings::resetOne); }
 
-    private static void resetOne(String name) {
+    private static void resetOne(String name) { put(name, DEFAULTS.get(name)); }
+
+    private static void put(String name, Object value) {
         try {
-            FIELDS.get(name).set(null, DEFAULTS.get(name));
+            FIELDS.get(name).set(null, value);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /** Every setting's value as it is now, to compare with or go back to later. */
+    public static Map<String, Object> snapshot() {
+        Map<String, Object> values = new HashMap<>();
+        for (String name : FIELDS.keySet()) values.put(name, get(name));
+        return values;
+    }
+
+    /** Puts every setting back to its value in a snapshot. */
+    public static void restore(Map<String, Object> snapshot) { FIELDS.keySet().forEach(name -> put(name, snapshot.get(name))); }
+
+    /** Puts one group's settings back to their values in a snapshot. */
+    public static void restore(String group, Map<String, Object> snapshot) { GROUPS.get(group).forEach(name -> put(name, snapshot.get(name))); }
+
+    /** Whether any setting differs from its value in a snapshot. */
+    public static boolean changedSince(Map<String, Object> snapshot) { return FIELDS.keySet().stream().anyMatch(name -> !get(name).equals(snapshot.get(name))); }
+
+    /** Whether any of one group's settings differs from its value in a snapshot. */
+    public static boolean changedSince(String group, Map<String, Object> snapshot) {
+        return GROUPS.get(group).stream().anyMatch(name -> !get(name).equals(snapshot.get(name)));
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();

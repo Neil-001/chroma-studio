@@ -5,6 +5,7 @@ import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Handoff;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Badge;
 import dev.chromastudio.core.color.Color;
@@ -90,7 +91,7 @@ final class AnalysePanel {
 
     void draw(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         Component heading = Component.translatable(unknown > 0 ? "palettes.chromastudio.analyse.heading_unknown" : "palettes.chromastudio.analyse.heading", findings.size(), unknown);
-        g.text(PanelTab.font(), heading, area.x(), area.y() + 4, PanelTab.DIM, false);
+        g.text(PanelTab.font(), heading, area.x(), area.y() + 4, Theme.DIM, false);
         // The colours the findings are about, darkest first, so a gap or a narrow range shows at a glance.
         List<Color> sorted = new ArrayList<>(colours);
         sorted.sort((a, b) -> Double.compare(a.oklch().l(), b.oklch().l()));
@@ -100,26 +101,26 @@ final class AnalysePanel {
             g.fill(x0, stripY, x1, stripY + STRIP_H, 0xFF000000 | sorted.get(i).rgb());
         }
         fixes.clear();
-        g.fill(list.area.x(), list.area.y(), list.area.right(), list.area.bottom(), PanelTab.WELL);
+        g.fill(list.area.x(), list.area.y(), list.area.right(), list.area.bottom(), Theme.WELL);
         if (findings.isEmpty()) {
-            g.centeredText(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.none"), area.x() + area.w() / 2, list.area.y() + 12, PanelTab.GOOD);
+            Widgets.centred(g, Component.translatable("palettes.chromastudio.analyse.none"), area.x() + area.w() / 2, list.area.y() + 12, Theme.GOOD);
             return;
         }
         list.render(g, mouseX, mouseY, (gg, i, x, y, w, h, hovered) -> {
             Analyzer.Finding f = findings.get(i);
-            if (hovered) gg.fill(x, y, x + w, y + h - 1, PanelTab.HOVER);
+            if (hovered) gg.fill(x, y, x + w, y + h - 1, Theme.HOVER);
             boolean warning = f.severity() == Analyzer.Severity.WARNING;
-            gg.fill(x + 2, y + 3, x + 5, y + h - 4, warning ? PanelTab.FAIR : 0xFF6E8CB5);
+            gg.fill(x + 2, y + 3, x + 5, y + h - 4, warning ? Theme.FAIR : Theme.INFO);
             List<FormattedCharSequence> lines = wrapped(f, w);
             int lineY = y + (rowH - 1 - lines.size() * LINE_H) / 2 + 1;
-            for (int k = 0; k < lines.size(); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, lineY + k * LINE_H, PanelTab.TEXT, false);
+            for (int k = 0; k < lines.size(); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, lineY + k * LINE_H, Theme.TEXT, false);
             if (f.suggestedTarget() == null) return;
             Bounds b = fix(x, y, w);
             fixes.add(new Fix(b, f));
             Widgets.swatch(gg, b.x() - 14, b.y() + 2, 12, 12, Color.ofOklch(f.suggestedTarget()).rgb());
             boolean over = b.contains(mouseX, mouseY);
-            gg.fill(b.x(), b.y(), b.right(), b.bottom(), over ? 0xFF55606E : 0xFF3A424D);
-            gg.centeredText(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix"), b.x() + b.w() / 2, b.y() + 4, PanelTab.TEXT);
+            gg.fill(b.x(), b.y(), b.right(), b.bottom(), over ? Theme.CONTROL_HOVER : Theme.CONTROL);
+            Widgets.centred(gg, Component.translatable("palettes.chromastudio.analyse.fix"), b.x() + b.w() / 2, b.y() + 4, Theme.TEXT);
             if (over) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, mouseY);
         });
     }
