@@ -93,8 +93,6 @@ public final class GradientTab extends PanelTab {
     private String solvedFor = "";
     private Bounds stopsArea, stripArea;
     private int badgeY;
-    /** Where the count of the filters other than the kind is written, beside "More…". */
-    private Bounds filterNote;
     /** The filters behind "More…", which lie over the strip while they are open. */
     private boolean filtersOpen;
     private final Widgets filterWidgets = new Widgets();
@@ -195,10 +193,14 @@ public final class GradientTab extends PanelTab {
         x += w + GAP;
         // The Match tab's kind filter and its "More…", on the same filters.
         MatchFilters filters = MatchState.filters();
-        Component more = tr("match.chromastudio.filter.more");
+        // The button counts the filters that are on besides the kind, the only one this row shows.
+        int others = filters.besidesKind();
+        Component more = others == 0 ? tr("match.chromastudio.filter.more") : tr("gradient.chromastudio.filters.more", others);
+        Component counted = tr(others == 0 ? "gradient.chromastudio.filters.none" : others == 1 ? "gradient.chromastudio.filters.one" : "gradient.chromastudio.filters.many", others);
+        int moreW = Chip.width(tr("gradient.chromastudio.filters.more", 88));
         List<String> kinds = new ArrayList<>(List.of(ALL_KINDS));
         for (Kind k : Kind.values()) kinds.add(k.name());
-        w = Math.min(widest(kinds.stream().map(GradientTab::kindName).toList()), b.right() - PAD - x - GAP - Chip.width(more));
+        w = Math.min(widest(kinds.stream().map(GradientTab::kindName).toList()), b.right() - PAD - x - GAP - moreW);
         widgets.cycler(x, y, w, null, kinds, filters.kind == null ? ALL_KINDS : filters.kind.name(), GradientTab::kindName, v -> {
             filters.kind = v.equals(ALL_KINDS) ? null : Kind.valueOf(v);
             MatchState.changed();
@@ -208,9 +210,7 @@ public final class GradientTab extends PanelTab {
         widgets.add(new Chip(x, y, more, () -> filtersOpen || filters.besidesKind() > 0, () -> {
             filtersOpen = !filtersOpen;
             rebuild();
-        })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip")));
-        x += Chip.width(more) + GAP + 2;
-        filterNote = new Bounds(x, y, Math.max(0, b.right() - PAD - x), Widgets.H);
+        })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip", counted)));
 
         // The actions sit along the bottom, and the strip and its badge take what's between.
         int actionsY = b.bottom() - PAD - Widgets.H;
@@ -440,13 +440,6 @@ public final class GradientTab extends PanelTab {
             }
         }
 
-        int others = MatchState.filters().besidesKind();
-        Component count = tr(others == 0 ? "gradient.chromastudio.filters.none" : others == 1 ? "gradient.chromastudio.filters.one" : "gradient.chromastudio.filters.many", others);
-        String counted = fit(count.getString(), filterNote.w());
-        g.text(font(), counted, filterNote.x(), filterNote.y() + 4, others == 0 ? DIM : FAIR, false);
-        if (filterNote.contains(mouseX, mouseY) && mouseX < filterNote.x() + font().width(counted)) {
-            g.setComponentTooltipForNextFrame(font(), List.of(count, tr("gradient.chromastudio.filters.note.tip").copy().withColor(DIM & 0xFFFFFF)), mouseX, mouseY);
-        }
         if (filtersOpen) return;
 
         g.fill(stripArea.x(), stripArea.y(), stripArea.right(), stripArea.bottom(), WELL);
