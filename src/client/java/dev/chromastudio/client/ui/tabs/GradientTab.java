@@ -40,6 +40,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -51,13 +53,14 @@ import net.minecraft.world.level.block.Blocks;
 /**
  * The Gradient tab: a row of stops, each a colour or a block; the steps, easing, hue arc, spread and kind controls; a
  * strip of the ideal colours over the blocks chosen for them; a quality badge; and what can be done with the result.
- * The blocks are chosen on a worker thread, and only the newest request's answer is kept.
+ * The blocks are chosen on a worker thread, and only the newest request's answer is kept. They come from the blocks
+ * that pass the Match tab's filters: the kind control here is that tab's own, and "More…" opens the rest of them.
  */
 public final class GradientTab extends PanelTab {
     private static final int MAX_STOPS = 8, CHIP = 18, CELL_MIN = 18, CELL_MAX = 40, IDEAL_H = 10, BLOCK_H = 7, CELL_H = IDEAL_H + 16 + BLOCK_H + 4;
     /** The bands of the quality badge, as the mean ΔE in OKLab. */
     private static final double GOOD_UP_TO = 0.02, FAIR_UP_TO = 0.06;
-    private static final String ANY_KIND = "ANY";
+    private static final String ALL_KINDS = "all";
 
     /** The stops, each a {@link Color} or an {@link Entry}. They and the controls last the session, across windows. */
     private static final List<Object> STOPS = new ArrayList<>(List.of(Color.fromHex("#1F2A44"), Color.fromHex("#E9D8A6")));
@@ -66,7 +69,6 @@ public final class GradientTab extends PanelTab {
     private static Easing easing = named(Easing.class, ModSettings.easing, Easing.SMOOTH);
     private static HueArc arc = named(HueArc.class, ModSettings.hueArc, HueArc.SHORTEST);
     private static boolean spread = ModSettings.spreadMatching;
-    private static String kind = Kind.FULL.name();
     private static String hex = "";
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
@@ -91,6 +93,17 @@ public final class GradientTab extends PanelTab {
     private String solvedFor = "";
     private Bounds stopsArea, stripArea;
     private int badgeY;
+    /** The filters behind "More…", which lie over the strip while they are open. */
+    private boolean filtersOpen;
+    private final Widgets filterWidgets = new Widgets();
+    /** The area the filters' controls were last laid out for. They are only laid out again for another, so a number being typed isn't lost. */
+    private Bounds filtersFor;
+    /**
+     * The filters the controls were laid out from, and how they stood when this tab last ticked. The Match tab can
+     * change or reset them while this one is away, and the controls are laid out again when they no longer agree.
+     */
+    private MatchFilters filtersBuilt;
+    private List<Object> filtersSeen = List.of();
 
     public GradientTab() { super("gradient"); }
 
@@ -108,7 +121,7 @@ public final class GradientTab extends PanelTab {
         return tr("option.chromastudio." + value.getClass().getSimpleName().toLowerCase(Locale.ROOT) + "." + value.name().toLowerCase(Locale.ROOT));
     }
 
-    private static Component kindName(String name) { return tr("gradient.chromastudio.kind." + name.toLowerCase(Locale.ROOT)); }
+    private static Component kindName(String name) { return tr("kind.chromastudio." + name.toLowerCase(Locale.ROOT)); }
 
     private static Color colourOf(Object stop) {
         return stop instanceof Entry e ? PaletteBlocks.stats(e).mean(PaletteBlocks.scale()) : (Color) stop;
@@ -118,6 +131,8 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected void layout(Bounds b) {
+        // The settings screen may have changed a filter's setting. The kind control is built from the filters, so those catch up first.
+        MatchState.follow();
         // A block sent over from a Match result becomes a stop, once.
         boolean seeded = Handoff.gradientSeed instanceof Entry;
         if (Handoff.gradientSeed instanceof Entry seed) addStop(seed);
@@ -182,10 +197,26 @@ public final class GradientTab extends PanelTab {
         w = Widgets.tw(spreadLabel) + Widgets.tw(": ") + Math.max(Widgets.tw(CommonComponents.OPTION_ON), Widgets.tw(CommonComponents.OPTION_OFF)) + 10;
         widgets.toggle(x, y, w, spreadLabel, spread, v -> { spread = v; solve(); }, tr("gradient.chromastudio.spread.tip"));
         x += w + GAP;
-        List<String> kinds = new ArrayList<>(List.of(ANY_KIND));
+        // The Match tab's kind filter and its "More…", on the same filters.
+        MatchFilters filters = MatchState.filters();
+        // The button counts the filters that are on besides the kind, the only one this row shows.
+        int others = filters.besidesKind();
+        Component more = others == 0 ? tr("match.chromastudio.filter.more") : tr("gradient.chromastudio.filters.more", others);
+        Component counted = tr(others == 0 ? "gradient.chromastudio.filters.none" : others == 1 ? "gradient.chromastudio.filters.one" : "gradient.chromastudio.filters.many", others);
+        int moreW = Chip.width(tr("gradient.chromastudio.filters.more", 88));
+        List<String> kinds = new ArrayList<>(List.of(ALL_KINDS));
         for (Kind k : Kind.values()) kinds.add(k.name());
-        w = Math.min(widest(kinds.stream().map(GradientTab::kindName).toList()), b.right() - PAD - x);
-        widgets.cycler(x, y, w, null, kinds, kind, GradientTab::kindName, v -> { kind = v; solve(); }, tr("gradient.chromastudio.kind.tip"));
+        w = Math.min(widest(kinds.stream().map(GradientTab::kindName).toList()), b.right() - PAD - x - GAP - moreW);
+        widgets.cycler(x, y, w, null, kinds, filters.kind == null ? ALL_KINDS : filters.kind.name(), GradientTab::kindName, v -> {
+            filters.kind = v.equals(ALL_KINDS) ? null : Kind.valueOf(v);
+            MatchState.changed();
+            solve();
+        }, tr("match.chromastudio.filter.kind.tip"));
+        x += w + GAP;
+        widgets.add(new Chip(x, y, more, () -> filtersOpen || filters.besidesKind() > 0, () -> {
+            filtersOpen = !filtersOpen;
+            rebuild();
+        })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip", counted)));
 
         // The actions sit along the bottom, and the strip and its badge take what's between.
         int actionsY = b.bottom() - PAD - Widgets.H;
@@ -212,8 +243,36 @@ public final class GradientTab extends PanelTab {
         badgeY = actionsY - GAP - 10;
         int top = y + ROW + GAP;
         stripArea = new Bounds(b.x() + PAD, top, b.w() - 2 * PAD, badgeY - GAP - top);
+        Bounds body = filtersBody();
+        if (filtersOpen && (!body.equals(filtersFor) || filtersBuilt != filters || !filters.state().equals(filtersSeen))) buildFilters();
+        if (!filtersOpen) filtersFor = null;
         // A new stop, or settings changed on the settings screen, make the answer on show a stale one.
         if (seeded || stale() || result.isEmpty() && problem == null && !solving) solve();
+    }
+
+    /** The filters lie over the strip and the badge under it. */
+    private Bounds filtersArea() { return new Bounds(stripArea.x(), stripArea.y(), stripArea.w(), badgeY + 10 - stripArea.y()); }
+
+    private Bounds filtersBody() {
+        Bounds a = filtersArea();
+        return new Bounds(a.x() + 1, a.y() + Dialog.TITLE_H, a.w() - 2, a.h() - Dialog.TITLE_H - 1);
+    }
+
+    private Bounds filtersClose() {
+        Bounds a = filtersArea();
+        return new Bounds(a.right() - Dialog.TITLE_H - 1, a.y() + 1, Dialog.TITLE_H, Dialog.TITLE_H - 1);
+    }
+
+    private void buildFilters() {
+        filtersFor = filtersBody();
+        filtersBuilt = MatchState.filters();
+        filtersSeen = filtersBuilt.state();
+        filterWidgets.clear();
+        // "Reset filters" resets the kind too, which the row above shows.
+        FilterControls.build(filterWidgets, filtersFor, true, () -> {
+            filtersFor = null;
+            rebuild();
+        });
     }
 
     /**
@@ -231,8 +290,7 @@ public final class GradientTab extends PanelTab {
     /** Everything outside the tab that the answer depends on, to tell when it has changed. */
     private static String inputs() {
         return String.join("|", ModSettings.defaultFace.name(), ModSettings.metric, String.valueOf(ModSettings.viewingDistance), ModSettings.biomeMode.name(),
-                ModSettings.biome, String.valueOf(ModSettings.filterSurvival), String.valueOf(ModSettings.technicalBlocks),
-                String.valueOf(ModSettings.statesSeparately), PaletteBlocks.scale().name());
+                ModSettings.biome, MatchState.filters().state().toString(), String.valueOf(ModSettings.statesSeparately), PaletteBlocks.scale().name());
     }
 
     private static int widest(List<Component> labels) { return labels.stream().mapToInt(Widgets::tw).max().orElse(40) + 10; }
@@ -294,13 +352,9 @@ public final class GradientTab extends PanelTab {
         List<Gradient.Candidate> candidates = new ArrayList<>();
         Map<String, Entry> byId = new HashMap<>();
         Map<String, TextureStats> looks = new HashMap<>();
-        for (Entry e : BlockIndex.get().entries()) {
-            if (!kind.equals(ANY_KIND) && !e.kind().name().equals(kind)) continue;
-            if (ModSettings.filterSurvival && e.creativeOnly()) continue;
-            // A chest would stand for the planks it breaks into, a barrier for the sign on its item, and a bell for its posts.
-            if (!e.modelDraws() || e.blockEntityRendered()) continue;
-            // One block fills at most one step, whichever of its states is listed first.
-            if (byId.putIfAbsent(e.id(), e) != null) continue;
+        // One block fills at most one step: the filters give each block that passes them once.
+        for (Entry e : MatchState.filters().candidates(BlockIndex.get(), PaletteBlocks.face(), scale, PaletteBlocks.tint())) {
+            byId.put(e.id(), e);
             TextureStats stats = PaletteBlocks.stats(e);
             looks.put(e.id(), stats);
             candidates.add(new Gradient.Candidate(e.id(), stats.distribution(scale), stats.spread()));
@@ -394,6 +448,8 @@ public final class GradientTab extends PanelTab {
             }
         }
 
+        if (filtersOpen) return;
+
         g.fill(stripArea.x(), stripArea.y(), stripArea.right(), stripArea.bottom(), WELL);
         Component note = note();
         if (result.isEmpty()) {
@@ -415,6 +471,21 @@ public final class GradientTab extends PanelTab {
         }
     }
 
+    @Override
+    protected void drawOver(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
+        if (!filtersOpen) return;
+        Bounds a = filtersArea(), close = filtersClose();
+        g.fill(a.x(), a.y(), a.right(), a.bottom(), PANEL);
+        g.outline(a.x(), a.y(), a.w(), a.h(), BORDER);
+        g.text(font(), tr("match.chromastudio.panel.filters"), a.x() + 5, a.y() + 3, TEXT, false);
+        int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = close.contains(mouseX, mouseY) ? 0xFFFFFFFF : DIM;
+        for (int i = -3; i <= 2; i++) {
+            g.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, c);
+            g.fill(cx + i, cy - 1 - i, cx + i + 1, cy - i, c);
+        }
+        filterWidgets.render(g, mouseX, mouseY, delta);
+    }
+
     /** Pinned, the tab is its strip and badge. */
     @Override
     public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
@@ -431,6 +502,15 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean clicked(MouseButtonEvent e, boolean doubled) {
+        if (filtersOpen) {
+            if (e.button() == InputConstants.MOUSE_BUTTON_LEFT && filtersClose().contains(e.x(), e.y())) {
+                filtersOpen = false;
+                rebuild();
+                return true;
+            }
+            // The group takes a click outside its area as the end of any typing in it.
+            if (filterWidgets.mouseClicked(e, doubled) || filtersArea().contains(e.x(), e.y())) return true;
+        }
         if (!stopsArea.contains(e.x(), e.y())) return false;
         int i = (int) ((e.x() - stopsArea.x()) / (CHIP + 1));
         if (i >= STOPS.size()) return false;
@@ -443,8 +523,44 @@ public final class GradientTab extends PanelTab {
     }
 
     @Override
+    protected boolean released(MouseButtonEvent e) { return filtersOpen && filterWidgets.mouseReleased(e); }
+
+    @Override
+    protected boolean dragged(MouseButtonEvent e, double dx, double dy) { return filtersOpen && filterWidgets.mouseDragged(e, dx, dy); }
+
+    @Override
+    protected boolean scrolled(double x, double y, double h, double v) {
+        return filtersOpen && filtersArea().contains(x, y) && (filterWidgets.mouseScrolled(x, y, h, v) || true);
+    }
+
+    @Override
+    protected boolean pressed(KeyEvent e) {
+        if (!filtersOpen || !filterWidgets.typing()) return false;
+        filterWidgets.keyPressed(e);
+        return true;
+    }
+
+    @Override
+    protected boolean typed(CharacterEvent e) { return filtersOpen && filterWidgets.typing() && filterWidgets.charTyped(e); }
+
+    @Override
+    protected boolean typingElsewhere() { return filtersOpen && filterWidgets.typing(); }
+
+    /** Escape closes the filters, when they are open. */
+    @Override
+    protected boolean dismissPanel() {
+        if (!filtersOpen) return false;
+        filtersOpen = false;
+        rebuild();
+        return true;
+    }
+
+    @Override
     public void tick() {
         super.tick();
+        MatchState.follow();
+        // A change made while this tab is the one on show came from its own controls, which already show it.
+        filtersSeen = MatchState.filters().state();
         // Checked by what is so now, so nothing is missed while a dialog is open or another tab is showing.
         if (!dialogOpen() && stale()) solve();
     }

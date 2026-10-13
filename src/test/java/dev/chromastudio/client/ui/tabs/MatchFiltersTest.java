@@ -10,6 +10,7 @@ import dev.chromastudio.core.color.Face;
 import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.color.Tone;
 import dev.chromastudio.core.palette.Analyzer;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -119,6 +120,43 @@ class MatchFiltersTest {
         assertEquals(Set.of(Badge.FLAT), q.badges);
         assertTrue(q.blockEntityRendered);
         assertEquals(12, f.extras(), "ten filters behind More and two mods, each counted once");
+    }
+
+    /** The Gradient tab solves again when this changes, and counts the filters its own row doesn't show. */
+    @Test
+    void anyFilterChangesTheStateAndTheOnesBesideTheKindAreCounted() {
+        MatchFilters f = new MatchFilters();
+        assertEquals(new MatchFilters().state(), f.state());
+        assertEquals(0, f.besidesKind());
+        List<Runnable> changes = List.of(() -> f.kind = Kind.SLAB, () -> f.fullCube = true, () -> f.solid = true, () -> f.opaque = true,
+                () -> f.sameTexture = true, () -> f.tinted = Tri.ONLY, () -> f.creativeOnly = Tri.EXCLUDE, () -> f.lightSource = Tri.EXCLUDE,
+                () -> f.technical = true, () -> f.blockEntityRendered = true, () -> f.namespaces.put("create", Tri.EXCLUDE), () -> f.tone = Tone.COOL,
+                () -> f.lightnessMin = 0.1, () -> f.lightnessMax = 0.9, () -> f.chromaMin = 0.01, () -> f.chromaMax = 0.3, () -> f.badges.add(Badge.BUSY));
+        for (int i = 0; i < changes.size(); i++) {
+            List<Object> before = f.state();
+            changes.get(i).run();
+            assertNotEquals(before, f.state(), "change " + i);
+        }
+        assertEquals(f.extras() + 3, f.besidesKind(), "the cube, solid and opaque chips count beside those behind More");
+        f.kind = null;
+        assertEquals(f.extras() + 3, f.besidesKind(), "the kind doesn't count: the tab shows it");
+    }
+
+    /** One set of filters: what the Gradient tab's kind control and More… write is what the Match tab reads. */
+    @Test
+    void theTabsShareOneSetOfFilters() {
+        MatchState.resetFilters();
+        MatchFilters shared = MatchState.filters();
+        assertSame(shared, MatchState.filters());
+        shared.kind = Kind.STAIRS;
+        shared.creativeOnly = Tri.EXCLUDE;
+        Query q = new Query();
+        MatchState.filters().apply(q);
+        assertEquals(Set.of(Kind.STAIRS), q.kinds);
+        assertEquals(Tri.EXCLUDE, q.creativeOnly);
+        MatchState.resetFilters();
+        assertNull(MatchState.filters().kind);
+        assertEquals(0, MatchState.filters().besidesKind());
     }
 
     @Test

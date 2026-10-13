@@ -55,7 +55,7 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 
 `BlockIndex.closest(target, query)` scores a face by the earth mover's distance between the target's `Distribution` and the face's, at the scale `Viewing` gives the viewing distance. A flat colour is a one-point distribution, so that reduces to the mean per-pixel ΔE. `IndexOptions.current()` is a build's view of the settings, and `BlockIndex.version()` changes with every finished build.
 
-An entry whose block has a block entity and an empty model, such as a chest, a banner, a shulker box or a head, is `blockEntityRendered()`. Its faces hold only its particle texture, so `Query` leaves it out unless `blockEntityRendered` is set. A bell counts too, by its class, because its model is only the posts and bar it hangs from. The Gradient tab never uses those, nor a block whose model draws nothing (`!modelDraws()`), such as a barrier.
+An entry whose block has a block entity and an empty model, such as a chest, a banner, a shulker box or a head, is `blockEntityRendered()`. Its faces hold only its particle texture, so `Query` leaves it out unless `blockEntityRendered` is set. A bell counts too, by its class, because its model is only the posts and bar it hangs from. The Gradient tab uses those only with that filter on, and never a block that has no block entity and whose model draws nothing (`!modelDraws()`), such as a barrier.
 
 `GameIndexTest` checks the index against the game's own blocks. Run it after touching what the index lists or how it reads a model.
 
@@ -64,6 +64,8 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 `ChromaScreen` owns the window: the title bar, the tabs registered with `registerTab`, and input, which goes to the selected `Tab` inside its `Bounds`.
 
 - `MatchState` is what is being matched, for the Match and Explore tabs, `Tooltips` and the eyedropper. It belongs to the client thread, and the tabs watch `MatchState.revision()`.
+- `MatchState.filters()` is the one set of filters. Match, Explore and Gradient all keep to it, and `FilterControls` builds the More… controls for Match and Gradient alike. A gradient's candidates are `MatchFilters.candidates`: one state a block, read on one face (north for Side, top for Any) without shading.
+- A click on a Match row opens the swap list, the next-best blocks of that row's kind. A swap lasts until the target, a filter, a matching setting or the index changes. The hand button gives the block.
 - Match searches and Gradient solves run on a worker thread and keep only the newest answer. The Gradient tab reads its candidates on the client thread first.
 - Tabs hand work to each other through `ui.Handoff`, and `/chroma` through `ChromaScreen.pendingTarget`. Additions to a palette go to `PaletteSink.current()`, which is the `PaletteStore`.
 - A pinned window is drawn by `Hud.render` and takes no input.

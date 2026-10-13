@@ -1,11 +1,16 @@
 package dev.chromastudio.client.ui.tabs;
 
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.client.index.Query;
 import dev.chromastudio.client.index.Query.Tri;
+import dev.chromastudio.client.index.TintContext;
 import dev.chromastudio.core.color.Badge;
+import dev.chromastudio.core.color.Face;
 import dev.chromastudio.core.color.Oklch;
+import dev.chromastudio.core.color.Scale;
 import dev.chromastudio.core.color.Tone;
 import dev.chromastudio.core.palette.Analyzer;
 import java.util.EnumSet;
@@ -14,7 +19,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-/** The filters the Match tab shows, which the Explore tab follows too. {@link #apply} writes them into a query. */
+/**
+ * The one set of filters, which the Match tab shows and the Explore and Gradient tabs keep to as well.
+ * {@link #apply} writes them into a query, and {@link #candidates} lists the blocks a gradient may choose from.
+ */
 public final class MatchFilters {
     /** How far either side of a suggested lightness "darker" and "lighter" still accept. */
     static final double LIGHTNESS_ROOM = 0.1;
@@ -123,6 +131,23 @@ public final class MatchFilters {
         q.badges.addAll(badges);
     }
 
+    /**
+     * The blocks a gradient may choose from: each block that passes the filters on the one face a gradient reads,
+     * at most once. A block whose model draws nothing, such as a barrier, never is one, since its colour would be
+     * the sign on its item. A chest has such a model too, but it is the "Chests and banners" filter that decides on it.
+     */
+    public List<Entry> candidates(BlockIndex index, Face face, Scale scale, TintContext tint) {
+        Query q = new Query().scale(scale).tint(tint);
+        apply(q);
+        return index.passing(q, face).stream().filter(e -> e.modelDraws() || e.blockEntityRendered()).toList();
+    }
+
+    /** Every filter as one value, to tell when any of them has changed. */
+    public List<Object> state() {
+        return List.of(String.valueOf(kind), fullCube, solid, opaque, sameTexture, tinted, creativeOnly, lightSource, technical, blockEntityRendered,
+                Map.copyOf(namespaces), String.valueOf(tone), lightnessMin, lightnessMax, chromaMin, chromaMax, Set.copyOf(badges));
+    }
+
     /** How many of the filters behind "More…" are narrowing the results, for its label. */
     public int extras() {
         int n = 0;
@@ -139,4 +164,7 @@ public final class MatchFilters {
         n += (int) namespaces.values().stream().filter(t -> t != Tri.ANY).count();
         return n;
     }
+
+    /** How many filters other than the kind are narrowing the results: the Gradient tab's note, since it shows only the kind. */
+    public int besidesKind() { return extras() + (fullCube ? 1 : 0) + (solid ? 1 : 0) + (opaque ? 1 : 0); }
 }

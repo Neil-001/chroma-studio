@@ -10,8 +10,9 @@ Chroma Studio 1.0.0 is the first release. It finds the blocks closest to a colou
 - Grass, leaves and water matched with the biome's tint, where you stand or in a biome you choose, and a search for the biome that brings a block closest to a colour
 - Filters for the kind of block, full cubes, solid and opaque blocks, tinted blocks, light sources, mods, tone, lightness, chroma and how busy the texture is
 - Material sets: open a row to see its slab, stairs, wall and the rest, and make a palette of them in one click
+- Swap a result: click a row for a short list of the next-best blocks of its kind, and pick one to take its place
 - An eyedropper on X that reads the block you look at and copies its hex code
-- Gradient: 2 to 32 steps between two or more colours or blocks, with a different block for every step
+- Gradient: 2 to 32 steps between two or more colours or blocks, with a different block for every step, chosen from the blocks that pass the Match tab's filters
 - Palettes with weights, tags and notes, ten presets, and share strings such as `chroma1:stone,andesite*3/Castle`
 - Make a palette from a colour harmony, from a box captured in the world or from a picture
 - Analyse a palette for what it lacks, and see it as a wall of blocks, flat or in 3D
