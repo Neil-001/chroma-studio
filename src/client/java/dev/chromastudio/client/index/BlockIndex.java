@@ -294,6 +294,25 @@ public final class BlockIndex {
         return matches.size() > q.limit ? List.copyOf(matches.subList(0, Math.max(0, q.limit))) : matches;
     }
 
+    /**
+     * The entries that pass a query's filters when each is looked at on one face, for a caller that chooses among
+     * them itself, as a gradient does. A block gives one entry: its default state, or with states listed separately
+     * the first of its states that passes.
+     */
+    public List<Entry> passing(Query q, Face face) {
+        Built b = current();
+        if (b == null) return List.of();
+        List<Entry> out = new ArrayList<>();
+        for (List<Entry> states : b.blocks) {
+            for (Entry e : q.statesSeparately ? states : states.subList(0, 1)) {
+                if (!q.keeps(e) || !q.keeps(e.sampled(face, q.tint))) continue;
+                out.add(e);
+                break;
+            }
+        }
+        return out;
+    }
+
     /** An entry's best face under the query, or null when no face passes the filters. */
     private static Match match(Entry e, Distribution wanted, Query q, Map<Sampled, double[]> scores) {
         Match best = null;

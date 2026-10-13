@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import dev.chromastudio.api.ChromaStudioApi;
 import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.ui.tabs.MatchFilters;
 import dev.chromastudio.client.ui.tabs.MatchState;
 import dev.chromastudio.core.color.Badge;
 import dev.chromastudio.core.color.Color;
@@ -14,6 +15,10 @@ import dev.chromastudio.core.color.Scale;
 import dev.chromastudio.core.color.Shading;
 import dev.chromastudio.core.color.TextureStats;
 import dev.chromastudio.core.color.Tone;
+import dev.chromastudio.core.palette.Easing;
+import dev.chromastudio.core.palette.Gradient;
+import dev.chromastudio.core.palette.HueArc;
+import dev.chromastudio.core.palette.Ramp;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,6 +28,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.color.block.BlockTintSource;
@@ -578,6 +584,85 @@ class GameIndexTest {
         // The eyedropper and the API still read it.
         assertEquals(drawn, index.entryOf(chest));
         assertTrue(DebugCommand.describe(drawn, TintContext.none()).getFirst().contains("drawn by a block entity"));
+    }
+
+    /** The blocks a gradient chose for these stops from the ones the filters let through, by id. */
+    private static List<String> gradient(BlockIndex index, MatchFilters filters, int steps, Color... stops) {
+        List<Gradient.Candidate> candidates = new ArrayList<>();
+        for (Entry e : filters.candidates(index, Face.UP, Scale.T16, TintContext.none())) {
+            TextureStats look = e.face(Face.UP, TintContext.none());
+            candidates.add(new Gradient.Candidate(e.id(), look.distribution(Scale.T16), look.spread()));
+        }
+        List<Oklch> ideal = Ramp.of(Arrays.stream(stops).map(Color::oklch).toList(), steps, Easing.LINEAR, HueArc.SHORTEST);
+        return Gradient.solve(ideal, candidates, Metric.OKLAB, false).steps().stream().map(c -> (String) c.key()).toList();
+    }
+
+    /**
+     * The player left creative-only blocks out in the Match tab, and a gradient through dark grey still chose a
+     * spawner. The Gradient tab now takes its blocks from those same filters, every one of them.
+     */
+    @Test
+    void aGradientOnlyChoosesBlocksTheMatchFiltersLetThrough() {
+        FaceLayers[] planks = new FaceLayers[6];
+        Arrays.fill(planks, new FaceLayers(List.of(new FaceLayers.Layer("minecraft:block/oak_planks", sampled("block/oak_planks"), -1, null, 1))));
+        Entry chest = new Entry(block("chest").defaultBlockState(), "minecraft:chest", "", false, true, false, planks);
+        Entry barrier = new Entry(block("barrier").defaultBlockState(), "minecraft:barrier", "", true, true, false, planks);
+        BlockState logX = block("oak_log").defaultBlockState().setValue(BlockStateProperties.AXIS, Direction.Axis.X);
+        BlockIndex index = index(List.of(
+                List.of(entry(block("spawner"), "block/spawner")),
+                List.of(entry(block("bedrock"), "block/bedrock")),
+                List.of(entry(block("black_concrete"), "block/black_concrete")),
+                List.of(entry(block("gray_concrete"), "block/gray_concrete")),
+                List.of(entry(block("deepslate_tiles"), "block/deepslate_tiles")),
+                List.of(entry(block("polished_blackstone"), "block/polished_blackstone")),
+                List.of(entry(block("stone"), "block/stone")),
+                List.of(entry(block("white_concrete"), "block/white_concrete")),
+                List.of(entry(block("oak_slab"), "block/oak_planks")),
+                List.of(entry(block("oak_log"), "block/oak_log_top", "block/oak_log_top", "block/oak_log", "block/oak_log", "block/oak_log", "block/oak_log"),
+                        entry(logX, false, "block/oak_log", "block/oak_log", "block/oak_log", "block/oak_log", "block/oak_log_top", "block/oak_log_top")),
+                List.of(entry(block("command_block").defaultBlockState(), true, "block/command_block_front")),
+                List.of(chest), List.of(barrier)));
+        Color black = stats("block/black_concrete").mean(Scale.T16), spawner = stats("block/spawner").mean(Scale.T16), stone = stats("block/stone").mean(Scale.T16);
+
+        MatchFilters filters = new MatchFilters();
+        assertTrue(gradient(index, filters, 5, black, spawner, stone).contains("minecraft:spawner"), "with no filter a spawner is one of five dark greys");
+        filters.creativeOnly = Query.Tri.EXCLUDE;
+        for (int steps = 2; steps <= 5; steps++) {
+            List<String> chosen = gradient(index, filters, steps, black, spawner, stone);
+            assertEquals(steps, chosen.size());
+            assertFalse(chosen.contains("minecraft:spawner") || chosen.contains("minecraft:bedrock"), chosen + " keeps to survival blocks");
+        }
+
+        // Each of the other filters narrows the blocks the same way, and a block is there at most once.
+        Function<MatchFilters, List<String>> pool = f -> f.candidates(index, Face.UP, Scale.T16, TintContext.none()).stream().map(Entry::id).toList();
+        List<String> open = pool.apply(new MatchFilters());
+        assertEquals(10, open.size(), open + " has each drawn block once, and no technical one, chest or barrier");
+        assertFalse(open.contains("minecraft:chest") || open.contains("minecraft:barrier") || open.contains("minecraft:command_block"));
+        MatchFilters f = new MatchFilters();
+        f.kind = Kind.SLAB;
+        assertEquals(List.of("minecraft:oak_slab"), pool.apply(f));
+        f = new MatchFilters();
+        f.fullCube = true;
+        assertFalse(pool.apply(f).contains("minecraft:oak_slab"));
+        f = new MatchFilters();
+        f.lightnessMax = 0.3;
+        assertEquals(List.of("minecraft:black_concrete"), pool.apply(f), "by the face a gradient reads");
+        f = new MatchFilters();
+        f.badges.add(Badge.FLAT);
+        assertTrue(pool.apply(f).contains("minecraft:white_concrete") && !pool.apply(f).contains("minecraft:stone"));
+        f = new MatchFilters();
+        f.tone = Tone.WARM;
+        assertEquals(List.of("minecraft:oak_slab", "minecraft:oak_log"), pool.apply(f));
+        f = new MatchFilters();
+        f.namespaces.put("minecraft", Query.Tri.EXCLUDE);
+        assertEquals(List.of(), pool.apply(f));
+        f = new MatchFilters();
+        f.technical = true;
+        assertTrue(pool.apply(f).contains("minecraft:command_block"));
+        assertFalse(pool.apply(f).contains("minecraft:barrier"), "a barrier's model draws nothing, so it has no colour to give");
+        f = new MatchFilters();
+        f.blockEntityRendered = true;
+        assertTrue(pool.apply(f).contains("minecraft:chest"), "chests come in with the filter that lists them in Match");
     }
 
     /** What the Match tab and the eyedropper lean on: a choice of faces, a state's entry, and knowing when a build is new. */

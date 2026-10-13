@@ -79,8 +79,8 @@ class LangTest {
         for (String preset : PaletteStore.PRESETS) keys.add("preset.chromastudio." + preset);
         for (Harmony h : Harmony.values()) keys.add("option.chromastudio.harmony." + h.name().toLowerCase(Locale.ROOT));
         for (Layout l : Layout.values()) keys.add("option.chromastudio.layoutchoice." + l.name().toLowerCase(Locale.ROOT));
-        keys.add("gradient.chromastudio.kind.any");
-        for (Kind k : Kind.values()) keys.add("gradient.chromastudio.kind." + k.name().toLowerCase(Locale.ROOT));
+        keys.add("kind.chromastudio.all");
+        for (Kind k : Kind.values()) keys.add("kind.chromastudio." + k.name().toLowerCase(Locale.ROOT));
         for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) {
             keys.add("palettes.chromastudio.tool." + tool);
             keys.add("palettes.chromastudio.tool." + tool + ".tip");

@@ -16,7 +16,6 @@ import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.client.index.Query;
-import dev.chromastudio.client.index.Query.Tri;
 import dev.chromastudio.client.index.Target;
 import dev.chromastudio.client.index.TintContext;
 import dev.chromastudio.client.index.Tints;
@@ -31,7 +30,6 @@ import dev.chromastudio.core.color.Face;
 import dev.chromastudio.core.color.Metric;
 import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.color.Scale;
-import dev.chromastudio.core.color.Tone;
 import dev.chromastudio.core.color.Viewing;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
@@ -42,10 +40,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BooleanSupplier;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -79,7 +78,14 @@ public final class MatchTab extends Tab {
             PANEL = 0xFF161A20, BORDER = 0xFF3A424D, WELL = 0xFF0B0D10, BACKING = 0x80101317;
     private static final long STATUS_MS = 2500;
     private static final int RESULT = 0, MEMBER = 1, MAKE = 2;
-    private static final int BODY = 0, EXPAND = 1, ADD = 2;
+    private static final int BODY = 0, EXPAND = 1, ADD = 2, GIVE = 3, RESTORE = 4;
+    /** How many blocks the swap list offers, and the most lines of it that show at once. */
+    private static final int SWAP_OPTIONS = 20, SWAP_LINES = 6;
+    private static final int SWAPPED = 0xFFFFB84D;
+    /** The signs on a line's small buttons, seven pixels square: add, give and put back. */
+    private static final String[] PLUS = {"...#...", "...#...", "...#...", "#######", "...#...", "...#...", "...#..."},
+            HAND = {"..#.#..", "..#.#.#", "#.#.#.#", "#.#####", "#######", ".#####.", "..###.."},
+            UNDO = {"..#....", ".##....", "######.", ".##...#", "..#...#", "......#", "..####."};
     private static final String ALL = "all";
 
     /** Searches run here, one at a time, so a slow one never holds a frame up. */
@@ -95,8 +101,34 @@ public final class MatchTab extends Tab {
     /** The matches on show, and what they were matched with, which the rows are drawn with too. */
     private record Shown(List<BlockIndex.Match> matches, Target target, Scale scale, TintContext tint, Metric metric) {}
 
-    /** One line of the list: a match, a block of an opened material set, or that set's "Make a palette". */
-    private record Row(int type, Entry entry, Face face, double distance, boolean hasSet) {}
+    /**
+     * One line of the list: a match, a block of an opened material set, or that set's "Make a palette".
+     * {@code original} is the block the search or the set put there, which {@code entry} is too unless the player
+     * swapped another in.
+     */
+    private record Row(int type, Entry entry, Face face, double distance, boolean hasSet, Entry original) {
+        boolean swapped() { return entry != original; }
+    }
+
+    /** The slim list under a line, of the blocks that could take its place. */
+    private static final class SwapList {
+        final Row row;
+        /** The top and bottom of the line it hangs from. */
+        final int rowTop, rowBottom;
+        List<BlockIndex.Match> options = List.of();
+        boolean searching = true;
+        Bounds box;
+        Widgets.ScrollList list;
+
+        SwapList(Row row, int rowTop, int rowBottom) {
+            this.row = row;
+            this.rowTop = rowTop;
+            this.rowBottom = rowBottom;
+        }
+
+        /** The lines it has: the way back to the original first, when a block was swapped in, then the options. */
+        int lines() { return (row.swapped() ? 1 : 0) + Math.max(1, options.size()); }
+    }
 
     private record BiomeFit(ResourceKey<Biome> biome, Color colour, double distance) {}
 
@@ -118,6 +150,14 @@ public final class MatchTab extends Tab {
     /** The entry whose material set is open under its row, or null. */
     private Entry expanded;
     private Row hovered;
+    /** Where the hovered line was drawn, for the swap list to hang from. */
+    private int hoveredTop;
+    /** The blocks swapped in, by the block each took the place of: in the results, and in the opened material sets. */
+    private final Map<Entry, BlockIndex.Match> swaps = new HashMap<>(), setSwaps = new HashMap<>();
+    /** The target and index build the swaps were made for. A swap is the next best for one target, so it goes with it. */
+    private int swapsRevision = -1, swapsVersion = -1;
+    /** The swap list that is open, or null. */
+    private SwapList swapList;
     private final Debounce search = new Debounce();
     private int seenRevision = -1, seenVersion = -1;
     private boolean draggingDistance;
@@ -186,6 +226,7 @@ public final class MatchTab extends Tab {
 
     private void build() {
         controls.clear();
+        swapList = null;
         Bounds b = area;
         Font font = Minecraft.getInstance().font;
         TargetModel model = picker.model;
@@ -313,7 +354,7 @@ public final class MatchTab extends Tab {
 
     private static Component kindName(String kind) { return Component.translatable("kind.chromastudio." + kind.toLowerCase(Locale.ROOT)); }
 
-    private static String ellipsis(Font font, String text, int width) {
+    static String ellipsis(Font font, String text, int width) {
         if (font.width(text) <= width) return text;
         return font.plainSubstrByWidth(text, Math.max(0, width - font.width("…"))) + "…";
     }
@@ -334,7 +375,7 @@ public final class MatchTab extends Tab {
         Bounds body = panelBody();
         panelList = new Widgets.ScrollList(body, ROW, () -> 0);
         switch (panel) {
-            case FILTERS -> buildFilters(body);
+            case FILTERS -> FilterControls.build(panelWidgets, body, false, this::build);
             case BIOMES -> {
                 biomes = Tints.biomes();
                 EditBox box = panelWidgets.search(body.x() + 2, body.y() + 1, body.w() - 4, tr("biome.search"), text -> biomeSearch = text.trim().toLowerCase(Locale.ROOT));
@@ -395,86 +436,6 @@ public final class MatchTab extends Tab {
         panel = Panel.NONE;
         MatchState.changed();
         build();
-    }
-
-    /** A filter's name, cut to the room left of its control. A translation can be twice the English, and the tooltip then has the whole of it. */
-    private static void filterLabel(Widgets w, int x, int y, int room, Component name) {
-        String fitted = ellipsis(Minecraft.getInstance().font, name.getString(), room);
-        AbstractWidget label = w.label(x, y + 4, Component.literal(fitted), TEXT);
-        if (!fitted.equals(name.getString())) label.setTooltip(Tooltip.create(name));
-    }
-
-    private void buildFilters(Bounds body) {
-        MatchFilters f = MatchState.filters();
-        Widgets w = panelWidgets;
-        int x = body.x() + 4, cw = Math.min(120, body.w() / 2), cx = body.right() - cw - 8, y = body.y() + 2;
-        List<Tri> tris = List.of(Tri.values());
-        Function<Tri, Component> triName = t -> lower("match.chromastudio.filter.tri.", t);
-
-        filterLabel(w, x, y, cx - x - 3, tr("filter.same_texture"));
-        w.toggle(cx, y, cw, null, f.sameTexture, v -> { f.sameTexture = v; MatchState.changed(); }, tr("filter.same_texture.tip"));
-        y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.tinted"));
-        w.cycler(cx, y, cw, null, tris, f.tinted, triName, v -> { f.tinted = v; MatchState.changed(); }, tr("filter.tinted.tip"));
-        y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.creative_only"));
-        w.cycler(cx, y, cw, null, tris, f.creativeOnly, triName, v -> { f.creativeOnly = v; MatchState.changed(); }, tr("filter.creative_only.tip"));
-        y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.light"));
-        w.cycler(cx, y, cw, null, tris, f.lightSource, triName, v -> { f.lightSource = v; MatchState.changed(); }, tr("filter.light.tip"));
-        y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.technical"));
-        w.toggle(cx, y, cw, null, f.technical, v -> { f.technical = v; MatchState.changed(); }, tr("filter.technical.tip"));
-        y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.block_entity"));
-        w.toggle(cx, y, cw, null, f.blockEntityRendered, v -> { f.blockEntityRendered = v; MatchState.changed(); }, tr("filter.block_entity.tip"));
-        y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.tone"));
-        List<String> tones = new ArrayList<>(List.of(ALL));
-        for (Tone t : Tone.values()) tones.add(t.name());
-        w.cycler(cx, y, cw, null, tones, f.tone == null ? ALL : f.tone.name(), t -> Component.translatable("tone.chromastudio." + t.toLowerCase(Locale.ROOT)), t -> {
-            f.tone = t.equals(ALL) ? null : Tone.valueOf(t);
-            MatchState.changed();
-        }, tr("filter.tone.tip"));
-        y += ROW;
-        int sw = (cw - GAP) / 2;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.lightness"));
-        w.spin(cx, y, sw, f.lightnessMin, 0.05, 0, 1, false, v -> { f.lightnessMin = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.lightness.tip")));
-        w.spin(cx + sw + GAP, y, cw - sw - GAP, f.lightnessMax, 0.05, 0, 1, false, v -> { f.lightnessMax = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.lightness.tip")));
-        y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.chroma"));
-        w.spin(cx, y, sw, f.chromaMin, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMin = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.chroma.tip")));
-        w.spin(cx + sw + GAP, y, cw - sw - GAP, f.chromaMax, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMax = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.chroma.tip")));
-        y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.badge"));
-        int bx = cx;
-        for (Badge badge : Badge.values()) {
-            Component label = lower("badge.chromastudio.", badge);
-            w.add(new Chip(bx, y, label, () -> f.badges.contains(badge), () -> {
-                if (!f.badges.remove(badge)) f.badges.add(badge);
-                MatchState.changed();
-            })).setTooltip(Tooltip.create(tr("filter.badge.tip")));
-            bx += Chip.width(label) + GAP;
-        }
-        y += ROW;
-        Component reset = tr("filter.reset");
-        w.button(cx, y, reset, () -> {
-            MatchState.resetFilters();
-            build();
-        }).setTooltip(Tooltip.create(tr("filter.reset.tip")));
-        y += ROW + 2;
-        w.label(x, y + 4, tr("filter.mods"), DIM);
-        y += 14;
-        for (String namespace : BlockIndex.get().namespaces()) {
-            w.label(x, y + 4, Component.literal(namespace), TEXT);
-            w.cycler(cx, y, cw, null, tris, f.namespaces.getOrDefault(namespace, Tri.ANY), triName, v -> {
-                if (v == Tri.ANY) f.namespaces.remove(namespace);
-                else f.namespaces.put(namespace, v);
-                MatchState.changed();
-            }, tr("filter.mods.tip"));
-            y += ROW;
-        }
-        w.viewport(body, y - body.y() + 2);
     }
 
     // ---- Keeping in step ----
@@ -580,6 +541,13 @@ public final class MatchTab extends Tab {
     private void start(int run) {
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) return;
+        if (MatchState.revision() != swapsRevision || index.version() != swapsVersion) {
+            swapsRevision = MatchState.revision();
+            swapsVersion = index.version();
+            swaps.clear();
+            setSwaps.clear();
+            swapList = null;
+        }
         Target target = MatchState.target();
         Query query = MatchState.query(ModSettings.resultCount);
         Minecraft mc = Minecraft.getInstance();
@@ -596,6 +564,7 @@ public final class MatchTab extends Tab {
                 // An answer to a search that has since been asked again is out of date.
                 if (!search.current(run)) return;
                 shown = new Shown(matches, target, query.scale, query.tint, query.metric);
+                swapList = null;
                 rows();
             });
         });
@@ -606,16 +575,22 @@ public final class MatchTab extends Tab {
         List<Row> out = new ArrayList<>();
         BlockIndex index = BlockIndex.get();
         if (shown != null) {
-            for (BlockIndex.Match m : shown.matches) {
+            for (BlockIndex.Match found : shown.matches) {
+                BlockIndex.Match m = swaps.getOrDefault(found.entry(), found);
                 List<Entry> set = index.materialSet(m.entry());
-                out.add(new Row(RESULT, m.entry(), m.face(), m.distance(), set.size() > 1));
-                if (expanded == null || !expanded.id().equals(m.entry().id()) || grid) continue;
+                out.add(new Row(RESULT, m.entry(), m.face(), m.distance(), set.size() > 1, found.entry()));
+                if (!sameBlock(expanded, m.entry()) || grid) continue;
                 for (Entry e : set) {
+                    BlockIndex.Match swap = setSwaps.get(e);
+                    if (swap != null) {
+                        out.add(new Row(MEMBER, swap.entry(), swap.face(), swap.distance(), false, e));
+                        continue;
+                    }
                     Face face = e.bestFace(shown.target, shown.scale, shown.metric, shown.tint);
                     double d = shown.target.distribution(shown.scale).emd(e.face(face, shown.tint).distribution(shown.scale), shown.metric);
-                    out.add(new Row(MEMBER, e, face, d, false));
+                    out.add(new Row(MEMBER, e, face, d, false, e));
                 }
-                out.add(new Row(MAKE, m.entry(), m.face(), 0, false));
+                out.add(new Row(MAKE, m.entry(), m.face(), 0, false, m.entry()));
             }
         }
         rows = out;
@@ -635,8 +610,13 @@ public final class MatchTab extends Tab {
         target(g, font, 1, mouseX, mouseY, tip);
         controls.render(g, mouseX, mouseY, delta);
         distance(g, font, mouseX, mouseY, tip);
-        if (panel == Panel.NONE) results(g, font, 1, mouseX, mouseY, tip);
-        else panel(g, font, mouseX, mouseY, delta, tip);
+        // While the swap list is open the lines under it don't react to the cursor.
+        if (panel != Panel.NONE) panel(g, font, mouseX, mouseY, delta, tip);
+        else if (swapList == null) results(g, font, 1, mouseX, mouseY, tip);
+        else {
+            results(g, font, 1, -1, -1, tip);
+            swapList(g, font, mouseX, mouseY, tip);
+        }
 
         if (status != null && Util.getMillis() < statusUntil) {
             g.text(font, ellipsis(font, status.getString(), statusLine.w() - 4), statusLine.x() + 2, statusLine.y() + 1, TEXT, false);
@@ -758,13 +738,14 @@ public final class MatchTab extends Tab {
             int cols = columns();
             list.render(g, mouseX, mouseY, (g2, line, x, y, w, h, over) -> {
                 for (int c = 0; c < cols && line * cols + c < shown.matches.size(); c++) {
-                    BlockIndex.Match m = shown.matches.get(line * cols + c);
+                    Row cell = cell(line * cols + c);
                     int cx = x + 2 + c * CELL;
                     boolean on = over && mouseX >= cx && mouseX < cx + CELL;
-                    Thumbnails.draw(g2, m.entry(), m.face(), shown.scale, shown.tint, cx + 2, y + 2, 16, opacity);
+                    Thumbnails.draw(g2, cell.entry, cell.face, shown.scale, shown.tint, cx + 2, y + 2, 16, opacity);
+                    if (cell.swapped()) swapMark(g2, cx + 2, y + 2, opacity);
                     if (on) {
                         g2.outline(cx + 1, y + 1, 18, 18, 0xFFFFFFFF);
-                        hovered = new Row(RESULT, m.entry(), m.face(), m.distance(), false);
+                        hovered = cell;
                         describe(hovered, BODY, tip);
                     }
                 }
@@ -781,17 +762,43 @@ public final class MatchTab extends Tab {
         g.fill(x, y, x + Math.round(w * Math.clamp(progress, 0, 1)), y + 2, ARGB.multiplyAlpha(0xFF8EC2F2, opacity));
     }
 
-    /** Which part of a line the cursor is over: the expander at its left, the add button at its right, or the rest. */
+    /** A tile of the grid as a line: the match there, or the block swapped in for it. */
+    private Row cell(int i) {
+        BlockIndex.Match found = shown.matches.get(i), m = swaps.getOrDefault(found.entry(), found);
+        return new Row(RESULT, m.entry(), m.face(), m.distance(), false, found.entry());
+    }
+
+    /**
+     * Which part of a line the cursor is over: the expander at its left, the small buttons at its right (add, give
+     * and, on a line with a block swapped in, put back), or the rest.
+     */
     private static int zone(Row row, int x, int w, double mx) {
         if (row.type == MAKE) return BODY;
         if (row.hasSet && mx < x + 10) return EXPAND;
-        return mx >= x + w - 13 ? ADD : BODY;
+        if (mx >= x + w - 13) return ADD;
+        if (mx >= x + w - 26) return GIVE;
+        return row.swapped() && mx >= x + w - 39 ? RESTORE : BODY;
+    }
+
+    /** One of a line's small buttons, its right edge at {@code right}. */
+    private static void rowButton(GuiGraphicsExtractor g, int right, int y, String[] sign, boolean lit, boolean can, float opacity) {
+        g.fill(right - 11, y + 3, right, y + 14, ARGB.multiplyAlpha(lit && can ? 0xFF3F78B0 : 0xFF262C34, opacity));
+        int colour = ARGB.multiplyAlpha(can ? TEXT : GREYED, opacity);
+        for (int j = 0; j < sign.length; j++)
+            for (int i = 0; i < sign[j].length(); i++)
+                if (sign[j].charAt(i) == '#') g.fill(right - 9 + i, y + 5 + j, right - 8 + i, y + 6 + j, colour);
+    }
+
+    /** The mark of a block swapped in: an amber corner at the bottom left of its icon, as the tint's green one is at the right. */
+    private static void swapMark(GuiGraphicsExtractor g, int x, int y, float opacity) {
+        g.fill(x, y + 11, x + 5, y + 16, ARGB.multiplyAlpha(0xFF10140F, opacity));
+        g.fill(x, y + 12, x + 4, y + 16, ARGB.multiplyAlpha(SWAPPED, opacity));
     }
 
     private void row(GuiGraphicsExtractor g, Font font, Row row, int x, int y, int w, int h, boolean over, float opacity, int mouseX, List<Component> tip) {
         int zone = over ? zone(row, x, w, mouseX) : -1;
         if (row.type != RESULT) g.fill(x, y, x + w, y + h, ARGB.multiplyAlpha(0x38000000, opacity));
-        if (over) g.fill(x, y, x + w, y + h, 0x20FFFFFF);
+        if (over || swapList != null && swapList.row == row) g.fill(x, y, x + w, y + h, 0x20FFFFFF);
         int text = ARGB.multiplyAlpha(TEXT, opacity), dim = ARGB.multiplyAlpha(DIM, opacity);
         if (row.type == MAKE) {
             boolean can = PaletteSink.current() != null;
@@ -812,15 +819,18 @@ public final class MatchTab extends Tab {
             g.fill(left + 11, y + 11, left + 16, y + 16, ARGB.multiplyAlpha(0xFF10140F, opacity));
             g.fill(left + 12, y + 12, left + 16, y + 16, ARGB.multiplyAlpha(TINT_BADGE, opacity));
         }
+        if (row.swapped()) swapMark(g, left, y, opacity);
         left += 18;
 
         int right = x + w - 1;
-        // The add button.
-        boolean can = PaletteSink.current() != null;
-        g.fill(right - 11, y + 3, right, y + 14, ARGB.multiplyAlpha(zone == ADD && can ? 0xFF3F78B0 : 0xFF262C34, opacity));
-        g.fill(right - 9, y + 8, right - 2, y + 9, ARGB.multiplyAlpha(can ? TEXT : GREYED, opacity));
-        g.fill(right - 6, y + 5, right - 5, y + 12, ARGB.multiplyAlpha(can ? TEXT : GREYED, opacity));
+        rowButton(g, right, y, PLUS, zone == ADD, PaletteSink.current() != null, opacity);
         right -= 13;
+        rowButton(g, right, y, HAND, zone == GIVE, Give.whyNot().isEmpty(), opacity);
+        right -= 13;
+        if (row.swapped()) {
+            rowButton(g, right, y, UNDO, zone == RESTORE, true, opacity);
+            right -= 13;
+        }
         var stats = e.face(row.face, shown.tint);
         Thumbnails.draw(g, e, row.face, shown.scale, shown.tint, right - 16, y + 1, 16, opacity);
         right -= 18;
@@ -848,6 +858,7 @@ public final class MatchTab extends Tab {
         if (ModSettings.biomeMode == BiomeMode.ALL && e.tinted()) strip(g, e, row.face, left, y + h - 3, Math.max(8, right - left), opacity);
         if (over) {
             hovered = row;
+            hoveredTop = y;
             describe(row, zone, tip);
         }
     }
@@ -898,19 +909,141 @@ public final class MatchTab extends Tab {
             tip.add(PaletteSink.current() != null ? tr("add.tip") : tr("no_palette"));
             return;
         }
-        Entry e = row.entry;
-        var stats = e.face(row.face, shown.tint);
-        tip.add(entryName(e));
-        tip.add(Component.literal(e.toString()).withColor((DIM) & 0xFFFFFF));
-        tip.add(tr("row.facts", deltaE(row.distance, shown.metric), Eyedropper.faceName(row.face), lower("badge.chromastudio.", stats.badge()),
-                kindName(e.kind().name()), stats.mean(shown.scale).hex()).withColor((DIM) & 0xFFFFFF));
-        if (e.tinted()) tip.add(tr("row.tinted").withColor(TINT_BADGE & 0xFFFFFF));
         Optional<Component> noGive = Give.whyNot();
-        tip.add(noGive.isPresent() ? tr("row.give.off", noGive.get()).withColor(GREYED) : tr("row.give").withColor((DIM) & 0xFFFFFF));
+        if (zone == GIVE) {
+            tip.add(noGive.orElseGet(() -> tr("give.tip")));
+            return;
+        }
+        if (zone == RESTORE) {
+            tip.add(tr("swap.restore.tip", row.original.name()));
+            return;
+        }
+        Entry e = row.entry;
+        facts(e, row.face, row.distance, tip);
+        if (row.swapped()) tip.add(tr("row.swapped", row.original.name()).withColor(SWAPPED & 0xFFFFFF));
+        // A tile of the grid has no buttons, so there a click still gives the block.
+        if (!grid) tip.add(tr("row.swap").withColor((DIM) & 0xFFFFFF));
+        else tip.add(noGive.isPresent() ? tr("row.give.off", noGive.get()).withColor(GREYED) : tr("row.give").withColor((DIM) & 0xFFFFFF));
         tip.add(tr("row.copy").withColor((DIM) & 0xFFFFFF));
         tip.add(tr("row.gradient").withColor((DIM) & 0xFFFFFF));
         if (grid) tip.add(tr("row.add").withColor((PaletteSink.current() != null ? DIM : GREYED) & 0xFFFFFF));
         tip.add(tr("row.recipe", recipeKeyName()).withColor((RecipeViewers.available() ? DIM : GREYED) & 0xFFFFFF));
+    }
+
+    /** What a block is and how it matched, as a tooltip's first lines. */
+    private void facts(Entry e, Face face, double distance, List<Component> tip) {
+        var stats = e.face(face, shown.tint);
+        tip.add(entryName(e));
+        tip.add(Component.literal(e.toString()).withColor((DIM) & 0xFFFFFF));
+        tip.add(tr("row.facts", deltaE(distance, shown.metric), Eyedropper.faceName(face), lower("badge.chromastudio.", stats.badge()),
+                kindName(e.kind().name()), stats.mean(shown.scale).hex()).withColor((DIM) & 0xFFFFFF));
+        if (e.tinted()) tip.add(tr("row.tinted").withColor(TINT_BADGE & 0xFFFFFF));
+    }
+
+    // ---- The swap list ----
+
+    /**
+     * Opens the slim list under a line, and asks for what goes in it: the blocks of the line's kind that come
+     * closest to the target and aren't on show already. They are searched for with the filters as they stand.
+     */
+    private void openSwap(Row row, int rowTop) {
+        SwapList opened = new SwapList(row, rowTop, rowTop + ROW);
+        swapList = opened;
+        place(opened);
+        Set<String> onShow = new TreeSet<>();
+        for (Row other : rows) {
+            if (other.type == MAKE) continue;
+            onShow.add(other.entry.toString());
+            onShow.add(other.original.toString());
+        }
+        BlockIndex index = BlockIndex.get();
+        Target target = MatchState.target();
+        Query query = MatchState.query(SWAP_OPTIONS + onShow.size());
+        query.kinds.clear();
+        query.kinds.add(row.original.kind());
+        Minecraft mc = Minecraft.getInstance();
+        WORKER.execute(() -> {
+            List<BlockIndex.Match> options = new ArrayList<>();
+            try {
+                for (BlockIndex.Match m : index.closest(target, query)) {
+                    if (options.size() < SWAP_OPTIONS && !onShow.contains(m.entry().toString())) options.add(m);
+                }
+            } catch (RuntimeException e) {
+                ChromaStudioClient.LOGGER.warn("A search for blocks to swap in failed", e);
+            }
+            mc.execute(() -> {
+                if (swapList != opened) return;
+                opened.options = options;
+                opened.searching = false;
+                place(opened);
+            });
+        });
+    }
+
+    /** Sizes the swap list to its lines and hangs it under its line, or over it when there's more room there. */
+    private void place(SwapList s) {
+        int below = results.bottom() - s.rowBottom, above = s.rowTop - results.y();
+        boolean under = below >= Math.min(s.lines(), 3) * ROW + 2 || below >= above;
+        int lines = Math.clamp((under ? below : above) / ROW, 1, Math.min(SWAP_LINES, s.lines())), h = lines * ROW + 2;
+        int w = Math.min(results.w() - 8, Math.max(140, results.w() * 3 / 5)), x = Math.min(results.x() + 20, results.right() - w - 4);
+        s.box = new Bounds(x, under ? s.rowBottom : s.rowTop - h, w, h);
+        s.list = new Widgets.ScrollList(new Bounds(x + 1, s.box.y() + 1, w - 2, h - 2), ROW, s::lines);
+    }
+
+    private void swapList(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, List<Component> tip) {
+        SwapList s = swapList;
+        Bounds box = s.box;
+        g.fill(box.x(), box.y(), box.right(), box.bottom(), PANEL);
+        g.outline(box.x(), box.y(), box.w(), box.h(), 0xFF8EC2F2);
+        int back = s.row.swapped() ? 1 : 0;
+        s.list.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
+            if (over) g2.fill(x, y, x + w, y + h, 0x20FFFFFF);
+            if (i < back) {
+                Entry original = s.row.original;
+                Widgets.blockIcon(g2, original.block(), x + 2, y + 1);
+                g2.text(font, ellipsis(font, tr("swap.back", original.name()).getString(), w - 26), x + 22, y + 5, SWAPPED, false);
+                if (over) tip.add(tr("swap.restore.tip", original.name()));
+            } else if (s.options.isEmpty()) {
+                g2.text(font, ellipsis(font, (s.searching ? tr("searching") : tr("swap.none")).getString(), w - 8), x + 4, y + 5, DIM, false);
+            } else {
+                BlockIndex.Match m = s.options.get(i - back);
+                Entry e = m.entry();
+                ItemStack icon = new ItemStack(e.block());
+                if (icon.isEmpty()) Widgets.swatch(g2, x + 4, y + 3, 12, 12, e.face(m.face(), shown.tint).mean(shown.scale).rgb());
+                else Widgets.blockIcon(g2, icon, x + 2, y + 1);
+                String de = deltaE(m.distance(), shown.metric);
+                g2.text(font, de, x + w - 4 - font.width(de), y + 5, DIM, false);
+                String name = e.properties().isEmpty() ? e.name().getString() : e.name().getString() + ", " + e.properties();
+                g2.text(font, ellipsis(font, name, w - 30 - font.width(de)), x + 22, y + 5, TEXT, false);
+                if (over) {
+                    facts(e, m.face(), m.distance(), tip);
+                    tip.add(tr("swap.use").withColor((DIM) & 0xFFFFFF));
+                }
+            }
+        });
+    }
+
+    /** A click inside the swap list: on a line, it puts that block in the place of the one the list hangs from. */
+    private void swapClicked(MouseButtonEvent e) {
+        SwapList s = swapList;
+        if (s.list.mouseClicked(e) || e.button() != InputConstants.MOUSE_BUTTON_LEFT) return;
+        int i = s.list.rowAt(e.x(), e.y()) - (s.row.swapped() ? 1 : 0);
+        if (i == -1 && s.row.swapped()) restore(s.row);
+        else if (i >= 0 && i < s.options.size()) {
+            BlockIndex.Match chosen = s.options.get(i);
+            (s.row.type == MEMBER ? setSwaps : swaps).put(s.row.original, chosen);
+            status(tr("swap.done", s.row.entry.name(), chosen.entry().name()));
+            swapList = null;
+            rows();
+        }
+    }
+
+    /** Puts a line's own block back where another was swapped in. */
+    private void restore(Row row) {
+        (row.type == MEMBER ? setSwaps : swaps).remove(row.original);
+        status(tr("swap.undone", row.original.name()));
+        swapList = null;
+        rows();
     }
 
     private static Component recipeKeyName() {
@@ -986,6 +1119,16 @@ public final class MatchTab extends Tab {
             return panelClicked(e, doubled, left);
         }
         panelWidgets.setFocused(null);
+        // A click outside the open swap list shuts it and then does what it would have done, but for opening the list again.
+        Row shut = null;
+        if (swapList != null) {
+            if (swapList.box.contains(mx, my)) {
+                swapClicked(e);
+                return true;
+            }
+            shut = swapList.row;
+            swapList = null;
+        }
         if (controls.mouseClicked(e, doubled)) return true;
         if (left && picker.mouseClicked(mx, my)) return true;
         if (left && distance.contains(mx, my)) {
@@ -1010,12 +1153,14 @@ public final class MatchTab extends Tab {
         if (grid) {
             int col = (int) ((mx - results.x() - 2) / CELL), i = line * columns() + col;
             if (col < 0 || col >= columns() || i >= shown.matches.size()) return false;
-            BlockIndex.Match m = shown.matches.get(i);
-            act(new Row(RESULT, m.entry(), m.face(), m.distance(), false), Minecraft.getInstance().hasControlDown() ? ADD : BODY, e);
+            act(cell(i), Minecraft.getInstance().hasControlDown() ? ADD : BODY, e);
         } else if (line < rows.size()) {
             Row row = rows.get(line);
-            int w = results.w();
-            act(row, zone(row, results.x(), w - (rows.size() * ROW > results.h() ? 5 : 0), mx), e);
+            int w = results.w(), zone = zone(row, results.x(), w - (rows.size() * ROW > results.h() ? 5 : 0), mx);
+            if (zone == BODY && row.type != MAKE && left && !e.hasShiftDown()) {
+                // The line was drawn under the cursor a frame ago, which is where the list hangs from.
+                if (row != shut) openSwap(row, hovered == row ? hoveredTop : (int) my - ROW / 2);
+            } else act(row, zone, e);
         }
         return true;
     }
@@ -1029,7 +1174,9 @@ public final class MatchTab extends Tab {
                 status(tr("no_palette"));
                 return;
             }
-            List<PaletteEntry> entries = BlockIndex.get().materialSet(entry).stream().map(m -> new PaletteEntry(m.id(), m.properties())).toList();
+            // The set as it shows: with the blocks the player swapped in.
+            List<PaletteEntry> entries = BlockIndex.get().materialSet(entry).stream().map(m -> setSwaps.containsKey(m) ? setSwaps.get(m).entry() : m)
+                    .map(m -> new PaletteEntry(m.id(), m.properties())).toList();
             status(sink.createPalette(BlockIndex.get().materialName(entry), entries) ? tr("made_palette", entries.size()) : tr("make_palette.failed"));
             return;
         }
@@ -1050,10 +1197,13 @@ public final class MatchTab extends Tab {
                 sink.add(entry.id(), entry.properties());
                 status(tr("added", entryName(entry)));
             }
-        } else if (e.hasShiftDown()) {
+        } else if (zone == RESTORE) {
+            restore(row);
+        } else if (e.hasShiftDown() && zone == BODY) {
             Minecraft.getInstance().keyboardHandler.setClipboard(entry.toString());
             status(tr("copied", entry.toString()));
         } else {
+            // The hand button in the list, and a plain click on a tile of the grid.
             Optional<Component> why = Give.stack(new ItemStack(entry.block()), -1);
             status(why.orElseGet(() -> tr("gave", entry.name())));
         }
@@ -1117,6 +1267,7 @@ public final class MatchTab extends Tab {
             draggingDistance = false;
             took = true;
         }
+        if (swapList != null) took |= swapList.list.mouseReleased();
         return list.mouseReleased() | panelList.mouseReleased() | controls.mouseReleased(e) | panelWidgets.mouseReleased(e) | took;
     }
 
@@ -1128,6 +1279,7 @@ public final class MatchTab extends Tab {
             return true;
         }
         if (panel != Panel.NONE) return panelList.mouseDragged(e) || panelWidgets.mouseDragged(e, dx, dy);
+        if (swapList != null && swapList.list.mouseDragged(e)) return true;
         return list.mouseDragged(e) || controls.mouseDragged(e, dx, dy);
     }
 
@@ -1135,6 +1287,11 @@ public final class MatchTab extends Tab {
     public boolean mouseScrolled(double x, double y, double h, double v) {
         if (v == 0) return false;
         if (panel != Panel.NONE && results.contains(x, y)) return panelWidgets.mouseScrolled(x, y, h, v) || panelList.mouseScrolled(x, y, v);
+        if (swapList != null) {
+            if (swapList.box.contains(x, y)) return swapList.list.mouseScrolled(x, y, v) || true;
+            // Anywhere else the wheel does what it does, and the list would be left hanging from a line that has moved.
+            swapList = null;
+        }
         if (picker.mouseScrolled(x, y, v)) return true;
         if (distance.contains(x, y)) {
             // A notch is a step along the slider, so it moves a block at a time up close and further when far.
@@ -1182,9 +1339,13 @@ public final class MatchTab extends Tab {
         return controls.keyPressed(e);
     }
 
-    /** Escape closes the panel over the results, when one is open. */
+    /** Escape closes the swap list, or the panel over the results, when one is open. */
     @Override
     public boolean dismiss() {
+        if (swapList != null) {
+            swapList = null;
+            return true;
+        }
         if (panel == Panel.NONE) return false;
         toggle(panel);
         return true;
