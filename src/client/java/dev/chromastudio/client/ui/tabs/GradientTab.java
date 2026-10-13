@@ -482,6 +482,8 @@ public final class GradientTab extends PanelTab {
      * candidates the last solve chose among. They are ranked as the solve ranks a colour.
      */
     private void openSwap(int step) {
+        // While a solve is on its way the answer on show is about to change, and the list would be made from the old one.
+        if (solving) return;
         Set<String> used = new HashSet<>();
         for (Step s : result) used.add(s.entry.id());
         Step wanted = result.get(step);
@@ -556,12 +558,13 @@ public final class GradientTab extends PanelTab {
         if (i == -1 && back == 1) putBack(swapStep);
         else if (i >= 0 && i < swapOptions.size()) {
             Entry chosen = swapOptions.get(i).entry;
-            // Never a block another step has, whatever the list was made from.
-            for (int other = 0; other < result.size(); other++) {
-                if (other != swapStep && result.get(other).entry.id().equals(chosen.id())) {
-                    swapStep = -1;
-                    return;
-                }
+            // Never a block another step has or is pinned to, whatever the list was made from.
+            boolean taken = false;
+            for (int other = 0; other < result.size(); other++) taken |= other != swapStep && result.get(other).entry.id().equals(chosen.id());
+            for (Map.Entry<Integer, Entry> pin : PINS.entrySet()) taken |= pin.getKey() != swapStep && pin.getValue().id().equals(chosen.id());
+            if (taken) {
+                swapStep = -1;
+                return;
             }
             say(tr("gradient.chromastudio.swap.done", result.get(swapStep).entry.name(), chosen.name()), GOOD);
             PINS.put(swapStep, chosen);
