@@ -65,7 +65,7 @@ A palette is a list of blocks, each with a weight. Ten come with the mod, and yo
 - **Diorama** shows the palette as a wall of blocks, flat or in 3D, mixed by its weights.
 - **Export** writes a `.litematic` or vanilla `.nbt` file, as a strip, a wall, a grid of patches or one of the diorama's walls.
 - **WorldEdit** writes a pattern such as `70%stone,30%andesite` and the `//set` or `//replace` command to go with it.
-- **Hotbar** puts the palette in your hotbar, with the rest in a shulker box. Undo puts back what was there.
+- **Hotbar** puts the palette in your hotbar, with the rest in free inventory slots or, if you choose, in shulker boxes. Undo puts back what was there.
 
 **Share** copies a palette as one line of text, like `chroma1:stone,andesite*3,oak_log[axis=y]/Castle`, and **Import** reads one.
 

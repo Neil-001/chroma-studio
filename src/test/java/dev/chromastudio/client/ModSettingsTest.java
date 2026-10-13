@@ -132,6 +132,23 @@ class ModSettingsTest {
     }
 
     @Test
+    void anOldFilesShulkerBoxSwitchBecomesAMode() {
+        assertTrue(ModSettings.read("{}"));
+        assertEquals(OverflowMode.NEVER, ModSettings.hotbarOverflowMode);
+        assertTrue(ModSettings.read("{\"hotbarOverflow\": true}"));
+        assertEquals(OverflowMode.ALWAYS, ModSettings.hotbarOverflowMode);
+        assertTrue(ModSettings.read("{\"hotbarOverflow\": false}"));
+        assertEquals(OverflowMode.NEVER, ModSettings.hotbarOverflowMode);
+        assertTrue(ModSettings.read("{\"hotbarOverflow\": \"yes\"}"), "not an on or off, so the default");
+        assertEquals(OverflowMode.NEVER, ModSettings.hotbarOverflowMode);
+        assertTrue(ModSettings.read("{\"hotbarOverflow\": true, \"hotbarOverflowMode\": \"WHEN_FULL\"}"), "the new key wins");
+        assertEquals(OverflowMode.WHEN_FULL, ModSettings.hotbarOverflowMode);
+        assertFalse(ModSettings.write().contains("\"hotbarOverflow\""), "the old key isn't written back");
+        assertTrue(ModSettings.write().contains("\"hotbarOverflowMode\": \"WHEN_FULL\""));
+        assertFalse(ModSettings.dioramaPerspective);
+    }
+
+    @Test
     void aGroupResetsOnItsOwn() {
         change();
         ModSettings.reset("matching");

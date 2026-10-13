@@ -102,6 +102,12 @@ public final class GradientTab extends PanelTab {
     /** The {@link #inputs} the last solve was asked with. */
     private String solvedFor = "";
     private Bounds stopsArea, stripArea;
+    /** The stop the left button went down on, or -1, and where; it's a drag once the cursor has moved a little. */
+    private int pressedStop = -1;
+    private double pressedX;
+    private boolean draggingStop;
+    /** The gap between stops a drag would drop into now, as {@link Reorder} counts them. */
+    private int dropGap;
     private int badgeY;
     /** The filters behind "More…", which lie over the strip while they are open. */
     private boolean filtersOpen;
@@ -452,12 +458,17 @@ public final class GradientTab extends PanelTab {
             g.fill(x, y, x + CHIP, y + Widgets.H, i == selectedStop ? Theme.ACCENT : BORDER);
             g.fill(x + 1, y + 1, x + CHIP - 1, y + Widgets.H - 1, 0xFF000000 | colourOf(stop).rgb());
             if (stop instanceof Entry e) Widgets.blockIcon(g, e.block(), x + 1, y);
-            if (mouseX >= x && mouseX < x + CHIP && mouseY >= y && mouseY < y + Widgets.H) {
+            if (!draggingStop && mouseX >= x && mouseX < x + CHIP && mouseY >= y && mouseY < y + Widgets.H) {
                 Component what = stop instanceof Entry e ? e.name() : Component.literal(colourOf(stop).hex());
                 g.setComponentTooltipForNextFrame(font(), List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
             }
         }
 
+        // The marker shows only where letting go would move the stop.
+        if (draggingStop && Reorder.target(pressedStop, dropGap) != pressedStop) {
+            int x = stopsArea.x() + dropGap * (CHIP + 1) - 1;
+            g.fill(x - 1, stopsArea.y() - 2, x + 1, stopsArea.bottom() + 2, TEXT);
+        }
         if (filtersOpen) return;
 
         g.fill(stripArea.x(), stripArea.y(), stripArea.right(), stripArea.bottom(), WELL);
@@ -512,6 +523,9 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean clicked(MouseButtonEvent e, boolean doubled) {
+        // A press that never saw its release, with the window closed under it, mustn't turn the next drag into a stop's.
+        pressedStop = -1;
+        draggingStop = false;
         if (filtersOpen) {
             if (e.button() == InputConstants.MOUSE_BUTTON_LEFT && filtersClose().contains(e.x(), e.y())) {
                 filtersOpen = false;
@@ -529,14 +543,32 @@ public final class GradientTab extends PanelTab {
             STOPS.remove(i);
             changed();
         } else rebuild();
+        if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
+            pressedStop = i;
+            pressedX = e.x();
+        }
         return true;
     }
 
     @Override
-    protected boolean released(MouseButtonEvent e) { return filtersOpen && filterWidgets.mouseReleased(e); }
+    protected boolean dragged(MouseButtonEvent e, double dx, double dy) {
+        if (pressedStop < 0) return filtersOpen && filterWidgets.mouseDragged(e, dx, dy);
+        // A click that slips a pixel is still a click.
+        if (Math.abs(e.x() - pressedX) >= 3) draggingStop = true;
+        dropGap = Reorder.gap(e.x() - stopsArea.x(), CHIP + 1, STOPS.size());
+        return true;
+    }
 
     @Override
-    protected boolean dragged(MouseButtonEvent e, double dx, double dy) { return filtersOpen && filterWidgets.mouseDragged(e, dx, dy); }
+    protected boolean released(MouseButtonEvent e) {
+        if (pressedStop < 0) return filtersOpen && filterWidgets.mouseReleased(e);
+        boolean moved = draggingStop && pressedStop < STOPS.size() && Reorder.target(pressedStop, dropGap) != pressedStop;
+        if (moved) selectedStop = Reorder.move(STOPS, pressedStop, dropGap);
+        pressedStop = -1;
+        draggingStop = false;
+        if (moved) changed();
+        return true;
+    }
 
     @Override
     protected boolean scrolled(double x, double y, double h, double v) {

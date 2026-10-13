@@ -235,6 +235,10 @@ public final class SettingsScreen extends Screen {
 
     private AbstractWidget control(String name, int x, int y, Component tip, Class<?> type) {
         Object value = ModSettings.get(name);
+        // An on or off that chooses between two named things reads better as the names.
+        if (name.equals("dioramaPerspective"))
+            return list.cycler(x, y, CONTROL_W, null, List.of(false, true), (Boolean) value,
+                    v -> Component.translatable("option.chromastudio.projection." + (v ? "perspective" : "orthographic")), v -> ModSettings.set(name, v), tip);
         if (type == boolean.class) return list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v), tip);
         if (type == int.class || type == double.class) {
             boolean whole = type == int.class;

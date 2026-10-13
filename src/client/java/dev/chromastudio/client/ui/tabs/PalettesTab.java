@@ -62,6 +62,8 @@ public final class PalettesTab extends PanelTab {
     private Widgets.ScrollList list;
     /** A palette for each row of the list, or null for the heading over the presets. */
     private List<Palette> listed = List.of();
+    /** What the search field holds, which keeps only the palettes it matches in the list. */
+    private String search = "";
     private Bounds entriesArea, titleArea;
     private Panel panel = Panel.ENTRIES;
     private AnalysePanel analyse;
@@ -167,16 +169,32 @@ public final class PalettesTab extends PanelTab {
             y += ROW;
         }
 
-        List<Palette> all = new ArrayList<>(store.own());
-        all.add(null);
-        all.addAll(store.presets());
-        listed = all;
-        Bounds area = new Bounds(x0, b.y() + PAD, leftW, b.bottom() - PAD - 2 * ROW - b.y() - PAD);
+        filter();
+        Bounds area = new Bounds(x0, b.y() + PAD + ROW, leftW, b.bottom() - PAD - 3 * ROW - b.y() - PAD);
         if (list == null) list = new Widgets.ScrollList(area, LIST_ROW, () -> listed.size());
         else list.area = area;
-        if (p != null) list.reveal(listed.indexOf(p));
+        if (listed.contains(p)) list.reveal(listed.indexOf(p));
+        // The list is filtered as each letter is typed, without laying the tab out again, so the field keeps its cursor.
+        EditBox field = widgets.search(x0, b.y() + PAD, leftW, tr("palettes.chromastudio.search"), s -> {
+            search = s;
+            filter();
+        });
+        field.setValue(search);
+        field.setTooltip(Tooltip.create(tr("palettes.chromastudio.search.tip")));
         return leftW;
     }
+
+    /** Lists the palettes the search keeps: the player's own, then the presets under their heading. */
+    private void filter() {
+        List<Palette> all = new ArrayList<>();
+        for (Palette own : store.own()) if (kept(own)) all.add(own);
+        List<Palette> presets = store.presets().stream().filter(this::kept).toList();
+        if (!presets.isEmpty()) all.add(null);
+        all.addAll(presets);
+        listed = all;
+    }
+
+    private boolean kept(Palette p) { return PaletteSearch.matches(search, name(p).getString(), p.tags); }
 
     /** A field's whole text over the reason it can't be changed, or the reason alone when the field is empty. */
     private static Component whole(String text, Component reason) {
@@ -399,6 +417,7 @@ public final class PalettesTab extends PanelTab {
             else if (hovered) gg.fill(x, y, x + w, y + h, HOVER);
             gg.text(font(), fit(name(row).getString(), w - 6), x + 3, y + 2, row.preset ? DIM : TEXT, false);
         });
+        if (listed.isEmpty()) g.textWithWordWrap(font(), tr("palettes.chromastudio.search.none"), list.area.x() + 4, list.area.y() + 4, list.area.w() - 8, DIM, false);
 
         // A note about what just happened takes the whole line for its few seconds; else the name and the count share it.
         Component note = note();

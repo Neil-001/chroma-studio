@@ -2,6 +2,7 @@ package dev.chromastudio.client.ui.tabs;
 
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.OverflowMode;
 import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.FileDialog;
 import dev.chromastudio.client.action.HotbarFill;
@@ -562,7 +563,7 @@ final class PaletteDialogs {
         private Component result;
 
         Hotbar(List<PaletteEntry> entries) {
-            super(tr("palettes.chromastudio.hotbar.title"), 260, 112);
+            super(tr("palettes.chromastudio.hotbar.title"), 270, 124);
             this.entries = List.copyOf(entries);
         }
 
@@ -570,6 +571,14 @@ final class PaletteDialogs {
         protected void build(Bounds in) {
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo");
             int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo), fillW = Widgets.buttonWidth(fill);
+            // The mode is the settings' own, shown and changed here, so the dialog always says which one a fill goes by.
+            List<OverflowMode> modes = List.of(OverflowMode.values());
+            widgets.cycler(in.x(), y, in.w() - undoW - fillW - 3 * PanelTab.GAP, tr("palettes.chromastudio.hotbar.boxes"), modes, ModSettings.hotbarOverflowMode,
+                    m -> tr("option.chromastudio.overflowmode." + m.name().toLowerCase(Locale.ROOT)), m -> {
+                        ModSettings.hotbarOverflowMode = m;
+                        ModSettings.save();
+                        result = null;
+                    }, tr("settings.chromastudio.hotbarOverflowMode.tip"));
             Button fillButton = widgets.button(in.right() - undoW - PanelTab.GAP - fillW, y, fill, () -> {
                 result = HotbarFill.fill(entries);
                 refresh();
@@ -586,7 +595,7 @@ final class PaletteDialogs {
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
             int over = Math.max(0, entries.size() - 9);
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
-                    : tr(ModSettings.hotbarOverflow ? "palettes.chromastudio.hotbar.about_box" : "palettes.chromastudio.hotbar.about_left", over);
+                    : tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over);
             g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
         }
     }

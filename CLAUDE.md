@@ -32,10 +32,10 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 - `client/index/` is the block index, described below.
 - `client/ui/` has `ChromaScreen`, the window, with `Window` for its position and size, `Hud`, `Tooltips` and `SettingsScreen`, whose dialogs are `Popup`s. A tab or screen builds its controls through a `Widgets` group.
 - `Theme` holds every colour the window, its tabs and the settings screen draw with, worked out from the `theme` setting's base colour. Its fields change with the setting, so read them while drawing. `ThemeTest` checks that text reads on every theme.
-- `client/ui/tabs/` has the four tabs, their panels and dialogs, and `MatchState`.
+- `client/ui/tabs/` has the four tabs, their panels and dialogs, and `MatchState`. `Reorder` is the dragging of a gradient's stops, and `PaletteSearch` the Palettes tab's search.
 - `client/action/` is what the mod does for the player in the game: `Eyedropper`, `ScreenPicker`, `Give`, `HotbarFill`, `Dye`, `Capture`, `ImageImport` and `RecipeViewers`. `PaletteBlocks` turns palette entries into block states and index entries.
 - `client/export/` has `SchematicExporter`, `LitematicaBridge` and `ExportCommand`, which is `/chroma export` and `/chroma place`.
-- `ModSettings` holds the mod's own options, and its comment says how to add one. A setting also needs a label and a `.tip` in the language file, which the settings screen's search reads. One that names a core enum (`metric`, `easing`, `hueArc`) is a string holding the constant's name. The screen's Undo goes back to a `ModSettings.snapshot()` taken when it opened.
+- `ModSettings` holds the mod's own options, and its comment says how to add one. A setting also needs a label and a `.tip` in the language file, which the settings screen's search reads. One that names a core enum (`metric`, `easing`, `hueArc`) is a string holding the constant's name. The screen's Undo goes back to a `ModSettings.snapshot()` taken when it opened. `ModSettings.read` turns the boolean `hotbarOverflow` of an older file into `hotbarOverflowMode`.
 - `PaletteStore` keeps the player's palettes and reads the bundled presets. A new preset is a JSON file in `assets/chromastudio/presets/`, its name in `PaletteStore.PRESETS` and a `preset.chromastudio.<file>` key.
 - A new `/chroma` subcommand goes in through `ChromaCommand.SUBCOMMANDS`. `/chroma debug <block id>` prints what the index holds for a block.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
@@ -71,7 +71,7 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 - Tabs hand work to each other through `ui.Handoff`, and `/chroma` through `ChromaScreen.pendingTarget`. Additions to a palette go to `PaletteSink.current()`, which is the `PaletteStore`.
 - A pinned window is drawn by `Hud.render` and takes no input.
 - `Capture` borrows `Keys.onEyedropper` while it is armed and gives it back after.
-- `DioramaPanel` lays its wall out with `Arrangement` and the export's own sizes, so exporting from it writes the wall that shows.
+- `DioramaPanel` lays its wall out with `Arrangement` and the export's own sizes, so exporting from it writes the wall that shows. `DioramaPip` draws the 3D wall, and with `dioramaPerspective` swaps the flat projection the game gives a picture-in-picture for its own.
 
 ## Minecraft rules
 
@@ -107,7 +107,8 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 The mod never places or changes blocks in the world. What it does to the game goes through the player's own inventory or chat:
 
 - Giving a block, filling the hotbar and dyeing need creative mode or operator rights, and are greyed out with the reason otherwise.
-- `Give.stack` is the one way a block's item reaches the player: the creative slot packet in creative, `/give` or `/item replace` for an operator in survival, and otherwise the reason it can't.
+- `Give.stack` is how a block's item reaches the player: the creative slot packet in creative, `/give` or `/item replace` for an operator in survival, and otherwise the reason it can't.
+- A hotbar fill puts the blocks past the ninth where `HotbarPlan` says for `hotbarOverflowMode`: in free inventory slots, in shulker boxes, or on the ground. `HotbarFill` sets those slots itself, so Undo can empty them. It drops with the creative inventory's drop packet, which the server takes only so fast, or with `/give` for an operator in survival.
 - Commands go through `ClientPlatform.sendChatCommand`, without the slash, as if the player had typed them. It does nothing outside a world.
 - The game's replies to a hotbar fill's commands are kept out of chat, through `CommandReplies`. An error always shows.
 - Exported files are never silently overwritten.
