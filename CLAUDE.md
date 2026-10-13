@@ -20,10 +20,10 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
   - `core/color` is the colour maths, and what a texture is summed up as: `TextureStats`, `Distribution`, `Badge`, `Scale`, `Viewing` and `Shading`.
   - `core/palette` has `Palette`, `ShareString`, `PaletteCodec` for the JSON, `Ramp` and `Gradient`, `Generator`, `Analyzer` and `WorldEditPattern`.
   - `core/export` has `Arrangement`, which lays a palette out, and `LitematicBits`.
-- Only `fabric/src/` and `neoforge/src/` may import their loader's classes. Shared client code uses `ClientPlatform`; changes to that contract must go into both loaders. Each loader also has these hooks, so a new one goes into both:
+- Only `fabric/src/` and `neoforge/src/` may import their loader's classes. Shared client code uses `ClientPlatform`; changes to that contract must go into both loaders. `ClientPlatform.modelParts` and `particleMaterial` read a block's model for the index, because NeoForge deprecates the game's methods that take no world. Each loader also has these hooks, so a new one goes into both:
   - `ChromaStudioClient.init` at client start, which loads the settings, creates the keys and registers the tabs and `ExportCommand`. The loader then registers `Keys.ALL` and `Keys.CATEGORY`, and calls `ChromaStudioClient.tick` at the end of every client tick.
   - The HUD layer goes to `Hud.render`, the client command event to `ChromaCommand.build()`, the item tooltip event to `Tooltips.append`, and the settings entry (Mod Menu's entrypoint, NeoForge's `IConfigScreenFactory`) to `SettingsScreen`.
-  - Every system message goes to `HotbarFill.hidesFeedback`, and stays out of chat when it returns true: Fabric from `ClientReceiveMessageEvents.ALLOW_GAME`, NeoForge from `ClientChatReceivedEvent.System`.
+  - Every system message goes to `HotbarFill.hidesFeedback`, and stays out of chat when it returns true: NeoForge from `ClientChatReceivedEvent.System`, Fabric from `ClientReceiveMessageEvents.ALLOW_GAME`.
   - The reload listener that `BlockIndex.install` gives it, and `BlockIndex.worldJoined` when the player joins.
   - Its extra world geometry goes to `Capture.render`, and it registers `DioramaPip` as a picture-in-picture renderer.
   - JEI finds `JeiHook` on Fabric through the `jei_mod_plugin` entrypoint and on NeoForge by its annotation.
@@ -73,7 +73,6 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 ## Minecraft rules
 
 - The game has no `BlockRenderDispatcher`. A block is drawn through `BlockModelResolver` and `BlockModelRenderState`.
-- NeoForge deprecates the game's methods that read a block's model without a world, so use `ClientPlatform.modelParts` and `particleMaterial`.
 - A tint comes from `BlockTintSource.colorInWorld(state, getter, pos)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
 - The game darkens a block's faces by fixed factors: top 1.0, north and south 0.8, east and west 0.6, bottom 0.5. `Eyedropper` reads the index, not the screen, so its colour is the face unshaded.
 - The creative tabs can't be filled before a world has loaded. Until `BlockIndex.worldJoined`, every block with an item counts as listed.
@@ -82,17 +81,18 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 - The game lays a frame's GUI out before it draws the world, so the frame `ScreenPicker` can read is the last one shown.
 - The game ships SDL but not tinyfd, so `FileDialog` is SDL's, and every caller has a path field too.
 - Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number.
-- `NativeImage.getPixel` and `setPixel` take ARGB.
 
 ## Conventions
 
 - Grey out inapplicable controls with a tooltip explaining why. Don't hide them.
-- Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
+- Use cyclers for options, so right-click steps backwards, and spinners for numbers.
+- The mouse wheel steps a spinner while the cursor is over it. In a list that scrolls, such as the settings, it only steps a spinner the player has clicked into and scrolls the list otherwise, so scrolling past a number doesn't change it.
+- Size buttons with the text's width. Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
 - Use plain, sentence case UI copy without jargon.
-- Size buttons with the text's width. Use cyclers for options, so right-click steps backwards, and spinners for numbers. The mouse wheel steps a spinner while the cursor is over it. In a list that scrolls, such as the settings, it only steps a spinner the player has clicked into and scrolls the list otherwise, so scrolling past a number doesn't change it.
-- Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
+- Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
 - Visual fixes must preserve other behaviour. Prove it, for example by comparing pixels.
 - Test new core logic. Change a test's reference numbers only on purpose.
+- `NativeImage.getPixel` and `setPixel` take ARGB.
 - Comments say why, in plain English.
 - Commits follow the conventional style (`feat:`, `fix:`, `docs:`). Pull requests have a short body.
 - The [wiki](https://github.com/Neil-001/chroma-studio/wiki) must be updated with any change a player would notice.
@@ -119,13 +119,13 @@ The mod never places or changes blocks in the world. What it does to the game go
 
 ## Releasing
 
-`main` is the only branch, and it releases. Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. With no `branches` input it releases `main`. It still accepts `*/stable` branches, for when an older Minecraft line is kept up beside `main`, and `branches=all` means every one of those.
+Only `main` releases. Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. It reads loader and Minecraft ranges from jar metadata. It also accepts `*/stable` branches, for an older Minecraft line kept up beside `main`, and `branches=all` means every one of those.
 
 1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases.
 2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes.
 3. Run `gh workflow run release.yml` to publish.
 
-Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. For `main` the line is `minecraft_version` in `gradle.properties`; a stable branch's is its name without `/stable`. The Minecraft and loader ranges each site shows come from the jars' metadata. A branch whose tag exists is skipped. The workflow creates the tag last, after publishing. The two jars have distinct identifiers, `1.0.0+mc26.3-fabric` and `1.0.0+mc26.3-neoforge`; GitHub holds both in one release.
+Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. For `main` the line is `minecraft_version` in `gradle.properties`; a stable branch's is its name without `/stable`. A branch whose tag exists is skipped. The workflow creates the tag last, after publishing. The two jars have distinct identifiers, `1.0.0+mc26.3-fabric` and `1.0.0+mc26.3-neoforge`; GitHub holds both jars in one release.
 
 After a partial failure, re-run failed jobs. Modrinth skips existing versions; CurseForge doesn't. Check CurseForge for each failed job's jar before retrying, and retry only if it's absent. Don't start a fresh run with CurseForge in `targets` after a partial release. To limit sites, pass `-f targets=curseforge,github`, for example.
 
