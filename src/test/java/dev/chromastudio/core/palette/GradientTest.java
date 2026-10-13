@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -231,5 +232,83 @@ class GradientTest {
         List<Candidate> two = List.of(flat("a", grey(0.3), 0), flat("b", grey(0.5), 0));
         assertThrows(IllegalArgumentException.class, () -> Gradient.solve(ideal, two, Metric.OKLAB, false));
         assertEquals(List.of(), Gradient.solve(List.of(), two, Metric.OKLAB, false).steps());
+    }
+
+    @Test
+    void aPinnedStepKeepsItsBlockThroughASolve() {
+        List<Candidate> candidates = new ArrayList<>();
+        for (int i = 0; i < 20; i++) candidates.add(flat("c" + i, grey(0.30 + 0.02 * i), 0));
+        List<Oklch> ideal = List.of(grey(0.30), grey(0.40), grey(0.50), grey(0.60));
+        assertEquals(List.of("c0", "c5", "c10", "c15"), keys(Gradient.solve(ideal, candidates, Metric.OKLAB, false)));
+
+        // The second step is given a block far from its colour, and keeps it; the others stay as they were.
+        Result pinned = Gradient.solve(ideal, candidates, Metric.OKLAB, false, Map.of(1, "c19"));
+        assertEquals(List.of("c0", "c19", "c10", "c15"), keys(pinned));
+        // The mean counts the pinned step as it is.
+        assertEquals(distance(grey(0.40), grey(0.68)) / 4, pinned.meanDeltaE(), 1e-12);
+
+        // A second pin, as when another step is swapped afterwards, leaves the first where it is.
+        Result both = Gradient.solve(ideal, candidates, Metric.OKLAB, false, Map.of(1, "c19", 3, "c2"));
+        assertEquals(List.of("c0", "c19", "c10", "c2"), keys(both));
+    }
+
+    @Test
+    void aPinnedBlockIsNeverRepeatedInAnotherStep() {
+        // The first step is pinned to the block the third would have had, so the third takes its next best.
+        List<Candidate> candidates = new ArrayList<>();
+        for (int i = 0; i < 20; i++) candidates.add(flat("c" + i, grey(0.30 + 0.02 * i), 0));
+        List<Oklch> ideal = List.of(grey(0.30), grey(0.40), grey(0.50), grey(0.60));
+        Result result = Gradient.solve(ideal, candidates, Metric.OKLAB, false, Map.of(0, "c10"));
+        assertEquals("c10", keys(result).getFirst());
+        assertEquals(4, new HashSet<>(keys(result)).size());
+        assertEquals("c5", keys(result).get(1));
+        assertTrue(Set.of("c9", "c11").contains(keys(result).get(2)), keys(result).toString());
+
+        // The same over random blocks, with every step wanting the pinned ones: all the steps differ, the pins hold,
+        // and the free steps are as good as trying every way of sharing out the rest.
+        Random random = new Random(5);
+        for (int round = 0; round < 50; round++) {
+            int steps = 2 + random.nextInt(5);
+            List<Candidate> some = randomCandidates(steps + 1 + random.nextInt(6), round);
+            List<Oklch> colours = new ArrayList<>();
+            for (int i = 0; i < steps; i++) colours.add(new Oklch(0.5, 0.05, 100));
+            double[][] cost = costs(colours, some, Metric.OKLAB);
+            Result free = Gradient.solve(colours, some, Metric.OKLAB, false);
+            // Pin the last step to what the first had, and the first to what the last had.
+            Object a = keys(free).getFirst(), b = keys(free).getLast();
+            Result swapped = Gradient.solve(colours, some, Metric.OKLAB, false, Map.of(0, b, steps - 1, a));
+            assertEquals(b, keys(swapped).getFirst());
+            assertEquals(a, keys(swapped).getLast());
+            assertEquals(steps, new HashSet<>(keys(swapped)).size(), "round " + round);
+            boolean[] taken = new boolean[some.size()];
+            taken[(Integer) a] = taken[(Integer) b] = true;
+            double[][] rest = Arrays.copyOfRange(cost, 1, steps - 1);
+            double best = cost[0][(Integer) b] + cost[steps - 1][(Integer) a] + bruteForce(rest, 0, taken);
+            assertEquals(best / steps, swapped.meanDeltaE(), 1e-9, "round " + round);
+        }
+    }
+
+    @Test
+    void aPinThatCannotHoldIsLeftOut() {
+        List<Oklch> ideal = List.of(grey(0.3), grey(0.7));
+        List<Candidate> candidates = List.of(flat("dark", grey(0.3), 0), flat("light", grey(0.7), 0), flat("mid", grey(0.5), 0));
+        // No such block, no such step, and a block an earlier step has already pinned.
+        assertEquals(List.of("dark", "light"), keys(Gradient.solve(ideal, candidates, Metric.OKLAB, false, Map.of(0, "gone", 5, "mid"))));
+        assertEquals(List.of("mid", "light"), keys(Gradient.solve(ideal, candidates, Metric.OKLAB, false, Map.of(0, "mid", 1, "mid"))));
+        // Every step pinned leaves nothing to solve.
+        assertEquals(List.of("light", "dark"), keys(Gradient.solve(ideal, candidates, Metric.OKLAB, false, Map.of(0, "light", 1, "dark"))));
+    }
+
+    @Test
+    void theClosestToAStepComeNearestFirstWithoutTheUsedOnes() {
+        List<Candidate> candidates = new ArrayList<>();
+        for (int i = 0; i < 20; i++) candidates.add(flat("c" + i, grey(0.30 + 0.02 * i), 0));
+        candidates.add(flat("c10", grey(0.9), 0));
+        List<Gradient.Option> options = Gradient.closest(grey(0.50), candidates, Metric.OKLAB, Set.of("c9", "c12"), 3);
+        // c9 and c12 fill other steps, so c11 and then c8 follow the block that is the colour itself. The second c10 is no other block.
+        assertEquals(List.of("c10", "c11", "c8"), options.stream().map(o -> o.candidate().key()).toList());
+        assertEquals(0, options.getFirst().deltaE(), 1e-12);
+        assertEquals(distance(grey(0.50), grey(0.30 + 0.02 * 8)), options.getLast().deltaE(), 1e-12);
+        assertEquals(18, Gradient.closest(grey(0.50), candidates, Metric.OKLAB, Set.of("c9", "c12"), 100).size());
     }
 }

@@ -79,7 +79,11 @@ public final class PalettesTab extends PanelTab {
     private int shownSize;
     private boolean shownReady;
 
-    public PalettesTab() { super("palettes"); }
+    public PalettesTab() {
+        super("palettes");
+        // The entries are a list the wheel scrolls, so it steps a weight only after a click into it, as on the settings screen.
+        rows.wheelNeedsClick();
+    }
 
     private static Component tr(String key, Object... args) { return Component.translatable(key, args); }
 

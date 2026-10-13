@@ -55,6 +55,8 @@ final class DioramaPanel implements AutoCloseable {
     private DynamicTexture texture;
     private Identifier textureId;
     private boolean painted;
+    /** The theme's well colour the flat wall was painted over. The picture holds it, so another theme needs it painted again. */
+    private int paintedOver;
     /** How far the wall's front is turned to the right and its top tipped forward, in degrees. It starts seen from above its right end. */
     private float yaw = -25, pitch = 15;
     private Bounds area, view;
@@ -125,7 +127,7 @@ final class DioramaPanel implements AutoCloseable {
             g.text(PanelTab.font(), Component.translatable("palettes.chromastudio.diorama.orbit"), view.x() + 3, view.bottom() - 10, Theme.DIM, false);
             return;
         }
-        if (!painted) paint();
+        if (!painted || paintedOver != Theme.WELL) paint();
         int cell = Math.max(1, Math.min(view.w() / w, view.h() / h));
         int dw = w * cell, dh = h * cell, dx = view.x() + (view.w() - dw) / 2, dy = view.y() + (view.h() - dh) / 2;
         g.blit(RenderPipelines.GUI_TEXTURED, textureId, dx, dy, 0f, 0f, dw, dh, w * TEXELS, h * TEXELS, w * TEXELS, h * TEXELS);
@@ -163,6 +165,7 @@ final class DioramaPanel implements AutoCloseable {
             }
         texture.upload();
         painted = true;
+        paintedOver = Theme.WELL;
     }
 
     private static int over(int argb, int background) {

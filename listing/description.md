@@ -28,7 +28,7 @@ Press **C** for the window. It has four tabs. You can drag it, resize it, make i
 ### Match
 
 1. Pick a colour with the square, the sliders or a hex code. Or press **Block** to pick a block in the world, or **Screen** to click any pixel of the game. The slot at the top left takes the block in your hand.
-2. Read the list. Click a row for the next-best blocks and swap one in. The hand button gets you the block, in creative mode or as an operator. Shift-click copies its id. The **+** button adds it to your palette.
+2. Read the list. Click a row to get the block, in creative mode or as an operator. Shift-click copies its id. The **+** button adds it to your palette.
 3. Narrow the list with the row of filters: one kind of block, full cubes only, one mod, a tone, a lightness range and more.
 4. Click the arrow beside a row to see the other blocks of its material, such as the slab, stairs and wall. One more click makes a palette of them.
 
@@ -44,7 +44,7 @@ Out in the world, press **X** on a block to read its colour. The hex code goes t
 
 ### Gradient
 
-Give it two or more colours or blocks and a number of steps, from 2 to 32. It finds a different block for every step so that the whole run is as close as it can be. Then fill your hotbar with it, copy the list, save it as a palette or export it.
+Give it two or more colours or blocks and a number of steps, from 2 to 32. It finds a different block for every step so that the whole run is as close as it can be. Click a step to swap in one of its next-best blocks. Then fill your hotbar with it, copy the list, save it as a palette or export it.
 
 <center>
 

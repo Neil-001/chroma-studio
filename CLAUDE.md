@@ -66,7 +66,7 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 
 - `MatchState` is what is being matched, for the Match and Explore tabs, `Tooltips` and the eyedropper. It belongs to the client thread, and the tabs watch `MatchState.revision()`.
 - `MatchState.filters()` is the one set of filters. Match, Explore and Gradient all keep to it, and `FilterControls` builds the More… controls for Match and Gradient alike. A gradient's candidates are `MatchFilters.candidates`: one state a block, read on one face (north for Side, top for Any) without shading.
-- A click on a Match row opens the swap list, the next-best blocks of that row's kind. A swap lasts until the target, a filter, a matching setting or the index changes. The hand button gives the block.
+- A click on a Gradient step opens the swap list, the next-best candidates for that step's colour which no step uses. The one chosen is pinned to the step in `GradientTab.PINS`, and `Gradient.solve` shares the other blocks out around the pins. A pin lasts through other steps' swaps and goes when the stops, a control, a filter, a matching setting or the index changes.
 - Match searches and Gradient solves run on a worker thread and keep only the newest answer. The Gradient tab reads its candidates on the client thread first.
 - Tabs hand work to each other through `ui.Handoff`, and `/chroma` through `ChromaScreen.pendingTarget`. Additions to a palette go to `PaletteSink.current()`, which is the `PaletteStore`.
 - A pinned window is drawn by `Hud.render` and takes no input.
@@ -90,7 +90,7 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 
 - Grey out inapplicable controls with a tooltip explaining why. Don't hide them.
 - Use cyclers for options, so right-click steps backwards, and spinners for numbers.
-- The mouse wheel steps a spinner while the cursor is over it, and a cycler too: a notch down is a click and a notch up a right-click. `Widgets` does both for every control it makes, so make them through it. The settings list is the one exception, through `Widgets.wheelNeedsClick`: there the wheel only steps a spinner the player has clicked into and scrolls the list otherwise, so scrolling past a control doesn't change it.
+- The mouse wheel steps a spinner while the cursor is over it, and a cycler too: a notch down is a click and a notch up a right-click. `Widgets` does both for every control it makes, so make them through it. The settings list and the Palettes tab's entries are the exceptions, through `Widgets.wheelNeedsClick`: there the wheel only steps a spinner the player has clicked into and scrolls the list otherwise, so scrolling past a control doesn't change it.
 - Size buttons with the text's width. Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
 - Take colours from `Theme`, never a hex literal, apart from a colour that is data, such as a swatch, and the black and white marks drawn over one. The game's own tooltips and text fields stay dark on every theme, so text in them uses `Theme.TIP_*` and `Theme.FIELD_BAD`. Centre text with `Widgets.centred`, which leaves the drop shadow off dark text.
 - Use plain, sentence case UI copy without jargon.
