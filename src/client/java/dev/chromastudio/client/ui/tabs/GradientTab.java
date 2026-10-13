@@ -98,6 +98,12 @@ public final class GradientTab extends PanelTab {
     private final Widgets filterWidgets = new Widgets();
     /** The area the filters' controls were last laid out for. They are only laid out again for another, so a number being typed isn't lost. */
     private Bounds filtersFor;
+    /**
+     * The filters the controls were laid out from, and how they stood when this tab last ticked. The Match tab can
+     * change or reset them while this one is away, and the controls are laid out again when they no longer agree.
+     */
+    private MatchFilters filtersBuilt;
+    private List<Object> filtersSeen = List.of();
 
     public GradientTab() { super("gradient"); }
 
@@ -238,7 +244,7 @@ public final class GradientTab extends PanelTab {
         int top = y + ROW + GAP;
         stripArea = new Bounds(b.x() + PAD, top, b.w() - 2 * PAD, badgeY - GAP - top);
         Bounds body = filtersBody();
-        if (filtersOpen && !body.equals(filtersFor)) buildFilters();
+        if (filtersOpen && (!body.equals(filtersFor) || filtersBuilt != filters || !filters.state().equals(filtersSeen))) buildFilters();
         if (!filtersOpen) filtersFor = null;
         // A new stop, or settings changed on the settings screen, make the answer on show a stale one.
         if (seeded || stale() || result.isEmpty() && problem == null && !solving) solve();
@@ -259,6 +265,8 @@ public final class GradientTab extends PanelTab {
 
     private void buildFilters() {
         filtersFor = filtersBody();
+        filtersBuilt = MatchState.filters();
+        filtersSeen = filtersBuilt.state();
         filterWidgets.clear();
         // "Reset filters" resets the kind too, which the row above shows.
         FilterControls.build(filterWidgets, filtersFor, true, () -> {
@@ -551,6 +559,8 @@ public final class GradientTab extends PanelTab {
     public void tick() {
         super.tick();
         MatchState.follow();
+        // A change made while this tab is the one on show came from its own controls, which already show it.
+        filtersSeen = MatchState.filters().state();
         // Checked by what is so now, so nothing is missed while a dialog is open or another tab is showing.
         if (!dialogOpen() && stale()) solve();
     }
