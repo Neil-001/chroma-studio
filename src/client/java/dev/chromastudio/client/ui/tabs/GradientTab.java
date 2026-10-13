@@ -38,9 +38,11 @@ import dev.chromastudio.core.palette.Ramp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,12 +67,20 @@ import net.minecraft.world.level.block.Blocks;
  * strip of the ideal colours over the blocks chosen for them; a quality badge; and what can be done with the result.
  * The blocks are chosen on a worker thread, and only the newest request's answer is kept. They come from the blocks
  * that pass the Match tab's filters: the kind control here is that tab's own, and "More…" opens the rest of them.
+ *
+ * <p>A click on a step opens the swap list under the strip: the next-best blocks for that step's colour. The one
+ * chosen is pinned to the step, and the other steps are solved again around it.
  */
 public final class GradientTab extends PanelTab {
     private static final int MAX_STOPS = 8, CHIP = 18, CELL_MIN = 18, CELL_MAX = 40, IDEAL_H = 10, BLOCK_H = 7, CELL_H = IDEAL_H + 16 + BLOCK_H + 4;
     /** The bands of the quality badge, as the mean ΔE in OKLab. */
     private static final double GOOD_UP_TO = 0.02, FAIR_UP_TO = 0.06;
     private static final String ALL_KINDS = "all";
+    /** How many blocks the swap list offers, the most and fewest of its lines on show at once, a line's height and the list's width. */
+    private static final int SWAP_OPTIONS = 20, SWAP_LINES = 6, SWAP_LINES_MIN = 2, SWAP_ROW = 18, SWAP_W = 200;
+    /** The side of a pinned step's put-back button, and its sign, seven pixels square. */
+    private static final int BACK = 9;
+    private static final String[] UNDO = {"..#....", ".##....", "######.", ".##...#", "..#...#", "......#", "..####."};
 
     /** The stops, each a {@link Color} or an {@link Entry}. They and the controls last the session, across windows. */
     private static final List<Object> STOPS = new ArrayList<>(List.of(Color.fromHex("#1F2A44"), Color.fromHex("#E9D8A6")));
@@ -80,6 +90,13 @@ public final class GradientTab extends PanelTab {
     private static HueArc arc = named(HueArc.class, ModSettings.hueArc, HueArc.SHORTEST);
     private static boolean spread = ModSettings.spreadMatching;
     private static String hex = "";
+    /**
+     * The blocks the player has chosen for steps, by the step's number from 0, and {@link #pinKey what} they were
+     * chosen for with the index build. A choice is the next best for one step of one gradient, so it lasts through
+     * the solves that other steps' swaps ask for, across windows too, and goes when anything else about the gradient does.
+     */
+    private static final Map<Integer, Entry> PINS = new HashMap<>();
+    private static Object pinsFor, pinsBuild;
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
         Thread t = new Thread(task, "Chroma Studio gradient");
@@ -89,10 +106,25 @@ public final class GradientTab extends PanelTab {
     /** Each solve takes the next number, and its answer is dropped when a later one has been asked for. */
     private static final AtomicInteger ASKED = new AtomicInteger();
 
-    /** One step of the answer: the colour wanted, the block chosen and how far apart they are, as ΔE in OKLab. */
-    private record Step(Color ideal, Entry entry, Color mean, double deltaE) {}
+    /**
+     * One step of the answer: the colour wanted, the block chosen and how far apart they are, as ΔE in OKLab.
+     * {@code pinned} is set where the player chose the block.
+     */
+    private record Step(Color ideal, Entry entry, Color mean, double deltaE, boolean pinned) {}
+
+    /** A line of the swap list: a block that could take a step, and its ΔE from the step's colour in OKLab, as the badge counts it. */
+    private record Option(Entry entry, double deltaE) {}
 
     private List<Step> result = List.of();
+    /** What the answer was chosen from and by, which the swap list offers more of. */
+    private List<Gradient.Candidate> pool = List.of();
+    private Map<String, Entry> poolById = Map.of();
+    private Metric poolMetric = Metric.OKLAB;
+    /** The step the swap list is open for, or -1, with its lines and where it lies. */
+    private int swapStep = -1;
+    private List<Option> swapOptions = List.of();
+    private Bounds swapBox;
+    private Widgets.ScrollList swapRows;
     private double meanDeltaE;
     /** Why there's no answer, or null while there is one or one is on its way. */
     private Component problem;
@@ -231,6 +263,7 @@ public final class GradientTab extends PanelTab {
         x += w + GAP;
         widgets.add(new Chip(x, y, more, () -> filtersOpen || filters.besidesKind() > 0, () -> {
             filtersOpen = !filtersOpen;
+            swapStep = -1;
             rebuild();
         })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip", counted)));
 
@@ -262,6 +295,8 @@ public final class GradientTab extends PanelTab {
         Bounds body = filtersBody();
         if (filtersOpen && (!body.equals(filtersFor) || filtersBuilt != filters || !filters.state().equals(filtersSeen))) buildFilters();
         if (!filtersOpen) filtersFor = null;
+        // The swap list follows the window as it is resized.
+        if (swapStep >= 0) placeSwap();
         // A new stop, or settings changed on the settings screen, make the answer on show a stale one.
         if (seeded || stale() || result.isEmpty() && problem == null && !solving) solve();
     }
@@ -357,6 +392,13 @@ public final class GradientTab extends PanelTab {
         int number = ASKED.incrementAndGet();
         solvedFor = inputs();
         solvedBuild = build();
+        swapStep = -1;
+        Object key = pinKey();
+        if (!key.equals(pinsFor) || solvedBuild != pinsBuild) {
+            PINS.clear();
+            pinsFor = key;
+            pinsBuild = solvedBuild;
+        }
         if (!BlockIndex.get().ready()) {
             fail(tr("palettes.chromastudio.index_building"));
             return;
@@ -380,20 +422,22 @@ public final class GradientTab extends PanelTab {
             return;
         }
         boolean matchSpread = spread;
+        Map<Integer, String> pins = new HashMap<>();
+        PINS.forEach((step, entry) -> pins.put(step, entry.id()));
         solving = true;
         problem = null;
         WORKER.execute(() -> {
             List<Step> found = new ArrayList<>();
             double mean = 0;
             try {
-                Gradient.Result solved = Gradient.solve(ideal, candidates, metric, matchSpread);
+                Gradient.Result solved = Gradient.solve(ideal, candidates, metric, matchSpread, pins);
                 // The blocks are chosen by the settings' metric, but the badge's bands are OKLab's, so it is measured in that.
                 for (int i = 0; i < solved.steps().size(); i++) {
                     Gradient.Candidate c = solved.steps().get(i);
                     Color wanted = Color.ofOklch(solved.ideal().get(i));
                     double deltaE = Distribution.of(wanted).emd(c.distribution(), Metric.OKLAB);
                     mean += deltaE / solved.steps().size();
-                    found.add(new Step(wanted, byId.get((String) c.key()), looks.get((String) c.key()).mean(scale), deltaE));
+                    found.add(new Step(wanted, byId.get((String) c.key()), looks.get((String) c.key()).mean(scale), deltaE, c.key().equals(pins.get(i))));
                 }
             } catch (RuntimeException e) {
                 ChromaStudioClient.LOGGER.warn("Couldn't work the gradient out", e);
@@ -408,6 +452,11 @@ public final class GradientTab extends PanelTab {
                 solving = false;
                 result = List.copyOf(found);
                 meanDeltaE = meanOklab;
+                pool = candidates;
+                poolById = byId;
+                poolMetric = metric;
+                // A pin the solve couldn't keep, its block no longer among the candidates, is gone.
+                PINS.keySet().removeIf(step -> step >= found.size() || !found.get(step).pinned);
                 rebuild();
             });
         });
@@ -418,6 +467,126 @@ public final class GradientTab extends PanelTab {
         result = List.of();
         problem = why;
         rebuild();
+    }
+
+    /** Everything a pinned block was chosen for, but the index build: a change to any of it lets the pins go. */
+    private static Object pinKey() { return List.of(List.copyOf(STOPS), steps, easing, arc, spread, inputs()); }
+
+    // ---- The swap list ----
+
+    /**
+     * Opens the list under the strip for a step: the blocks nearest its colour that no step uses, from the
+     * candidates the last solve chose among. They are ranked as the solve ranks a colour.
+     */
+    private void openSwap(int step) {
+        Set<String> used = new HashSet<>();
+        for (Step s : result) used.add(s.entry.id());
+        Step wanted = result.get(step);
+        Distribution target = Distribution.of(wanted.ideal);
+        List<Option> options = new ArrayList<>();
+        for (Gradient.Option o : Gradient.closest(wanted.ideal.oklch(), pool, poolMetric, used, SWAP_OPTIONS)) {
+            options.add(new Option(poolById.get((String) o.candidate().key()), target.emd(o.candidate().distribution(), Metric.OKLAB)));
+        }
+        swapOptions = options;
+        swapStep = step;
+        swapRows = null;
+        placeSwap();
+    }
+
+    /** The swap list's lines: the way back first, on a pinned step, then the options or a line saying there are none. */
+    private int swapLines() { return swapBack() + Math.max(1, swapOptions.size()); }
+
+    private int swapBack() { return swapStep < result.size() && result.get(swapStep).pinned ? 1 : 0; }
+
+    /** Lays the swap list under the steps, which move to the top of the well to make room, and under its own step as near as it fits. */
+    private void placeSwap() {
+        if (swapStep >= result.size()) {
+            swapStep = -1;
+            return;
+        }
+        Grid grid = grid(stripArea, result.size());
+        int room = (stripArea.h() - grid.rows * CELL_H - 2) / SWAP_ROW;
+        int h = Math.min(swapLines(), Math.clamp(room, SWAP_LINES_MIN, SWAP_LINES)) * SWAP_ROW + 2, w = Math.min(SWAP_W, stripArea.w());
+        int centre = stripArea.x() + (stripArea.w() - grid.perRow * grid.cellW) / 2 + swapStep % grid.perRow * grid.cellW + grid.cellW / 2;
+        swapBox = new Bounds(Math.clamp(centre - w / 2, stripArea.x(), stripArea.right() - w), stripArea.bottom() - h, w, h);
+        Bounds inside = new Bounds(swapBox.x() + 1, swapBox.y() + 1, w - 2, h - 2);
+        if (swapRows == null) swapRows = new Widgets.ScrollList(inside, SWAP_ROW, this::swapLines);
+        else swapRows.area = inside;
+    }
+
+    /** Where the steps are drawn: in the whole well, or at its top while the swap list has the bottom. */
+    private Bounds stepsArea() {
+        return swapStep < 0 ? stripArea : new Bounds(stripArea.x(), stripArea.y(), stripArea.w(), Math.min(stripArea.h(), grid(stripArea, result.size()).rows * CELL_H));
+    }
+
+    private void swapList(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+        Bounds box = swapBox;
+        g.fill(box.x(), box.y(), box.right(), box.bottom(), PANEL);
+        g.outline(box.x(), box.y(), box.w(), box.h(), Theme.HIGHLIGHT);
+        int back = swapBack();
+        Step step = result.get(swapStep);
+        swapRows.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
+            if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
+            if (i < back) {
+                sign(g2, x + 7, y + 6, UNDO, Theme.ACCENT);
+                g2.text(font(), fit(tr("gradient.chromastudio.swap.back").getString(), w - 26), x + 22, y + 5, Theme.ACCENT, false);
+            } else if (swapOptions.isEmpty()) {
+                g2.text(font(), fit(tr("gradient.chromastudio.swap.none").getString(), w - 8), x + 4, y + 5, DIM, false);
+            } else {
+                Option o = swapOptions.get(i - back);
+                Widgets.blockIcon(g2, o.entry.block(), x + 2, y + 1);
+                String de = String.format(Locale.ROOT, "%.3f", o.deltaE);
+                g2.text(font(), de, x + w - 4 - font().width(de), y + 5, DIM, false);
+                g2.text(font(), fit(o.entry.name().getString(), w - 30 - font().width(de)), x + 22, y + 5, TEXT, false);
+                if (over) {
+                    g2.setComponentTooltipForNextFrame(font(), List.of(o.entry.name(), tr("gradient.chromastudio.step.tip", swapStep + 1, step.ideal.hex(), de).copy().withColor(Theme.TIP_DIM),
+                            tr("gradient.chromastudio.swap.use").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
+                }
+            }
+        });
+    }
+
+    /** A click inside the swap list: on a block's line, it pins that block to the step. */
+    private void swapClicked(MouseButtonEvent e) {
+        if (swapRows.mouseClicked(e) || e.button() != InputConstants.MOUSE_BUTTON_LEFT) return;
+        int back = swapBack(), i = swapRows.rowAt(e.x(), e.y()) - back;
+        if (i == -1 && back == 1) putBack(swapStep);
+        else if (i >= 0 && i < swapOptions.size()) {
+            Entry chosen = swapOptions.get(i).entry;
+            say(tr("gradient.chromastudio.swap.done", result.get(swapStep).entry.name(), chosen.name()), GOOD);
+            PINS.put(swapStep, chosen);
+            // The other steps are solved again around it, in case one of them would now do better with the block it gave up.
+            solve();
+        }
+    }
+
+    /** Lets a pinned step go back to the block the solve gives it. */
+    private void putBack(int step) {
+        PINS.remove(step);
+        say(tr("gradient.chromastudio.swap.undone", step + 1));
+        solve();
+    }
+
+    /** The step under the cursor as the strip was last drawn, or -1. */
+    private int stepAt(double mx, double my) {
+        if (filtersOpen || result.isEmpty()) return -1;
+        Grid grid = grid(stepsArea(), result.size());
+        for (int i = 0; i < result.size(); i++) {
+            int x = grid.x + i % grid.perRow * grid.cellW, y = grid.y + i / grid.perRow * CELL_H;
+            if (mx >= x && mx < x + grid.cellW && my >= y && my < y + CELL_H - 4) return i;
+        }
+        return -1;
+    }
+
+    /** Whether the cursor is over the put-back button a pinned step has at the top right of its cell. */
+    private static boolean overBack(int x, int y, int cellW, double mx, double my) {
+        return mx >= x + cellW - BACK && mx < x + cellW && my >= y && my < y + BACK;
+    }
+
+    private static void sign(GuiGraphicsExtractor g, int x, int y, String[] sign, int colour) {
+        for (int j = 0; j < sign.length; j++)
+            for (int i = 0; i < sign[j].length(); i++)
+                if (sign[j].charAt(i) == '#') g.fill(x + i, y + j, x + i + 1, y + j + 1, colour);
     }
 
     // ---- Drawing ----
@@ -433,7 +602,7 @@ public final class GradientTab extends PanelTab {
         return new Grid(perRow, rows, cellW, area.x() + (area.w() - perRow * cellW) / 2, area.y() + Math.max(0, (area.h() - rows * CELL_H) / 2));
     }
 
-    private void strip(GuiGraphicsExtractor g, Bounds area, float opacity, int mouseX, int mouseY) {
+    private void strip(GuiGraphicsExtractor g, Bounds area, float opacity, boolean controls, int mouseX, int mouseY) {
         Grid grid = grid(area, result.size());
         for (int i = 0; i < result.size(); i++) {
             Step s = result.get(i);
@@ -441,9 +610,27 @@ public final class GradientTab extends PanelTab {
             g.fill(x, y, x + grid.cellW, y + IDEAL_H, ARGB.multiplyAlpha(0xFF000000 | s.ideal.rgb(), opacity));
             Widgets.blockIcon(g, s.entry.block(), x + (grid.cellW - 16) / 2, y + IDEAL_H);
             g.fill(x, y + IDEAL_H + 16, x + grid.cellW, y + IDEAL_H + 16 + BLOCK_H, ARGB.multiplyAlpha(0xFF000000 | s.mean.rgb(), opacity));
-            if (mouseX >= x && mouseX < x + grid.cellW && mouseY >= y && mouseY < y + CELL_H - 4) {
-                g.setComponentTooltipForNextFrame(font(), List.of(s.entry.name(), tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE))
-                        .copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
+            boolean over = mouseX >= x && mouseX < x + grid.cellW && mouseY >= y && mouseY < y + CELL_H - 4;
+            boolean onBack = controls && s.pinned && over && overBack(x, y, grid.cellW, mouseX, mouseY);
+            if (s.pinned) {
+                // The mark of a block the player chose: an amber corner at the bottom left of its icon.
+                int ix = x + (grid.cellW - 16) / 2, iy = y + IDEAL_H;
+                g.fill(ix, iy + 11, ix + 5, iy + 16, ARGB.multiplyAlpha(0xFF10140F, opacity));
+                g.fill(ix, iy + 12, ix + 4, iy + 16, ARGB.multiplyAlpha(0xFF000000 | Theme.TIP_SWAPPED, opacity));
+                // The put-back button, which a pinned window leaves out, since it takes no clicks.
+                if (controls) {
+                    g.fill(x + grid.cellW - BACK, y, x + grid.cellW, y + BACK, onBack ? Theme.LIT_HOVER : Theme.CHIP);
+                    sign(g, x + grid.cellW - BACK + 1, y + 1, UNDO, TEXT);
+                }
+            }
+            if (controls && i == swapStep) g.outline(x, y, grid.cellW, CELL_H - 4, Theme.HIGHLIGHT);
+            if (onBack) g.setTooltipForNextFrame(font(), tr("gradient.chromastudio.swap.back"), mouseX, mouseY);
+            else if (over) {
+                List<Component> tip = new ArrayList<>(List.of(s.entry.name(), tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE))
+                        .copy().withColor(Theme.TIP_DIM)));
+                if (s.pinned) tip.add(tr("gradient.chromastudio.step.pinned").copy().withColor(Theme.TIP_SWAPPED));
+                tip.add(tr("gradient.chromastudio.step.swap").copy().withColor(Theme.TIP_DIM));
+                g.setComponentTooltipForNextFrame(font(), tip, mouseX, mouseY);
             }
         }
     }
@@ -473,18 +660,25 @@ public final class GradientTab extends PanelTab {
 
         g.fill(stripArea.x(), stripArea.y(), stripArea.right(), stripArea.bottom(), WELL);
         Component note = note();
+        // The note has the room the badge leaves on its line.
+        int noteRoom = stripArea.w() / 2;
         if (result.isEmpty()) {
             Component text = problem != null ? problem : tr("gradient.chromastudio.working");
             g.textWithWordWrap(font(), text, stripArea.x() + 8, stripArea.y() + 8, stripArea.w() - 16, problem != null ? FAIR : DIM, false);
         } else {
-            strip(g, stripArea, 1, mouseX, mouseY);
+            // While the swap list is open the steps under it don't react to the cursor.
+            boolean overSwap = swapStep >= 0 && swapBox.contains(mouseX, mouseY);
+            strip(g, stepsArea(), 1, true, overSwap ? -1 : mouseX, overSwap ? -1 : mouseY);
+            if (swapStep >= 0) swapList(g, mouseX, mouseY);
             int colour = badgeColour();
             g.fill(stripArea.x(), badgeY + 1, stripArea.x() + 8, badgeY + 9, colour);
             String quality = tr(meanDeltaE <= GOOD_UP_TO ? "gradient.chromastudio.badge.good" : meanDeltaE <= FAIR_UP_TO ? "gradient.chromastudio.badge.fair" : "gradient.chromastudio.badge.poor").getString();
-            g.text(font(), tr("gradient.chromastudio.badge", String.format(Locale.ROOT, "%.3f", meanDeltaE), quality), stripArea.x() + 11, badgeY + 1, colour, false);
+            Component badge = tr("gradient.chromastudio.badge", String.format(Locale.ROOT, "%.3f", meanDeltaE), quality);
+            g.text(font(), badge, stripArea.x() + 11, badgeY + 1, colour, false);
+            noteRoom = Math.min(noteRoom, stripArea.w() - 11 - font().width(badge) - 6);
         }
         if (note != null) {
-            String line = fit(note.getString(), stripArea.w() / 2);
+            String line = fit(note.getString(), noteRoom);
             g.text(font(), line, stripArea.right() - font().width(line), badgeY + 1, noteColour(), false);
         } else if (solving) {
             String line = tr("gradient.chromastudio.working").getString();
@@ -514,7 +708,7 @@ public final class GradientTab extends PanelTab {
             Widgets.centred(g, problem != null ? problem : tr("gradient.chromastudio.working"), b.x() + b.w() / 2, b.y() + b.h() / 2 - 4, ARGB.multiplyAlpha(DIM, opacity));
             return;
         }
-        strip(g, new Bounds(b.x() + PAD, b.y() + PAD, b.w() - 2 * PAD, b.h() - 2 * PAD - 12), opacity, -1, -1);
+        strip(g, new Bounds(b.x() + PAD, b.y() + PAD, b.w() - 2 * PAD, b.h() - 2 * PAD - 12), opacity, false, -1, -1);
         String quality = String.format(Locale.ROOT, "%.3f", meanDeltaE);
         g.text(font(), tr("gradient.chromastudio.badge.short", quality), b.x() + PAD, b.bottom() - PAD - 9, ARGB.multiplyAlpha(badgeColour(), opacity), false);
     }
@@ -526,6 +720,27 @@ public final class GradientTab extends PanelTab {
         // A press that never saw its release, with the window closed under it, mustn't turn the next drag into a stop's.
         pressedStop = -1;
         draggingStop = false;
+        boolean left = e.button() == InputConstants.MOUSE_BUTTON_LEFT;
+        // Read before the swap list shuts, while the steps are where they were drawn.
+        Bounds drawn = stepsArea();
+        int step = stepAt(e.x(), e.y()), shut = -1;
+        if (swapStep >= 0) {
+            if (swapBox.contains(e.x(), e.y())) {
+                swapClicked(e);
+                return true;
+            }
+            // A click anywhere else shuts the list, and then does what it would have done, but for opening it again.
+            shut = swapStep;
+            swapStep = -1;
+        }
+        if (step >= 0) {
+            Step s = result.get(step);
+            Grid grid = grid(drawn, result.size());
+            boolean back = overBack(grid.x + step % grid.perRow * grid.cellW, grid.y + step / grid.perRow * CELL_H, grid.cellW, e.x(), e.y());
+            if (s.pinned && (e.button() == InputConstants.MOUSE_BUTTON_RIGHT || left && back)) putBack(step);
+            else if (left && step != shut) openSwap(step);
+            return true;
+        }
         if (filtersOpen) {
             if (e.button() == InputConstants.MOUSE_BUTTON_LEFT && filtersClose().contains(e.x(), e.y())) {
                 filtersOpen = false;
@@ -552,7 +767,7 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean dragged(MouseButtonEvent e, double dx, double dy) {
-        if (pressedStop < 0) return filtersOpen && filterWidgets.mouseDragged(e, dx, dy);
+        if (pressedStop < 0) return swapStep >= 0 && swapRows.mouseDragged(e) || filtersOpen && filterWidgets.mouseDragged(e, dx, dy);
         // A click that slips a pixel is still a click.
         if (Math.abs(e.x() - pressedX) >= 3) draggingStop = true;
         dropGap = Reorder.gap(e.x() - stopsArea.x(), CHIP + 1, STOPS.size());
@@ -561,7 +776,7 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean released(MouseButtonEvent e) {
-        if (pressedStop < 0) return filtersOpen && filterWidgets.mouseReleased(e);
+        if (pressedStop < 0) return swapStep >= 0 && swapRows.mouseReleased() || filtersOpen && filterWidgets.mouseReleased(e);
         boolean moved = draggingStop && pressedStop < STOPS.size() && Reorder.target(pressedStop, dropGap) != pressedStop;
         if (moved) selectedStop = Reorder.move(STOPS, pressedStop, dropGap);
         pressedStop = -1;
@@ -572,6 +787,7 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean scrolled(double x, double y, double h, double v) {
+        if (swapStep >= 0 && swapBox.contains(x, y)) return swapRows.mouseScrolled(x, y, v) || true;
         return filtersOpen && filtersArea().contains(x, y) && (filterWidgets.mouseScrolled(x, y, h, v) || true);
     }
 
@@ -588,9 +804,13 @@ public final class GradientTab extends PanelTab {
     @Override
     protected boolean typingElsewhere() { return filtersOpen && filterWidgets.typing(); }
 
-    /** Escape closes the filters, when they are open. */
+    /** Escape closes the swap list or the filters, when one is open. */
     @Override
     protected boolean dismissPanel() {
+        if (swapStep >= 0) {
+            swapStep = -1;
+            return true;
+        }
         if (!filtersOpen) return false;
         filtersOpen = false;
         rebuild();

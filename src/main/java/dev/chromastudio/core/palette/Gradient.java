@@ -6,8 +6,10 @@ import dev.chromastudio.core.color.Metric;
 import dev.chromastudio.core.color.Oklch;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** Picks the blocks of a gradient: one for each ideal colour, none used twice, as close overall as can be. */
@@ -21,7 +23,15 @@ public final class Gradient {
     /** The candidate chosen for each ideal colour, and the mean distance between the two, in the metric's units. */
     public record Result(List<Candidate> steps, List<Oklch> ideal, double meanDeltaE) {}
 
+    /** A candidate that could fill a step, and its distance from the step's ideal colour, in the metric's units. */
+    public record Option(Candidate candidate, double deltaE) {}
+
     private Gradient() {}
+
+    /** {@link #solve(List, List, Metric, boolean, Map)} with no step pinned. */
+    public static Result solve(List<Oklch> ideal, List<Candidate> all, Metric metric, boolean matchSpread) {
+        return solve(ideal, all, metric, matchSpread, Map.of());
+    }
 
     /**
      * Assigns a different candidate to each ideal colour so that the total cost is the least possible. A step's
@@ -31,8 +41,13 @@ public final class Gradient {
      * steps in between look as busy as the ends.
      *
      * <p>Candidates with equal keys are the same block: only the first of them in the list is used.
+     *
+     * <p>{@code pinned} holds the steps whose candidate is already decided, as the step's number from 0 and the
+     * candidate's key. Such a step gets that candidate whatever it costs, and the others share out the rest at
+     * the least cost, so still nothing is used twice. A pin is left out when no candidate has its key, when its
+     * step doesn't exist, or when an earlier step has pinned the same candidate.
      */
-    public static Result solve(List<Oklch> ideal, List<Candidate> all, Metric metric, boolean matchSpread) {
+    public static Result solve(List<Oklch> ideal, List<Candidate> all, Metric metric, boolean matchSpread, Map<Integer, ?> pinned) {
         List<Candidate> candidates = new ArrayList<>(all.size());
         Set<Object> keys = new HashSet<>();
         for (Candidate c : all) if (keys.add(c.key())) candidates.add(c);
@@ -54,20 +69,62 @@ public final class Gradient {
             }
         }
 
-        int[] pool = pool(cost);
-        double[][] pooled = new double[n][pool.length];
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < pool.length; j++) pooled[i][j] = cost[i][pool[j]];
+        // The pinned steps take their candidates first, and the assignment is solved over what is left of both.
+        int[] column = new int[n];
+        Arrays.fill(column, -1);
+        boolean[] taken = new boolean[m];
+        if (!pinned.isEmpty()) {
+            Map<Object, Integer> byKey = new HashMap<>();
+            for (int j = 0; j < m; j++) byKey.put(candidates.get(j).key(), j);
+            for (int i = 0; i < n; i++) {
+                Integer j = pinned.containsKey(i) ? byKey.get(pinned.get(i)) : null;
+                if (j == null || taken[j]) continue;
+                column[i] = j;
+                taken[j] = true;
+            }
         }
-        int[] chosen = assign(pooled);
+        int[] rows = new int[n], columns = new int[m];
+        int free = 0, left = 0;
+        for (int i = 0; i < n; i++) if (column[i] < 0) rows[free++] = i;
+        for (int j = 0; j < m; j++) if (!taken[j]) columns[left++] = j;
+        if (free > 0) {
+            double[][] open = new double[free][left];
+            for (int i = 0; i < free; i++) {
+                for (int j = 0; j < left; j++) open[i][j] = cost[rows[i]][columns[j]];
+            }
+            int[] pool = pool(open);
+            double[][] pooled = new double[free][pool.length];
+            for (int i = 0; i < free; i++) {
+                for (int j = 0; j < pool.length; j++) pooled[i][j] = open[i][pool[j]];
+            }
+            int[] chosen = assign(pooled);
+            for (int i = 0; i < free; i++) column[rows[i]] = columns[pool[chosen[i]]];
+        }
         List<Candidate> steps = new ArrayList<>(n);
         double total = 0;
         for (int i = 0; i < n; i++) {
-            int j = pool[chosen[i]];
+            int j = column[i];
             steps.add(candidates.get(j));
             total += colour[i][j];
         }
         return new Result(List.copyOf(steps), List.copyOf(ideal), total / n);
+    }
+
+    /**
+     * The candidates closest to one ideal colour, nearest first, for the player to choose among: at most
+     * {@code limit} of them, without those whose keys are in {@code used}. The distance is the one a solve counts
+     * as the colour's, without anything for the spread. Candidates with equal keys are the same block, as in a solve.
+     */
+    public static List<Option> closest(Oklch ideal, List<Candidate> all, Metric metric, Set<?> used, int limit) {
+        Distribution target = Distribution.of(Color.ofOklch(ideal));
+        List<Option> options = new ArrayList<>();
+        Set<Object> keys = new HashSet<>();
+        for (Candidate c : all) {
+            if (keys.add(c.key()) && !used.contains(c.key())) options.add(new Option(c, target.emd(c.distribution(), metric)));
+        }
+        // The sort is stable, so equal distances keep list order.
+        options.sort((a, b) -> Double.compare(a.deltaE(), b.deltaE()));
+        return List.copyOf(options.subList(0, Math.clamp(limit, 0, options.size())));
     }
 
     private static int nearest(double[] costs) {

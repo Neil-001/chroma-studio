@@ -66,7 +66,7 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 
 - `MatchState` is what is being matched, for the Match and Explore tabs, `Tooltips` and the eyedropper. It belongs to the client thread, and the tabs watch `MatchState.revision()`.
 - `MatchState.filters()` is the one set of filters. Match, Explore and Gradient all keep to it, and `FilterControls` builds the More… controls for Match and Gradient alike. A gradient's candidates are `MatchFilters.candidates`: one state a block, read on one face (north for Side, top for Any) without shading.
-- A click on a Match row opens the swap list, the next-best blocks of that row's kind. A swap lasts until the target, a filter, a matching setting or the index changes. The hand button gives the block.
+- A click on a Gradient step opens the swap list, the next-best candidates for that step's colour which no step uses. The one chosen is pinned to the step in `GradientTab.PINS`, and `Gradient.solve` shares the other blocks out around the pins. A pin lasts through other steps' swaps and goes when the stops, a control, a filter, a matching setting or the index changes.
 - Match searches and Gradient solves run on a worker thread and keep only the newest answer. The Gradient tab reads its candidates on the client thread first.
 - Tabs hand work to each other through `ui.Handoff`, and `/chroma` through `ChromaScreen.pendingTarget`. Additions to a palette go to `PaletteSink.current()`, which is the `PaletteStore`.
 - A pinned window is drawn by `Hud.render` and takes no input.
