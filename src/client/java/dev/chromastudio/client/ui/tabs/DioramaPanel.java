@@ -55,6 +55,7 @@ final class DioramaPanel implements AutoCloseable {
     private DynamicTexture texture;
     private Identifier textureId;
     private boolean painted;
+    /** How far the wall's front is turned to the right and its top tipped forward, in degrees. It starts seen from above its right end. */
     private float yaw = -25, pitch = 15;
     private Bounds area, view;
     private boolean orbiting;
@@ -120,7 +121,7 @@ final class DioramaPanel implements AutoCloseable {
                 }
             // Room for the corners as the wall turns.
             float scale = Math.min(view.w() / (w * 1.3f), view.h() / (h * 1.4f));
-            DioramaPip.submit(view.x(), view.y(), view.w(), view.h(), scale, w, h, cells, yaw, pitch);
+            DioramaPip.submit(view.x(), view.y(), view.w(), view.h(), scale, w, h, cells, yaw, pitch, ModSettings.dioramaPerspective);
             g.text(PanelTab.font(), Component.translatable("palettes.chromastudio.diorama.orbit"), view.x() + 3, view.bottom() - 10, Theme.DIM, false);
             return;
         }
@@ -176,6 +177,7 @@ final class DioramaPanel implements AutoCloseable {
 
     boolean dragged(double dx, double dy) {
         if (!orbiting) return false;
+        // The wall follows the cursor, as a model does when it is orbited: dragging down brings its top into view.
         yaw += (float) dx;
         pitch = Math.clamp(pitch + (float) dy, -80, 80);
         return true;

@@ -12,13 +12,13 @@ Chroma Studio 1.0.0 is the first release. It finds the blocks closest to a colou
 - Material sets: open a row to see its slab, stairs, wall and the rest, and make a palette of them in one click
 - Swap a result: click a row for a short list of the next-best blocks of its kind, and pick one to take its place
 - An eyedropper on X that reads the block you look at and copies its hex code
-- Gradient: 2 to 32 steps between two or more colours or blocks, with a different block for every step, chosen from the blocks that pass the Match tab's filters
-- Palettes with weights, tags and notes, ten presets, and share strings such as `chroma1:stone,andesite*3/Castle`
+- Gradient: 2 to 32 steps between two or more colours or blocks, with a different block for every step, chosen from the blocks that pass the Match tab's filters. Drag a stop to move it
+- Palettes with weights, tags and notes, a search by name or tag, ten presets, and share strings such as `chroma1:stone,andesite*3/Castle`
 - Make a palette from a colour harmony, from a box captured in the world or from a picture
-- Analyse a palette for what it lacks, and see it as a wall of blocks, flat or in 3D
+- Analyse a palette for what it lacks, and see it as a wall of blocks, flat or in 3D, orthographic or with perspective
 - Export to `.litematic` or vanilla `.nbt` in six layouts, and place the result with Litematica
 - WorldEdit patterns and commands from a palette
-- Fill the hotbar from a palette or a gradient, with the rest in a shulker box, and undo it
+- Fill the hotbar from a palette or a gradient, and undo it. The blocks past the ninth go into free inventory slots, or into shulker boxes: never, when the inventory is full, or always
 - Explore: every block as a dot by hue and lightness
 - Item tooltips with a block's colour, kind and distance from your current colour
 - Dye leather, leather horse and wolf armour in an exact colour

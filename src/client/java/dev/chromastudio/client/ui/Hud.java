@@ -24,6 +24,7 @@ public final class Hud {
     private static Component line1, line2;
     private static long readoutUntil;
     private static List<ItemStack> slots = List.of();
+    private static Component caption;
     private static long stripUntil;
 
     /** Shows two lines above the hotbar for a number of seconds. A new readout replaces the old one. */
@@ -37,8 +38,12 @@ public final class Hud {
      * Shows up to nine items above the hotbar, each over its slot, with their names listed above. It fades after a few
      * seconds. An empty stack leaves its slot blank.
      */
-    public static void strip(List<ItemStack> slots) {
+    public static void strip(List<ItemStack> slots) { strip(slots, null); }
+
+    /** The same, with a line over the names, or null for none. */
+    public static void strip(List<ItemStack> slots, Component caption) {
         Hud.slots = List.copyOf(slots.subList(0, Math.min(9, slots.size())));
+        Hud.caption = caption;
         stripUntil = Util.getMillis() + STRIP_MS;
     }
 
@@ -65,6 +70,11 @@ public final class Hud {
                 Component name = Component.translatable("hud.chromastudio.slot", i + 1, slots.get(i).getHoverName());
                 g.fill(centre - 91, y - 1, centre + 91, y + font.lineHeight - 1, ARGB.multiplyAlpha(0x90000000, strip));
                 g.centeredText(font, name, centre, y, ARGB.multiplyAlpha(0xFFFFFFFF, strip));
+            }
+            if (caption != null) {
+                y -= font.lineHeight;
+                g.fill(centre - 91, y - 1, centre + 91, y + font.lineHeight - 1, ARGB.multiplyAlpha(0x90000000, strip));
+                g.centeredText(font, caption, centre, y, ARGB.multiplyAlpha(0xFFC8CED6, strip));
             }
             y -= 4;
         }

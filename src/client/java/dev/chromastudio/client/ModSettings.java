@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -96,8 +97,10 @@ public final class ModSettings {
     // Palettes
     public static int generateCount = 6;
     public static int captureCount = 12;
-    /** Whether a hotbar fill puts the entries past the ninth into a shulker box. Off, they're left out. */
-    public static boolean hotbarOverflow = true;
+    /** When a hotbar fill packs the entries past the ninth into shulker boxes. */
+    public static OverflowMode hotbarOverflowMode = OverflowMode.NEVER;
+    /** Whether the 3D diorama is drawn with perspective. Off, its far blocks are as big as its near ones. */
+    public static boolean dioramaPerspective = false;
     /** Where exports go. Empty means Litematica's schematics folder when it's loaded, else {@code schematics} in the game folder. */
     public static String exportFolder = "";
     public static LayoutChoice defaultLayout = LayoutChoice.STRIP;
@@ -138,7 +141,7 @@ public final class ModSettings {
         GROUPS.put("index", List.of("technicalBlocks", "statesSeparately", "statesCap", "animatedAveraging", "cacheFolder", "rebuildOnReload"));
         GROUPS.put("biome", List.of("biomeMode", "biome"));
         GROUPS.put("gradient", List.of("gradientSteps", "easing", "hueArc", "spreadMatching"));
-        GROUPS.put("palettes", List.of("generateCount", "captureCount", "hotbarOverflow", "exportFolder", "defaultLayout", "patchSize", "exportGap"));
+        GROUPS.put("palettes", List.of("generateCount", "captureCount", "hotbarOverflowMode", "dioramaPerspective", "exportFolder", "defaultLayout", "patchSize", "exportGap"));
         GROUPS.put("tooltips", List.of("tooltipMode", "tooltipSwatch", "tooltipHex", "tooltipKind", "tooltipBadge", "tooltipDeltaE", "readoutSeconds"));
         GROUPS.put("integrations", List.of("recipeKey", "litematicaPlacement"));
 
@@ -344,6 +347,9 @@ public final class ModSettings {
                 else for (Object c : type.getEnumConstants()) if (((Enum<?>) c).name().equals(p.getAsString())) set(name, c);
             }
         }
+        // This was once an on or off under another key, which an older file still holds.
+        if (!o.has("hotbarOverflowMode") && o.get("hotbarOverflow") instanceof JsonPrimitive old && old.isBoolean())
+            hotbarOverflowMode = old.getAsBoolean() ? OverflowMode.ALWAYS : OverflowMode.NEVER;
         return true;
     }
 
