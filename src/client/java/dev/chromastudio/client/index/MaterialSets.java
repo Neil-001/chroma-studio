@@ -60,4 +60,15 @@ final class MaterialSets {
         }
         return namespace + base;
     }
+
+    /**
+     * A material's name from a block id, for the palette made of its set: the path of {@link #base} with spaces
+     * for its underscores and a capital first, so {@code minecraft:cherry_planks} gives "Cherry" and
+     * {@code minecraft:stone_brick_stairs} gives "Stone brick". Ids are English, so the name is too.
+     */
+    static String name(String id) {
+        String base = base(id);
+        String words = base.substring(base.indexOf(':') + 1).replace('_', ' ').replace('/', ' ').strip();
+        return words.isEmpty() ? words : Character.toUpperCase(words.charAt(0)) + words.substring(1);
+    }
 }

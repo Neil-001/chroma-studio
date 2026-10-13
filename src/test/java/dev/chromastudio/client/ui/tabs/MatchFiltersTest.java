@@ -39,6 +39,46 @@ class MatchFiltersTest {
         assertEquals(Tri.EXCLUDE, f.creativeOnly, "survival blocks only means leaving the creative-only ones out");
     }
 
+    /** The settings screen's Reset has to reach a filter that started from the setting, or the tab goes on showing technical blocks. */
+    @Test
+    void aFilterFollowsItsSettingWhenThatIsChangedOrReset() {
+        ModSettings.technicalBlocks = true;
+        MatchFilters f = MatchFilters.fromSettings();
+        assertTrue(f.technical);
+        assertFalse(f.followSettings(), "nothing has changed yet");
+
+        ModSettings.reset("index");
+        assertTrue(f.followSettings());
+        assertFalse(f.technical, "the reset reaches the filter");
+        assertEquals(0, f.extras());
+
+        // A filter whose setting didn't move keeps what the player made it.
+        f.solid = true;
+        f.technical = true;
+        ModSettings.filterFullCube = true;
+        assertTrue(f.followSettings());
+        assertTrue(f.fullCube && f.solid && f.technical);
+        ModSettings.reset("matching");
+        assertTrue(f.followSettings());
+        assertFalse(f.fullCube);
+        assertTrue(f.solid && f.technical);
+    }
+
+    /** What the Match tab does before it builds its controls on the way back from the settings screen. */
+    @Test
+    void theMatchStateBringsItsFiltersUpToDate() {
+        MatchState.resetFilters();
+        ModSettings.technicalBlocks = true;
+        int before = MatchState.revision();
+        MatchState.follow();
+        assertTrue(MatchState.filters().technical);
+        assertNotEquals(before, MatchState.revision(), "the tabs are told");
+        ModSettings.reset("index");
+        MatchState.follow();
+        assertFalse(MatchState.filters().technical);
+        assertEquals(0, MatchState.filters().extras());
+    }
+
     @Test
     void everyFilterReachesTheQuery() {
         MatchFilters f = new MatchFilters();

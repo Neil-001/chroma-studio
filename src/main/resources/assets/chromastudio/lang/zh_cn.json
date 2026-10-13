@@ -93,6 +93,8 @@
   "settings.chromastudio.cacheFolder.tip": "在两次游戏之间保存方块索引的位置。留空则使用 config/chromastudio/cache。",
   "settings.chromastudio.rebuildOnReload": "重载时重建",
   "settings.chromastudio.rebuildOnReload.tip": "每当资源包重新加载时重建方块索引。",
+  "settings.chromastudio.refresh": "刷新",
+  "settings.chromastudio.refresh.tip": "重新读取所有纹理并重建方块索引。在修改了已加载资源包的文件之后使用，因为缓存察觉不到这种改动。",
   "settings.chromastudio.biomeMode": "生物群系",
   "settings.chromastudio.biomeMode.tip": "草、树叶和水的色调取自何处：你所在的位置、下方选择的生物群系，或以范围显示所有生物群系。",
   "settings.chromastudio.biome": "所选生物群系",

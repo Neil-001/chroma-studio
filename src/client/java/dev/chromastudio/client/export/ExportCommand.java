@@ -59,7 +59,9 @@ public final class ExportCommand {
      * Splits the command's text into the share string and the words after it, or says what's wrong. A palette's
      * name may hold spaces, so the words are taken off the end for as long as they are a layout, a format or
      * {@code place}, and what is left is the share string. One whose name ends in such a word goes in double
-     * quotes, and then every word after the closing quote has to be one of those.
+     * quotes, and then every word after the closing quote has to be one of those. When what is left can't be read
+     * as a share string but its first words can, the words after those are options that aren't known, and they are
+     * what's wrong, not the share string.
      */
     static Object parse(String text) {
         String rest = text.strip();
@@ -86,8 +88,23 @@ public final class ExportCommand {
         }
         if (quoted != null && !words.isEmpty()) return Component.translatable("command.chromastudio.export.unknown_option", String.join(" ", words));
         String share = quoted != null ? quoted : rest.substring(0, endOf(rest, words.size()));
+        if (quoted == null && !readable(share)) {
+            for (int kept = words.size() - 1; kept > 0; kept--) {
+                if (!readable(rest.substring(0, endOf(rest, kept)))) continue;
+                return Component.translatable("command.chromastudio.export.unknown_option", String.join(" ", words.subList(kept, words.size())));
+            }
+        }
         if (share.isBlank()) return Component.translatable("command.chromastudio.export.usage");
         return new Request(share, layout, format, place);
+    }
+
+    private static boolean readable(String share) {
+        try {
+            ShareString.decode(share);
+            return true;
+        } catch (IllegalArgumentException _) {
+            return false;
+        }
     }
 
     /** Where the first {@code count} words of {@code text} end, keeping the spaces between them as typed. */

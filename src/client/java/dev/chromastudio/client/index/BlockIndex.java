@@ -331,6 +331,12 @@ public final class BlockIndex {
         return b.materials.getOrDefault(MaterialSets.base(e.id()), List.of()).stream().filter(m -> technical || !m.technical()).toList();
     }
 
+    /** What to call an entry's material set, such as "Cherry" for the set cherry planks are in. */
+    public String materialName(Entry e) {
+        String name = MaterialSets.name(e.id());
+        return name.isEmpty() ? e.name().getString() : name;
+    }
+
     /**
      * The entry that stands for a block state: its own, or the one it was folded into for showing the same
      * textures, or the block's default when the cap left the state out. Null when the block isn't indexed.

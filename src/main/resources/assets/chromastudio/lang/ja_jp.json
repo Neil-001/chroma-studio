@@ -93,6 +93,8 @@
   "settings.chromastudio.cacheFolder.tip": "ブロックインデックスをセッション間で保存する場所です。空にすると config/chromastudio/cache を使います。",
   "settings.chromastudio.rebuildOnReload": "リロード時に再構築",
   "settings.chromastudio.rebuildOnReload.tip": "リソースパックが再読み込みされるたびにブロックインデックスを作り直します。",
+  "settings.chromastudio.refresh": "更新",
+  "settings.chromastudio.refresh.tip": "すべてのテクスチャを読み直してブロックインデックスを作り直します。読み込み済みのリソースパックのファイルを変更したあとに使ってください。キャッシュはその変更に気づけません。",
   "settings.chromastudio.biomeMode": "バイオーム",
   "settings.chromastudio.biomeMode.tip": "草、葉、水の色合いをどこから取るかです。今いる場所、下で選んだバイオーム、またはすべてのバイオームの範囲から選びます。",
   "settings.chromastudio.biome": "選択したバイオーム",

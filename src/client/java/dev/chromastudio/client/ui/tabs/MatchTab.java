@@ -74,7 +74,7 @@ import net.minecraft.world.level.block.Block;
  * blocks closest to the target. Everything is placed from the tab's area, so it follows the window as it is resized.
  */
 public final class MatchTab extends Tab {
-    private static final int PAD = 3, ROW = 18, CELL = 20, HEAD = 13, GAP = 2, LINE = Widgets.H + 1;
+    private static final int PAD = 3, ROW = 18, CELL = 20, HEAD = 13, GAP = 2, LINE = Widgets.H + 1, STATUS_H = 10;
     private static final int TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3, GREYED = 0xFF4E5560, BAD = 0xFFFF6B6B,
             PANEL = 0xFF161A20, BORDER = 0xFF3A424D, WELL = 0xFF0B0D10, BACKING = 0x80101317;
     private static final long STATUS_MS = 2500;
@@ -100,7 +100,7 @@ public final class MatchTab extends Tab {
 
     private record BiomeFit(ResourceKey<Biome> biome, Color colour, double distance) {}
 
-    private Bounds area = new Bounds(0, 0, 0, 0), slot = area, swatch = area, recent = area, distance = area, results = area;
+    private Bounds area = new Bounds(0, 0, 0, 0), slot = area, swatch = area, recent = area, distance = area, results = area, statusLine = area;
     private final Widgets controls = new Widgets();
     private Widgets panelWidgets = new Widgets();
     private EditBox hexField, rgbField, hslField;
@@ -146,6 +146,8 @@ public final class MatchTab extends Tab {
     @Override
     public void init(Bounds b) {
         area = b;
+        // The settings screen may have changed a filter's setting. The controls are built from the filters, so those catch up first.
+        MatchState.follow();
         build();
         search.request();
     }
@@ -287,7 +289,9 @@ public final class MatchTab extends Tab {
                 .setTooltip(Tooltip.create(tr("filter.more.tip")));
 
         int top = flow.y + LINE + 1;
-        results = new Bounds(flow.left, top, flow.right - flow.left, Math.max(ROW, b.bottom() - PAD - top));
+        // The status line has the strip under the results to itself, so what it says never lies over a row.
+        statusLine = new Bounds(flow.left, b.bottom() - PAD - STATUS_H, flow.right - flow.left, STATUS_H);
+        results = new Bounds(flow.left, top, flow.right - flow.left, Math.max(ROW, statusLine.y() - 1 - top));
         list = grid ? new Widgets.ScrollList(results, CELL, () -> shown == null ? 0 : (shown.matches.size() + columns() - 1) / columns())
                 : new Widgets.ScrollList(results, ROW, () -> rows.size());
         buildPanel();
@@ -635,9 +639,7 @@ public final class MatchTab extends Tab {
         else panel(g, font, mouseX, mouseY, delta, tip);
 
         if (status != null && Util.getMillis() < statusUntil) {
-            int w = Math.min(results.w() - 4, font.width(status) + 8), sx = results.x() + (results.w() - w) / 2, sy = results.bottom() - 14;
-            g.fill(sx, sy, sx + w, sy + 12, 0xE0000000);
-            g.text(font, ellipsis(font, status.getString(), w - 6), sx + 4, sy + 2, 0xFFFFFFFF, false);
+            g.text(font, ellipsis(font, status.getString(), statusLine.w() - 4), statusLine.x() + 2, statusLine.y() + 1, TEXT, false);
         }
         if (!tip.isEmpty() && !picker.dragging() && !draggingDistance) g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
     }
@@ -658,6 +660,7 @@ public final class MatchTab extends Tab {
         // Fullscreen has no panel of its own, only the blurred world, so everything outside the results gets a backing to be read against.
         g.fill(area.x(), area.y(), results.x() - 1, area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
         g.fill(results.x() - 1, area.y(), area.right(), results.y(), ARGB.multiplyAlpha(BACKING, opacity));
+        g.fill(results.x() - 1, results.bottom(), area.right(), area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
         g.fill(slot.x(), slot.y(), slot.right(), slot.bottom(), ARGB.multiplyAlpha(BORDER, opacity));
         g.fill(slot.x() + 1, slot.y() + 1, slot.right() - 1, slot.bottom() - 1, ARGB.multiplyAlpha(WELL, opacity));
         if (entry != null) Widgets.blockIcon(g, entry.block(), slot.x() + 1, slot.y() + 1);
@@ -1027,7 +1030,7 @@ public final class MatchTab extends Tab {
                 return;
             }
             List<PaletteEntry> entries = BlockIndex.get().materialSet(entry).stream().map(m -> new PaletteEntry(m.id(), m.properties())).toList();
-            status(sink.createPalette(entry.name().getString(), entries) ? tr("made_palette", entries.size()) : tr("make_palette.failed"));
+            status(sink.createPalette(BlockIndex.get().materialName(entry), entries) ? tr("made_palette", entries.size()) : tr("make_palette.failed"));
             return;
         }
         if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT) {

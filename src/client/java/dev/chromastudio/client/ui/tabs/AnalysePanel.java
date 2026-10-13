@@ -27,7 +27,7 @@ import net.minecraft.util.FormattedCharSequence;
  * colour would mend it, a Fix button that opens Match on that colour.
  */
 final class AnalysePanel {
-    private static final int ROW_H = 31, STRIP_H = 8;
+    private static final int MIN_ROW_H = 31, LINE_H = 10, STRIP_H = 8;
 
     private final List<PaletteEntry> entries;
     private final List<Color> colours = new ArrayList<>();
@@ -36,6 +36,8 @@ final class AnalysePanel {
     private Widgets.ScrollList list;
     private Bounds area;
     private int fixW;
+    /** Every row is as tall as the longest finding needs, so none is cut short in a language that takes more lines. */
+    private int rowH = MIN_ROW_H;
     /** The Fix buttons as the last frame drew them, which is where a click finds them. */
     private record Fix(Bounds button, Analyzer.Finding finding) {}
     private final List<Fix> fixes = new ArrayList<>();
@@ -72,10 +74,19 @@ final class AnalysePanel {
         }).setTooltip(Tooltip.create(Component.translatable("palettes.chromastudio.analyse.explore.tip")));
         fixW = Widgets.buttonWidth(Component.translatable("palettes.chromastudio.analyse.fix"));
         int top = area.y() + PanelTab.ROW + STRIP_H + PanelTab.GAP;
-        list = new Widgets.ScrollList(new Bounds(area.x(), top, area.w(), area.bottom() - top), ROW_H, findings::size);
+        // Measured at the width a row has beside a scrollbar, which is the narrowest it gets.
+        int lines = 1, w = area.w() - Widgets.BAR_W - 2;
+        for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size());
+        rowH = Math.max(MIN_ROW_H, lines * LINE_H + 5);
+        list = new Widgets.ScrollList(new Bounds(area.x(), top, area.w(), area.bottom() - top), rowH, findings::size);
     }
 
-    private Bounds fix(int x, int y, int w) { return new Bounds(x + w - fixW - 2, y + (ROW_H - Widgets.H) / 2, fixW, Widgets.H); }
+    private Bounds fix(int x, int y, int w) { return new Bounds(x + w - fixW - 2, y + (rowH - Widgets.H) / 2, fixW, Widgets.H); }
+
+    /** A finding's text in the lines it takes in a row this wide, beside its swatch and Fix button when it has them. */
+    private List<FormattedCharSequence> wrapped(Analyzer.Finding f, int w) {
+        return PanelTab.font().split(Component.translatable(f.key()), w - 10 - (f.suggestedTarget() != null ? fixW + 6 + 14 : 0));
+    }
 
     void draw(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         Component heading = Component.translatable(unknown > 0 ? "palettes.chromastudio.analyse.heading_unknown" : "palettes.chromastudio.analyse.heading", findings.size(), unknown);
@@ -99,13 +110,10 @@ final class AnalysePanel {
             if (hovered) gg.fill(x, y, x + w, y + h - 1, PanelTab.HOVER);
             boolean warning = f.severity() == Analyzer.Severity.WARNING;
             gg.fill(x + 2, y + 3, x + 5, y + h - 4, warning ? PanelTab.FAIR : 0xFF6E8CB5);
-            boolean fixable = f.suggestedTarget() != null;
-            int textW = w - 10 - (fixable ? fixW + 6 + 14 : 0);
-            List<FormattedCharSequence> lines = PanelTab.font().split(Component.translatable(f.key()), textW);
-            int lineY = y + (ROW_H - 1 - Math.min(3, lines.size()) * 10) / 2 + 1;
-            for (int k = 0; k < Math.min(3, lines.size()); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, lineY + k * 10, PanelTab.TEXT, false);
-            if (lines.size() > 3 && hovered) gg.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
-            if (!fixable) return;
+            List<FormattedCharSequence> lines = wrapped(f, w);
+            int lineY = y + (rowH - 1 - lines.size() * LINE_H) / 2 + 1;
+            for (int k = 0; k < lines.size(); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, lineY + k * LINE_H, PanelTab.TEXT, false);
+            if (f.suggestedTarget() == null) return;
             Bounds b = fix(x, y, w);
             fixes.add(new Fix(b, f));
             Widgets.swatch(gg, b.x() - 14, b.y() + 2, 12, 12, Color.ofOklch(f.suggestedTarget()).rgb());

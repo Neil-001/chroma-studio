@@ -368,6 +368,20 @@ class GameIndexTest {
         assertEquals(List.of("minecraft:petrified_oak_slab"), orphans);
     }
 
+    /** A set's palette is named after the material, whichever of its blocks the set was opened from. */
+    @Test
+    void aSetIsNamedAfterItsMaterial() {
+        for (String id : List.of("minecraft:cherry_planks", "minecraft:cherry_slab", "minecraft:stripped_cherry_log", "minecraft:cherry_wall_hanging_sign")) {
+            assertEquals("Cherry", MaterialSets.name(id), id);
+        }
+        assertEquals("Stone brick", MaterialSets.name("minecraft:stone_brick_stairs"));
+        assertEquals("Dark oak", MaterialSets.name("minecraft:dark_oak_door"));
+        assertEquals("Quartz", MaterialSets.name("minecraft:quartz_block"));
+        assertEquals("Ruby brick", MaterialSets.name("somemod:ruby_bricks"));
+        BlockIndex index = index(List.of(List.of(entry(block("cherry_planks"), "block/cherry_planks")), List.of(entry(block("cherry_slab"), "block/cherry_planks"))));
+        assertEquals("Cherry", index.materialName(index.statesOf(block("cherry_slab")).getFirst()));
+    }
+
     @Test
     void aSetListsFullBlocksThenShapes() {
         BlockIndex index = index(List.of(
@@ -547,14 +561,20 @@ class GameIndexTest {
         assertFalse(barrier.modelDraws());
         assertFalse(new Entry(block("furnace").defaultBlockState(), "minecraft:furnace", "", false, true, true, faces).blockEntityRendered(),
                 "a furnace has a block entity and a model of its own");
-        BlockIndex index = index(List.of(List.of(entry(block("oak_planks"), "block/oak_planks")), List.of(drawn)));
+        // A bell's model draws the posts and the bar it hangs from. The bell is the block entity's, so stone isn't its colour.
+        FaceLayers[] posts = new FaceLayers[6];
+        Arrays.fill(posts, new FaceLayers(List.of(new FaceLayers.Layer("minecraft:block/stone", sampled("block/stone"), -1, null, 1))));
+        Entry bell = new Entry(block("bell").defaultBlockState(), "minecraft:bell", "", false, true, true, posts);
+        assertTrue(bell.blockEntityRendered() && bell.modelDraws());
+        BlockIndex index = index(List.of(List.of(entry(block("oak_planks"), "block/oak_planks")), List.of(drawn), List.of(bell)));
         assertFalse(index.statesOf(block("oak_planks")).getFirst().blockEntityRendered());
+        assertEquals(List.of("minecraft:oak_planks"), ids(index.closest(Target.of(stats("block/stone").mean(Scale.T1)), query())), "a bell isn't grey");
 
         Target planks = Target.of(stats("block/oak_planks").mean(Scale.T1));
         assertEquals(List.of("minecraft:oak_planks"), ids(index.closest(planks, query())));
         Query q = query();
         q.blockEntityRendered = true;
-        assertEquals(List.of("minecraft:chest", "minecraft:oak_planks"), ids(index.closest(planks, q)));
+        assertEquals(List.of("minecraft:chest", "minecraft:oak_planks", "minecraft:bell"), ids(index.closest(planks, q)));
         // The eyedropper and the API still read it.
         assertEquals(drawn, index.entryOf(chest));
         assertTrue(DebugCommand.describe(drawn, TintContext.none()).getFirst().contains("drawn by a block entity"));

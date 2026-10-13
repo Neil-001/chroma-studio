@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -42,6 +43,27 @@ class ExportCommandTest {
         assertEquals(new Request("chroma1:stone/Castle wall", Layout.STRIP, Format.NBT, false), ExportCommand.parse("\"chroma1:stone/Castle wall\" strip nbt"));
         assertInstanceOf(Component.class, ExportCommand.parse("\"chroma1:stone/Castle wall\" tall nbt"));
         assertInstanceOf(Component.class, ExportCommand.parse("\"chroma1:stone/Castle wall"));
+    }
+
+    /** The option a problem names, or what else {@code parse} gave. */
+    private static Object unknownOption(String text) {
+        Object parsed = ExportCommand.parse(text);
+        if (!(parsed instanceof Component c) || !(c.getContents() instanceof TranslatableContents t)) return parsed;
+        return t.getKey().equals("command.chromastudio.export.unknown_option") ? t.getArgs()[0] : parsed;
+    }
+
+    @Test
+    void anUnknownOptionIsNamedNotTheShareString() {
+        assertEquals("tall", unknownOption("chroma1:stone tall"));
+        assertEquals("tall", unknownOption("chroma1:stone tall nbt"));
+        assertEquals("tall thin", unknownOption("chroma1:stone,andesite*3 tall thin place"));
+        assertEquals("tall", unknownOption("chroma1:stone, andesite tall wall"));
+        assertEquals("tall", unknownOption("\"chroma1:stone/Castle wall\" tall nbt"));
+        // A name takes any words, and entries may have spaces after their commas.
+        assertEquals(new Request("chroma1:stone/Castle tall", null, Format.NBT, false), ExportCommand.parse("chroma1:stone/Castle tall nbt"));
+        assertEquals(new Request("chroma1:stone, andesite", Layout.WALL, null, false), ExportCommand.parse("chroma1:stone, andesite wall"));
+        // A share string that can't be read at any length is left for the export to explain.
+        assertEquals(new Request("stone tall", null, Format.NBT, false), ExportCommand.parse("stone tall nbt"));
     }
 
     @Test

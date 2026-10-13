@@ -40,7 +40,7 @@ public final class Widgets extends AbstractContainerEventHandler {
     public static final int H = 16;
     /** Horizontal space the arrows take from a number field: 8 px of arrows plus a 1 px gap. */
     private static final int ARROW_SLOT = 9;
-    private static final int BAR_W = 3;
+    public static final int BAR_W = 3;
 
     private final List<AbstractWidget> children = new ArrayList<>();
     /** What a right-click does on buttons that step through options: step backwards. */
