@@ -7,6 +7,7 @@ import dev.chromastudio.core.color.Scale;
 import dev.chromastudio.core.color.TextureStats;
 import java.util.List;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -96,10 +97,13 @@ public final class Entry {
     public boolean sameTextureAllRound() { return sameTextureAllRound; }
 
     /**
-     * Whether a block entity draws the block rather than its model, as with a chest, a banner, a sign or a bed. Its
-     * faces then hold only the texture it breaks into, which is a guess at how it looks.
+     * Whether a block entity draws the block rather than its model, as with a chest, a banner or a head. Its faces
+     * then hold only the texture it breaks into, which is a guess at how it looks. A bell counts as well: its model
+     * is only the frame it hangs in, stone posts and a dark oak bar, and the bell itself is the block entity's.
      */
-    public boolean blockEntityRendered() { return !modelDraws && state.getBlock() instanceof EntityBlock; }
+    public boolean blockEntityRendered() {
+        return state.getBlock() instanceof EntityBlock && (!modelDraws || state.getBlock() instanceof BellBlock);
+    }
 
     /**
      * Whether the block's model draws anything. One that doesn't is drawn by a block entity or, as a barrier is, not

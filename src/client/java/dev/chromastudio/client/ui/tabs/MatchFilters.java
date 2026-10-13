@@ -9,6 +9,7 @@ import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.color.Tone;
 import dev.chromastudio.core.palette.Analyzer;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -36,15 +37,34 @@ public final class MatchFilters {
     /** The texture badges to keep. Empty keeps all. */
     public final Set<Badge> badges = EnumSet.noneOf(Badge.class);
 
+    /** The settings the filters start from, as they were when last taken. */
+    private List<Boolean> seen = List.of();
+
     /** The filters a fresh Match tab starts with, from the settings. */
     public static MatchFilters fromSettings() {
         MatchFilters f = new MatchFilters();
-        f.fullCube = ModSettings.filterFullCube;
-        f.solid = ModSettings.filterSolid;
-        f.opaque = ModSettings.filterOpaque;
-        f.creativeOnly = ModSettings.filterSurvival ? Tri.EXCLUDE : Tri.ANY;
-        f.technical = ModSettings.technicalBlocks;
+        f.followSettings();
         return f;
+    }
+
+    /**
+     * Takes each setting a filter starts from that has changed since it was last taken, and says whether any had.
+     * The settings screen changes and resets them behind the tab's back, and a filter left at the old value would
+     * go on showing, say, technical blocks after the setting was reset. A filter whose setting hasn't moved keeps
+     * what the player made it.
+     */
+    public boolean followSettings() {
+        List<Boolean> now = List.of(ModSettings.filterFullCube, ModSettings.filterSolid, ModSettings.filterOpaque, ModSettings.filterSurvival,
+                ModSettings.technicalBlocks);
+        if (now.equals(seen)) return false;
+        boolean first = seen.isEmpty();
+        if (first || now.get(0) != seen.get(0)) fullCube = now.get(0);
+        if (first || now.get(1) != seen.get(1)) solid = now.get(1);
+        if (first || now.get(2) != seen.get(2)) opaque = now.get(2);
+        if (first || now.get(3) != seen.get(3)) creativeOnly = now.get(3) ? Tri.EXCLUDE : Tri.ANY;
+        if (first || now.get(4) != seen.get(4)) technical = now.get(4);
+        seen = now;
+        return true;
     }
 
     /**

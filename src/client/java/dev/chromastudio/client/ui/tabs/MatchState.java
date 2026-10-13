@@ -63,9 +63,10 @@ public final class MatchState {
 
     /**
      * Brings the target up to date with what changed behind its back, and tells the tabs if anything did. Each tab
-     * calls this before it draws. A setting changed in the settings screen counts as a change made here. And a block
-     * target moves to the index's current build: a rebuild makes new entries, and one kept from before would go on
-     * showing the textures of a pack that has since changed.
+     * calls this before it draws. A setting changed in the settings screen counts as a change made here, and a
+     * filter that starts from a setting follows it. And a block target moves to the index's current build: a
+     * rebuild makes new entries, and one kept from before would go on showing the textures of a pack that has since
+     * changed.
      */
     public static void follow() {
         boolean stale = false;
@@ -74,6 +75,7 @@ public final class MatchState {
             settingsSeen = now;
             stale = true;
         }
+        if (filters().followSettings()) stale = true;
         BlockIndex index = BlockIndex.get();
         if (index.version() != indexVersion) {
             indexVersion = index.version();
