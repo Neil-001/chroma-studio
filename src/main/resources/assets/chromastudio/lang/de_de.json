@@ -93,6 +93,8 @@
   "settings.chromastudio.cacheFolder.tip": "Wo der Blockindex zwischen den Sitzungen gespeichert wird. Leer lassen für config/chromastudio/cache.",
   "settings.chromastudio.rebuildOnReload": "Bei Neuladen neu erstellen",
   "settings.chromastudio.rebuildOnReload.tip": "Erstellt den Blockindex neu, sobald Ressourcenpakete neu geladen werden.",
+  "settings.chromastudio.refresh": "Aktualisieren",
+  "settings.chromastudio.refresh.tip": "Erstellt den Blockindex neu und liest dabei jede Textur erneut ein. Nötig, nachdem die Dateien eines geladenen Ressourcenpakets geändert wurden, denn das bemerkt der Cache nicht.",
   "settings.chromastudio.biomeMode": "Biom",
   "settings.chromastudio.biomeMode.tip": "Woher Gras, Laub und Wasser ihre Tönung bekommen: von deinem Standort, vom unten gewählten Biom oder von allen Biomen als Bereich.",
   "settings.chromastudio.biome": "Gewähltes Biom",

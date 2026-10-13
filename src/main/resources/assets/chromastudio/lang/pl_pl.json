@@ -93,6 +93,8 @@
   "settings.chromastudio.cacheFolder.tip": "Gdzie indeks bloków jest przechowywany między sesjami. Zostaw puste, aby użyć config/chromastudio/cache.",
   "settings.chromastudio.rebuildOnReload": "Odbuduj po przeładowaniu",
   "settings.chromastudio.rebuildOnReload.tip": "Odbudowuje indeks bloków przy każdym przeładowaniu paczek zasobów.",
+  "settings.chromastudio.refresh": "Odśwież",
+  "settings.chromastudio.refresh.tip": "Odbudowuje indeks bloków, wczytując każdą teksturę od nowa. Użyj po zmianie plików wczytanej paczki zasobów, bo pamięć podręczna tego nie zauważa.",
   "settings.chromastudio.biomeMode": "Biom",
   "settings.chromastudio.biomeMode.tip": "Skąd trawa, liście i woda biorą odcień: z miejsca, w którym stoisz, z biomu wybranego niżej albo ze wszystkich biomów jako zakres.",
   "settings.chromastudio.biome": "Wybrany biom",

@@ -93,6 +93,8 @@
   "settings.chromastudio.cacheFolder.tip": "L'endroit où l'index des blocs est conservé entre les sessions. Laisse vide pour config/chromastudio/cache.",
   "settings.chromastudio.rebuildOnReload": "Reconstruire au rechargement",
   "settings.chromastudio.rebuildOnReload.tip": "Reconstruit l'index des blocs à chaque rechargement des packs de ressources.",
+  "settings.chromastudio.refresh": "Actualiser",
+  "settings.chromastudio.refresh.tip": "Reconstruit l'index des blocs en relisant chaque texture. À utiliser après avoir modifié les fichiers d'un pack de ressources déjà chargé, ce que le cache ne remarque pas.",
   "settings.chromastudio.biomeMode": "Biome",
   "settings.chromastudio.biomeMode.tip": "D'où l'herbe, les feuilles et l'eau tirent leur teinte : de là où tu te trouves, du biome choisi ci-dessous, ou de tous les biomes sous forme de plage.",
   "settings.chromastudio.biome": "Biome choisi",

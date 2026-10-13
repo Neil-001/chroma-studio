@@ -3,6 +3,7 @@ package dev.chromastudio.client.ui;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.index.BlockIndex;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -56,6 +57,12 @@ public final class SettingsScreen extends Screen {
                 if (parent instanceof ChromaScreen window) window.reloadWindow();
                 rebuildWidgets();
             }).setTooltip(Tooltip.create(Component.translatable("settings.chromastudio.reset.tip")));
+            if (id.equals("index")) {
+                // The cache is keyed by the packs' names, so it can't tell that a pack's files changed where they are.
+                Component refresh = Component.translatable("settings.chromastudio.refresh");
+                list.button(left + colW - Widgets.buttonWidth(reset) - 2 - Widgets.buttonWidth(refresh), y + 4, refresh, () -> BlockIndex.get().rebuild())
+                        .setTooltip(Tooltip.create(Component.translatable("settings.chromastudio.refresh.tip")));
+            }
             y += HEADING;
             for (String name : group.getValue()) {
                 if (ModSettings.WINDOW_MEMORY.contains(name)) continue;

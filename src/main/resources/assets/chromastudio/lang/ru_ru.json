@@ -93,6 +93,8 @@
   "settings.chromastudio.cacheFolder.tip": "Где индекс блоков хранится между сеансами. Оставьте пустым, чтобы использовать config/chromastudio/cache.",
   "settings.chromastudio.rebuildOnReload": "Перестраивать при перезагрузке",
   "settings.chromastudio.rebuildOnReload.tip": "Перестраивает индекс блоков при каждой перезагрузке пакетов ресурсов.",
+  "settings.chromastudio.refresh": "Обновить",
+  "settings.chromastudio.refresh.tip": "Перестраивает индекс блоков, заново читая каждую текстуру. Нужно после изменения файлов уже загруженного пакета ресурсов: кэш этого не замечает.",
   "settings.chromastudio.biomeMode": "Биом",
   "settings.chromastudio.biomeMode.tip": "Откуда трава, листва и вода берут оттенок: из места, где вы стоите, из выбранного ниже биома или из всех биомов сразу (как диапазон).",
   "settings.chromastudio.biome": "Выбранный биом",

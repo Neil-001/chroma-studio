@@ -92,6 +92,8 @@
   "settings.chromastudio.cacheFolder.tip": "Where the block index is kept between sessions. Leave empty for config/chromastudio/cache.",
   "settings.chromastudio.rebuildOnReload": "Rebuild on reload",
   "settings.chromastudio.rebuildOnReload.tip": "Rebuilds the block index whenever resource packs reload.",
+  "settings.chromastudio.refresh": "Refresh",
+  "settings.chromastudio.refresh.tip": "Builds the block index again, reading every texture afresh. Use it after changing a resource pack's files while it is loaded, which the cache can't notice.",
   "settings.chromastudio.biomeMode": "Biome",
   "settings.chromastudio.biomeMode.tip": "Where grass, leaves and water get their tint: where you stand, the biome chosen below, or every biome as a range.",
   "settings.chromastudio.biome": "Chosen biome",

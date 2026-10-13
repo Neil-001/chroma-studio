@@ -557,6 +557,8 @@ final class PaletteDialogs {
     /** Fills the hotbar from a list of entries, and undoes it. */
     static final class Hotbar extends Dialog {
         private final List<PaletteEntry> entries;
+        /** What the last fill or undo did. It takes the description's place, so it has the room to be read whole in any language. */
+        private Component result;
 
         Hotbar(List<PaletteEntry> entries) {
             super(tr("palettes.chromastudio.hotbar.title"), 260, 112);
@@ -566,14 +568,14 @@ final class PaletteDialogs {
         @Override
         protected void build(Bounds in) {
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo");
-            int y = in.bottom() - Widgets.H - STATUS_H, undoW = Widgets.buttonWidth(undo), fillW = Widgets.buttonWidth(fill);
+            int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo), fillW = Widgets.buttonWidth(fill);
             Button fillButton = widgets.button(in.right() - undoW - PanelTab.GAP - fillW, y, fill, () -> {
-                status(HotbarFill.fill(entries), PanelTab.TEXT);
+                result = HotbarFill.fill(entries);
                 refresh();
             });
             HotbarFill.unavailable().ifPresent(why -> Widgets.disable(fillButton, why));
             Button undoButton = widgets.button(in.right() - undoW, y, undo, () -> {
-                status(HotbarFill.undo(), PanelTab.TEXT);
+                result = HotbarFill.undo();
                 refresh();
             });
             if (!HotbarFill.canUndo()) Widgets.disable(undoButton, HotbarFill.unavailable().orElse(tr("hotbar.chromastudio.nothing_to_undo")));
@@ -584,7 +586,7 @@ final class PaletteDialogs {
             int over = Math.max(0, entries.size() - 9);
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
                     : tr(ModSettings.hotbarOverflow ? "palettes.chromastudio.hotbar.about_box" : "palettes.chromastudio.hotbar.about_left", over);
-            g.textWithWordWrap(PanelTab.font(), text, in.x(), in.y(), in.w(), PanelTab.DIM, false);
+            g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? PanelTab.TEXT : PanelTab.DIM, false);
         }
     }
 

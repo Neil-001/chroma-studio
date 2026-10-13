@@ -93,6 +93,8 @@
   "settings.chromastudio.cacheFolder.tip": "Onde o índice de blocos é guardado entre as sessões. Deixe vazio para usar config/chromastudio/cache.",
   "settings.chromastudio.rebuildOnReload": "Refazer ao recarregar",
   "settings.chromastudio.rebuildOnReload.tip": "Refaz o índice de blocos sempre que os pacotes de recursos são recarregados.",
+  "settings.chromastudio.refresh": "Atualizar",
+  "settings.chromastudio.refresh.tip": "Refaz o índice de blocos lendo todas as texturas de novo. Use depois de alterar os arquivos de um pacote de recursos já carregado, o que o cache não percebe.",
   "settings.chromastudio.biomeMode": "Bioma",
   "settings.chromastudio.biomeMode.tip": "De onde a grama, as folhas e a água tiram o tom: onde você está, do bioma escolhido abaixo ou de todos os biomas, como uma faixa.",
   "settings.chromastudio.biome": "Bioma escolhido",
