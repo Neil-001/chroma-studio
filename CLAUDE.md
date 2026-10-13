@@ -41,7 +41,7 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 - Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them. Keep every Litematica call in `LitematicaBridge.Calls`, and JEI's and REI's each in its own inner class of `RecipeViewers`.
 - NeoForge compiles against Litematica's Fabric jars, because Forgematica keeps the package and class names and registers the id `litematica` too. Its compile path also has Fabric Loader's jar, only so the compiler can read the `@Environment` annotation on REI's classes; nothing may import from it.
 - `en_us.json` is written by hand. The nine other language files are generated, each with a `_comment` key saying so. `LangTest` fails when one lacks a key, has one English doesn't, or fills in different placeholders, so a new English key needs its nine translations in the same change.
-- `listing/README.md` says what the listing's files are for. Both sites load the description's pictures from `main`.
+- `listing/README.md` says what the listing's files are for. `listing/description.md` is Modrinth's page and the source; `listing/art/curseforge.py` writes `listing/curseforge.html` from it for CurseForge, and CI fails when the two differ. Both sites load the pictures from `main`.
 
 ## Block index
 
