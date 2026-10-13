@@ -503,26 +503,31 @@ public final class GradientTab extends PanelTab {
 
     private int swapBack() { return swapStep < result.size() && result.get(swapStep).pinned ? 1 : 0; }
 
-    /** Lays the swap list under the steps, which move to the top of the well to make room, and under its own step as near as it fits. */
+    /**
+     * Lays the swap list just under the strip, which stays where it is, and under its own step as near as it fits.
+     * When the room is above the strip instead, the list goes there. A well with no room either side gets it over
+     * the strip's bottom rather than not at all.
+     */
     private void placeSwap() {
         if (swapStep >= result.size()) {
             swapStep = -1;
             return;
         }
         Grid grid = grid(stripArea, result.size());
-        int room = (stripArea.h() - grid.rows * CELL_H - 2) / SWAP_ROW;
-        int h = Math.min(swapLines(), Math.clamp(room, SWAP_LINES_MIN, SWAP_LINES)) * SWAP_ROW + 2, w = Math.min(SWAP_W, stripArea.w());
-        int centre = stripArea.x() + (stripArea.w() - grid.perRow * grid.cellW) / 2 + swapStep % grid.perRow * grid.cellW + grid.cellW / 2;
-        swapBox = new Bounds(Math.clamp(centre - w / 2, stripArea.x(), stripArea.right() - w), stripArea.bottom() - h, w, h);
+        int stripTop = grid.y, stripBottom = grid.y + grid.rows * CELL_H, w = Math.min(SWAP_W, stripArea.w());
+        int below = (stripArea.bottom() - stripBottom - 2) / SWAP_ROW, above = (stripTop - 2 - stripArea.y()) / SWAP_ROW;
+        boolean under = below >= SWAP_LINES_MIN || below >= above;
+        int shown = Math.min(swapLines(), Math.clamp(under ? below : above, SWAP_LINES_MIN, SWAP_LINES)), h = shown * SWAP_ROW + 2;
+        int y = Math.clamp(under ? stripBottom + 2 : stripTop - 2 - h, stripArea.y(), Math.max(stripArea.y(), stripArea.bottom() - h));
+        int centre = grid.x + swapStep % grid.perRow * grid.cellW + grid.cellW / 2;
+        swapBox = new Bounds(Math.clamp(centre - w / 2, stripArea.x(), stripArea.right() - w), y, w, h);
         Bounds inside = new Bounds(swapBox.x() + 1, swapBox.y() + 1, w - 2, h - 2);
         if (swapRows == null) swapRows = new Widgets.ScrollList(inside, SWAP_ROW, this::swapLines);
         else swapRows.area = inside;
     }
 
-    /** Where the steps are drawn: in the whole well, or at its top while the swap list has the bottom. */
-    private Bounds stepsArea() {
-        return swapStep < 0 ? stripArea : new Bounds(stripArea.x(), stripArea.y(), stripArea.w(), Math.min(stripArea.h(), grid(stripArea, result.size()).rows * CELL_H));
-    }
+    /** Where the steps are drawn: the whole well, swap list open or not, so the strip never jumps when a list opens. */
+    private Bounds stepsArea() { return stripArea; }
 
     private void swapList(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         Bounds box = swapBox;
