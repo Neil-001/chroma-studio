@@ -2,6 +2,8 @@
 <h1>Chroma Studio</h1>
 
 ![The Chroma Studio window over a village, listing the blocks closest to a teal colour.](listing/gallery/01-match.jpg)
+<a href="https://modrinth.com/mod/chroma-studio"><img alt="Available on Modrinth" height="48" src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/modrinth/cozy.svg"></a>
+<a href="https://www.curseforge.com/minecraft/mc-mods/chroma-studio"><img alt="Available on Modrinth" height="48" src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/curseforge/cozy.svg"></a>
 </div>
 
 A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. The [wiki](https://github.com/Neil-001/chroma-studio/wiki) covers matching, palettes, gradients, exports and settings.
