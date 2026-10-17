@@ -51,6 +51,8 @@ public final class ModSettings {
     public static String startTab = "match";
     /** How solid a pinned window is drawn, 0.2 to 1. */
     public static double pinOpacity = 0.8;
+    /** The order of the title bar's buttons. */
+    public static TitleButtons titleButtons = TitleButtons.DEFAULT;
     /** The window's colours. */
     public static ThemeChoice theme = ThemeChoice.DEFAULT;
     /** The colour {@link ThemeChoice#CUSTOM} builds the window's colours from, as {@code #RRGGBB}. */
@@ -133,7 +135,7 @@ public final class ModSettings {
 
     static {
         GROUPS.put("window", List.of("windowX", "windowY", "windowW", "windowH", "fullscreen", "rememberWindow", "startTab", "pinOpacity",
-                "theme", "customColour"));
+                "titleButtons", "theme", "customColour"));
         GROUPS.put("matching", List.of("defaultFace", "shading", "metric", "resultCount", "viewingDistance",
                 "filterFullCube", "filterSolid", "filterOpaque", "filterSurvival", "showDeltaE"));
         GROUPS.put("index", List.of("technicalBlocks", "statesSeparately", "statesCap", "animatedAveraging", "cacheFolder", "rebuildOnReload"));
