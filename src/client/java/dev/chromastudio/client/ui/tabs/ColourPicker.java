@@ -1,10 +1,13 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.ColourFormat;
+import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Oklch;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -13,16 +16,16 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.util.ARGB;
 
 /**
- * The colour pickers: a saturation and value square with a hue bar, and three sliders for OKLCH lightness, chroma and
- * hue. Each slider is drawn as the colours it would give, with the part outside sRGB greyed and a tick where the
- * gamut ends. The Match tab has all of it; the settings' colour dialog has the square and the bar.
+ * The colour pickers: a saturation and value square with a hue bar, and three sliders in the space the
+ * {@code colourFormat} setting names: OKLCH lightness, chroma and hue, or red, green and blue, or HSL hue, saturation
+ * and lightness. Each slider is drawn as the colours it would give. Only OKLCH reaches outside sRGB: that part is
+ * greyed, with a tick where the gamut ends. The Match tab has all of it; the settings' colour dialog has the square and the bar.
  */
 public final class ColourPicker implements AutoCloseable {
     private static final int SQUARE_PX = 64, SLIDER_PX = 128;
     private static final int OUT_OF_GAMUT = 0xFF3A3F47;
     private static final int NONE = -1, SQUARE = 0, HUE_BAR = 1, SLIDER = 2;
     static final int SLIDER_H = 9, LABEL_W = 9, VALUE_W = 26;
-    private static final String[] LETTERS = {"L", "C", "H"};
 
     public final TargetModel model;
     /** Runs when the player moves a picker. The argument is true once they let go. */
@@ -34,7 +37,8 @@ public final class ColourPicker implements AutoCloseable {
     private Pixels squarePixels, huePixels;
     private final Pixels[] sliderPixels = new Pixels[3];
     private float paintedHue = -1;
-    private Oklch paintedFor;
+    /** The format and slider positions the sliders were last painted for. */
+    private String paintedFor;
     /** Where along each slider the colours leave or come back into sRGB, 0 to 1. */
     private final List<List<Double>> edges = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
     private int dragging = NONE;
@@ -74,14 +78,13 @@ public final class ColourPicker implements AutoCloseable {
         g.fill(hueBar.x() - 1, by - 1, hueBar.right() + 1, by + 2, 0xFF000000);
         g.fill(hueBar.x() - 1, by, hueBar.right() + 1, by + 1, 0xFFFFFFFF);
 
-        Oklch lch = model.lch();
-        double[] at = {lch.l(), lch.c() / TargetModel.CHROMA_MAX, lch.h() / 360};
-        String[] values = {String.format(Locale.ROOT, "%.2f", lch.l()), String.format(Locale.ROOT, "%.3f", lch.c()).substring(1),
-                Math.round(lch.h()) % 360 + "°"};
+        ColourFormat format = ModSettings.colourFormat;
+        double[] at = positions(format);
+        String[] values = values(format), letters = letters(format);
         for (int i = 0; i < 3; i++) {
             Bounds s = sliders[i];
             if (s.w() == 0) break;
-            g.text(font, LETTERS[i], s.x() - LABEL_W, s.y() + 1, ARGB.multiplyAlpha(Theme.DIM, opacity), false);
+            g.text(font, letters[i], s.x() - LABEL_W, s.y() + 1, ARGB.multiplyAlpha(Theme.DIM, opacity), false);
             sliderPixels[i].draw(g, s.x(), s.y(), s.w(), s.h(), opacity);
             for (double edge : edges.get(i)) {
                 int ex = s.x() + (int) Math.round(edge * (s.w() - 1));
@@ -115,17 +118,18 @@ public final class ColourPicker implements AutoCloseable {
                     px[y * SQUARE_PX + x] = 0xFF000000 | Color.fromHsv(hue, x / (float) (SQUARE_PX - 1), 1 - y / (float) (SQUARE_PX - 1)).rgb();
             squarePixels.set(px);
         }
-        Oklch lch = model.lch();
-        if (!lch.equals(paintedFor)) {
-            paintedFor = lch;
+        ColourFormat format = ModSettings.colourFormat;
+        String key = format + Arrays.toString(positions(format));
+        if (!key.equals(paintedFor)) {
+            paintedFor = key;
             for (int i = 0; i < 3; i++) {
                 int[] px = new int[SLIDER_PX];
                 edges.get(i).clear();
                 boolean before = false;
                 for (int x = 0; x < SLIDER_PX; x++) {
-                    Oklch c = along(lch, i, x / (double) (SLIDER_PX - 1));
-                    boolean in = c.inGamut();
-                    px[x] = in ? 0xFF000000 | Color.ofOklch(c).rgb() : OUT_OF_GAMUT;
+                    Color c = colourAlong(format, i, x / (double) (SLIDER_PX - 1));
+                    boolean in = c != null;
+                    px[x] = in ? 0xFF000000 | c.rgb() : OUT_OF_GAMUT;
                     if (x > 0 && in != before) edges.get(i).add((x - 0.5) / (SLIDER_PX - 1));
                     before = in;
                 }
@@ -134,13 +138,95 @@ public final class ColourPicker implements AutoCloseable {
         }
     }
 
-    /** The colour a slider gives at a position along it, 0 to 1, with the other two as they are. */
+    private static String[] letters(ColourFormat format) {
+        return switch (format) {
+            case OKLCH -> new String[] {"L", "C", "H"};
+            case RGB -> new String[] {"R", "G", "B"};
+            case HSL -> new String[] {"H", "S", "L"};
+        };
+    }
+
+    /** The figures shown at the sliders' right ends. */
+    private String[] values(ColourFormat format) {
+        return switch (format) {
+            case OKLCH -> {
+                Oklch lch = model.lch();
+                yield new String[] {String.format(Locale.ROOT, "%.2f", lch.l()), String.format(Locale.ROOT, "%.3f", lch.c()).substring(1),
+                        Math.round(lch.h()) % 360 + "°"};
+            }
+            case RGB -> {
+                Color c = model.colour();
+                yield new String[] {String.valueOf(c.red()), String.valueOf(c.green()), String.valueOf(c.blue())};
+            }
+            case HSL -> {
+                float[] hsl = model.hsl();
+                yield new String[] {Math.round(hsl[0]) % 360 + "°", Math.round(hsl[1] * 100) + "%", Math.round(hsl[2] * 100) + "%"};
+            }
+        };
+    }
+
+    /** Where each slider's handle stands, 0 to 1. */
+    private double[] positions(ColourFormat format) {
+        return switch (format) {
+            case OKLCH -> {
+                Oklch lch = model.lch();
+                yield new double[] {lch.l(), lch.c() / TargetModel.CHROMA_MAX, lch.h() / 360};
+            }
+            case RGB -> {
+                Color c = model.colour();
+                yield new double[] {c.red() / 255.0, c.green() / 255.0, c.blue() / 255.0};
+            }
+            case HSL -> {
+                float[] hsl = model.hsl();
+                yield new double[] {hsl[0] / 360, hsl[1], hsl[2]};
+            }
+        };
+    }
+
+    /** The OKLCH colour a slider gives at a position along it, 0 to 1, with the other two as they are. */
     private static Oklch along(Oklch lch, int slider, double t) {
         return switch (slider) {
             case 0 -> lch.withL(t);
             case 1 -> lch.withC(t * TargetModel.CHROMA_MAX);
             default -> lch.withHue(t * TargetModel.HUE_MAX);
         };
+    }
+
+    private static int withChannel(int rgb, int slider, double t) {
+        int shift = 16 - 8 * slider;
+        return rgb & ~(0xFF << shift) | (int) Math.round(t * 255) << shift;
+    }
+
+    private static float[] withHsl(float[] hsl, int slider, double t) {
+        hsl[slider] = (float) (slider == 0 ? t * 360 : t);
+        return hsl;
+    }
+
+    /** The colour a slider shows at a position along it, or null where that is outside sRGB. */
+    private Color colourAlong(ColourFormat format, int slider, double t) {
+        return switch (format) {
+            case OKLCH -> {
+                Oklch c = along(model.lch(), slider, t);
+                yield c.inGamut() ? Color.ofOklch(c) : null;
+            }
+            case RGB -> Color.ofRgb(withChannel(model.colour().rgb(), slider, t));
+            case HSL -> {
+                float[] hsl = withHsl(model.hsl(), slider, t);
+                yield Color.fromHsl(hsl[0], hsl[1], hsl[2]);
+            }
+        };
+    }
+
+    /** Moves a slider to a position along it, 0 to 1. */
+    private void setSlider(ColourFormat format, int slider, double t) {
+        switch (format) {
+            case OKLCH -> model.setLch(along(model.lch(), slider, t));
+            case RGB -> model.setColour(Color.ofRgb(withChannel(model.colour().rgb(), slider, t)));
+            case HSL -> {
+                float[] hsl = withHsl(model.hsl(), slider, t);
+                model.setHsl(hsl[0], hsl[1], hsl[2]);
+            }
+        }
     }
 
     public boolean mouseClicked(double mx, double my) {
@@ -166,13 +252,13 @@ public final class ColourPicker implements AutoCloseable {
         return true;
     }
 
-    /** Steps the slider under the cursor by a hundredth of its length. */
+    /** Steps the slider under the cursor by a hundredth of its length, or by one for red, green and blue. */
     boolean mouseScrolled(double mx, double my, double v) {
+        ColourFormat format = ModSettings.colourFormat;
+        double step = format == ColourFormat.RGB ? 1 / 255.0 : 0.01;
         for (int i = 0; i < 3; i++) {
             if (!grown(sliders[i]).contains(mx, my)) continue;
-            Oklch lch = model.lch();
-            double at = switch (i) { case 0 -> lch.l(); case 1 -> lch.c() / TargetModel.CHROMA_MAX; default -> lch.h() / 360; };
-            model.setLch(along(lch, i, Math.clamp(at + Math.signum(v) * 0.01, 0, 1)));
+            setSlider(format, i, Math.clamp(positions(format)[i] + Math.signum(v) * step, 0, 1));
             onChange.accept(true);
             return true;
         }
@@ -190,7 +276,7 @@ public final class ColourPicker implements AutoCloseable {
             model.setHsv((float) fraction(my, hueBar.y(), hueBar.h()) * 360, hsv[1], hsv[2]);
         } else {
             Bounds s = sliders[dragging - SLIDER];
-            model.setLch(along(model.lch(), dragging - SLIDER, fraction(mx, s.x(), s.w())));
+            setSlider(ModSettings.colourFormat, dragging - SLIDER, fraction(mx, s.x(), s.w()));
         }
         onChange.accept(false);
     }

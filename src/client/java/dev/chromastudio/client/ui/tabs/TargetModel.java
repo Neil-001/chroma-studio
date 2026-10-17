@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.ColourFormat;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Oklch;
 import java.util.Locale;
@@ -18,7 +19,7 @@ public final class TargetModel {
     private static final double GREY_CHROMA = 1e-4;
 
     private Color colour;
-    private float[] hsv;
+    private float[] hsv, hsl;
     private Oklch lch;
 
     public TargetModel(Color colour) { setColour(colour); }
@@ -28,18 +29,30 @@ public final class TargetModel {
     /** Hue 0 to 360, saturation and value 0 to 1. */
     public float[] hsv() { return hsv.clone(); }
 
-    /** As the sliders stand, which may be outside sRGB. */
+    /** Hue 0 to 360, saturation and lightness 0 to 1, as the HSL sliders stand. */
+    public float[] hsl() { return hsl.clone(); }
+
+    /** As the OKLCH sliders stand, which may be outside sRGB. */
     public Oklch lch() { return lch; }
 
     public void setColour(Color c) {
         colour = c;
         hsv = hsvOf(c);
+        hsl = hslOf(c);
         lch = lchOf(c);
     }
 
     public void setHsv(float h, float s, float v) {
         hsv = new float[] {Math.clamp(h, 0, 360), Math.clamp(s, 0, 1), Math.clamp(v, 0, 1)};
         colour = Color.fromHsv(hsv[0], hsv[1], hsv[2]);
+        hsl = hslOf(colour);
+        lch = lchOf(colour);
+    }
+
+    public void setHsl(float h, float s, float l) {
+        hsl = new float[] {Math.clamp(h, 0, 360), Math.clamp(s, 0, 1), Math.clamp(l, 0, 1)};
+        colour = Color.fromHsl(hsl[0], hsl[1], hsl[2]);
+        hsv = hsvOf(colour);
         lch = lchOf(colour);
     }
 
@@ -48,12 +61,22 @@ public final class TargetModel {
         lch = new Oklch(Math.clamp(to.l(), 0, 1), Math.clamp(to.c(), 0, CHROMA_MAX), Math.clamp(to.h(), 0, HUE_MAX));
         colour = Color.ofOklch(lch);
         hsv = hsvOf(colour);
+        hsl = hslOf(colour);
     }
 
     /** A grey has no hue and black no saturation either, so those keep the hue the pickers last showed. */
     private float[] hsvOf(Color c) {
         float[] next = c.hsv();
         if (hsv != null && (next[1] == 0 || next[2] == 0)) next[0] = hsv[0];
+        return next;
+    }
+
+    /** Likewise a grey keeps the hue, and black and white the saturation, the HSL sliders last showed. */
+    private float[] hslOf(Color c) {
+        float[] next = c.hsl();
+        if (hsl == null) return next;
+        if (next[1] == 0) next[0] = hsl[0];
+        if (next[2] == 0 || next[2] == 1) next[1] = hsl[1];
         return next;
     }
 
@@ -71,6 +94,29 @@ public final class TargetModel {
     public String hslText() {
         float[] hsl = colour.hsl();
         return Math.round(hsl[0]) % 360 + "," + Math.round(hsl[1] * 100) + "," + Math.round(hsl[2] * 100);
+    }
+
+    /** Lightness in percent, then chroma and hue in degrees, as {@code 60,.078,190}: the chroma loses its 0 to fit. */
+    public String oklchText() {
+        return Math.round(lch.l() * 100) + "," + String.format(Locale.ROOT, "%.3f", lch.c()).substring(1) + "," + Math.round(lch.h()) % 360;
+    }
+
+    /** The colour as the field for a format shows it. */
+    public String text(ColourFormat format) {
+        return switch (format) {
+            case OKLCH -> oklchText();
+            case RGB -> rgbText();
+            case HSL -> hslText();
+        };
+    }
+
+    /** Takes what was typed in the field for a format. Returns false, changing nothing, when it isn't a colour. */
+    public boolean type(ColourFormat format, String text) {
+        return switch (format) {
+            case OKLCH -> typeOklch(text);
+            case RGB -> typeRgb(text);
+            case HSL -> typeHsl(text);
+        };
     }
 
     /** Takes a typed hex code, with or without the {@code #}. Returns false, changing nothing, when it isn't one. */
@@ -98,6 +144,14 @@ public final class TargetModel {
         return true;
     }
 
+    /** Takes a typed lightness, 0 to 100, chroma, 0 to {@link #CHROMA_MAX}, and hue, 0 to 360. Returns false, changing nothing, for anything else. */
+    public boolean typeOklch(String text) {
+        double[] n = numbers(text);
+        if (n == null || !within(n[0], 100) || !within(n[1], CHROMA_MAX) || !within(n[2], 360)) return false;
+        setLch(new Oklch(n[0] / 100, n[1], n[2]));
+        return true;
+    }
+
     private static boolean within(double v, double max) { return v >= 0 && v <= max; }
 
     /** Three numbers set apart by commas, spaces or both, each with an optional {@code %} or {@code °}. Null for anything else. */
@@ -107,7 +161,7 @@ public final class TargetModel {
         double[] out = new double[3];
         for (int i = 0; i < 3; i++) {
             String p = parts[i].replaceAll("[%°]$", "");
-            if (!p.matches("\\d{1,3}(\\.\\d{1,3})?")) return null;
+            if (!p.matches("\\d{1,3}(\\.\\d{1,3})?|\\.\\d{1,3}")) return null;
             out[i] = Double.parseDouble(p);
         }
         return out;

@@ -11,6 +11,7 @@ import static dev.chromastudio.client.ui.Theme.WELL;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.ChromaStudioClient;
+import dev.chromastudio.client.ColourFormat;
 import dev.chromastudio.client.FaceChoice;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
@@ -106,7 +107,10 @@ public final class MatchTab extends Tab {
     private Bounds area = new Bounds(0, 0, 0, 0), slot = area, swatch = area, recent = area, distance = area, results = area, statusLine = area;
     private final Widgets controls = new Widgets();
     private Widgets panelWidgets = new Widgets();
-    private EditBox hexField, rgbField, hslField;
+    private EditBox hexField;
+    /** The two fields under the hex code: RGB and HSL, with OKLCH in place of whichever the sliders already show. */
+    private final EditBox[] formatFields = new EditBox[2];
+    private final ColourFormat[] fieldFormats = new ColourFormat[2];
     private AbstractWidget findButton;
     /** Set while the fields are being filled in from the colour, so that doesn't count as typing. */
     private boolean filling;
@@ -202,12 +206,17 @@ public final class MatchTab extends Tab {
         hexField.setTooltip(Tooltip.create(tr("hex.tip")));
         y += ROW;
         int half = (w - GAP) / 2;
-        rgbField = controls.field(x, y, half, model.rgbText(), text -> typed(rgbField, text, model::typeRgb));
-        rgbField.setMaxLength(13);
-        rgbField.setTooltip(Tooltip.create(tr("rgb.tip")));
-        hslField = controls.field(x + half + GAP, y, w - half - GAP, model.hslText(), text -> typed(hslField, text, model::typeHsl));
-        hslField.setMaxLength(13);
-        hslField.setTooltip(Tooltip.create(tr("hsl.tip")));
+        fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;
+        fieldFormats[1] = ModSettings.colourFormat == ColourFormat.HSL ? ColourFormat.OKLCH : ColourFormat.HSL;
+        for (int i = 0; i < 2; i++) {
+            int at = i;
+            ColourFormat format = fieldFormats[i];
+            EditBox field = controls.field(i == 0 ? x : x + half + GAP, y, i == 0 ? half : w - half - GAP, model.text(format),
+                    text -> typed(formatFields[at], text, t -> model.type(format, t)));
+            field.setMaxLength(13);
+            field.setTooltip(Tooltip.create(tr(format.name().toLowerCase(Locale.ROOT) + ".tip")));
+            formatFields[i] = field;
+        }
         y += ROW;
 
         int by = b.bottom() - PAD - Widgets.H, bx = x;
@@ -408,9 +417,8 @@ public final class MatchTab extends Tab {
         TargetModel model = picker.model;
         filling = true;
         if (hexField != except) hexField.setValue(model.hex());
-        if (rgbField != except) rgbField.setValue(model.rgbText());
-        if (hslField != except) hslField.setValue(model.hslText());
-        for (EditBox f : List.of(hexField, rgbField, hslField)) if (f != except) f.setTextColor(EditBox.DEFAULT_TEXT_COLOR);
+        for (int i = 0; i < 2; i++) if (formatFields[i] != except) formatFields[i].setValue(model.text(fieldFormats[i]));
+        for (EditBox f : List.of(hexField, formatFields[0], formatFields[1])) if (f != except) f.setTextColor(EditBox.DEFAULT_TEXT_COLOR);
         filling = false;
     }
 
