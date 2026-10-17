@@ -1,3 +1,17 @@
+# 1.1.0
+
+Choose OKLCH, RGB or HSL for the colour controls, change the recipe key in Minecraft's key binds, and choose the order of the window's title buttons. This release is for Minecraft 26.3 on Fabric and NeoForge.
+
+## Features
+
+- Choose OKLCH, RGB or HSL for the Match tab's colour sliders through settings (#28)
+- Change the recipe key in Minecraft's key binds, with a shortcut from Chroma Studio's settings (#27)
+- The fullscreen button now sits beside Close by default, with a setting to restore the previous order (#26)
+
+## Fixes
+
+- Update the mod icon (#24)
+
 # 1.0.0
 
 Chroma Studio 1.0.0 is the first release. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It runs on the client only and never places a block. This version is for Minecraft 26.3 on Fabric and NeoForge.
