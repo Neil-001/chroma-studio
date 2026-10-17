@@ -6,6 +6,7 @@ import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ThemeChoice;
+import dev.chromastudio.client.TitleButtons;
 import dev.chromastudio.client.action.ScreenPicker;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,7 +30,7 @@ import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.sdl.SDLMouse;
 
 /**
- * The mod's window: a title bar with the tabs and the fullscreen, pin and close buttons, over the selected tab. The
+ * The mod's window: a title bar with the tabs and the close, fullscreen and pin buttons, over the selected tab. The
  * title bar drags it and its edges resize it; {@link Window} keeps where it is. Windowed, the world shows around it and
  * the game carries on. Pinned, the screen closes and the tab is drawn over the world until the open key brings it back.
  */
@@ -189,12 +190,13 @@ public final class ChromaScreen extends Screen {
         return under ? frame.right() - (screenW - COG - 2 * COG_MARGIN) : 0;
     }
 
-    /**
-     * The close, pin and fullscreen buttons, in that order from the right, or close, fullscreen and pin with
-     * {@link ModSettings#fullscreenBesideClose}.
-     */
+    /** The close, fullscreen and pin buttons, in that order from the right, or with the last two swapped. */
     private static Bounds button(Bounds frame, int screenW, int which) {
-        int fromRight = ModSettings.fullscreenBesideClose && which != CLOSE ? PIN + FULLSCREEN - which : which;
+        int fromRight = ModSettings.titleButtons == TitleButtons.FLIPPED ? which : switch (which) {
+            case PIN -> FULLSCREEN;
+            case FULLSCREEN -> PIN;
+            default -> which;
+        };
         return new Bounds(frame.right() - cogReserve(frame, screenW) - (fromRight + 1) * BUTTON_W, frame.y(), BUTTON_W, Window.TITLE_H);
     }
 
