@@ -72,6 +72,8 @@
   "settings.chromastudio.startTab.tip": "Вкладка, которую окно показывает при первом открытии. Затем оно открывается на вкладке, которой вы пользовались последней.",
   "settings.chromastudio.pinOpacity": "Непрозрачность закреплённого окна",
   "settings.chromastudio.pinOpacity.tip": "Насколько плотным выглядит закреплённое окно, от 0,2 до 1.",
+  "settings.chromastudio.fullscreenBesideClose": "Кнопка полного экрана рядом с закрытием",
+  "settings.chromastudio.fullscreenBesideClose.tip": "Меняет местами кнопки полного экрана и закрепления в заголовке окна, чтобы полный экран был рядом с закрытием.",
   "settings.chromastudio.theme": "Цвет окна",
   "settings.chromastudio.theme.tip": "Цвета окна и этого экрана. Вариант «Свой» строит их из выбранного вами цвета.",
   "settings.chromastudio.customColour": "Свой цвет",

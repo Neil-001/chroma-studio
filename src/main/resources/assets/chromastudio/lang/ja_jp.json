@@ -72,6 +72,8 @@
   "settings.chromastudio.startTab.tip": "初めてウィンドウを開いたときに表示するタブです。以降は最後に使ったタブで開き直します。",
   "settings.chromastudio.pinOpacity": "固定ウィンドウの不透明度",
   "settings.chromastudio.pinOpacity.tip": "固定したウィンドウの濃さです。0.2 から 1 の範囲で指定します。",
+  "settings.chromastudio.fullscreenBesideClose": "全画面ボタンを閉じるの隣に",
+  "settings.chromastudio.fullscreenBesideClose.tip": "タイトルバーの全画面ボタンと固定ボタンを入れ替え、全画面ボタンを閉じるボタンの隣に置きます。",
   "settings.chromastudio.theme": "ウィンドウの色",
   "settings.chromastudio.theme.tip": "ウィンドウとこの画面の色です。「カスタム」では、自分で選んだ色から配色を作ります。",
   "settings.chromastudio.customColour": "カスタムの色",

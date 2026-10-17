@@ -72,6 +72,8 @@
   "settings.chromastudio.startTab.tip": "창을 처음 열 때 보여 주는 탭입니다. 그 후에는 마지막으로 쓴 탭으로 다시 열립니다.",
   "settings.chromastudio.pinOpacity": "고정된 창의 불투명도",
   "settings.chromastudio.pinOpacity.tip": "고정된 창이 얼마나 진하게 보일지 정합니다. 0.2부터 1까지입니다.",
+  "settings.chromastudio.fullscreenBesideClose": "전체 화면 버튼을 닫기 옆에",
+  "settings.chromastudio.fullscreenBesideClose.tip": "제목 표시줄의 전체 화면 버튼과 고정 버튼의 위치를 바꿔 전체 화면 버튼이 닫기 옆에 오게 합니다.",
   "settings.chromastudio.theme": "창 색상",
   "settings.chromastudio.theme.tip": "창과 이 화면의 색상입니다. 사용자 지정은 직접 고른 색으로 색상을 만듭니다.",
   "settings.chromastudio.customColour": "사용자 지정 색",

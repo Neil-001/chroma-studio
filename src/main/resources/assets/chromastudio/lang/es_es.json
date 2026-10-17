@@ -72,6 +72,8 @@
   "settings.chromastudio.startTab.tip": "La pestaña que muestra la ventana la primera vez que la abres. Después se reabre en la última pestaña que usaste.",
   "settings.chromastudio.pinOpacity": "Opacidad de la ventana fijada",
   "settings.chromastudio.pinOpacity.tip": "Lo sólida que se ve una ventana fijada, de 0,2 a 1.",
+  "settings.chromastudio.fullscreenBesideClose": "Botón de pantalla completa junto a cerrar",
+  "settings.chromastudio.fullscreenBesideClose.tip": "Intercambia los botones de pantalla completa y fijar en la barra de título, para que pantalla completa quede junto a cerrar.",
   "settings.chromastudio.theme": "Color de la ventana",
   "settings.chromastudio.theme.tip": "Los colores de la ventana y de esta pantalla. Personalizado los obtiene de un color que tú elijas.",
   "settings.chromastudio.customColour": "Color personalizado",

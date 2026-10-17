@@ -51,6 +51,8 @@ public final class ModSettings {
     public static String startTab = "match";
     /** How solid a pinned window is drawn, 0.2 to 1. */
     public static double pinOpacity = 0.8;
+    /** Whether the title bar's fullscreen button sits next to the close button, where the pin button otherwise is. */
+    public static boolean fullscreenBesideClose = false;
     /** The window's colours. */
     public static ThemeChoice theme = ThemeChoice.DEFAULT;
     /** The colour {@link ThemeChoice#CUSTOM} builds the window's colours from, as {@code #RRGGBB}. */
@@ -135,7 +137,7 @@ public final class ModSettings {
 
     static {
         GROUPS.put("window", List.of("windowX", "windowY", "windowW", "windowH", "fullscreen", "rememberWindow", "startTab", "pinOpacity",
-                "theme", "customColour"));
+                "fullscreenBesideClose", "theme", "customColour"));
         GROUPS.put("matching", List.of("defaultFace", "shading", "metric", "resultCount", "viewingDistance",
                 "filterFullCube", "filterSolid", "filterOpaque", "filterSurvival", "showDeltaE"));
         GROUPS.put("index", List.of("technicalBlocks", "statesSeparately", "statesCap", "animatedAveraging", "cacheFolder", "rebuildOnReload"));

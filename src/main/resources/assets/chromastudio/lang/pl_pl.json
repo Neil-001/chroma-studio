@@ -72,6 +72,8 @@
   "settings.chromastudio.startTab.tip": "Karta, którą okno pokazuje przy pierwszym otwarciu. Potem otwiera się na ostatnio używanej karcie.",
   "settings.chromastudio.pinOpacity": "Krycie przypiętego okna",
   "settings.chromastudio.pinOpacity.tip": "Jak pełne wygląda przypięte okno, od 0,2 do 1.",
+  "settings.chromastudio.fullscreenBesideClose": "Przycisk pełnego ekranu obok zamknięcia",
+  "settings.chromastudio.fullscreenBesideClose.tip": "Zamienia miejscami przyciski pełnego ekranu i przypinania na pasku tytułu, tak by pełny ekran był obok zamknięcia.",
   "settings.chromastudio.theme": "Kolor okna",
   "settings.chromastudio.theme.tip": "Kolory okna i tego ekranu. Własny tworzy je z wybranego przez ciebie koloru.",
   "settings.chromastudio.customColour": "Własny kolor",

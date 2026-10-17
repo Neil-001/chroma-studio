@@ -189,8 +189,12 @@ public final class ChromaScreen extends Screen {
         return under ? frame.right() - (screenW - COG - 2 * COG_MARGIN) : 0;
     }
 
-    /** The close, pin and fullscreen buttons, in that order from the right. */
-    private static Bounds button(Bounds frame, int screenW, int fromRight) {
+    /**
+     * The close, pin and fullscreen buttons, in that order from the right, or close, fullscreen and pin with
+     * {@link ModSettings#fullscreenBesideClose}.
+     */
+    private static Bounds button(Bounds frame, int screenW, int which) {
+        int fromRight = ModSettings.fullscreenBesideClose && which != CLOSE ? PIN + FULLSCREEN - which : which;
         return new Bounds(frame.right() - cogReserve(frame, screenW) - (fromRight + 1) * BUTTON_W, frame.y(), BUTTON_W, Window.TITLE_H);
     }
 

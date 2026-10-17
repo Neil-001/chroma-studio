@@ -72,6 +72,8 @@
   "settings.chromastudio.startTab.tip": "A aba que a janela mostra na primeira vez que você a abre. Depois disso, ela reabre na última aba usada.",
   "settings.chromastudio.pinOpacity": "Opacidade da janela fixada",
   "settings.chromastudio.pinOpacity.tip": "Quão sólida a janela fixada parece, de 0,2 a 1.",
+  "settings.chromastudio.fullscreenBesideClose": "Botão de tela cheia ao lado de fechar",
+  "settings.chromastudio.fullscreenBesideClose.tip": "Troca os botões de tela cheia e fixar na barra de título, para que tela cheia fique ao lado de fechar.",
   "settings.chromastudio.theme": "Cor da janela",
   "settings.chromastudio.theme.tip": "As cores da janela e desta tela. Personalizada cria as cores a partir de uma cor que você escolhe.",
   "settings.chromastudio.customColour": "Cor personalizada",

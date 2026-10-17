@@ -72,6 +72,8 @@
   "settings.chromastudio.startTab.tip": "Der Tab, den das Fenster beim ersten Öffnen zeigt. Danach öffnet es sich wieder auf dem Tab, den du zuletzt benutzt hast.",
   "settings.chromastudio.pinOpacity": "Deckkraft des angehefteten Fensters",
   "settings.chromastudio.pinOpacity.tip": "Wie deckend ein angeheftetes Fenster wirkt, von 0,2 bis 1.",
+  "settings.chromastudio.fullscreenBesideClose": "Vollbild-Knopf neben Schließen",
+  "settings.chromastudio.fullscreenBesideClose.tip": "Tauscht in der Titelleiste die Knöpfe für Vollbild und Anheften, sodass Vollbild neben Schließen sitzt.",
   "settings.chromastudio.theme": "Fensterfarbe",
   "settings.chromastudio.theme.tip": "Die Farben des Fensters und dieses Bildschirms. Eigene leitet sie aus einer Farbe deiner Wahl ab.",
   "settings.chromastudio.customColour": "Eigene Farbe",
