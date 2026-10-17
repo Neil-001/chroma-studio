@@ -37,10 +37,10 @@ import net.minecraft.network.chat.Component;
 public final class SettingsScreen extends Screen {
     private static final int TOP = 24, BOTTOM = 26, ROW = 20, HEADING = 22, CONTROL_W = 130, M = 12, GAP = 2;
     /**
-     * A row with no setting behind it: the recipe key is one of the game's key binds now, so its row only opens them.
-     * Its label and tooltip still come from the language file under this name, for the search.
+     * A row with no setting behind it, which opens the mod's key binds. It sits where the recipe key's setting was before
+     * that became a key bind. Its label and tooltip come from the language file under this name, for the search.
      */
-    private static final String RECIPE_KEY = "recipeKey";
+    private static final String MOD_KEYS = "modKeys";
 
     private final Screen parent;
     /** Every setting as it was when the screen opened, which Undo goes back to. */
@@ -116,7 +116,7 @@ public final class SettingsScreen extends Screen {
         undos.keySet().removeIf(group -> !group.isEmpty());
         Map<String, List<String>> rows = new LinkedHashMap<>();
         ModSettings.GROUPS.forEach((group, names) -> rows.put(group, names.stream().filter(name -> !ModSettings.WINDOW_MEMORY.contains(name)).toList()));
-        rows.computeIfPresent("integrations", (_, names) -> Stream.concat(Stream.of(RECIPE_KEY), names.stream()).toList());
+        rows.computeIfPresent("integrations", (_, names) -> Stream.concat(Stream.of(MOD_KEYS), names.stream()).toList());
         Map<String, List<String>> shown = SettingsFilter.filter(rows, search, SettingsScreen::text);
         noRows = shown.isEmpty();
 
@@ -229,7 +229,7 @@ public final class SettingsScreen extends Screen {
 
     /** The control for one setting, chosen by the setting's type, with its tooltip. */
     private void control(String name, int x, int y, Component tip) {
-        if (name.equals(RECIPE_KEY)) {
+        if (name.equals(MOD_KEYS)) {
             list.button(x, y, CONTROL_W, tr("keys"), this::openKeys).setTooltip(Tooltip.create(tip));
             return;
         }
