@@ -208,10 +208,15 @@ public final class MatchTab extends Tab {
         int half = (w - GAP) / 2;
         fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;
         fieldFormats[1] = ModSettings.colourFormat == ColourFormat.HSL ? ColourFormat.OKLCH : ColourFormat.HSL;
+        // OKLCH's figures are a few pixels wider than half the narrowest column, and RGB's and HSL's a few narrower,
+        // so the OKLCH field takes what it needs from the other.
+        int oklchW = font.width("0.00,.000,000") + 8;
+        int firstW = fieldFormats[0] == ColourFormat.OKLCH ? Math.max(half, oklchW)
+                : fieldFormats[1] == ColourFormat.OKLCH ? Math.min(half, w - GAP - oklchW) : half;
         for (int i = 0; i < 2; i++) {
             int at = i;
             ColourFormat format = fieldFormats[i];
-            EditBox field = controls.field(i == 0 ? x : x + half + GAP, y, i == 0 ? half : w - half - GAP, model.text(format),
+            EditBox field = controls.field(i == 0 ? x : x + firstW + GAP, y, i == 0 ? firstW : w - firstW - GAP, model.text(format),
                     text -> typed(formatFields[at], text, t -> model.type(format, t)));
             field.setMaxLength(16);
             field.setTooltip(Tooltip.create(tr(format.name().toLowerCase(Locale.ROOT) + ".tip")));
