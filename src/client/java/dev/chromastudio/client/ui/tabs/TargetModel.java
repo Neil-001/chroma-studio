@@ -96,9 +96,9 @@ public final class TargetModel {
         return Math.round(hsl[0]) % 360 + "," + Math.round(hsl[1] * 100) + "," + Math.round(hsl[2] * 100);
     }
 
-    /** Lightness in percent, then chroma and hue in degrees, as {@code 60,.078,190}: the chroma loses its 0 to fit. */
+    /** Lightness and chroma, then hue in degrees, as {@code 0.60,.078,190}: the chroma loses its 0 to fit. */
     public String oklchText() {
-        return Math.round(lch.l() * 100) + "," + String.format(Locale.ROOT, "%.3f", lch.c()).substring(1) + "," + Math.round(lch.h()) % 360;
+        return String.format(Locale.ROOT, "%.2f", lch.l()) + "," + String.format(Locale.ROOT, "%.3f", lch.c()).substring(1) + "," + Math.round(lch.h()) % 360;
     }
 
     /** The colour as the field for a format shows it. */
@@ -144,11 +144,11 @@ public final class TargetModel {
         return true;
     }
 
-    /** Takes a typed lightness, 0 to 100, chroma, 0 to {@link #CHROMA_MAX}, and hue, 0 to 360. Returns false, changing nothing, for anything else. */
+    /** Takes a typed lightness, 0 to 1, chroma, 0 to {@link #CHROMA_MAX}, and hue, 0 to 360. Returns false, changing nothing, for anything else. */
     public boolean typeOklch(String text) {
         double[] n = numbers(text);
-        if (n == null || !within(n[0], 100) || !within(n[1], CHROMA_MAX) || !within(n[2], 360)) return false;
-        setLch(new Oklch(n[0] / 100, n[1], n[2]));
+        if (n == null || !within(n[0], 1) || !within(n[1], CHROMA_MAX) || !within(n[2], 360)) return false;
+        setLch(new Oklch(n[0], n[1], n[2]));
         return true;
     }
 

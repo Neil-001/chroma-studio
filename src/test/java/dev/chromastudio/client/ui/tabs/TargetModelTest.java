@@ -95,12 +95,12 @@ class TargetModelTest {
     void theOklchFieldShowsAndTakesTheSliders() {
         TargetModel m = new TargetModel(Color.ofRgb(0x808080));
         m.setLch(new Oklch(0.6, 0.078, 190));
-        assertEquals("60,.078,190", m.oklchText());
+        assertEquals("0.60,.078,190", m.oklchText());
         assertEquals(m.oklchText(), m.text(ColourFormat.OKLCH));
-        assertTrue(m.type(ColourFormat.OKLCH, "70% 0.1 150°"));
+        assertTrue(m.type(ColourFormat.OKLCH, "0.7 0.1 150°"));
         assertEquals(new Oklch(0.7, 0.1, 150), m.lch());
         assertEquals(Color.ofOklch(new Oklch(0.7, 0.1, 150)), m.colour());
-        for (String bad : new String[] {"101,.1,150", "70,.5,150", "70,.1,361", "70,.1", "."}) assertFalse(m.typeOklch(bad), bad);
+        for (String bad : new String[] {"1.01,.1,150", "70,.1,150", ".7,.5,150", ".7,.1,361", ".7,.1", "."}) assertFalse(m.typeOklch(bad), bad);
         assertEquals(new Oklch(0.7, 0.1, 150), m.lch());
     }
 

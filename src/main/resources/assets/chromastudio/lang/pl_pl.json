@@ -463,7 +463,7 @@
   "match.chromastudio.hex.tip": "Kolor jako kod szesnastkowy, np. #FF8800.",
   "match.chromastudio.rgb.tip": "Czerwony, zielony i niebieski, każdy od 0 do 255.",
   "match.chromastudio.hsl.tip": "Odcień od 0 do 360, potem nasycenie i jasność od 0 do 100.",
-  "match.chromastudio.oklch.tip": "Jasność od 0 do 100, chroma od 0 do 0.4, potem odcień od 0 do 360, w OKLCH.",
+  "match.chromastudio.oklch.tip": "Jasność od 0 do 1, chroma od 0 do 0.4, potem odcień od 0 do 360, w OKLCH.",
   "match.chromastudio.pick_block": "Blok",
   "match.chromastudio.pick_block.tip": "Zamyka okno, abyś mógł wybrać blok w świecie. Spójrz na któryś i naciśnij %s; okno wróci z nim.",
   "match.chromastudio.pick_screen": "Ekran",

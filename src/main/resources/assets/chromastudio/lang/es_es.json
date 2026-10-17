@@ -463,7 +463,7 @@
   "match.chromastudio.hex.tip": "El color como código hexadecimal, como #FF8800.",
   "match.chromastudio.rgb.tip": "Rojo, verde y azul, cada uno de 0 a 255.",
   "match.chromastudio.hsl.tip": "Tono de 0 a 360, luego saturación y luminosidad de 0 a 100.",
-  "match.chromastudio.oklch.tip": "Luminosidad de 0 a 100, croma de 0 a 0.4, luego tono de 0 a 360, en OKLCH.",
+  "match.chromastudio.oklch.tip": "Luminosidad de 0 a 1, croma de 0 a 0.4, luego tono de 0 a 360, en OKLCH.",
   "match.chromastudio.pick_block": "Bloque",
   "match.chromastudio.pick_block.tip": "Cierra la ventana para que puedas elegir un bloque del mundo. Mira uno y pulsa %s; la ventana vuelve con él.",
   "match.chromastudio.pick_screen": "Pantalla",

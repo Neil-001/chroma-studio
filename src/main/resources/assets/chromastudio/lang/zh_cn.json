@@ -463,7 +463,7 @@
   "match.chromastudio.hex.tip": "以十六进制代码表示的颜色，例如 #FF8800。",
   "match.chromastudio.rgb.tip": "红、绿、蓝，各为 0 到 255。",
   "match.chromastudio.hsl.tip": "色相为 0 到 360，饱和度和亮度为 0 到 100。",
-  "match.chromastudio.oklch.tip": "OKLCH：亮度为 0 到 100，色度为 0 到 0.4，色相为 0 到 360。",
+  "match.chromastudio.oklch.tip": "OKLCH：亮度为 0 到 1，色度为 0 到 0.4，色相为 0 到 360。",
   "match.chromastudio.pick_block": "方块",
   "match.chromastudio.pick_block.tip": "关闭窗口，以便你在世界中选取方块。看向一个方块并按 %s；窗口会带着它回来。",
   "match.chromastudio.pick_screen": "屏幕",

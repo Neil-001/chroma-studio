@@ -463,7 +463,7 @@
   "match.chromastudio.hex.tip": "16 進数のコードで表した色です (例: #FF8800)。",
   "match.chromastudio.rgb.tip": "赤、緑、青を、それぞれ 0 から 255 で指定します。",
   "match.chromastudio.hsl.tip": "色相は 0 から 360、彩度と明度は 0 から 100 で指定します。",
-  "match.chromastudio.oklch.tip": "OKLCH で、明度は 0 から 100、彩度は 0 から 0.4、色相は 0 から 360 で指定します。",
+  "match.chromastudio.oklch.tip": "OKLCH で、明度は 0 から 1、彩度は 0 から 0.4、色相は 0 から 360 で指定します。",
   "match.chromastudio.pick_block": "ブロック",
   "match.chromastudio.pick_block.tip": "ウィンドウを閉じて、ワールド内のブロックを選べるようにします。ブロックを見て %s を押すと、そのブロックでウィンドウに戻ります。",
   "match.chromastudio.pick_screen": "画面",

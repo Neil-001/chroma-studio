@@ -213,7 +213,7 @@ public final class MatchTab extends Tab {
             ColourFormat format = fieldFormats[i];
             EditBox field = controls.field(i == 0 ? x : x + half + GAP, y, i == 0 ? half : w - half - GAP, model.text(format),
                     text -> typed(formatFields[at], text, t -> model.type(format, t)));
-            field.setMaxLength(13);
+            field.setMaxLength(16);
             field.setTooltip(Tooltip.create(tr(format.name().toLowerCase(Locale.ROOT) + ".tip")));
             formatFields[i] = field;
         }
