@@ -1,6 +1,5 @@
 package dev.chromastudio.client.ui;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ThemeChoice;
@@ -12,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Stream;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -36,7 +36,11 @@ import net.minecraft.network.chat.Component;
  */
 public final class SettingsScreen extends Screen {
     private static final int TOP = 24, BOTTOM = 26, ROW = 20, HEADING = 22, CONTROL_W = 130, M = 12, GAP = 2;
-    private static final String UNBOUND = "key.keyboard.unknown";
+    /**
+     * A row with no setting behind it, which opens the mod's key binds. It sits where the recipe key's setting was before
+     * that became a key bind. Its label and tooltip come from the language file under this name, for the search.
+     */
+    private static final String MOD_KEYS = "modKeys";
 
     private final Screen parent;
     /** Every setting as it was when the screen opened, which Undo goes back to. */
@@ -48,8 +52,6 @@ public final class SettingsScreen extends Screen {
     /** Each group's Undo, and the one for everything under the name "". Each is greyed while it has nothing to undo. */
     private final Map<String, Button> undos = new HashMap<>();
     private boolean noRows;
-    /** The setting whose key button is waiting for a key press, or null. */
-    private String listening;
     /** Set when the rows no longer show the settings, to lay them out again before the next frame rather than under a click. */
     private boolean stale;
     /** The confirmation or the colour dialog, while one is open. */
@@ -114,6 +116,7 @@ public final class SettingsScreen extends Screen {
         undos.keySet().removeIf(group -> !group.isEmpty());
         Map<String, List<String>> rows = new LinkedHashMap<>();
         ModSettings.GROUPS.forEach((group, names) -> rows.put(group, names.stream().filter(name -> !ModSettings.WINDOW_MEMORY.contains(name)).toList()));
+        rows.computeIfPresent("integrations", (_, names) -> Stream.concat(Stream.of(MOD_KEYS), names.stream()).toList());
         Map<String, List<String>> shown = SettingsFilter.filter(rows, search, SettingsScreen::text);
         noRows = shown.isEmpty();
 
@@ -154,7 +157,6 @@ public final class SettingsScreen extends Screen {
      * them, and the window behind takes its place and size again when those were among them.
      */
     private void applied(boolean window) {
-        listening = null;
         stale = true;
         if (window && parent instanceof ChromaScreen screen) screen.reloadWindow();
     }
@@ -227,6 +229,10 @@ public final class SettingsScreen extends Screen {
 
     /** The control for one setting, chosen by the setting's type, with its tooltip. */
     private void control(String name, int x, int y, Component tip) {
+        if (name.equals(MOD_KEYS)) {
+            list.button(x, y, CONTROL_W, tr("keys"), this::openKeys).setTooltip(Tooltip.create(tip));
+            return;
+        }
         AbstractWidget made = control(name, x, y, tip, ModSettings.type(name));
         // An option button already has its tooltip, and would lose one set here the first time it's clicked. A greyed
         // control's tooltip says why it is.
@@ -264,13 +270,6 @@ public final class SettingsScreen extends Screen {
             if (!ids.contains(text)) ids.add(text);   // a tab from a mod that's gone: keep it listed rather than change it silently
             return list.cycler(x, y, CONTROL_W, null, ids, text, v -> Component.translatable("tab.chromastudio." + v), v -> ModSettings.set(name, v), tip);
         }
-        if (name.equals("recipeKey")) {
-            Component shown = name.equals(listening) ? tr("press_a_key") : keyName(text);
-            return list.button(x, y, CONTROL_W, shown, () -> {
-                listening = name;
-                stale = true;
-            });
-        }
         if (name.equals("customColour")) {
             list.add(new Swatch(x, y, name));
             Button pick = list.button(x + Widgets.H + GAP, y, CONTROL_W - Widgets.H - GAP, Component.literal(text.toUpperCase(Locale.ROOT)),
@@ -284,15 +283,6 @@ public final class SettingsScreen extends Screen {
         EditBox[] box = new EditBox[1];
         box[0] = list.field(x, y, CONTROL_W, text, v -> box[0].setTextColor(ModSettings.set(name, v) ? EditBox.DEFAULT_TEXT_COLOR : Theme.FIELD_BAD));
         return box[0];
-    }
-
-    /** A key as the game shows it. A name the game doesn't know, from a hand-edited file, shows as it is. */
-    private static Component keyName(String name) {
-        try {
-            return InputConstants.getKey(name).getDisplayName();
-        } catch (RuntimeException _) {
-            return Component.literal(name);
-        }
     }
 
     /** Opens the game's key binds screen. It has no way to show one category, so this scrolls its list to the mod's heading. */
@@ -345,10 +335,6 @@ public final class SettingsScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         if (popup != null) return popup.mouseClicked(event, doubled);
-        if (listening != null) {   // a click anywhere calls the key press off
-            listening = null;
-            stale = true;
-        }
         if (list.mouseClicked(event, doubled)) {
             setFocused(null);
             return true;
@@ -377,13 +363,6 @@ public final class SettingsScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (popup != null) return popup.keyPressed(event);
-        if (listening != null) {
-            // Escape leaves the key unbound, as in the game's own key binds screen.
-            ModSettings.set(listening, event.isEscape() ? UNBOUND : InputConstants.getKey(event).getName());
-            listening = null;
-            stale = true;
-            return true;
-        }
         if (event.isEscape()) {
             // The first Escape only clears a search.
             if (search.isEmpty()) onClose();

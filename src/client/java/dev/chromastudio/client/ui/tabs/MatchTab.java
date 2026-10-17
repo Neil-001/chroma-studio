@@ -833,15 +833,7 @@ public final class MatchTab extends Tab {
         tip.add(tr("row.copy").withColor(Theme.TIP_DIM));
         tip.add(tr("row.gradient").withColor(Theme.TIP_DIM));
         if (grid) tip.add(tr("row.add").withColor(PaletteSink.current() != null ? Theme.TIP_DIM : Theme.TIP_GREYED));
-        tip.add(tr("row.recipe", recipeKeyName()).withColor(RecipeViewers.available() ? Theme.TIP_DIM : Theme.TIP_GREYED));
-    }
-
-    private static Component recipeKeyName() {
-        try {
-            return InputConstants.getKey(ModSettings.recipeKey).getDisplayName();
-        } catch (RuntimeException _) {
-            return Component.literal(ModSettings.recipeKey);
-        }
+        tip.add(tr("row.recipe", Keys.RECIPE.getTranslatedKeyMessage()).withColor(RecipeViewers.available() ? Theme.TIP_DIM : Theme.TIP_GREYED));
     }
 
     private void panel(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, float delta, List<Component> tip) {
@@ -910,6 +902,8 @@ public final class MatchTab extends Tab {
         }
         panelWidgets.setFocused(null);
         if (controls.mouseClicked(e, doubled)) return true;
+        // The recipe key bound to a mouse button: the game doesn't count presses for key binds while a screen is open.
+        if (Keys.RECIPE.matchesMouse(e) && lookUpRecipe()) return true;
         if (left && picker.mouseClicked(mx, my)) return true;
         if (left && distance.contains(mx, my)) {
             draggingDistance = true;
@@ -1096,13 +1090,17 @@ public final class MatchTab extends Tab {
             controls.keyPressed(e);
             return true;
         }
-        if (hovered != null && hovered.type != MAKE && InputConstants.getKey(e).getName().equals(ModSettings.recipeKey)) {
-            ItemStack stack = new ItemStack(hovered.entry.block());
-            if (!RecipeViewers.available()) status(tr("recipe.none"));
-            else if (!RecipeViewers.show(stack)) status(tr("recipe.failed", hovered.entry.name()));
-            return true;
-        }
+        if (Keys.RECIPE.matches(e) && lookUpRecipe()) return true;
         return controls.keyPressed(e);
+    }
+
+    /** Shows the hovered result's recipe in a recipe viewer. False when no result is under the cursor. */
+    private boolean lookUpRecipe() {
+        if (hovered == null || hovered.type == MAKE) return false;
+        ItemStack stack = new ItemStack(hovered.entry.block());
+        if (!RecipeViewers.available()) status(tr("recipe.none"));
+        else if (!RecipeViewers.show(stack)) status(tr("recipe.failed", hovered.entry.name()));
+        return true;
     }
 
     /** Escape closes the panel over the results, when one is open. */
