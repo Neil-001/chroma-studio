@@ -93,13 +93,12 @@ class ModSettingsTest {
     void badValuesOfEveryKindGetTheirDefaults() {
         assertTrue(ModSettings.read("""
                 {"defaultFace": "SIDEWAYS", "metric": "oklab", "resultCount": 2, "pinOpacity": 1.5, "tooltipMode": 3,
-                 "startTab": "Not A Tab", "biome": "plains", "shading": "yes", "easing": 4, "recipeKey": "r",
+                 "startTab": "Not A Tab", "biome": "plains", "shading": "yes", "easing": 4,
                  "exportFolder": 12, "gradientSteps": 33, "viewingDistance": 0}"""));
         assertDefaults();
         assertEquals("minecraft:plains", ModSettings.biome);
         assertFalse(ModSettings.shading);
         assertEquals("SMOOTH", ModSettings.easing);
-        assertEquals("key.keyboard.r", ModSettings.recipeKey);
         assertEquals(9, ModSettings.gradientSteps);
         assertEquals(24, ModSettings.viewingDistance);
     }

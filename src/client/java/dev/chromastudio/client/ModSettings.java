@@ -116,8 +116,6 @@ public final class ModSettings {
     public static int readoutSeconds = 4;
 
     // Integrations
-    /** The key that looks a block's recipe up inside the window, as the game names keys ({@code key.keyboard.r}). */
-    public static String recipeKey = "key.keyboard.r";
     public static PlacementChoice litematicaPlacement = PlacementChoice.LOOKING_AT;
 
     /** Every setting by the group the settings screen lists it under, in the order shown and saved. */
@@ -143,7 +141,7 @@ public final class ModSettings {
         GROUPS.put("gradient", List.of("gradientSteps", "easing", "hueArc", "spreadMatching"));
         GROUPS.put("palettes", List.of("generateCount", "captureCount", "hotbarOverflowMode", "dioramaPerspective", "exportFolder", "defaultLayout", "patchSize", "exportGap"));
         GROUPS.put("tooltips", List.of("tooltipMode", "tooltipSwatch", "tooltipHex", "tooltipKind", "tooltipBadge", "tooltipDeltaE", "readoutSeconds"));
-        GROUPS.put("integrations", List.of("recipeKey", "litematicaPlacement"));
+        GROUPS.put("integrations", List.of("litematicaPlacement"));
 
         limit("windowX", CENTRED, WINDOW_MAX);
         limit("windowY", CENTRED, WINDOW_MAX);
@@ -165,7 +163,6 @@ public final class ModSettings {
         SHAPES.put("startTab", Pattern.compile("[a-z0-9_]{1,64}"));
         SHAPES.put("customColour", Pattern.compile("#[0-9A-Fa-f]{6}"));
         SHAPES.put("biome", Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+"));
-        SHAPES.put("recipeKey", Pattern.compile("key\\.[a-z0-9_.]+"));
 
         // The groups are checked against the fields here, so a setting can't be left out of the file or the screen.
         Map<String, Field> declared = new HashMap<>();

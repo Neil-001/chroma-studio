@@ -12,7 +12,7 @@ public final class Keys {
 
     /** The heading for the keys in the Controls screen. */
     public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "main"));
-    public static KeyMapping OPEN, EYEDROPPER, PIN, FULLSCREEN, CAPTURE;
+    public static KeyMapping OPEN, EYEDROPPER, PIN, FULLSCREEN, CAPTURE, RECIPE;
     /**
      * What the eyedropper and capture keys do when pressed in the world. They do nothing until the tasks that own
      * those actions set these.
@@ -33,5 +33,6 @@ public final class Keys {
         PIN = key("pin", InputConstants.UNKNOWN.getValue());
         FULLSCREEN = key("fullscreen", InputConstants.UNKNOWN.getValue());
         CAPTURE = key("capture", InputConstants.UNKNOWN.getValue());
+        RECIPE = key("recipe", InputConstants.KEY_R);
     }
 }
