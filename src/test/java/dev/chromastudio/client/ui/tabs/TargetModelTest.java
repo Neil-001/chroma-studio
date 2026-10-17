@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.ColourFormat;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Oklch;
 import org.junit.jupiter.api.Test;
@@ -88,5 +89,30 @@ class TargetModelTest {
         assertEquals("#FF0000", m.hex());
         m.setHsv(500, -1, 2);
         assertEquals("#FFFFFF", m.hex(), "figures are held within their ranges");
+    }
+
+    @Test
+    void theOklchFieldShowsAndTakesTheSliders() {
+        TargetModel m = new TargetModel(Color.ofRgb(0x808080));
+        m.setLch(new Oklch(0.6, 0.078, 190));
+        assertEquals("0.60,.078,190", m.oklchText());
+        assertEquals(m.oklchText(), m.text(ColourFormat.OKLCH));
+        assertTrue(m.type(ColourFormat.OKLCH, "0.7 0.1 150°"));
+        assertEquals(new Oklch(0.7, 0.1, 150), m.lch());
+        assertEquals(Color.ofOklch(new Oklch(0.7, 0.1, 150)), m.colour());
+        for (String bad : new String[] {"1.01,.1,150", "70,.1,150", ".7,.5,150", ".7,.1,361", ".7,.1", "."}) assertFalse(m.typeOklch(bad), bad);
+        assertEquals(new Oklch(0.7, 0.1, 150), m.lch());
+    }
+
+    @Test
+    void theHslSlidersKeepTheirPlaceOnAGrey() {
+        TargetModel m = new TargetModel(Color.ofRgb(0xFF8800));
+        m.setHsl(200, 0, 0.5f);
+        assertEquals(Color.fromHsl(200, 0, 0.5f), m.colour());
+        assertEquals(200, m.hsl()[0], "a grey keeps the hue it was dragged to");
+        m.setHsl(200, 0.7f, 0);
+        assertEquals(0.7f, m.hsl()[1], "black keeps the saturation it was dragged to");
+        m.setColour(Color.ofRgb(0x336699));
+        assertArrayEquals(Color.ofRgb(0x336699).hsl(), m.hsl());
     }
 }

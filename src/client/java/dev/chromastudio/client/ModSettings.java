@@ -57,6 +57,8 @@ public final class ModSettings {
     public static ThemeChoice theme = ThemeChoice.DEFAULT;
     /** The colour {@link ThemeChoice#CUSTOM} builds the window's colours from, as {@code #RRGGBB}. */
     public static String customColour = "#243447";
+    /** The colour space of the Match tab's sliders. */
+    public static ColourFormat colourFormat = ColourFormat.OKLCH;
 
     // Matching
     public static FaceChoice defaultFace = FaceChoice.SIDE;
@@ -135,7 +137,7 @@ public final class ModSettings {
 
     static {
         GROUPS.put("window", List.of("windowX", "windowY", "windowW", "windowH", "fullscreen", "rememberWindow", "startTab", "pinOpacity",
-                "titleButtons", "theme", "customColour"));
+                "titleButtons", "theme", "customColour", "colourFormat"));
         GROUPS.put("matching", List.of("defaultFace", "shading", "metric", "resultCount", "viewingDistance",
                 "filterFullCube", "filterSolid", "filterOpaque", "filterSurvival", "showDeltaE"));
         GROUPS.put("index", List.of("technicalBlocks", "statesSeparately", "statesCap", "animatedAveraging", "cacheFolder", "rebuildOnReload"));
