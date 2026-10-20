@@ -30,7 +30,7 @@ class TextureStatsTest {
 
     @Test
     void halvesStayApartUntilTheLastScale() {
-        TextureStats s = texture(16, (x, _) -> x < 8 ? RED : BLUE);
+        TextureStats s = texture(16, (x, y) -> x < 8 ? RED : BLUE);
         for (Scale scale : List.of(Scale.T16, Scale.T8, Scale.T4, Scale.T2)) {
             int[] pixels = s.pixels(scale);
             assertEquals(scale.texels * scale.texels, pixels.length);
@@ -92,7 +92,7 @@ class TextureStatsTest {
     @Test
     void holesAreLeftOutOfAveragesAndCoverage() {
         // The left half is green at alpha 15, just under the cutoff, so nothing of it may show.
-        TextureStats s = texture(16, (x, _) -> x < 8 ? 0x0F00FF00 : RED);
+        TextureStats s = texture(16, (x, y) -> x < 8 ? 0x0F00FF00 : RED);
         assertEquals(0.5, s.coverage(), 1e-12);
         assertEquals(0xFF0000, s.mean(Scale.T16).rgb());
         assertEquals(List.of(Color.ofRgb(0xFF0000)), s.distribution(Scale.T16).colours());
@@ -103,15 +103,15 @@ class TextureStatsTest {
         assertEquals(0, s.spread(), 1e-12);
 
         // Alpha 16 is in.
-        assertEquals(16 / 255.0, texture(16, (_, _) -> 0x1000FF00).coverage(), 1e-12);
-        assertEquals(0x00FF00, texture(16, (_, _) -> 0x1000FF00).mean(Scale.T1).rgb());
+        assertEquals(16 / 255.0, texture(16, (x, y) -> 0x1000FF00).coverage(), 1e-12);
+        assertEquals(0x00FF00, texture(16, (x, y) -> 0x1000FF00).mean(Scale.T1).rgb());
     }
 
     @Test
     void averagesAreWeightedByAlpha() {
         // Solid red beside blue at a third of the alpha: 0.75 red and 0.25 blue in linear light,
         // which sRGB stores as 225 and 137.
-        TextureStats s = texture(16, (x, _) -> x < 8 ? RED : 0x550000FF);
+        TextureStats s = texture(16, (x, y) -> x < 8 ? RED : 0x550000FF);
         assertEquals(0xE10089, s.mean(Scale.T1).rgb());
         assertEquals(2 / 3.0, s.coverage(), 1e-12);
         assertEquals(0.75, s.distribution(Scale.T16).weights().get(0), 1e-12);
@@ -137,7 +137,7 @@ class TextureStatsTest {
 
     @Test
     void nothingOpaqueGivesEmptyStats() {
-        TextureStats s = texture(16, (_, _) -> 0x00FFFFFF);
+        TextureStats s = texture(16, (x, y) -> 0x00FFFFFF);
         assertEquals(0, s.coverage());
         assertEquals(0, s.spread());
         assertEquals(0x000000, s.mean(Scale.T16).rgb());
@@ -157,7 +157,7 @@ class TextureStatsTest {
 
     @Test
     void pixelsAreACopy() {
-        TextureStats s = texture(16, (_, _) -> RED);
+        TextureStats s = texture(16, (x, y) -> RED);
         s.pixels(Scale.T16)[0] = BLUE;
         assertEquals(RED, s.pixels(Scale.T16)[0]);
     }
@@ -198,7 +198,7 @@ class TextureStatsTest {
     void badgeBands() {
         // One level apart: spread about 0.002.
         assertEquals(Badge.FLAT, texture(16, (x, y) -> (x + y) % 2 == 0 ? 0xFF808080 : 0xFF818181).badge());
-        assertEquals(Badge.FLAT, texture(16, (_, _) -> 0xFF5EA919).badge());
+        assertEquals(Badge.FLAT, texture(16, (x, y) -> 0xFF5EA919).badge());
         // 0x70 and 0x90: lightness 0.545 and 0.653, spread about 0.054.
         TextureStats grainy = texture(16, (x, y) -> (x + y) % 2 == 0 ? 0xFF707070 : 0xFF909090);
         assertEquals(0.054, grainy.spread(), 0.002);

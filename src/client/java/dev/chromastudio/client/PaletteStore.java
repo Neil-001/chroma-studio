@@ -265,7 +265,7 @@ public final class PaletteStore implements PaletteSink {
         Files.writeString(tmp, json, StandardCharsets.UTF_8);
         try {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException _) {
+        } catch (IOException ignored) {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
         }
     }

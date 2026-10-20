@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.CharacterEvent;
@@ -150,13 +150,13 @@ public final class ExploreTab extends Tab {
     }
 
     @Override
-    public void render(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta) {
         sync();
         Font font = Minecraft.getInstance().font;
         Dot over = draw(g, font, 1, mouseX, mouseY);
         controls.render(g, mouseX, mouseY, delta);
         Component count = tr("count", dots.size());
-        g.text(font, count, b.right() - PAD - font.width(count), b.y() + PAD + 4, DIM, false);
+        g.drawString(font, count, b.right() - PAD - font.width(count), b.y() + PAD + 4, DIM, false);
         if (over != null && !panned) {
             Entry e = over.entry;
             List<Component> tip = new ArrayList<>();
@@ -175,13 +175,13 @@ public final class ExploreTab extends Tab {
     }
 
     @Override
-    public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
+    public void renderPinned(GuiGraphics g, Bounds b, float opacity) {
         sync();
         draw(g, Minecraft.getInstance().font, opacity, -1, -1);
     }
 
     /** Draws the plot, and returns the dot nearest the cursor when one is within reach. */
-    private Dot draw(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY) {
+    private Dot draw(GuiGraphics g, Font font, float opacity, int mouseX, int mouseY) {
         Bounds p = plot;
         // Fullscreen has no panel of its own, so the controls and the axes get a backing to be read against.
         g.fill(area.x(), area.y(), area.right(), area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
@@ -215,7 +215,7 @@ public final class ExploreTab extends Tab {
             int x = screenX(d.hue), y = screenY(d.lightness), s = d.size, x0 = x - s / 2, y0 = y - s / 2;
             if (x0 + s < p.x() || x0 > p.right() || y0 + s < p.y() || y0 > p.bottom()) continue;
             g.fill(x0, y0, x0 + s, y0 + s, ARGB.multiplyAlpha(0xFF000000 | d.rgb, opacity));
-            if (d.ringed) g.outline(x0 - 2, y0 - 2, s + 4, s + 4, ARGB.multiplyAlpha(Theme.STRONG, opacity));
+            if (d.ringed) g.renderOutline(x0 - 2, y0 - 2, s + 4, s + 4, ARGB.multiplyAlpha(Theme.STRONG, opacity));
             int dx = x - mouseX, dy = y - mouseY, far = dx * dx + dy * dy;
             if (far < best && p.contains(mouseX, mouseY)) {
                 best = far;
@@ -224,7 +224,7 @@ public final class ExploreTab extends Tab {
         }
         if (nearest != null) {
             int x = screenX(nearest.hue), y = screenY(nearest.lightness), s = nearest.size;
-            g.outline(x - s / 2 - 1, y - s / 2 - 1, s + 2, s + 2, Theme.STRONG);
+            g.renderOutline(x - s / 2 - 1, y - s / 2 - 1, s + 2, s + 2, Theme.STRONG);
         }
         g.disableScissor();
         return nearest;

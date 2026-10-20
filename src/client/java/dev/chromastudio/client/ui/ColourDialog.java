@@ -8,7 +8,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -30,7 +30,7 @@ final class ColourDialog extends Popup {
     ColourDialog(Component title, Color start, Consumer<Color> onChange, Runnable onClose) {
         super(title, 236, 100, onClose);
         this.onChange = onChange;
-        picker = new ColourPicker(start, _ -> picked(null));
+        picker = new ColourPicker(start, colour -> picked(null));
     }
 
     @Override
@@ -77,13 +77,13 @@ final class ColourDialog extends Popup {
     }
 
     @Override
-    protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+    protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
         Font font = Minecraft.getInstance().font;
         picker.render(g, font, 1);
         // Drawn here rather than as controls, because the colour they're drawn in changes as the player picks.
         String[] names = {"hex", "rgb", "hsl"};
         for (int i = 0; i < names.length; i++)
-            g.text(font, Component.translatable("settings.chromastudio.colour." + names[i]), hex.getX() - LABEL_W, in.y() + i * ROW + 4, Theme.SOFT, false);
+            g.drawString(font, Component.translatable("settings.chromastudio.colour." + names[i]), hex.getX() - LABEL_W, in.y() + i * ROW + 4, Theme.SOFT, false);
     }
 
     @Override

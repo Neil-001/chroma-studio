@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -84,13 +84,13 @@ public final class ChromaScreen extends Screen {
         if (screen == null) {
             screen = pinned != null ? pinned : new ChromaScreen();
             pinned = null;
-            mc.gui.setScreen(screen);
+            mc.setScreen(screen);
         }
         if (tabId != null) screen.select(tabId);
     }
 
     /** The window, when it is the screen that's open, or null. */
-    public static ChromaScreen current() { return Minecraft.getInstance().gui.screen() instanceof ChromaScreen s ? s : null; }
+    public static ChromaScreen current() { return Minecraft.getInstance().screen instanceof ChromaScreen s ? s : null; }
 
     public static boolean isPinned() { return pinned != null; }
 
@@ -174,10 +174,10 @@ public final class ChromaScreen extends Screen {
 
     /** Windowed, the world shows as it is: no blur and no dimming. Fullscreen has the game's usual blurred backdrop. */
     @Override
-    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float delta) {
         // The screen picker reads the frame, so while it aims nothing of the window may be in it, the blur included.
-        if (fullscreen() && !ScreenPicker.armed()) super.extractBackground(g, mouseX, mouseY, delta);
-        else minecraft.gui.hud.extractDeferredSubtitles();
+        if (fullscreen() && !ScreenPicker.armed()) super.renderBackground(g, mouseX, mouseY, delta);
+        else minecraft.gui.renderDeferredSubtitles();
     }
 
     // ---- Title bar layout, shared by drawing and clicking ----
@@ -216,7 +216,7 @@ public final class ChromaScreen extends Screen {
     // ---- Drawing ----
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         if (ScreenPicker.armed()) {
             ScreenPicker.render(g, mouseX, mouseY);
             g.requestCursor(CursorTypes.CROSSHAIR);
@@ -272,14 +272,14 @@ public final class ChromaScreen extends Screen {
      * the title bar button under the cursor, if any. The pinned window uses it too, without the buttons: they'd
      * look as if they could be clicked.
      */
-    private static Component chrome(GuiGraphicsExtractor g, Bounds f, boolean fullscreen, float opacity, String selected, boolean buttons,
+    private static Component chrome(GuiGraphics g, Bounds f, boolean fullscreen, float opacity, String selected, boolean buttons,
                                     int mouseX, int mouseY) {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
         int screenW = g.guiWidth(), screenH = g.guiHeight();
         if (!fullscreen) {
             g.fill(f.x(), f.y(), f.right(), f.bottom(), ARGB.multiplyAlpha(Theme.WINDOW, opacity));
-            g.outline(f.x(), f.y(), f.w(), f.h(), ARGB.multiplyAlpha(Theme.BORDER, opacity));
+            g.renderOutline(f.x(), f.y(), f.w(), f.h(), ARGB.multiplyAlpha(Theme.BORDER, opacity));
         } else if (ModSettings.theme != ThemeChoice.DEFAULT) {
             // The default's light text reads on the game's blurred backdrop, as it always has. Another theme's colours
             // need their own background under them.
@@ -294,7 +294,7 @@ public final class ChromaScreen extends Screen {
             String id = REGISTRY.get(i).id;
             boolean on = id.equals(selected), over = r.contains(mouseX, mouseY);
             if (over && !on) g.fill(r.x(), r.y() + 1, r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.SELECTED, opacity));
-            g.text(font, Component.translatable("tab.chromastudio." + id), r.x() + 6, r.y() + 4, ARGB.multiplyAlpha(on ? Theme.TEXT : Theme.DIM, opacity), false);
+            g.drawString(font, Component.translatable("tab.chromastudio." + id), r.x() + 6, r.y() + 4, ARGB.multiplyAlpha(on ? Theme.TEXT : Theme.DIM, opacity), false);
             if (on) g.fill(r.x() + 3, r.bottom() - 2, r.right() - 3, r.bottom() - 1, ARGB.multiplyAlpha(Theme.ACCENT, opacity));
         }
 
@@ -322,11 +322,11 @@ public final class ChromaScreen extends Screen {
                 }
                 default -> {
                     if (fullscreen) {   // two overlapping squares: back to a window
-                        g.outline(cx - 2, cy - 4, 6, 6, c);
+                        g.renderOutline(cx - 2, cy - 4, 6, 6, c);
                         g.fill(cx - 4, cy - 2, cx + 2, cy + 4, ARGB.multiplyAlpha(Theme.BAR, opacity));
-                        g.outline(cx - 4, cy - 2, 6, 6, c);
+                        g.renderOutline(cx - 4, cy - 2, 6, 6, c);
                     } else {
-                        g.outline(cx - 4, cy - 4, 8, 8, c);
+                        g.renderOutline(cx - 4, cy - 4, 8, 8, c);
                         g.fill(cx - 4, cy - 4, cx + 4, cy - 2, c);
                     }
                 }
@@ -341,7 +341,7 @@ public final class ChromaScreen extends Screen {
     }
 
     /** A small cog: a ring with a tooth on each side and corner. */
-    private static void cog(GuiGraphicsExtractor g, Bounds b, int colour) {
+    private static void cog(GuiGraphics g, Bounds b, int colour) {
         int cx = b.x() + b.w() / 2, cy = b.y() + b.h() / 2;
         // A plate behind it, so it shows against the sky as well as on the title bar.
         g.fill(b.x(), b.y(), b.right(), b.bottom(), Theme.BAR);
@@ -356,7 +356,7 @@ public final class ChromaScreen extends Screen {
     }
 
     /** Draws the pinned window over the world. {@link Hud#render} calls it. */
-    static void renderPinned(GuiGraphicsExtractor g) {
+    static void renderPinned(GuiGraphics g) {
         ChromaScreen s = pinned;
         if (s == null || current() != null) return;
         Theme.sync();
@@ -387,7 +387,7 @@ public final class ChromaScreen extends Screen {
         tabHasMouse = false;
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             if (cog().contains(mx, my)) {
-                minecraft.gui.setScreen(new SettingsScreen(this));
+                minecraft.setScreen(new SettingsScreen(this));
                 return true;
             }
             // The edges come first: the top three pixels of the title bar resize rather than press what's under them.
@@ -490,7 +490,7 @@ public final class ChromaScreen extends Screen {
     public void pin() {
         pinning = true;
         pinned = this;
-        minecraft.gui.setScreen(null);
+        minecraft.setScreen(null);
     }
 
     /** Takes the window's place and size from the settings again, after the settings screen reset them. */

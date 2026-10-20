@@ -39,14 +39,14 @@ public final class ExportCommand {
             @Override
             public <S> void attach(LiteralArgumentBuilder<S> root) {
                 root.then(LiteralArgumentBuilder.<S>literal("export")
-                        .executes(_ -> { ChromaCommand.say(Component.translatable("command.chromastudio.export.usage")); return 0; })
+                        .executes(context -> { ChromaCommand.say(Component.translatable("command.chromastudio.export.usage")); return 0; })
                         .then(RequiredArgumentBuilder.<S, String>argument("palette", StringArgumentType.greedyString())
-                                .suggests((_, builder) -> suggestOptions(builder))
+                                .suggests((context, builder) -> suggestOptions(builder))
                                 .executes(ctx -> export(StringArgumentType.getString(ctx, "palette")))));
                 root.then(LiteralArgumentBuilder.<S>literal(PLACE)
-                        .executes(_ -> { ChromaCommand.say(Component.translatable("command.chromastudio.place.usage")); return 0; })
+                        .executes(context -> { ChromaCommand.say(Component.translatable("command.chromastudio.place.usage")); return 0; })
                         .then(RequiredArgumentBuilder.<S, String>argument("file", StringArgumentType.greedyString())
-                                .suggests((_, builder) -> suggestFiles(builder))
+                                .suggests((context, builder) -> suggestFiles(builder))
                                 .executes(ctx -> place(StringArgumentType.getString(ctx, "file")))));
             }
         });
@@ -102,7 +102,7 @@ public final class ExportCommand {
         try {
             ShareString.decode(share);
             return true;
-        } catch (IllegalArgumentException _) {
+        } catch (IllegalArgumentException ignored) {
             return false;
         }
     }
@@ -223,7 +223,7 @@ public final class ExportCommand {
             files.filter(Files::isRegularFile).map(f -> f.getFileName().toString())
                     .filter(n -> format(n.substring(n.lastIndexOf('.') + 1)) != null && n.toLowerCase(Locale.ROOT).startsWith(start))
                     .sorted().forEach(builder::suggest);
-        } catch (IOException | RuntimeException _) {
+        } catch (IOException | RuntimeException ignored) {
             // No folder yet, or one that can't be read: there's nothing to offer.
         }
         return builder.buildFuture();

@@ -5,17 +5,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.CardinalLighting;
+import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.ColorResolver;
+import net.minecraft.world.level.EmptyBlockAndTintGetter;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -29,7 +29,7 @@ public final class Tints {
     // Biome colours can vary with x and z, as a swamp's grass does, so every biome is asked at the same spot.
     private static final BlockPos SPOT = new BlockPos(0, 64, 0);
 
-    static final TintContext NONE = (_, _) -> TintContext.NO_TINT;
+    static final TintContext NONE = (source, state) -> TintContext.NO_TINT;
 
     static final TintContext HERE = (source, state) -> {
         Minecraft mc = Minecraft.getInstance();
@@ -53,11 +53,11 @@ public final class Tints {
     }
 
     /** A source that throws, as a modded one may without a real world, means no tint. */
-    private static int colour(BlockTintSource source, BlockState state, BlockAndTintGetter level, BlockPos pos) {
+    private static int colour(TintSource source, BlockState state, BlockAndTintGetter level, BlockPos pos) {
         try {
             int c = source.colorInWorld(state, level, pos);
             return c == -1 ? TintContext.NO_TINT : c & 0xFFFFFF;
-        } catch (Exception _) {
+        } catch (Exception ignored) {
             return TintContext.NO_TINT;
         }
     }
@@ -101,12 +101,12 @@ public final class Tints {
     /** A world that is one biome everywhere and otherwise empty. */
     private record OneBiome(Biome biome) implements BlockAndTintGetter {
         @Override public int getBlockTint(BlockPos pos, ColorResolver resolver) { return resolver.getColor(biome, pos.getX(), pos.getZ()); }
-        @Override public CardinalLighting cardinalLighting() { return EMPTY.cardinalLighting(); }
-        @Override public LevelLightEngine getLightEngine() { return EMPTY.getLightEngine(); }
-        @Override public BlockEntity getBlockEntity(BlockPos pos) { return EMPTY.getBlockEntity(pos); }
-        @Override public BlockState getBlockState(BlockPos pos) { return EMPTY.getBlockState(pos); }
-        @Override public FluidState getFluidState(BlockPos pos) { return EMPTY.getFluidState(pos); }
-        @Override public int getHeight() { return EMPTY.getHeight(); }
-        @Override public int getMinY() { return EMPTY.getMinY(); }
+        @Override public float getShade(Direction direction, boolean shaded) { return EmptyBlockAndTintGetter.INSTANCE.getShade(direction, shaded); }
+        @Override public LevelLightEngine getLightEngine() { return EmptyBlockAndTintGetter.INSTANCE.getLightEngine(); }
+        @Override public BlockEntity getBlockEntity(BlockPos pos) { return EmptyBlockAndTintGetter.INSTANCE.getBlockEntity(pos); }
+        @Override public BlockState getBlockState(BlockPos pos) { return EmptyBlockAndTintGetter.INSTANCE.getBlockState(pos); }
+        @Override public FluidState getFluidState(BlockPos pos) { return EmptyBlockAndTintGetter.INSTANCE.getFluidState(pos); }
+        @Override public int getHeight() { return EmptyBlockAndTintGetter.INSTANCE.getHeight(); }
+        @Override public int getMinY() { return EmptyBlockAndTintGetter.INSTANCE.getMinY(); }
     }
 }

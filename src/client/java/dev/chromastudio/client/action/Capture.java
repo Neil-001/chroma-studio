@@ -22,7 +22,8 @@ import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.ShapeRenderer;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -66,7 +67,7 @@ public final class Capture {
                     last = RequiredArgumentBuilder.<S, Integer>argument(name, IntegerArgumentType.integer()).then(last);
                 }
                 root.then(LiteralArgumentBuilder.<S>literal("capture")
-                        .executes(_ -> { ChromaCommand.say(Component.translatable("command.chromastudio.capture.usage")); return 0; })
+                        .executes(context -> { ChromaCommand.say(Component.translatable("command.chromastudio.capture.usage")); return 0; })
                         .then(last));
             }
         });
@@ -142,25 +143,28 @@ public final class Capture {
     public static void tick(Minecraft mc) {
         if (!armed) return;
         if (mc.player == null) disarm();
-        else if (mc.level != armedIn || mc.gui.screen() instanceof PauseScreen) cancel();
+        else if (mc.level != armedIn || mc.screen instanceof PauseScreen) cancel();
         else prompt();
     }
 
     /**
      * Outlines the box being picked: the first corner to the block aimed at, or just the block aimed at before the
-     * first corner. Each loader calls this where it collects the world's extra geometry; {@code cam} is the camera.
+     * first corner. Each loader calls this after the game has drawn the entities; {@code cam} is the camera. The
+     * lines go straight to the game's buffers, as 1.21.11 has no collector a mod can hand an outline to there.
      */
-    public static void render(SubmitNodeCollector out, PoseStack pose, Vec3 cam) {
+    public static void render(PoseStack pose, Vec3 cam) {
         Minecraft mc = Minecraft.getInstance();
         if (!armed || mc.player == null) return;
         BlockPos a = aimed(mc), b = first == null ? a : first;
         int x = Math.min(a.getX(), b.getX()), y = Math.min(a.getY(), b.getY()), z = Math.min(a.getZ(), b.getZ());
         int sx = Math.abs(a.getX() - b.getX()) + 1, sy = Math.abs(a.getY() - b.getY()) + 1, sz = Math.abs(a.getZ() - b.getZ()) + 1;
+        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         pose.pushPose();
         pose.translate(x - cam.x, y - cam.y, z - cam.z);
-        out.submitShapeOutline(pose, Shapes.create(0, 0, 0, sx, sy, sz), RenderTypes.lines(), OUTLINE,
-                mc.gameRenderer.gameRenderState().windowRenderState.appropriateLineWidth, true);
+        ShapeRenderer.renderShape(pose, buffers.getBuffer(RenderTypes.lines()), Shapes.create(0, 0, 0, sx, sy, sz), 0, 0, 0, OUTLINE,
+                mc.getWindow().getAppropriateLineWidth());
         pose.popPose();
+        buffers.endBatch(RenderTypes.lines());
     }
 
     /** What a capture came to: a line to show the player, and whether a palette was made. */

@@ -5,7 +5,7 @@ import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import java.util.List;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -54,7 +54,7 @@ abstract class Dialog {
     protected abstract void build(Bounds in);
 
     /** Draws what isn't a control. */
-    protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {}
+    protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {}
 
     protected final void close() { tab.closeDialog(); }
 
@@ -63,11 +63,11 @@ abstract class Dialog {
         statusColour = colour;
     }
 
-    final void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+    final void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         g.fill(box.x(), box.y(), box.right(), box.bottom(), Theme.PANEL);
         g.fill(box.x(), box.y(), box.right(), box.y() + TITLE_H, Theme.BAR);
-        g.outline(box.x(), box.y(), box.w(), box.h(), Theme.BORDER);
-        g.text(PanelTab.font(), PanelTab.fit(title.getString(), box.w() - 22), box.x() + 5, box.y() + 3, Theme.TEXT, false);
+        g.renderOutline(box.x(), box.y(), box.w(), box.h(), Theme.BORDER);
+        g.drawString(PanelTab.font(), PanelTab.fit(title.getString(), box.w() - 22), box.x() + 5, box.y() + 3, Theme.TEXT, false);
         Bounds in = new Bounds(box.x() + 5, box.y() + TITLE_H + 3, box.w() - 10, box.h() - TITLE_H - 7);
         draw(g, in, mouseX, mouseY);
         widgets.render(g, mouseX, mouseY, delta);
@@ -75,7 +75,7 @@ abstract class Dialog {
             // Two lines at the bottom, the second cut short if there's more. Pointing at them shows the whole of it.
             List<FormattedCharSequence> lines = PanelTab.font().split(status, in.w());
             int shown = Math.min(STATUS_LINES, lines.size()), top = in.bottom() - shown * 9;
-            for (int i = 0; i < shown; i++) g.text(PanelTab.font(), lines.get(i), in.x(), top + i * 9, statusColour, false);
+            for (int i = 0; i < shown; i++) g.drawString(PanelTab.font(), lines.get(i), in.x(), top + i * 9, statusColour, false);
             if (lines.size() > shown && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
                 g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
         }

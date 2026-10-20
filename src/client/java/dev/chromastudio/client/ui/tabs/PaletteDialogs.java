@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.Function;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -61,8 +61,8 @@ final class PaletteDialogs {
     }
 
     /** Draws a label in the dialog's left column, level with a control on the same row. */
-    private static void label(GuiGraphicsExtractor g, String key, int x, int y) {
-        g.text(PanelTab.font(), tr(key), x, y + 4, Theme.DIM, false);
+    private static void label(GuiGraphics g, String key, int x, int y) {
+        g.drawString(PanelTab.font(), tr(key), x, y + 4, Theme.DIM, false);
     }
 
     private static int labelWidth(String... keys) {
@@ -136,8 +136,8 @@ final class PaletteDialogs {
         }
 
         @Override
-        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            g.textWithWordWrap(PanelTab.font(), question, in.x(), in.y(), in.w(), Theme.TEXT, false);
+        protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
+            g.drawWordWrap(PanelTab.font(), question, in.x(), in.y(), in.w(), Theme.TEXT, false);
         }
     }
 
@@ -186,7 +186,7 @@ final class PaletteDialogs {
             } catch (IllegalArgumentException e) {
                 // The codecs' own messages are in English only; the line before them is translated.
                 status(tr("palettes.chromastudio.import.bad", e instanceof InvalidPathException ? s : String.valueOf(e.getMessage())), Theme.BAD);
-            } catch (IOException _) {
+            } catch (IOException ignored) {
                 status(tr("palettes.chromastudio.import.no_file", s), Theme.BAD);
             }
             return true;
@@ -222,7 +222,7 @@ final class PaletteDialogs {
         private Color seed() {
             try {
                 return Color.fromHex(hex.strip());
-            } catch (IllegalArgumentException _) {
+            } catch (IllegalArgumentException ignored) {
                 return null;
             }
         }
@@ -256,14 +256,14 @@ final class PaletteDialogs {
         }
 
         @Override
-        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+        protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
             label(g, "palettes.chromastudio.generate.seed", in.x(), in.y());
             label(g, "palettes.chromastudio.generate.harmony", in.x(), in.y() + PanelTab.ROW);
             label(g, "palettes.chromastudio.generate.count", in.x(), in.y() + 2 * PanelTab.ROW);
             Color seed = seed();
             int x = in.x() + labelW;
             if (seed != null) Widgets.swatch(g, x, in.y(), Widgets.H, Widgets.H, seed.rgb());
-            else g.outline(x, in.y(), Widgets.H, Widgets.H, Theme.BAD);
+            else g.renderOutline(x, in.y(), Widgets.H, Widgets.H, Theme.BAD);
         }
 
         @Override
@@ -320,7 +320,7 @@ final class PaletteDialogs {
         }
 
         @Override
-        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+        protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
             label(g, "palettes.chromastudio.image.file", in.x(), in.y());
             label(g, "palettes.chromastudio.image.count", in.x(), in.y() + PanelTab.ROW);
         }
@@ -350,7 +350,7 @@ final class PaletteDialogs {
                 int dot = name.lastIndexOf('.');
                 close();
                 done.accept(PaletteStore.get().create(dot > 0 ? name.substring(0, dot) : name, entries));
-            } catch (IOException | InvalidPathException _) {
+            } catch (IOException | InvalidPathException ignored) {
                 status(tr("palettes.chromastudio.image.unreadable", s), Theme.BAD);
             }
             return true;
@@ -421,7 +421,7 @@ final class PaletteDialogs {
         }
 
         @Override
-        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+        protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
             int half = in.x() + in.w() / 2, y = in.y();
             label(g, "palettes.chromastudio.export.layout", in.x(), y);
             y += PanelTab.ROW;
@@ -432,7 +432,7 @@ final class PaletteDialogs {
             label(g, "palettes.chromastudio.export.width", half, y);
             y += PanelTab.ROW;
             label(g, "palettes.chromastudio.export.patch", half, y);
-            if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.FAIR, false);
+            if (skipped != null) g.drawString(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.FAIR, false);
         }
 
         @Override
@@ -462,7 +462,7 @@ final class PaletteDialogs {
             SchematicExporter.Result result;
             try {
                 result = SchematicExporter.export(palette, options, format);
-            } catch (SchematicExporter.NoBlocksException _) {
+            } catch (SchematicExporter.NoBlocksException ignored) {
                 status(tr("command.chromastudio.export.empty"), Theme.BAD);
                 return;
             } catch (IOException e) {
@@ -498,7 +498,7 @@ final class PaletteDialogs {
         private String command() {
             try {
                 return WorldEditPattern.command(which, palette, from);
-            } catch (IllegalArgumentException _) {
+            } catch (IllegalArgumentException ignored) {
                 return null;
             }
         }
@@ -537,7 +537,7 @@ final class PaletteDialogs {
         }
 
         @Override
-        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+        protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
             label(g, "palettes.chromastudio.worldedit.command", in.x(), in.y());
             label(g, "palettes.chromastudio.worldedit.from", in.x(), in.y() + PanelTab.ROW);
             int top = in.y() + 2 * PanelTab.ROW, bottom = in.bottom() - Widgets.H - STATUS_H - PanelTab.GAP;
@@ -547,11 +547,11 @@ final class PaletteDialogs {
             List<FormattedCharSequence> lines = PanelTab.font().split(shown, in.w() - 6);
             int fit = Math.max(1, (bottom - top - 4) / 9);
             for (int i = 0; i < Math.min(fit, lines.size()); i++) {
-                g.text(PanelTab.font(), lines.get(i), in.x() + 3, top + 3 + i * 9, command != null ? Theme.TEXT : Theme.FAIR, false);
+                g.drawString(PanelTab.font(), lines.get(i), in.x() + 3, top + 3 + i * 9, command != null ? Theme.TEXT : Theme.FAIR, false);
             }
             // A long palette's command runs past the box. Copy still takes all of it, and pointing at the box shows it.
             if (lines.size() > fit) {
-                g.text(PanelTab.font(), "...", in.right() - 12, bottom - 10, Theme.DIM, false);
+                g.drawString(PanelTab.font(), "...", in.right() - 12, bottom - 10, Theme.DIM, false);
                 if (mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < bottom) g.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
             }
         }
@@ -597,11 +597,11 @@ final class PaletteDialogs {
         }
 
         @Override
-        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+        protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
             int over = Math.max(0, entries.size() - 9);
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
                     : tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over);
-            g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
+            g.drawWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
         }
     }
 

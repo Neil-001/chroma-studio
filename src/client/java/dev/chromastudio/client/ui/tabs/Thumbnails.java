@@ -9,7 +9,7 @@ import dev.chromastudio.core.color.TextureStats;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * A face's texture as it looks at a scale, drawn as a small picture. Each is painted once and kept, by entry, face,
@@ -26,7 +26,7 @@ final class Thumbnails {
     private static final Map<Key, Pixels> CACHE = new LinkedHashMap<>(64, 0.75f, true);
     private static int builtFor = -1;
 
-    static void draw(GuiGraphicsExtractor g, Entry entry, Face face, Scale scale, TintContext tint, int x, int y, int size, float opacity) {
+    static void draw(GuiGraphics g, Entry entry, Face face, Scale scale, TintContext tint, int x, int y, int size, float opacity) {
         int version = BlockIndex.get().version();
         if (version != builtFor) {
             clear();

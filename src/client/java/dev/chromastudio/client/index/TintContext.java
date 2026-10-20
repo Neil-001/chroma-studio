@@ -1,6 +1,5 @@
 package dev.chromastudio.client.index;
 
-import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
@@ -31,5 +30,5 @@ public interface TintContext {
     static TintContext biome(ResourceKey<Biome> key) { return Tints.biome(key); }
 
     /** The colour a tint source gives a state here, packed 0xRRGGBB, or {@link #NO_TINT}. */
-    int colour(BlockTintSource source, BlockState state);
+    int colour(TintSource source, BlockState state);
 }

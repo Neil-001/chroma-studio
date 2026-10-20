@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.ARGB;
 
 /**
@@ -65,15 +65,15 @@ public final class ColourPicker implements AutoCloseable {
 
     public boolean dragging() { return dragging != NONE; }
 
-    public void render(GuiGraphicsExtractor g, Font font, float opacity) {
+    public void render(GuiGraphics g, Font font, float opacity) {
         paint();
         float[] hsv = model.hsv();
         squarePixels.draw(g, square.x(), square.y(), square.w(), square.h(), opacity);
         huePixels.draw(g, hueBar.x(), hueBar.y(), hueBar.w(), hueBar.h(), opacity);
         // The square's handle: a ring, dark outside and light inside, so it shows on any colour.
         int hx = square.x() + Math.round(hsv[1] * (square.w() - 1)), hy = square.y() + Math.round((1 - hsv[2]) * (square.h() - 1));
-        g.outline(hx - 3, hy - 3, 7, 7, 0xFF000000);
-        g.outline(hx - 2, hy - 2, 5, 5, 0xFFFFFFFF);
+        g.renderOutline(hx - 3, hy - 3, 7, 7, 0xFF000000);
+        g.renderOutline(hx - 2, hy - 2, 5, 5, 0xFFFFFFFF);
         int by = hueBar.y() + Math.round(hsv[0] / 360f * (hueBar.h() - 1));
         g.fill(hueBar.x() - 1, by - 1, hueBar.right() + 1, by + 2, 0xFF000000);
         g.fill(hueBar.x() - 1, by, hueBar.right() + 1, by + 1, 0xFFFFFFFF);
@@ -84,7 +84,7 @@ public final class ColourPicker implements AutoCloseable {
         for (int i = 0; i < 3; i++) {
             Bounds s = sliders[i];
             if (s.w() == 0) break;
-            g.text(font, letters[i], s.x() - LABEL_W, s.y() + 1, ARGB.multiplyAlpha(Theme.DIM, opacity), false);
+            g.drawString(font, letters[i], s.x() - LABEL_W, s.y() + 1, ARGB.multiplyAlpha(Theme.DIM, opacity), false);
             sliderPixels[i].draw(g, s.x(), s.y(), s.w(), s.h(), opacity);
             for (double edge : edges.get(i)) {
                 int ex = s.x() + (int) Math.round(edge * (s.w() - 1));
@@ -93,7 +93,7 @@ public final class ColourPicker implements AutoCloseable {
             int kx = s.x() + (int) Math.round(at[i] * (s.w() - 1));
             g.fill(kx - 1, s.y() - 1, kx + 2, s.bottom() + 1, 0xFF000000);
             g.fill(kx, s.y() - 1, kx + 1, s.bottom() + 1, 0xFFFFFFFF);
-            g.text(font, values[i], s.right() + VALUE_W - font.width(values[i]), s.y() + 1, ARGB.multiplyAlpha(Theme.TEXT, opacity), false);
+            g.drawString(font, values[i], s.right() + VALUE_W - font.width(values[i]), s.y() + 1, ARGB.multiplyAlpha(Theme.TEXT, opacity), false);
         }
     }
 

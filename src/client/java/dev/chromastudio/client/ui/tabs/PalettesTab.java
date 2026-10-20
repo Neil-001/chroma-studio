@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -212,9 +212,9 @@ public final class PalettesTab extends PanelTab {
         Component needsBlocks = p == null ? tr("palettes.chromastudio.need_palette") : p.entries.isEmpty() ? tr("palettes.chromastudio.need_entries") : null;
         Component needsIndex = PaletteDialogs.indexReady() ? null : tr("palettes.chromastudio.index_building");
         List<Tool> tools = List.of(
-                new Tool("generate", new ItemStack(Items.AMETHYST_SHARD), () -> open(new PaletteDialogs.Generate(MatchState.colour(), _ -> showEntries())), needsIndex, false),
+                new Tool("generate", new ItemStack(Items.AMETHYST_SHARD), () -> open(new PaletteDialogs.Generate(MatchState.colour(), made -> showEntries())), needsIndex, false),
                 new Tool("capture", new ItemStack(Items.SPYGLASS), this::capture, Capture.unavailable().orElse(null), Capture.armed()),
-                new Tool("image", new ItemStack(Items.PAINTING), () -> open(new PaletteDialogs.Image(_ -> showEntries())), needsIndex, false),
+                new Tool("image", new ItemStack(Items.PAINTING), () -> open(new PaletteDialogs.Image(made -> showEntries())), needsIndex, false),
                 new Tool("analyse", new ItemStack(Items.WRITABLE_BOOK), () -> togglePanel(Panel.ANALYSE), needsBlocks != null ? needsBlocks : needsIndex, panel == Panel.ANALYSE),
                 new Tool("diorama", new ItemStack(Items.BRICKS), () -> togglePanel(Panel.DIORAMA), needsBlocks != null ? needsBlocks : needsIndex, panel == Panel.DIORAMA),
                 new Tool("export", new ItemStack(Items.PAPER), () -> open(new PaletteDialogs.Export(p, Layout.valueOf(ModSettings.defaultLayout.name()), System.nanoTime())), needsBlocks, false),
@@ -247,7 +247,7 @@ public final class PalettesTab extends PanelTab {
         flush();
         Capture.arm();
         // The corners are picked in the world, so the window gets out of the way.
-        Minecraft.getInstance().gui.setScreen(null);
+        Minecraft.getInstance().setScreen(null);
     }
 
     /** Escape leaves Analyse or the diorama for the entries. */
@@ -386,14 +386,14 @@ public final class PalettesTab extends PanelTab {
         }
 
         @Override
-        protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+        protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
             int x = getX(), y = getY();
             Widgets.blockIcon(g, icon, x, y + 1);
             int swatch = 12, textX = x + 19, room = width - 19 - (colour != null ? swatch + 3 : 0);
             String name = fit(getMessage().getString(), room);
-            g.text(font(), name, textX, y + 5, known ? TEXT : BAD, false);
+            g.drawString(font(), name, textX, y + 5, known ? TEXT : BAD, false);
             int used = font().width(name) + 4;
-            if (!entry.properties().isEmpty() && room - used > 20) g.text(font(), fit(entry.properties(), room - used), textX + used, y + 5, DIM, false);
+            if (!entry.properties().isEmpty() && room - used > 20) g.drawString(font(), fit(entry.properties(), room - used), textX + used, y + 5, DIM, false);
             if (colour != null) Widgets.swatch(g, x + width - swatch, y + 3, swatch, swatch, colour.rgb());
         }
 
@@ -404,7 +404,7 @@ public final class PalettesTab extends PanelTab {
     // ---- Drawing ----
 
     @Override
-    protected void draw(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
+    protected void draw(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta) {
         Palette p = selected();
         g.fill(list.area.x(), list.area.y(), list.area.right(), list.area.bottom(), WELL);
         list.render(g, mouseX, mouseY, (gg, i, x, y, w, h, hovered) -> {
@@ -414,22 +414,22 @@ public final class PalettesTab extends PanelTab {
                 String heading = tr("palettes.chromastudio.presets").getString();
                 int tw = font().width(heading);
                 gg.fill(x + (w - tw) / 2 - 3, y, x + (w + tw) / 2 + 3, y + h, WELL);
-                gg.text(font(), heading, x + (w - tw) / 2, y + 2, DIM, false);
+                gg.drawString(font(), heading, x + (w - tw) / 2, y + 2, DIM, false);
                 return;
             }
             if (row == p) gg.fill(x, y, x + w, y + h, SELECTED);
             else if (hovered) gg.fill(x, y, x + w, y + h, HOVER);
-            gg.text(font(), fit(name(row).getString(), w - 6), x + 3, y + 2, row.preset ? DIM : TEXT, false);
+            gg.drawString(font(), fit(name(row).getString(), w - 6), x + 3, y + 2, row.preset ? DIM : TEXT, false);
         });
-        if (listed.isEmpty()) g.textWithWordWrap(font(), tr("palettes.chromastudio.search.none"), list.area.x() + 4, list.area.y() + 4, list.area.w() - 8, DIM, false);
+        if (listed.isEmpty()) g.drawWordWrap(font(), tr("palettes.chromastudio.search.none"), list.area.x() + 4, list.area.y() + 4, list.area.w() - 8, DIM, false);
 
         // A note about what just happened takes the whole line for its few seconds; else the name and the count share it.
         Component note = note();
-        if (note != null) g.text(font(), fit(note.getString(), titleArea.w()), titleArea.x(), titleArea.y() + 1, noteColour(), false);
+        if (note != null) g.drawString(font(), fit(note.getString(), titleArea.w()), titleArea.x(), titleArea.y() + 1, noteColour(), false);
         else if (p != null) {
             String count = tr(p.preset ? "palettes.chromastudio.count_preset" : "palettes.chromastudio.count", p.entries.size()).getString();
-            g.text(font(), count, titleArea.right() - font().width(count), titleArea.y() + 1, DIM, false);
-            g.text(font(), fit(name(p).getString(), titleArea.w() - font().width(count) - 8), titleArea.x(), titleArea.y() + 1, TEXT, false);
+            g.drawString(font(), count, titleArea.right() - font().width(count), titleArea.y() + 1, DIM, false);
+            g.drawString(font(), fit(name(p).getString(), titleArea.w() - font().width(count) - 8), titleArea.x(), titleArea.y() + 1, TEXT, false);
         }
 
         switch (panel) {
@@ -438,26 +438,26 @@ public final class PalettesTab extends PanelTab {
             default -> {
                 g.fill(entriesArea.x(), entriesArea.y(), entriesArea.right(), entriesArea.bottom(), WELL);
                 Component hint = p == null ? tr("palettes.chromastudio.none_selected") : p.entries.isEmpty() ? tr("palettes.chromastudio.empty") : null;
-                if (hint != null) g.textWithWordWrap(font(), hint, entriesArea.x() + 8, entriesArea.y() + 8, entriesArea.w() - 16, DIM, false);
+                if (hint != null) g.drawWordWrap(font(), hint, entriesArea.x() + 8, entriesArea.y() + 8, entriesArea.w() - 16, DIM, false);
             }
         }
     }
 
     @Override
-    protected void drawOver(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
+    protected void drawOver(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta) {
         if (panel == Panel.ENTRIES) rows.render(g, mouseX, mouseY, delta);
     }
 
     /** Pinned, the tab shows the selected palette's blocks: icon, name and colour, as many as fit. */
     @Override
-    public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
+    public void renderPinned(GuiGraphics g, Bounds b, float opacity) {
         Palette p = selected();
         int text = ARGB.multiplyAlpha(TEXT, opacity), dim = ARGB.multiplyAlpha(DIM, opacity);
         if (p == null) {
             Widgets.centred(g, tr("palettes.chromastudio.none_selected_short"), b.x() + b.w() / 2, b.y() + b.h() / 2 - 4, dim);
             return;
         }
-        g.text(font(), fit(name(p).getString(), b.w() - 2 * PAD), b.x() + PAD, b.y() + PAD, text, false);
+        g.drawString(font(), fit(name(p).getString(), b.w() - 2 * PAD), b.x() + PAD, b.y() + PAD, text, false);
         // Two columns when there's room, so a dozen blocks fit the smallest window.
         int top = b.y() + PAD + TITLE_H, perColumn = Math.max(1, (b.bottom() - PAD - top) / ENTRY_ROW);
         int columns = Math.max(1, Math.min(b.w() / 150, (p.entries.size() + perColumn - 1) / perColumn)), columnW = (b.w() - 2 * PAD) / columns;
@@ -467,7 +467,7 @@ public final class PalettesTab extends PanelTab {
             Widgets.blockIcon(g, PaletteBlocks.icon(e), x, y);
             Color colour = PaletteBlocks.colour(e);
             if (colour != null) g.fill(x + 19, y + 3, x + 29, y + 13, ARGB.multiplyAlpha(0xFF000000 | colour.rgb(), opacity));
-            g.text(font(), fit(PaletteBlocks.name(e).getString(), columnW - 36), x + 33, y + 4, text, false);
+            g.drawString(font(), fit(PaletteBlocks.name(e).getString(), columnW - 36), x + 33, y + 4, text, false);
         }
     }
 

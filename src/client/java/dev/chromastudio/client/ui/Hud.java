@@ -3,7 +3,7 @@ package dev.chromastudio.client.ui;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Util;
@@ -50,9 +50,9 @@ public final class Hud {
     private static float fade(long until, long now) { return Math.clamp((until - now) / (float) FADE_MS, 0, 1); }
 
     /** Draws everything. Nothing shows with the HUD hidden (F1). */
-    public static void render(GuiGraphicsExtractor g) {
+    public static void render(GuiGraphics g) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.gui.hud.isHidden()) return;
+        if (mc.options.hideGui) return;
         ChromaScreen.renderPinned(g);
         Font font = mc.font;
         long now = Util.getMillis();
@@ -69,12 +69,12 @@ public final class Hud {
                 y -= font.lineHeight;
                 Component name = Component.translatable("hud.chromastudio.slot", i + 1, slots.get(i).getHoverName());
                 g.fill(centre - 91, y - 1, centre + 91, y + font.lineHeight - 1, ARGB.multiplyAlpha(0x90000000, strip));
-                g.centeredText(font, name, centre, y, ARGB.multiplyAlpha(0xFFFFFFFF, strip));
+                g.drawCenteredString(font, name, centre, y, ARGB.multiplyAlpha(0xFFFFFFFF, strip));
             }
             if (caption != null) {
                 y -= font.lineHeight;
                 g.fill(centre - 91, y - 1, centre + 91, y + font.lineHeight - 1, ARGB.multiplyAlpha(0x90000000, strip));
-                g.centeredText(font, caption, centre, y, ARGB.multiplyAlpha(0xFFC8CED6, strip));
+                g.drawCenteredString(font, caption, centre, y, ARGB.multiplyAlpha(0xFFC8CED6, strip));
             }
             y -= 4;
         }
@@ -84,8 +84,8 @@ public final class Hud {
             int w = Math.max(font.width(line1), font.width(line2)) + 8;
             y -= 2 * font.lineHeight + 4;
             g.fill(centre - w / 2, y - 2, centre + w / 2, y + 2 * font.lineHeight + 2, ARGB.multiplyAlpha(0x90000000, readout));
-            g.centeredText(font, line1, centre, y, ARGB.multiplyAlpha(0xFFFFFFFF, readout));
-            g.centeredText(font, line2, centre, y + font.lineHeight + 1, ARGB.multiplyAlpha(0xFFC8CED6, readout));
+            g.drawCenteredString(font, line1, centre, y, ARGB.multiplyAlpha(0xFFFFFFFF, readout));
+            g.drawCenteredString(font, line2, centre, y + font.lineHeight + 1, ARGB.multiplyAlpha(0xFFC8CED6, readout));
         }
     }
 }

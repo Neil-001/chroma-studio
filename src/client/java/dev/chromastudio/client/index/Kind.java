@@ -80,7 +80,7 @@ public enum Kind {
     static boolean fullCube(BlockState state) {
         try {
             return state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-        } catch (RuntimeException _) {
+        } catch (RuntimeException ignored) {
             // A modded shape that needs a real world.
             return false;
         }

@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.BiConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -110,7 +110,7 @@ final class DioramaPanel implements AutoCloseable {
         view = new Bounds(area.x(), y + PanelTab.ROW, area.w(), area.bottom() - y - PanelTab.ROW);
     }
 
-    void draw(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+    void draw(GuiGraphics g, int mouseX, int mouseY) {
         g.fill(view.x(), view.y(), view.right(), view.bottom(), Theme.WELL);
         if (arrangement == null) return;
         int w = arrangement.sizeX(), h = arrangement.sizeY();
@@ -123,8 +123,8 @@ final class DioramaPanel implements AutoCloseable {
                 }
             // Room for the corners as the wall turns.
             float scale = Math.min(view.w() / (w * 1.3f), view.h() / (h * 1.4f));
-            DioramaPip.submit(view.x(), view.y(), view.w(), view.h(), scale, w, h, cells, yaw, pitch, ModSettings.dioramaPerspective);
-            g.text(PanelTab.font(), Component.translatable("palettes.chromastudio.diorama.orbit"), view.x() + 3, view.bottom() - 10, Theme.DIM, false);
+            DioramaPip.submit(g, view.x(), view.y(), view.w(), view.h(), scale, w, h, cells, yaw, pitch, ModSettings.dioramaPerspective);
+            g.drawString(PanelTab.font(), Component.translatable("palettes.chromastudio.diorama.orbit"), view.x() + 3, view.bottom() - 10, Theme.DIM, false);
             return;
         }
         if (!painted || paintedOver != Theme.WELL) paint();

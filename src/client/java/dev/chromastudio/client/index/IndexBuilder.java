@@ -11,14 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import net.minecraft.client.color.block.BlockColors;
-import net.minecraft.client.color.block.BlockTintSource;
-import net.minecraft.client.renderer.block.BlockStateModelSet;
-import net.minecraft.client.renderer.block.FluidModel;
-import net.minecraft.client.renderer.block.FluidStateModelSet;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.renderer.block.BlockModelShaper;
+import net.minecraft.client.renderer.block.model.BlockStateModel;
+import net.minecraft.client.renderer.block.model.BlockModelPart;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,6 +25,8 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -54,8 +53,7 @@ final class IndexBuilder {
         }
     }
 
-    private final BlockStateModelSet models;
-    private final FluidStateModelSet fluids;
+    private final BlockModelShaper models;
     private final BlockColors colours;
     private final ResourceManager resources;
     private final IndexOptions options;
@@ -69,10 +67,9 @@ final class IndexBuilder {
     // Many states share one baked model, as a note block's 1,150 do, and a model is only walked once.
     private final Map<BlockStateModel, Look> byModel = new IdentityHashMap<>();
 
-    IndexBuilder(BlockStateModelSet models, FluidStateModelSet fluids, BlockColors colours, ResourceManager resources,
+    IndexBuilder(BlockModelShaper models, BlockColors colours, ResourceManager resources,
                  Map<String, Textures.Frame> frames, IndexOptions options) {
         this.models = models;
-        this.fluids = fluids;
         this.colours = colours;
         this.resources = resources;
         this.frames = frames;
@@ -96,7 +93,7 @@ final class IndexBuilder {
         for (BlockState state : states) {
             // Water in the block doesn't change its textures, so those states only crowd out the ones that do.
             if (state != byDefault && state.getOptionalValue(BlockStateProperties.WATERLOGGED).orElse(false)) continue;
-            Look look = liquid ? fluidLook(state) : byModel.computeIfAbsent(models.get(state), model -> modelLook(model, state));
+            Look look = liquid && vanillaFluid(state) ? fluidLook(state) : byModel.computeIfAbsent(models.getBlockModel(state), model -> modelLook(model, state));
             Entry entry = kept.get(look.key);
             if (entry == null && kept.size() < Math.max(1, options.statesCap())) {
                 entry = new Entry(state, id, properties(state, byDefault), technical, solid(state), look.drawn, layers(state, look.faces));
@@ -116,16 +113,20 @@ final class IndexBuilder {
     /** The properties that differ from the default state, in the game's {@code name=value} form. */
     static String properties(BlockState state, BlockState byDefault) {
         List<String> out = new ArrayList<>();
-        state.getValues().forEach(v -> {
-            if (!v.value().equals(byDefault.getValue(v.property()))) out.add(v.property().getName() + "=" + v.valueName());
+        state.getValues().forEach((property, value) -> {
+            if (!value.equals(byDefault.getValue(property))) out.add(property.getName() + "=" + valueName(property, value));
         });
         return String.join(",", out);
     }
 
+    /** A value's name in the game's form, such as {@code north} or {@code 3}. The map holds the property and value with their types apart. */
+    @SuppressWarnings("unchecked")
+    static <T extends Comparable<T>> String valueName(Property<T> property, Comparable<?> value) { return property.getName((T) value); }
+
     private static boolean solid(BlockState state) {
         try {
             return !state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
-        } catch (RuntimeException _) {
+        } catch (RuntimeException ignored) {
             // A modded shape that needs a real world.
             return true;
         }
@@ -133,16 +134,16 @@ final class IndexBuilder {
 
     private static Look modelLook(BlockStateModel model, BlockState state) {
         List<Map<Tex, Double>> faces = emptyFaces();
-        List<BlockStateModelPart> parts = new ArrayList<>();
+        List<BlockModelPart> parts = new ArrayList<>();
         ChromaStudioClient.platform.modelParts(model, state, RandomSource.create(42L), parts);
-        for (BlockStateModelPart part : parts) {
+        for (BlockModelPart part : parts) {
             // The quads on the block's outside, then those set back from it, such as a slab's top.
             for (Direction side : DIRECTIONS) for (BakedQuad q : part.getQuads(side)) add(faces, q);
             for (BakedQuad q : part.getQuads(null)) add(faces, q);
         }
         boolean drawn = faces.stream().anyMatch(f -> !f.isEmpty());
         // What a face with nothing drawn on it is taken to look like: the texture the block breaks into.
-        TextureAtlasSprite particle = ChromaStudioClient.platform.particleMaterial(model, state).sprite();
+        TextureAtlasSprite particle = ChromaStudioClient.platform.particleIcon(model, state);
         Identifier name = particle.contents().name();
         int tintIndex = -1;
         for (Map<Tex, Double> face : faces) for (Tex t : face.keySet()) if (t.sprite.equals(name)) tintIndex = Math.max(tintIndex, t.tintIndex);
@@ -151,8 +152,7 @@ final class IndexBuilder {
     }
 
     private static void add(List<Map<Tex, Double>> faces, BakedQuad q) {
-        BakedQuad.MaterialInfo material = q.materialInfo();
-        Tex tex = new Tex(material.sprite().contents().name(), material.isTinted() ? material.tintIndex() : -1);
+        Tex tex = new Tex(q.sprite().contents().name(), q.isTinted() ? q.tintIndex() : -1);
         faces.get(q.direction().ordinal()).merge(tex, area(q), Double::sum);
     }
 
@@ -162,21 +162,27 @@ final class IndexBuilder {
         return new Vector3f(c).sub(a).cross(new Vector3f(d).sub(b)).length() / 2;
     }
 
-    /** A fluid has no block model: its top and bottom show the still texture, and its sides the flowing one. */
-    private Look fluidLook(BlockState state) {
-        FluidModel model = fluids.get(state.getFluidState());
-        int tintIndex = tintSource(model) == null ? -1 : 0;
+    /** Water or lava. 1.21.11 has no fluid models to ask, so only these two are known by their textures; a modded fluid is read like a block. */
+    private static boolean vanillaFluid(BlockState state) {
+        Fluid fluid = state.getFluidState().getType();
+        return fluid == Fluids.WATER || fluid == Fluids.FLOWING_WATER || fluid == Fluids.LAVA || fluid == Fluids.FLOWING_LAVA;
+    }
+
+    /**
+     * A fluid has no block model: its top and bottom show the still texture, and its sides the flowing one. Water is
+     * tinted by the biome, through the block colours, as the game draws it.
+     */
+    private static Look fluidLook(BlockState state) {
+        boolean water = state.getFluidState().is(Fluids.WATER) || state.getFluidState().is(Fluids.FLOWING_WATER);
+        String name = water ? "water" : "lava";
+        int tintIndex = water ? 0 : -1;
         List<Map<Tex, Double>> faces = emptyFaces();
         for (Direction side : DIRECTIONS) {
-            TextureAtlasSprite sprite = (side.getAxis().isVertical() ? model.stillMaterial() : model.flowingMaterial()).sprite();
-            faces.get(side.ordinal()).put(new Tex(sprite.contents().name(), tintIndex), 1.0);
+            Identifier sprite = Identifier.withDefaultNamespace("block/" + name + (side.getAxis().isVertical() ? "_still" : "_flow"));
+            faces.get(side.ordinal()).put(new Tex(sprite, tintIndex), 1.0);
         }
         return new Look(faces, true);
     }
-
-    // NeoForge deprecates this for its own fluid tint source, which is still a block tint source.
-    @SuppressWarnings("deprecation")
-    private static BlockTintSource tintSource(FluidModel model) { return model.tintSource(); }
 
     private static List<Map<Tex, Double>> emptyFaces() {
         List<Map<Tex, Double>> faces = new ArrayList<>();
@@ -199,10 +205,8 @@ final class IndexBuilder {
         return out;
     }
 
-    private BlockTintSource tintSource(BlockState state, int tintIndex) {
-        if (tintIndex < 0) return null;
-        if (state.getBlock() instanceof LiquidBlock) return tintSource(fluids.get(state.getFluidState()));
-        return colours.getTintSource(state, tintIndex);
+    private TintSource tintSource(BlockState state, int tintIndex) {
+        return tintIndex < 0 ? null : TintSource.of(colours, tintIndex);
     }
 
     private Sampled sampled(Identifier sprite) {
@@ -225,7 +229,7 @@ final class IndexBuilder {
 
     private Sampled mapColour(BlockState state) {
         int rgb = state.getMapColor(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).col;
-        return sampled.computeIfAbsent("map colour " + rgb, _ -> {
+        return sampled.computeIfAbsent("map colour " + rgb, key -> {
             int[] colour = new int[Textures.SIDE * Textures.SIDE];
             float[] alpha = new float[colour.length];
             Arrays.fill(colour, rgb);

@@ -97,7 +97,7 @@ public final class ShareString {
         try {
             int weight = Integer.parseInt(digits);
             if (weight >= 1) return weight;
-        } catch (NumberFormatException _) {
+        } catch (NumberFormatException ignored) {
             // Reported below, with the same message as a weight under 1.
         }
         throw new IllegalArgumentException("The weight in \"" + entry + "\" isn't a whole number from 1 up");

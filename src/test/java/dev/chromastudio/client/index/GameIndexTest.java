@@ -31,7 +31,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.color.block.BlockColors;
-import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -153,7 +152,7 @@ class GameIndexTest {
         assertTrue(top.mean(Scale.T1).oklch().c() < 0.01, "the texture is drawn in grey");
 
         BlockState grass = block("grass_block").defaultBlockState();
-        BlockTintSource source = BlockColors.createDefault().getTintSource(grass, 0);
+        TintSource source = TintSource.of(BlockColors.createDefault(), 0);
         assertEquals(TintContext.NO_TINT, TintContext.none().colour(source, grass));
         assertEquals(TintContext.NO_TINT, TintContext.HERE.colour(source, grass), "no world, no tint");
         int plains = TintContext.biome(Biomes.PLAINS).colour(source, grass);
@@ -193,7 +192,7 @@ class GameIndexTest {
     @Test
     void anOverlayLiesOverTheTextureBelow() {
         BlockState grass = block("grass_block").defaultBlockState();
-        BlockTintSource source = BlockColors.createDefault().getTintSource(grass, 0);
+        TintSource source = TintSource.of(BlockColors.createDefault(), 0);
         FaceLayers side = new FaceLayers(List.of(
                 new FaceLayers.Layer("minecraft:block/grass_block_side", sampled("block/grass_block_side"), -1, null, 1),
                 new FaceLayers.Layer("minecraft:block/grass_block_side_overlay", sampled("block/grass_block_side_overlay"), 0, source, 1)));
@@ -248,7 +247,7 @@ class GameIndexTest {
     void aFoldedStateKeepsItsOwnTint() {
         // Redstone dust's sixteen powers share their textures, so one entry stands for them all, but each has its tint.
         Block wire = block("redstone_wire");
-        BlockTintSource source = BlockColors.createDefault().getTintSource(wire.defaultBlockState(), 0);
+        TintSource source = TintSource.of(BlockColors.createDefault(), 0);
         FaceLayers[] faces = new FaceLayers[6];
         for (int i = 0; i < 6; i++) {
             faces[i] = new FaceLayers(List.of(new FaceLayers.Layer("minecraft:block/white_concrete", sampled("block/white_concrete"), 0, source, 1)));
@@ -258,11 +257,11 @@ class GameIndexTest {
         Map<BlockState, Entry> byState = new IdentityHashMap<>(Map.of(entry.state(), entry, powered, entry));
         BlockIndex.get().adopt(List.of(List.of(entry)), byState);
         Color white = stats("block/white_concrete").mean(Scale.T1);
-        TintContext ownTint = (tintSource, state) -> tintSource.color(state) & 0xFFFFFF;
-        assertEquals(Optional.of(white.tinted(source.color(powered))), BlockIndex.get().colourOf(powered, Face.UP, ownTint));
-        assertEquals(Optional.of(white.tinted(source.color(powered))), BlockIndex.get().colourOf(powered, Face.ANY, ownTint));
-        assertEquals(Optional.of(white.tinted(source.color(wire.defaultBlockState()))), BlockIndex.get().colourOf(wire.defaultBlockState(), Face.UP, ownTint));
-        assertNotEquals(source.color(powered), source.color(wire.defaultBlockState()));
+        TintContext ownTint = (tintSource, state) -> tintSource.colorInWorld(state, null, null) & 0xFFFFFF;
+        assertEquals(Optional.of(white.tinted(source.colorInWorld(powered, null, null))), BlockIndex.get().colourOf(powered, Face.UP, ownTint));
+        assertEquals(Optional.of(white.tinted(source.colorInWorld(powered, null, null))), BlockIndex.get().colourOf(powered, Face.ANY, ownTint));
+        assertEquals(Optional.of(white.tinted(source.colorInWorld(wire.defaultBlockState(), null, null))), BlockIndex.get().colourOf(wire.defaultBlockState(), Face.UP, ownTint));
+        assertNotEquals(source.colorInWorld(powered, null, null), source.colorInWorld(wire.defaultBlockState(), null, null));
     }
 
     @Test
@@ -701,7 +700,7 @@ class GameIndexTest {
     /** An entry whose every face is one texture, tinted as the game tints the block. */
     private static Entry tinted(Block block, String sprite) {
         BlockState state = block.defaultBlockState();
-        BlockTintSource source = BlockColors.createDefault().getTintSource(state, 0);
+        TintSource source = TintSource.of(BlockColors.createDefault(), 0);
         FaceLayers layers = new FaceLayers(List.of(new FaceLayers.Layer("minecraft:" + sprite, new Sampled(frame(sprite)), 0, source, 1)));
         return new Entry(state, BuiltInRegistries.BLOCK.getKey(block).toString(), "", false, true,
                 new FaceLayers[] {layers, layers, layers, layers, layers, layers});

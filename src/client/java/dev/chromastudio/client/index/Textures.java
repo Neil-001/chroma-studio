@@ -106,7 +106,7 @@ final class Textures {
             if (frames.isEmpty()) return null;
             boolean animated = frames.size() > 1;
             return Frame.of(reduce(image, averageFrames ? frames : frames.subList(0, 1), fw, fh), animated);
-        } catch (Exception _) {
+        } catch (Exception ignored) {
             return null;
         }
     }

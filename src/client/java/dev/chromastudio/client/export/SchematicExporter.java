@@ -181,7 +181,7 @@ public final class SchematicExporter {
             Path candidate = dir.resolve(base + (n == 1 ? "" : "-" + n) + "." + extension);
             try {
                 file = Files.createFile(candidate);
-            } catch (FileAlreadyExistsException _) {
+            } catch (FileAlreadyExistsException ignored) {
                 // Taken: try the next number.
             }
         }
@@ -208,7 +208,7 @@ public final class SchematicExporter {
             try (OutputStream out = Files.newOutputStream(temp, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
                 NbtIo.writeCompressed(root, out);
                 return temp;
-            } catch (FileAlreadyExistsException _) {
+            } catch (FileAlreadyExistsException ignored) {
                 // Somebody else's: leave it and try another name.
             } catch (IOException | RuntimeException e) {
                 Files.deleteIfExists(temp);

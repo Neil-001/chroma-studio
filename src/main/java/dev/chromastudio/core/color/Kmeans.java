@@ -45,7 +45,7 @@ public final class Kmeans {
         // Equal pixels are pooled first: textures and pixel art have few distinct colours.
         Map<Integer, double[]> pooled = new LinkedHashMap<>();
         for (int i = 0; i < argb.length; i++) {
-            if (weights[i] > 0) pooled.computeIfAbsent(argb[i] & 0xFFFFFF, _ -> new double[1])[0] += weights[i];
+            if (weights[i] > 0) pooled.computeIfAbsent(argb[i] & 0xFFFFFF, key -> new double[1])[0] += weights[i];
         }
         Oklab[] points = new Oklab[pooled.size()];
         double[] pooledWeights = new double[pooled.size()];

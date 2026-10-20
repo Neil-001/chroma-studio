@@ -17,7 +17,7 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
@@ -89,9 +89,9 @@ final class AnalysePanel {
         return PanelTab.font().split(Component.translatable(f.key()), w - 10 - (f.suggestedTarget() != null ? fixW + 6 + 14 : 0));
     }
 
-    void draw(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+    void draw(GuiGraphics g, int mouseX, int mouseY) {
         Component heading = Component.translatable(unknown > 0 ? "palettes.chromastudio.analyse.heading_unknown" : "palettes.chromastudio.analyse.heading", findings.size(), unknown);
-        g.text(PanelTab.font(), heading, area.x(), area.y() + 4, Theme.DIM, false);
+        g.drawString(PanelTab.font(), heading, area.x(), area.y() + 4, Theme.DIM, false);
         // The colours the findings are about, darkest first, so a gap or a narrow range shows at a glance.
         List<Color> sorted = new ArrayList<>(colours);
         sorted.sort((a, b) -> Double.compare(a.oklch().l(), b.oklch().l()));
@@ -113,7 +113,7 @@ final class AnalysePanel {
             gg.fill(x + 2, y + 3, x + 5, y + h - 4, warning ? Theme.FAIR : Theme.INFO);
             List<FormattedCharSequence> lines = wrapped(f, w);
             int lineY = y + (rowH - 1 - lines.size() * LINE_H) / 2 + 1;
-            for (int k = 0; k < lines.size(); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, lineY + k * LINE_H, Theme.TEXT, false);
+            for (int k = 0; k < lines.size(); k++) gg.drawString(PanelTab.font(), lines.get(k), x + 8, lineY + k * LINE_H, Theme.TEXT, false);
             if (f.suggestedTarget() == null) return;
             Bounds b = fix(x, y, w);
             fixes.add(new Fix(b, f));

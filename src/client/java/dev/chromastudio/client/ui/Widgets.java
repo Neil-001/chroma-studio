@@ -12,7 +12,7 @@ import java.util.function.Function;
 import java.util.function.IntSupplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -89,7 +89,7 @@ public final class Widgets extends AbstractContainerEventHandler {
     public Button button(int x, int y, Component label, Runnable action) { return button(x, y, buttonWidth(label), label, action); }
 
     public Button button(int x, int y, int w, Component label, Runnable action) {
-        return add(Button.builder(label, _ -> action.run()).bounds(x, y, w, H).build());
+        return add(Button.builder(label, button -> action.run()).bounds(x, y, w, H).build());
     }
 
     /** A button that steps through options: click for the next one, right-click for the previous one. */
@@ -108,9 +108,9 @@ public final class Widgets extends AbstractContainerEventHandler {
         if (label == null) builder.displayOnlyValue();
         if (tip != null) {
             Tooltip tooltip = Tooltip.create(tip);
-            builder.withTooltip(_ -> tooltip);
+            builder.withTooltip(value -> tooltip);
         }
-        CycleButton<T> b = builder.create(x, y, w, H, label == null ? Component.empty() : label, (_, v) -> onChange.accept(v));
+        CycleButton<T> b = builder.create(x, y, w, H, label == null ? Component.empty() : label, (button, v) -> onChange.accept(v));
         Consumer<Boolean> step = forwards -> {
             T to = values.get((values.indexOf(b.getValue()) + (forwards ? 1 : values.size() - 1)) % values.size());
             b.setValue(to);
@@ -147,7 +147,7 @@ public final class Widgets extends AbstractContainerEventHandler {
                 if (!Double.isFinite(d)) return;
                 current[0] = Math.max(min, Math.min(max, integer ? Math.rint(d) : d));
                 onChange.accept(current[0]);
-            } catch (NumberFormatException _) { }
+            } catch (NumberFormatException ignored) { }
         });
         add(f);
         int top = H / 2, ax = x + w - ARROW_SLOT + 1;
@@ -217,13 +217,13 @@ public final class Widgets extends AbstractContainerEventHandler {
     /** Whether the player is typing into one of the group's fields. */
     public boolean typing() { return getFocused() instanceof EditBox f && f.isFocused() && f.active; }
 
-    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         for (Spinner sp : spinners) {
             sp.up.active = sp.field.active && sp.value[0] < sp.max - 1e-9;
             sp.down.active = sp.field.active && sp.value[0] > sp.min + 1e-9;
         }
         if (viewport != null) g.enableScissor(viewport.x(), viewport.y(), viewport.right(), viewport.bottom());
-        for (AbstractWidget w : children) w.extractRenderState(g, mouseX, mouseY, delta);
+        for (AbstractWidget w : children) w.render(g, mouseX, mouseY, delta);
         if (viewport != null) {
             g.disableScissor();
             scrollbar(g, viewport, scroll, maxScroll());
@@ -316,7 +316,7 @@ public final class Widgets extends AbstractContainerEventHandler {
         @Override public void onPress(InputWithModifiers input) { action.run(); }
 
         @Override
-        protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+        protected void renderContents(GuiGraphics g, int mouseX, int mouseY, float delta) {
             int x = getX(), y = getY();
             g.fill(x, y, x + width, y + height, !active ? Theme.CONTROL_OFF : isHovered() ? Theme.CONTROL_HOVER : Theme.CONTROL);
             int c = active ? Theme.TEXT : Theme.GREYED, cx = x + width / 2, cy = y + height / 2;
@@ -341,8 +341,8 @@ public final class Widgets extends AbstractContainerEventHandler {
         }
 
         @Override
-        protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-            g.text(font(), getMessage(), getX(), getY(), colour, false);
+        protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
+            g.drawString(font(), getMessage(), getX(), getY(), colour, false);
         }
 
         @Override
@@ -361,7 +361,7 @@ public final class Widgets extends AbstractContainerEventHandler {
         return track <= 0 ? 0 : (int) Math.round((my - area.y() - bar / 2.0) * max / track);
     }
 
-    private static void scrollbar(GuiGraphicsExtractor g, Bounds area, int scroll, int max) {
+    private static void scrollbar(GuiGraphics g, Bounds area, int scroll, int max) {
         if (max <= 0) return;
         int bar = barLength(area, max), by = area.y() + (int) ((long) (area.h() - bar) * scroll / max);
         g.fill(area.right() - BAR_W, by, area.right() - 1, by + bar, Theme.veil(0x80));
@@ -374,7 +374,7 @@ public final class Widgets extends AbstractContainerEventHandler {
     public static final class ScrollList {
         /** Draws row {@code index} in the given rectangle. */
         public interface Row {
-            void render(GuiGraphicsExtractor g, int index, int x, int y, int w, int h, boolean hovered);
+            void render(GuiGraphics g, int index, int x, int y, int w, int h, boolean hovered);
         }
 
         public Bounds area;
@@ -391,7 +391,7 @@ public final class Widgets extends AbstractContainerEventHandler {
 
         private int max() { return Math.max(0, count.getAsInt() * rowHeight - area.h()); }
 
-        public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, Row row) {
+        public void render(GuiGraphics g, int mouseX, int mouseY, Row row) {
             scroll = Math.min(scroll, max());
             int w = area.w() - (max() > 0 ? BAR_W + 2 : 0);
             int hovered = g.containsPointInScissor(mouseX, mouseY) ? rowAt(mouseX, mouseY) : -1;
@@ -446,20 +446,20 @@ public final class Widgets extends AbstractContainerEventHandler {
     }
 
     /** Text centred on {@code x}, with the game's drop shadow where the theme's text is light enough for one. */
-    public static void centred(GuiGraphicsExtractor g, Component text, int x, int y, int colour) {
-        g.text(font(), text, x - tw(text) / 2, y, colour, Theme.shadowed());
+    public static void centred(GuiGraphics g, Component text, int x, int y, int colour) {
+        g.drawString(font(), text, x - tw(text) / 2, y, colour, Theme.shadowed());
     }
 
     /** A square of one colour, packed 0xRRGGBB, with a dark rim so it shows on any background. */
-    public static void swatch(GuiGraphicsExtractor g, int x, int y, int w, int h, int rgb) {
+    public static void swatch(GuiGraphics g, int x, int y, int w, int h, int rgb) {
         g.fill(x, y, x + w, y + h, 0xFF000000);
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, 0xFF000000 | rgb);
     }
 
     /** A block as its item, 16 pixels square. A block with no item draws nothing. */
-    public static void blockIcon(GuiGraphicsExtractor g, Block block, int x, int y) { blockIcon(g, new ItemStack(block), x, y); }
+    public static void blockIcon(GuiGraphics g, Block block, int x, int y) { blockIcon(g, new ItemStack(block), x, y); }
 
-    public static void blockIcon(GuiGraphicsExtractor g, ItemStack stack, int x, int y) {
-        if (!stack.isEmpty()) g.fakeItem(stack, x, y);
+    public static void blockIcon(GuiGraphics g, ItemStack stack, int x, int y) {
+        if (!stack.isEmpty()) g.renderFakeItem(stack, x, y);
     }
 }
