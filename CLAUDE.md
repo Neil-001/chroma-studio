@@ -82,8 +82,8 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 - A tint comes from `BlockColors.getColor(state, getter, pos, tintIndex)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
 - The game darkens a block's faces by fixed factors: top 1.0, north and south 0.8, east and west 0.6, bottom 0.5. `Eyedropper` reads the index, not the screen, so its colour is the face unshaded.
 - The creative tabs can't be filled before a world has loaded. Until `BlockIndex.worldJoined`, every block with an item counts as listed.
-- Signs and beds have block models and are matched as any block.
-- The game has no `#minecraft:dyeable` tag of its own. What can be dyed is set by `crafting_dye` recipes, which a client isn't sent.
+- Signs and beds have no block models here, only a particle texture, so they are matched as blocks a block entity draws, like chests. 26.2 gave them models.
+- The game ships the `#minecraft:dyeable` item tag here, with the items `Dye` lists itself. 26.x dropped it for `crafting_dye` recipes, which a client isn't sent.
 - The game lays a frame's GUI out before it draws the world, so the frame `ScreenPicker` can read is the last one shown.
 - The game ships tinyfd, so `FileDialog` is tinyfd's, on its own thread because the dialog holds up the one that shows it. Asked with the title `tinyfd_query` it shows nothing and says whether it has a window to show, which is how a missing dialog is told from a cancel. Every caller has a path field too.
 - The mouse cursor is GLFW's. Ask for one each frame with `g.requestCursor`; a frame that asks for none gets the arrow back. `CursorType.createStandardCursor` makes a shape `CursorTypes` lacks, such as the diagonal arrows, from a GLFW shape, and falls back where the system has none.
