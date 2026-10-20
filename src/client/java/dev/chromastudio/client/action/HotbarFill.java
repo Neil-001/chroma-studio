@@ -57,17 +57,36 @@ public final class HotbarFill {
         return !overlay && message.getSiblings().isEmpty() && message.getContents() instanceof TranslatableContents t && REPLIES.hides(t.getKey());
     }
 
-    /** Call at the end of every client tick. */
     /**
      * 1.21.1's server refuses a creative player's drops that come too fast: its count rises by 20 a drop, falls by
-     * one a tick and stops drops past 200. The client keeps no such count on this version, so this does.
+     * one a tick and refuses past 200, so it never passes 219 and takes a drop every 20 ticks without fail. The
+     * client keeps no such count here, and can't see the creative inventory's own drops to keep one, so the fill
+     * sends its stacks one every 20 ticks rather than guess: the first at once, when it sent none in the last 20.
      */
-    private static final int DROP_SPAM_LIMIT = 200, DROP_SPAM_PER_DROP = 20;
-    private static int dropSpam;
+    private static final int DROP_INTERVAL = 20;
+    private static final List<ItemStack> DROPS = new ArrayList<>();
+    /** Ticks until the next stack may go. */
+    private static int dropWait;
+    /** The connection the queued stacks are for. In another world they are forgotten. */
+    private static Object dropsOn;
 
+    /** Call at the end of every client tick. */
     public static void tick() {
         REPLIES.tick();
-        if (dropSpam > 0) dropSpam--;
+        if (dropWait > 0) dropWait--;
+        sendDueDrop();
+    }
+
+    private static void sendDueDrop() {
+        if (DROPS.isEmpty()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.getConnection() != dropsOn) {
+            DROPS.clear();
+            return;
+        }
+        if (dropWait > 0) return;
+        mc.gameMode.handleCreativeModeItemDrop(DROPS.removeFirst());
+        dropWait = DROP_INTERVAL;
     }
 
     /** Forgets a fill made in a world the player has since left. */
@@ -192,10 +211,10 @@ public final class HotbarFill {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player.hasInfiniteMaterials()) {
-            // The server ignores a creative player's drops that come too fast, and the count here keeps pace with its own.
-            if (dropSpam >= DROP_SPAM_LIMIT) return Dropped.NOT_AT_ALL;
-            dropSpam += DROP_SPAM_PER_DROP;
-            mc.gameMode.handleCreativeModeItemDrop(stack.copy());
+            // Sent as fast as the server takes them, over the ticks to come. The fill counts it as dropped now.
+            DROPS.add(stack.copy());
+            dropsOn = mc.getConnection();
+            sendDueDrop();
             return Dropped.ON_THE_GROUND;
         }
         int slot = roomFor(stack, now, player.getInventory().selected);
