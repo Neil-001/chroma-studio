@@ -116,7 +116,7 @@ The mod never places or changes blocks in the world. What it does to the game go
 
 - Giving a block, filling the hotbar and dyeing need creative mode or operator rights, and are greyed out with the reason otherwise.
 - `Give.stack` is how a block's item reaches the player: the creative slot packet in creative, `/give` or `/item replace` for an operator in survival, and otherwise the reason it can't.
-- A hotbar fill puts the blocks past the ninth where `HotbarPlan` says for `hotbarOverflowMode`: in free inventory slots, in shulker boxes, or on the ground. `HotbarFill` sets those slots itself, so Undo can empty them. It drops with the creative inventory's drop packet, one every 20 ticks as the server takes them, or with `/give` for an operator in survival.
+- A hotbar fill puts the blocks past the ninth where `HotbarPlan` says for `hotbarOverflowMode`: in free inventory slots, in shulker boxes, or on the ground. `HotbarFill` sets those slots itself, so Undo can empty them. It drops with the creative inventory's drop packet, one every 40 ticks so the server takes them, or with `/give` for an operator in survival.
 - Commands go through `ClientPlatform.sendChatCommand`, without the slash, as if the player had typed them. It does nothing outside a world.
 - The game's replies to a hotbar fill's commands are kept out of chat, through `CommandReplies`. An error always shows.
 - Exported files are never silently overwritten.
@@ -127,7 +127,7 @@ The mod never places or changes blocks in the world. What it does to the game go
 - A block a block entity draws is matched by its particle texture, so its colour is only a guess.
 - The cache can't tell that a loaded pack's files were changed in place. Refresh on the settings screen reads every image again.
 - `Capture` only counts loaded chunks, and no exported layout has a side past 256 blocks. Its outline is drawn straight to the game's buffers after the entities, so water in front of it hides it.
-- 1.21.1's server refuses a creative player's drops that come too fast, as newer ones do, but the client keeps no count of them here and can't see the creative inventory's own drops, so `HotbarFill` sends a fill's drops one every 20 ticks, the rate the server takes without fail, and none are left out. A drop the creative inventory made in the second before a fill can still cost the fill's first.
+- 1.21.1's server refuses a creative player's drops that come too fast, as newer ones do, but the client keeps no count of them here, can't see the creative inventory's own drops and can't tell whether the server took one, so `HotbarFill` sends a fill's drops one every 40 client ticks, which a server at half speed keeps up with, waits while the game is paused or the player isn't in creative, and forgets them on Undo or leaving the world. A server further behind, or the creative inventory's own drops in between, can still cost a stack the reply counted.
 - `RecipeViewers` calls EMI by name through reflection, as on `main`, and that path hasn't been run.
 - Hiding command replies is a best effort. When it isn't certain a line answers the mod's command, the line shows.
 - Left out on purpose: placement, world editing, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.
