@@ -1,6 +1,6 @@
 # Chroma Studio
 
-A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. It places nothing in the world and has no server side.
+A client-only Fabric and NeoForge mod for Minecraft Java 26.2. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. It places nothing in the world and has no server side.
 
 ## Commands
 
@@ -8,9 +8,9 @@ Needs JDK 25. Versions are in `gradle.properties`. Run build and test after ever
 
 - `./gradlew build` builds both jars in `fabric/build/libs/` and `neoforge/build/libs/` and runs the tests. It compiles with `-Xlint:all,-classfile` and must stay free of warnings. The IDE's own, such as unused imports, count too: name a lambda or catch parameter that isn't used `_`.
 - `./gradlew :fabric:test` runs the JUnit tests for the core and for client classes that don't need the game running, such as `ModSettings`. Only Fabric hosts them. `GameIndexTest` loads the game's registries and vanilla assets, but no client, so no models. `-Dchroma.timing=true` also runs the timing tests.
-- `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` starts a dev client. The Fabric one runs with Litematica and MaLiLib, to try the bridge, and Mod Menu, to try the settings screen from it. `-Pviewer=jei` or `-Pviewer=rei` adds that recipe viewer to either dev client; both need a newer loader API than the builds' minimum, so add `-Pfabric_version=0.161.0+26.3` or `-Pneoforge_version=26.3.0.48-beta`, as CI uses. There is no `runServer`. The game opens its window on a Wayland desktop whenever there is one, whatever `DISPLAY` says. To run it on a virtual display, unset `WAYLAND_DISPLAY` and set `SDL_VIDEODRIVER=x11`.
+- `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` starts a dev client. The Fabric one runs with Litematica and MaLiLib, to try the bridge, and Mod Menu, to try the settings screen from it. `-Pviewer=jei` or `-Pviewer=rei` adds that recipe viewer to either dev client; both need a newer loader API than the builds' minimum, so add `-Pfabric_version=0.161.0+26.2` or `-Pneoforge_version=26.2.0.93`, as CI uses. There is no `runServer`. The game opens its window on a Wayland desktop whenever there is one, whatever `DISPLAY` says. To run it on a virtual display, unset `WAYLAND_DISPLAY`.
 
-Both jars target 26.3 only. Minecraft is unobfuscated, so use its own names without mappings. Builds use the minimum supported Fabric API and NeoForge versions; CI also compiles against newer ones.
+Both jars target 26.2 only. This branch is `main` ported back to 26.2, which still ran on GLFW and shipped tinyfd; the lines under "Minecraft rules" say what that changes. Minecraft is unobfuscated, so use its own names without mappings. Builds use the minimum supported Fabric API and NeoForge versions; CI also compiles against newer ones.
 
 ## Layout and boundaries
 
@@ -82,8 +82,8 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 - Signs and beds have block models and are matched as any block.
 - The game has no `#minecraft:dyeable` tag of its own. What can be dyed is set by `crafting_dye` recipes, which a client isn't sent.
 - The game lays a frame's GUI out before it draws the world, so the frame `ScreenPicker` can read is the last one shown.
-- The game ships SDL but not tinyfd, so `FileDialog` is SDL's, and every caller has a path field too.
-- The mouse cursor is SDL's too, not GLFW's. Ask for one each frame with `g.requestCursor`; a frame that asks for none gets the arrow back. `CursorType.createStandardCursor` makes a shape `CursorTypes` lacks, such as the diagonal arrows, and falls back where the system has none.
+- The game ships tinyfd, so `FileDialog` is tinyfd's, on its own thread because the dialog holds up the one that shows it. Asked with the title `tinyfd_query` it shows nothing and says whether it has a window to show, which is how a missing dialog is told from a cancel. Every caller has a path field too.
+- The mouse cursor is GLFW's. Ask for one each frame with `g.requestCursor`; a frame that asks for none gets the arrow back. `CursorType.createStandardCursor` makes a shape `CursorTypes` lacks, such as the diagonal arrows, from a GLFW shape, and falls back where the system has none.
 - Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number.
 
 ## Conventions
@@ -119,20 +119,22 @@ The mod never places or changes blocks in the world. What it does to the game go
 - A block a block entity draws is matched by its particle texture, so its colour is only a guess.
 - The cache can't tell that a loaded pack's files were changed in place. Refresh on the settings screen reads every image again.
 - `Capture` only counts loaded chunks, and no exported layout has a side past 256 blocks.
-- EMI has no 26.3 release, so `RecipeViewers` calls it by name through reflection, and that path hasn't been run.
+- EMI has no 26.2 release, so `RecipeViewers` calls it by name through reflection, and that path hasn't been run.
 - Hiding command replies is a best effort. When it isn't certain a line answers the mod's command, the line shows.
 - Left out on purpose: placement, world editing, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.
 
 ## Releasing
 
-Only `main` releases. Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. It reads loader and Minecraft ranges from jar metadata. It also accepts `*/stable` branches, for an older Minecraft line kept up beside `main`, and `branches=all` means every one of those.
+`main` is for the newest Minecraft version. Each older line the mod still supports lives on a `<line>/stable` branch, such as `26.2/stable` or `1.21.1/stable`, ported from `main` and kept to its own Minecraft. Develop on `main`, and backport to a stable branch only what makes sense for its version. The 26.x branches build like `main`. The 1.21 branches compile for Java 21 with Loom's remap plugin and Mojang's names, and each branch's `CLAUDE.md` says what else differs there.
 
-1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases.
-2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes.
-3. Run `gh workflow run release.yml` to publish.
+Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. `branches` is `main` by default, a comma-separated list of `main` and `*/stable` branches, or `all` for every `*/stable` branch. It builds each branch with the Java level its `build.gradle` sets (`.github/scripts/release-java.sh`) and reads loader and Minecraft ranges from jar metadata.
+
+1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases. A stable branch gets the same two changes in a PR against it, with the changelog section as released on `main` and any note about that line.
+2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes. Add `-f branches=26.2/stable`, say, for a stable branch, or `-f branches=all` for every one.
+3. Run `gh workflow run release.yml` with the same `branches` to publish.
 4. Run `gh workflow run listing.yml` when the description, gallery or icon changed. It puts `listing/description.md`, the pictures `listing/gallery/README.md` lists and `listing/media/icon.png` on the Modrinth page (`.github/scripts/listing-modrinth.py`; a picture whose title is already there is kept unless `-f replace=true`). CurseForge has no API for its page: paste `listing/curseforge.html` and upload the gallery by hand.
 
-Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. For `main` the line is `minecraft_version` in `gradle.properties`; a stable branch's is its name without `/stable`. A branch whose tag exists is skipped. The workflow creates the tag last, after publishing. The two jars have distinct identifiers, `1.0.0+mc26.3-fabric` and `1.0.0+mc26.3-neoforge`; GitHub holds both jars in one release.
+Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. For `main` the line is `minecraft_version` in `gradle.properties`; a stable branch's is its name without `/stable`. A branch whose tag exists is skipped, so `all` releases only the branches with a new version. The workflow creates the tag last, after publishing. The two jars have distinct identifiers, `1.0.0+mc26.3-fabric` and `1.0.0+mc26.3-neoforge`; GitHub holds both jars in one release.
 
 After a partial failure, re-run failed jobs. Modrinth skips existing versions; CurseForge doesn't. Check CurseForge for each failed job's jar before retrying, and retry only if it's absent. Don't start a fresh run with CurseForge in `targets` after a partial release. To limit sites, pass `-f targets=curseforge,github`, for example.
 

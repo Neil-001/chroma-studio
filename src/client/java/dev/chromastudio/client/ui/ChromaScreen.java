@@ -27,7 +27,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
-import org.lwjgl.sdl.SDLMouse;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * The mod's window: a title bar with the tabs and the close, fullscreen and pin buttons, over the selected tab. The
@@ -253,8 +253,8 @@ public final class ChromaScreen extends Screen {
      * game keeps its own; where the system has no such shape, each is the arrow.
      */
     private static final class Diagonal {
-        static final CursorType NWSE = CursorType.createStandardCursor(SDLMouse.SDL_SYSTEM_CURSOR_NWSE_RESIZE, "resize_nwse", CursorTypes.ARROW);
-        static final CursorType NESW = CursorType.createStandardCursor(SDLMouse.SDL_SYSTEM_CURSOR_NESW_RESIZE, "resize_nesw", CursorTypes.ARROW);
+        static final CursorType NWSE = CursorType.createStandardCursor(GLFW.GLFW_RESIZE_NWSE_CURSOR, "resize_nwse", CursorTypes.ARROW);
+        static final CursorType NESW = CursorType.createStandardCursor(GLFW.GLFW_RESIZE_NESW_CURSOR, "resize_nesw", CursorTypes.ARROW);
     }
 
     private static CursorType cursor(Window.Grip grip) {

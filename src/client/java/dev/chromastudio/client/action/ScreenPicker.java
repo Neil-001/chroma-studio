@@ -1,10 +1,10 @@
 package dev.chromastudio.client.action;
 
+import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.renderpearl.api.buffers.GpuBuffer;
-import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
-import com.mojang.renderpearl.api.textures.GpuTexture;
+import com.mojang.blaze3d.textures.GpuTexture;
 import dev.chromastudio.client.ChromaStudioClient;
 import java.nio.ByteBuffer;
 import java.util.function.IntConsumer;

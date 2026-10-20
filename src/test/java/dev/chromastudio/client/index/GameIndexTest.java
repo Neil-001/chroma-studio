@@ -72,7 +72,7 @@ class GameIndexTest {
         Bootstrap.bootStrap();
         resources = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, List.of(new VanillaPackResourcesBuilder()
                 .exposeNamespace("minecraft").pushJarResources()
-                .build(new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty())).fullResources()));
+                .build(new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty()))));
         // The client loads the grass colours on a resource reload, which doesn't happen here.
         try (InputStream in = resources.open(Identifier.withDefaultNamespace("textures/colormap/grass.png")); NativeImage map = NativeImage.read(in)) {
             GrassColor.init(map.getPixels());

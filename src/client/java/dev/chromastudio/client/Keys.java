@@ -22,7 +22,7 @@ public final class Keys {
     public static final List<KeyMapping> ALL = new ArrayList<>();
 
     private static KeyMapping key(String name, int code) {
-        KeyMapping k = new KeyMapping("key.chromastudio." + name, InputConstants.Type.KEYBOARD, code, CATEGORY);
+        KeyMapping k = new KeyMapping("key.chromastudio." + name, InputConstants.Type.KEYSYM, code, CATEGORY);
         ALL.add(k);
         return k;
     }

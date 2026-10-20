@@ -1,6 +1,6 @@
 # 1.1.0
 
-Choose OKLCH, RGB or HSL for the colour controls, change the recipe key in Minecraft's key binds, and choose the order of the window's title buttons. This release is for Minecraft 26.3 on Fabric and NeoForge.
+Chroma Studio 1.1.0 is for Minecraft 26.2 on Fabric and NeoForge. It is the first release for this version, so it also brings everything in 1.0.0 below. Choose OKLCH, RGB or HSL for the colour controls, change the recipe key in Minecraft's key binds, and choose the order of the window's title buttons.
 
 ## Features
 

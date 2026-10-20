@@ -85,7 +85,7 @@ public final class Tints {
 
     /** The vanilla registries, for when no world is loaded. Building them takes a moment, so it happens once. */
     private static final class Vanilla {
-        static final HolderLookup.Provider LOOKUP = VanillaRegistries.createWorldLookup();
+        static final HolderLookup.Provider LOOKUP = VanillaRegistries.createLookup();
     }
 
     static HolderLookup.Provider registries() {

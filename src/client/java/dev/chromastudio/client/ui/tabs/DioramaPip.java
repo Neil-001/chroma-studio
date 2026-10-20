@@ -66,9 +66,9 @@ public final class DioramaPip extends PictureInPictureRenderer<DioramaPip.State>
         BlockModelResolver resolver = new BlockModelResolver(mc.getModelManager());
         if (state.perspective) lookThroughALens(pose);
         // The GUI's y runs down the screen, so the wall is turned the right way up before it is tilted.
-        pose.rotateDegrees(Axis.ZP, 180);
-        pose.rotateDegrees(Axis.XP, -state.pitch);
-        pose.rotateDegrees(Axis.YP, state.yaw);
+        pose.mulPose(Axis.ZP.rotationDegrees(180));
+        pose.mulPose(Axis.XP.rotationDegrees(-state.pitch));
+        pose.mulPose(Axis.YP.rotationDegrees(state.yaw));
         pose.translate(-state.width / 2f, -state.height / 2f, -0.5f);
         for (int y = 0; y < state.height; y++)
             for (int x = 0; x < state.width; x++) {
