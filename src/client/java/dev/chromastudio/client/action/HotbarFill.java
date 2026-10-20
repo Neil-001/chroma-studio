@@ -76,7 +76,8 @@ public final class HotbarFill {
     /** Call at the end of every client tick. */
     public static void tick() {
         REPLIES.tick();
-        if (dropWait > 0) dropWait--;
+        // The server's count doesn't fall while the game is paused, so the wait doesn't either.
+        if (dropWait > 0 && !Minecraft.getInstance().isPaused()) dropWait--;
         sendDueDrop();
     }
 
