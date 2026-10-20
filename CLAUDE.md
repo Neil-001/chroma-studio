@@ -125,14 +125,16 @@ The mod never places or changes blocks in the world. What it does to the game go
 
 ## Releasing
 
-Only `main` releases. Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. It reads loader and Minecraft ranges from jar metadata. It also accepts `*/stable` branches, for an older Minecraft line kept up beside `main`, and `branches=all` means every one of those.
+`main` is for the newest Minecraft version. Each older line the mod still supports lives on a `<line>/stable` branch, such as `26.2/stable` or `1.21.1/stable`, ported from `main` and kept to its own Minecraft. Develop on `main`, and backport to a stable branch only what makes sense for its version. The 26.x branches build like `main`. The 1.21 branches compile for Java 21 with Loom's remap plugin and Mojang's names, and each branch's `CLAUDE.md` says what else differs there.
 
-1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases.
-2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes.
-3. Run `gh workflow run release.yml` to publish.
+Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. `branches` is `main` by default, a comma-separated list of `main` and `*/stable` branches, or `all` for every `*/stable` branch. It builds each branch with the Java level its `build.gradle` sets (`.github/scripts/release-java.sh`) and reads loader and Minecraft ranges from jar metadata.
+
+1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases. A stable branch gets the same two changes in a PR against it, with the changelog section as released on `main` and any note about that line.
+2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes. Add `-f branches=26.2/stable`, say, for a stable branch, or `-f branches=all` for every one.
+3. Run `gh workflow run release.yml` with the same `branches` to publish.
 4. Run `gh workflow run listing.yml` when the description, gallery or icon changed. It puts `listing/description.md`, the pictures `listing/gallery/README.md` lists and `listing/media/icon.png` on the Modrinth page (`.github/scripts/listing-modrinth.py`; a picture whose title is already there is kept unless `-f replace=true`). CurseForge has no API for its page: paste `listing/curseforge.html` and upload the gallery by hand.
 
-Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. For `main` the line is `minecraft_version` in `gradle.properties`; a stable branch's is its name without `/stable`. A branch whose tag exists is skipped. The workflow creates the tag last, after publishing. The two jars have distinct identifiers, `1.0.0+mc26.3-fabric` and `1.0.0+mc26.3-neoforge`; GitHub holds both jars in one release.
+Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. For `main` the line is `minecraft_version` in `gradle.properties`; a stable branch's is its name without `/stable`. A branch whose tag exists is skipped, so `all` releases only the branches with a new version. The workflow creates the tag last, after publishing. The two jars have distinct identifiers, `1.0.0+mc26.3-fabric` and `1.0.0+mc26.3-neoforge`; GitHub holds both jars in one release.
 
 After a partial failure, re-run failed jobs. Modrinth skips existing versions; CurseForge doesn't. Check CurseForge for each failed job's jar before retrying, and retry only if it's absent. Don't start a fresh run with CurseForge in `targets` after a partial release. To limit sites, pass `-f targets=curseforge,github`, for example.
 
