@@ -1,11 +1,11 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.input.InputWithModifiers;
 import dev.chromastudio.client.ui.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.network.chat.Component;
 
 /** A small square button with a drawn sign: an arrow, a cross or a plus. Its name is its tooltip. */
@@ -23,10 +23,10 @@ final class IconButton extends AbstractButton {
     }
 
     @Override
-    public void onPress(InputWithModifiers input) { action.run(); }
+    public void onPress() { action.run(); }
 
     @Override
-    protected void renderContents(GuiGraphics g, int mouseX, int mouseY, float delta) {
+    protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY();
         boolean close = glyph == Glyph.CLOSE || glyph == Glyph.REMOVE;
         g.fill(x, y, x + width, y + height, !active ? Theme.CONTROL_OFF : isHovered() ? (close ? Theme.DANGER : Theme.CONTROL_HOVER) : Theme.CONTROL);

@@ -72,7 +72,7 @@ sourceSets {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	// 1.21.11 is obfuscated, so the code uses Mojang's names and Loom remaps the jar to the game's.
+	// 1.21.1 is obfuscated, so the code uses Mojang's names and Loom remaps the jar to the game's.
 	mappings loom.officialMojangMappings()
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
@@ -82,10 +82,10 @@ dependencies {
 	modLocalRuntime("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
 	// Litematica is optional too: only the bridge class refers to it, and only once the mod is known to be loaded.
 	// The dev client runs with both, to try the bridge. Their own dependencies are left out: the jars carry what they need.
-	modCompileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
-	modCompileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
-	modLocalRuntime("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
-	modLocalRuntime("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
+	modCompileOnly("fi.dy.masa.litematica:litematica-fabric-${project.litematica_minecraft}:${project.litematica_version}") { transitive = false }
+	modCompileOnly("fi.dy.masa.malilib:malilib-fabric-${project.litematica_minecraft}:${project.malilib_version}") { transitive = false }
+	modLocalRuntime("fi.dy.masa.litematica:litematica-fabric-${project.litematica_minecraft}:${project.litematica_version}") { transitive = false }
+	modLocalRuntime("fi.dy.masa.malilib:malilib-fabric-${project.litematica_minecraft}:${project.malilib_version}") { transitive = false }
 	// The recipe viewers are optional as well: only RecipeViewers and JEI's own plugin class refer to them.
 	modCompileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
 	modCompileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:${project.rei_version}") { transitive = false }

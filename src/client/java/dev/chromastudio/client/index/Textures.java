@@ -1,15 +1,15 @@
 package dev.chromastudio.client.index;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.chromastudio.client.Abgr;
 import dev.chromastudio.core.color.TextureStats;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import net.minecraft.client.resources.metadata.animation.AnimationFrame;
 import net.minecraft.client.resources.metadata.animation.AnimationMetadataSection;
 import net.minecraft.client.resources.metadata.animation.FrameSize;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 
@@ -80,13 +80,13 @@ final class Textures {
      * The frame for a sprite such as {@code minecraft:block/stone}, or null when its image is missing or can't be
      * read. An animated texture's frames are averaged by how long each shows, or only the first is taken.
      */
-    static Frame read(ResourceManager resources, Identifier sprite, boolean averageFrames) {
-        Identifier file = Identifier.fromNamespaceAndPath(sprite.getNamespace(), "textures/" + sprite.getPath() + ".png");
+    static Frame read(ResourceManager resources, ResourceLocation sprite, boolean averageFrames) {
+        ResourceLocation file = ResourceLocation.fromNamespaceAndPath(sprite.getNamespace(), "textures/" + sprite.getPath() + ".png");
         Optional<Resource> found = resources.getResource(file);
         if (found.isEmpty()) return null;
         try (InputStream in = found.get().open(); NativeImage image = NativeImage.read(in)) {
             int w = image.getWidth(), h = image.getHeight();
-            Optional<AnimationMetadataSection> animation = found.get().metadata().getSection(AnimationMetadataSection.TYPE);
+            Optional<AnimationMetadataSection> animation = found.get().metadata().getSection(AnimationMetadataSection.SERIALIZER);
             if (animation.isEmpty()) return Frame.of(reduce(image, List.of(new int[] {0, 0, 1}), w, h), false);
 
             FrameSize size = animation.get().calculateFrameSize(w, h);
@@ -95,15 +95,12 @@ final class Textures {
             if (count < 1) return null;
             // Each frame as its left edge, top edge and time on screen.
             List<int[]> frames = new ArrayList<>();
-            int frameTime = animation.get().defaultFrameTime();
-            if (animation.get().frames().isPresent()) {
-                for (AnimationFrame f : animation.get().frames().get()) {
-                    if (f.index() < count) frames.add(new int[] {f.index() % columns * fw, f.index() / columns * fh, f.timeOr(frameTime)});
-                }
-            } else {
-                for (int i = 0; i < count; i++) frames.add(new int[] {i % columns * fw, i / columns * fh, frameTime});
-            }
-            if (frames.isEmpty()) return null;
+            int frameTime = animation.get().getDefaultFrameTime();
+            animation.get().forEachFrame((index, time) -> {
+                if (index < count) frames.add(new int[] {index % columns * fw, index / columns * fh, time});
+            });
+            // Metadata that lists no frames means every frame in turn, as the game takes it.
+            if (frames.isEmpty()) for (int i = 0; i < count; i++) frames.add(new int[] {i % columns * fw, i / columns * fh, frameTime});
             boolean animated = frames.size() > 1;
             return Frame.of(reduce(image, averageFrames ? frames : frames.subList(0, 1), fw, fh), animated);
         } catch (Exception ignored) {
@@ -128,7 +125,7 @@ final class Textures {
                     double[] cell = cells[cy * SIDE + cx];
                     for (int y = y0; y < y1; y++) {
                         for (int x = x0; x < x1; x++) {
-                            int p = image.getPixel(frame[0] + x, frame[1] + y);
+                            int p = Abgr.get(image, frame[0] + x, frame[1] + y);
                             int alpha = p >>> 24;
                             if (alpha < TextureStats.ALPHA_CUTOFF) continue;
                             double a = alpha / 255.0 * share;

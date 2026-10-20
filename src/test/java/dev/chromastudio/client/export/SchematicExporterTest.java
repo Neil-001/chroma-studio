@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ClientPlatform;
 import dev.chromastudio.client.ModSettings;
@@ -24,11 +25,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import net.minecraft.SharedConstants;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.render.state.pip.PictureInPictureRenderState;
-import net.minecraft.client.renderer.block.model.BlockStateModel;
-import net.minecraft.client.renderer.block.model.BlockModelPart;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -38,6 +38,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Blocks;
@@ -104,26 +105,26 @@ class SchematicExporterTest {
         assertEquals(List.of(), result.skippedIds());
 
         CompoundTag root = read(result.file());
-        assertEquals(6, root.getIntOr("Version", 0));
-        assertEquals(SharedConstants.getCurrentVersion().dataVersion().version(), root.getIntOr("MinecraftDataVersion", 0));
-        CompoundTag meta = root.getCompoundOrEmpty("Metadata");
-        assertEquals("Six Blocks", meta.getStringOr("Name", ""));
-        assertEquals("Steve", meta.getStringOr("Author", ""));
-        assertEquals(ShareString.encode(p), meta.getStringOr("Description", ""));
-        assertEquals(1, meta.getIntOr("RegionCount", 0));
-        assertEquals(11 * 4, meta.getIntOr("TotalVolume", 0));
-        assertEquals(6 * 4, meta.getIntOr("TotalBlocks", 0));
-        assertTrue(meta.getLongOr("TimeCreated", 0) > 0);
-        assertEquals(meta.getLongOr("TimeCreated", 0), meta.getLongOr("TimeModified", -1));
-        assertEquals(List.of(11, 4, 1), xyz(meta.getCompoundOrEmpty("EnclosingSize")));
+        assertEquals(6, root.getInt("Version"));
+        assertEquals(SharedConstants.getCurrentVersion().getDataVersion().getVersion(), root.getInt("MinecraftDataVersion"));
+        CompoundTag meta = root.getCompound("Metadata");
+        assertEquals("Six Blocks", meta.getString("Name"));
+        assertEquals("Steve", meta.getString("Author"));
+        assertEquals(ShareString.encode(p), meta.getString("Description"));
+        assertEquals(1, meta.getInt("RegionCount"));
+        assertEquals(11 * 4, meta.getInt("TotalVolume"));
+        assertEquals(6 * 4, meta.getInt("TotalBlocks"));
+        assertTrue(meta.getLong("TimeCreated") > 0);
+        assertEquals(meta.getLong("TimeCreated"), meta.getLong("TimeModified"));
+        assertEquals(List.of(11, 4, 1), xyz(meta.getCompound("EnclosingSize")));
 
-        assertEquals(1, root.getCompoundOrEmpty("Regions").keySet().size());
-        CompoundTag region = root.getCompoundOrEmpty("Regions").getCompoundOrEmpty("Main");
-        assertEquals(List.of(11, 4, 1), xyz(region.getCompoundOrEmpty("Size")));
-        ListTag palette = region.getListOrEmpty("BlockStatePalette");
+        assertEquals(1, root.getCompound("Regions").getAllKeys().size());
+        CompoundTag region = root.getCompound("Regions").getCompound("Main");
+        assertEquals(List.of(11, 4, 1), xyz(region.getCompound("Size")));
+        ListTag palette = region.getList("BlockStatePalette", Tag.TAG_COMPOUND);
         assertEquals(7, palette.size());
         assertEquals(Blocks.AIR.defaultBlockState(), state(palette, 0));
-        long[] packed = region.getLongArray("BlockStates").orElseThrow();
+        long[] packed = region.getLongArray("BlockStates");
         int bits = LitematicBits.bitsFor(palette.size());
         for (int y = 0; y < 4; y++)
             for (int x = 0; x < 11; x++) {
@@ -138,14 +139,14 @@ class SchematicExporterTest {
         SchematicExporter.Result result = SchematicExporter.export(p, options(Layout.PATCH_GRID, true), Format.NBT, dir, "Steve");
         assertEquals("chroma-six-blocks-patch-grid.nbt", result.file().getFileName().toString());
         CompoundTag root = read(result.file());
-        assertEquals(SharedConstants.getCurrentVersion().dataVersion().version(), root.getIntOr("DataVersion", 0));
-        assertEquals(0, root.getListOrEmpty("entities").size());
-        assertEquals(6, root.getListOrEmpty("palette").size());
+        assertEquals(SharedConstants.getCurrentVersion().getDataVersion().getVersion(), root.getInt("DataVersion"));
+        assertEquals(0, root.getList("entities", Tag.TAG_COMPOUND).size());
+        assertEquals(6, root.getList("palette", Tag.TAG_COMPOUND).size());
         // The gaps aren't written, so there is no air.
-        assertEquals(6 * 4, root.getListOrEmpty("blocks").size());
+        assertEquals(6 * 4, root.getList("blocks", Tag.TAG_COMPOUND).size());
 
         StructureTemplate template = new StructureTemplate();
-        template.load(BuiltInRegistries.BLOCK, root);
+        template.load(BuiltInRegistries.BLOCK.asLookup(), root);
         // Three patches across and two down, each two blocks square with a gap between.
         assertEquals(new Vec3i(8, 5, 1), template.getSize());
         StructurePlaceSettings settings = new StructurePlaceSettings();
@@ -170,8 +171,8 @@ class SchematicExporterTest {
                 SchematicExporter.Result result = SchematicExporter.export(six(), options(layout, false), format, dir, "Steve");
                 assertTrue(Files.size(result.file()) > 0, result.file().toString());
                 CompoundTag root = read(result.file());
-                if (format == Format.NBT) new StructureTemplate().load(BuiltInRegistries.BLOCK, root);
-                else assertTrue(root.getCompoundOrEmpty("Metadata").getIntOr("TotalBlocks", 0) >= 6);
+                if (format == Format.NBT) new StructureTemplate().load(BuiltInRegistries.BLOCK.asLookup(), root);
+                else assertTrue(root.getCompound("Metadata").getInt("TotalBlocks") >= 6);
             }
         try (Stream<Path> files = Files.list(dir)) {
             assertEquals(12, files.count());
@@ -184,7 +185,7 @@ class SchematicExporterTest {
         SchematicExporter.Result result = SchematicExporter.export(p, options(Layout.STRIP, false), Format.NBT, dir, "Steve");
         assertEquals(List.of("create:andesite_casing", "minecraft:oak_log[axis=w]", "minecraft:andesite[lit=true]"), result.skippedIds());
         StructureTemplate template = new StructureTemplate();
-        template.load(BuiltInRegistries.BLOCK, read(result.file()));
+        template.load(BuiltInRegistries.BLOCK.asLookup(), read(result.file()));
         assertEquals(new Vec3i(2, 1, 1), template.getSize());
     }
 
@@ -247,7 +248,7 @@ class SchematicExporterTest {
         assertArrayEquals(before, Files.readAllBytes(first));
         assertTrue(Files.isSymbolicLink(link));
         assertFalse(Files.isSymbolicLink(second));
-        assertEquals("Alex", read(second).getCompoundOrEmpty("Metadata").getStringOr("Author", ""));
+        assertEquals("Alex", read(second).getCompound("Metadata").getString("Author"));
         try (Stream<Path> files = Files.list(dir)) {
             assertEquals(4, files.count());
         }
@@ -280,7 +281,7 @@ class SchematicExporterTest {
     void anUnnamedPaletteIsNamedAfterItsFile() throws IOException {
         Path file = SchematicExporter.export(ShareString.decode("chroma1:stone"), options(Layout.STRIP, false), dir, "Steve").file();
         assertEquals("chroma-palette-strip.litematic", file.getFileName().toString());
-        assertEquals("chroma-palette-strip", read(file).getCompoundOrEmpty("Metadata").getStringOr("Name", ""));
+        assertEquals("chroma-palette-strip", read(file).getCompound("Metadata").getString("Name"));
     }
 
     @Test
@@ -308,17 +309,17 @@ class SchematicExporterTest {
         assertEquals(PlacementChoice.LOOKING_AT, ModSettings.litematicaPlacement);
     }
 
-    private static List<Integer> xyz(CompoundTag vec) { return List.of(vec.getIntOr("x", 0), vec.getIntOr("y", 0), vec.getIntOr("z", 0)); }
+    private static List<Integer> xyz(CompoundTag vec) { return List.of(vec.getInt("x"), vec.getInt("y"), vec.getInt("z")); }
 
-    private static BlockState state(ListTag palette, int index) { return NbtUtils.readBlockState(BuiltInRegistries.BLOCK, palette.getCompoundOrEmpty(index)); }
+    private static BlockState state(ListTag palette, int index) { return NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), palette.getCompound(index)); }
 
     /** A loader with a game folder and no other mods. */
     private record Platform(Path gameDir) implements ClientPlatform {
         @Override public Path configDir() { return gameDir.resolve("config"); }
         @Override public boolean isModLoaded(String id) { return false; }
-        @Override public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockModelPart> out) { }
-        @Override public TextureAtlasSprite particleIcon(BlockStateModel model, BlockState state) { return null; }
-        @Override public void submitPicture(GuiGraphics g, PictureInPictureRenderState state) { }
+        @Override public List<BakedQuad> quads(BakedModel model, BlockState state, Direction side, RandomSource random) { return List.of(); }
+        @Override public TextureAtlasSprite particleIcon(BakedModel model, BlockState state) { return null; }
+        @Override public void renderBlock(BlockState state, PoseStack pose, MultiBufferSource buffers, int light, int overlay) { }
         @Override public void sendChatCommand(String command) { }
     }
 }

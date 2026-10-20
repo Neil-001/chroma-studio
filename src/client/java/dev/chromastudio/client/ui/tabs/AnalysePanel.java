@@ -2,6 +2,7 @@ package dev.chromastudio.client.ui.tabs;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Handoff;
@@ -19,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -121,7 +121,7 @@ final class AnalysePanel {
             boolean over = b.contains(mouseX, mouseY);
             gg.fill(b.x(), b.y(), b.right(), b.bottom(), over ? Theme.CONTROL_HOVER : Theme.CONTROL);
             Widgets.centred(gg, Component.translatable("palettes.chromastudio.analyse.fix"), b.x() + b.w() / 2, b.y() + 4, Theme.TEXT);
-            if (over) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, mouseY);
+            if (over) gg.renderTooltip(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, mouseY);
         });
     }
 

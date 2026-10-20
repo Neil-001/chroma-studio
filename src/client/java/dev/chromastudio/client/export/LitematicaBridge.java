@@ -74,11 +74,11 @@ public final class LitematicaBridge {
 
     /** The only code that names Litematica's classes. Enter it only after {@link #isAvailable}, inside a try. */
     private static final class Calls {
-        static Path schematicsDir() { return DataManager.getSchematicsBaseDirectory(); }
+        static Path schematicsDir() { return DataManager.getSchematicsBaseDirectory().toPath(); }
 
         /** False when Litematica couldn't read the file. */
         static boolean place(Path file, BlockPos origin, String name) {
-            LitematicaSchematic schematic = SchematicHolder.getInstance().getOrLoad(file);
+            LitematicaSchematic schematic = SchematicHolder.getInstance().getOrLoad(file.toFile());
             if (schematic == null) return false;
             SchematicPlacement placement = SchematicPlacement.createFor(schematic, origin, name, true, true);
             SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();

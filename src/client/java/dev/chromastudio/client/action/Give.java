@@ -11,7 +11,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -35,7 +34,7 @@ public final class Give {
         return canGive() ? Optional.empty() : Optional.of(Component.translatable("give.chromastudio.no_permission"));
     }
 
-    private static boolean operator(LocalPlayer player) { return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER); }
+    private static boolean operator(LocalPlayer player) { return player.hasPermissions(2); }
 
     /**
      * Puts a stack in a hotbar slot, 0 to 8, or with -1 in the next free slot of the inventory. Returns the reason it

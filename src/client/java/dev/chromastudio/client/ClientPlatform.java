@@ -1,12 +1,13 @@
 package dev.chromastudio.client;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import java.nio.file.Path;
 import java.util.List;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.render.state.pip.PictureInPictureRenderState;
-import net.minecraft.client.renderer.block.model.BlockModelPart;
-import net.minecraft.client.renderer.block.model.BlockStateModel;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -19,18 +20,15 @@ public interface ClientPlatform {
     boolean isModLoaded(String id);
 
     /**
-     * A block's model parts and its particle texture, without a world. NeoForge deprecates the game's own methods for
-     * these in favour of ones that take a world and a position, so each loader calls its own.
+     * A block model's quads on one side, or those on no side for null, and its particle texture, without a world.
+     * NeoForge extends the game's methods for these with model data, so each loader calls its own.
      */
-    void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockModelPart> out);
+    List<BakedQuad> quads(BakedModel model, BlockState state, Direction side, RandomSource random);
 
-    TextureAtlasSprite particleIcon(BlockStateModel model, BlockState state);
+    TextureAtlasSprite particleIcon(BakedModel model, BlockState state);
 
-    /**
-     * Asks for a picture-in-picture to be drawn this frame. The game keeps the GUI's render state to itself: Fabric
-     * opens the field and NeoForge adds a method, so each loader submits in its own way.
-     */
-    void submitPicture(GuiGraphics g, PictureInPictureRenderState state);
+    /** Draws a block on its own, as the game draws one in the GUI, without a world. */
+    void renderBlock(BlockState state, PoseStack pose, MultiBufferSource buffers, int light, int overlay);
 
     /** Sends a command as the player, without the slash. Does nothing when not in a world. */
     void sendChatCommand(String command);

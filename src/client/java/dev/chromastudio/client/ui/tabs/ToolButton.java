@@ -1,10 +1,10 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.input.InputWithModifiers;
 import dev.chromastudio.client.ui.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -29,10 +29,10 @@ final class ToolButton extends AbstractButton {
     static int labelledWidth(Component label) { return ICON + 2 + PanelTab.font().width(label) + 4; }
 
     @Override
-    public void onPress(InputWithModifiers input) { action.run(); }
+    public void onPress() { action.run(); }
 
     @Override
-    protected void renderContents(GuiGraphics g, int mouseX, int mouseY, float delta) {
+    protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY();
         g.fill(x, y, x + width, y + height, !active ? Theme.TOOL_OFF : isHovered() ? Theme.CONTROL_HOVER : lit ? Theme.TOOL_LIT : Theme.TOOL);
         if (lit) g.fill(x, y + height - 1, x + width, y + height, Theme.ACCENT);

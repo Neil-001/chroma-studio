@@ -16,8 +16,8 @@ import dev.chromastudio.core.color.Viewing;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -185,7 +185,7 @@ public final class MatchState {
      */
     public static TintContext tint() {
         if (ModSettings.biomeMode == BiomeMode.CHOSEN) {
-            Identifier id = Identifier.tryParse(ModSettings.biome);
+            ResourceLocation id = ResourceLocation.tryParse(ModSettings.biome);
             return id == null ? TintContext.none() : TintContext.biome(ResourceKey.create(Registries.BIOME, id));
         }
         Minecraft mc = Minecraft.getInstance();

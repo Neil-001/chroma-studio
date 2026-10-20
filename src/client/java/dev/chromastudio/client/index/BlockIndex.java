@@ -30,8 +30,7 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.renderer.block.BlockModelShaper;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.packs.resources.PreparableReloadListener;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.world.flag.FeatureFlags;
@@ -51,7 +50,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
  */
 public final class BlockIndex {
     private static final BlockIndex INSTANCE = new BlockIndex();
-    private static final Identifier OPERATOR_TAB = Identifier.withDefaultNamespace("op_blocks");
+    private static final ResourceLocation OPERATOR_TAB = ResourceLocation.withDefaultNamespace("op_blocks");
 
     public static BlockIndex get() { return INSTANCE; }
 
@@ -88,7 +87,7 @@ public final class BlockIndex {
      * resource reload listener. {@code mods} names every loaded mod with its version; they key the cache. It also
      * adds {@code /chroma debug}.
      */
-    public static PreparableReloadListener install(Collection<String> mods) {
+    public static ResourceManagerReloadListener install(Collection<String> mods) {
         INSTANCE.mods = List.copyOf(mods);
         ChromaCommand.SUBCOMMANDS.add(DebugCommand::attach);
         return (ResourceManagerReloadListener) manager -> {
@@ -206,7 +205,7 @@ public final class BlockIndex {
         if (connection == null) return b;
         HolderLookup.Provider registries = connection.registryAccess();
         if (listedBuild == b && listedFor == registries) return b;
-        if (listedFor != registries) tabRegistries = HolderLookup.Provider.create(registries.listRegistries());
+        if (listedFor != registries) tabRegistries = HolderLookup.Provider.create(registries.listRegistries().<HolderLookup.RegistryLookup<?>>map(registries::lookupOrThrow));
         listedBuild = b;
         listedFor = registries;
         try {

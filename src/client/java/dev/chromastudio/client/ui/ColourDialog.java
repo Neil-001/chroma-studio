@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui;
 
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.tabs.ColourPicker;
 import dev.chromastudio.client.ui.tabs.TargetModel;
 import dev.chromastudio.core.color.Color;
@@ -11,7 +12,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**

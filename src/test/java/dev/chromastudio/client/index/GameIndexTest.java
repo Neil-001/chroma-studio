@@ -2,6 +2,7 @@ package dev.chromastudio.client.index;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.chromastudio.api.ChromaStudioApi;
+import dev.chromastudio.client.Abgr;
 import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ui.tabs.MatchFilters;
@@ -35,7 +36,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackType;
@@ -73,18 +74,21 @@ class GameIndexTest {
                 .exposeNamespace("minecraft").pushJarResources()
                 .build(new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty()))));
         // The client loads the grass colours on a resource reload, which doesn't happen here.
-        try (InputStream in = resources.open(Identifier.withDefaultNamespace("textures/colormap/grass.png")); NativeImage map = NativeImage.read(in)) {
-            GrassColor.init(map.getPixels());
+        try (InputStream in = resources.open(ResourceLocation.withDefaultNamespace("textures/colormap/grass.png")); NativeImage map = NativeImage.read(in)) {
+            // As ARGB, which is what the game's own loader hands over.
+            int[] pixels = new int[map.getWidth() * map.getHeight()];
+            for (int i = 0; i < pixels.length; i++) pixels[i] = Abgr.get(map, i % map.getWidth(), i / map.getWidth());
+            GrassColor.init(pixels);
         }
     }
 
     /** A vanilla block by its id's path. Many of the game's own constants are grouped by colour, so this reads plainer. */
     private static Block block(String path) {
-        return BuiltInRegistries.BLOCK.getOptional(Identifier.withDefaultNamespace(path)).orElseThrow(() -> new AssertionError("No block " + path));
+        return BuiltInRegistries.BLOCK.getOptional(ResourceLocation.withDefaultNamespace(path)).orElseThrow(() -> new AssertionError("No block " + path));
     }
 
     private static Textures.Frame frame(String sprite) {
-        Textures.Frame frame = Textures.read(resources, Identifier.withDefaultNamespace(sprite), true);
+        Textures.Frame frame = Textures.read(resources, ResourceLocation.withDefaultNamespace(sprite), true);
         assertNotNull(frame, sprite + " should be readable");
         return frame;
     }
@@ -216,10 +220,10 @@ class GameIndexTest {
         // A flowing texture's frame is 32 pixels wide, and is brought down like any other.
         assertTrue(frame("block/water_flow").animated());
         // One frame alone is patchier than the average of them all.
-        Textures.Frame first = Textures.read(resources, Identifier.withDefaultNamespace("block/water_still"), false);
+        Textures.Frame first = Textures.read(resources, ResourceLocation.withDefaultNamespace("block/water_still"), false);
         assertTrue(first.animated());
         assertTrue(first.stats().spread() > water.stats().spread());
-        assertNull(Textures.read(resources, Identifier.withDefaultNamespace("block/no_such_texture"), true));
+        assertNull(Textures.read(resources, ResourceLocation.withDefaultNamespace("block/no_such_texture"), true));
     }
 
     @Test
@@ -291,14 +295,15 @@ class GameIndexTest {
 
     @Test
     void blocksAreSortedIntoKinds() {
+        // 1.21.1 has no shelves or pale moss carpets, so neither kind is checked here.
         Map<Block, Kind> expected = Map.ofEntries(
                 Map.entry(block("stone"), Kind.FULL), Map.entry(block("oak_log"), Kind.FULL), Map.entry(block("bookshelf"), Kind.FULL),
                 Map.entry(block("copper_grate"), Kind.FULL), Map.entry(block("redstone_lamp"), Kind.FULL),
                 Map.entry(block("oak_slab"), Kind.SLAB), Map.entry(block("oak_stairs"), Kind.STAIRS), Map.entry(block("cobblestone_wall"), Kind.WALL),
                 Map.entry(block("oak_fence"), Kind.FENCE), Map.entry(block("oak_fence_gate"), Kind.FENCE_GATE),
                 Map.entry(block("iron_bars"), Kind.PANE), Map.entry(block("glass_pane"), Kind.PANE), Map.entry(block("red_stained_glass_pane"), Kind.PANE),
-                Map.entry(block("oak_trapdoor"), Kind.TRAPDOOR), Map.entry(block("iron_door"), Kind.DOOR), Map.entry(block("oak_shelf"), Kind.SHELF),
-                Map.entry(block("white_carpet"), Kind.CARPET), Map.entry(block("moss_carpet"), Kind.CARPET), Map.entry(block("pale_moss_carpet"), Kind.CARPET),
+                Map.entry(block("oak_trapdoor"), Kind.TRAPDOOR), Map.entry(block("iron_door"), Kind.DOOR),
+                Map.entry(block("white_carpet"), Kind.CARPET), Map.entry(block("moss_carpet"), Kind.CARPET),
                 Map.entry(block("glass"), Kind.GLASS), Map.entry(block("red_stained_glass"), Kind.GLASS), Map.entry(block("tinted_glass"), Kind.GLASS),
                 Map.entry(block("oak_leaves"), Kind.LEAVES), Map.entry(block("azalea_leaves"), Kind.LEAVES),
                 Map.entry(block("poppy"), Kind.PLANT), Map.entry(block("short_grass"), Kind.PLANT), Map.entry(block("oak_sapling"), Kind.PLANT),
@@ -362,7 +367,7 @@ class GameIndexTest {
                 Map.entry("minecraft:slab", "minecraft:slab"));
         expected.forEach((id, base) -> assertEquals(base, MaterialSets.base(id), id));
         // Every vanilla slab, stair and wall has a full block that shares its base.
-        List<String> ids = BuiltInRegistries.BLOCK.keySet().stream().map(Identifier::toString).toList();
+        List<String> ids = BuiltInRegistries.BLOCK.keySet().stream().map(ResourceLocation::toString).toList();
         java.util.Set<String> bases = new java.util.HashSet<>();
         List<String> orphans = new ArrayList<>();
         for (String id : ids) {
@@ -789,7 +794,7 @@ class GameIndexTest {
     @EnabledIfSystemProperty(named = "chroma.timing", matches = "true")
     void aFlatTargetAnswersWithinAFrameOrTwo() {
         List<List<Entry>> blocks = new ArrayList<>();
-        List<Identifier> textures = new ArrayList<>(resources.listResources("textures/block", id -> id.getPath().endsWith(".png")).keySet());
+        List<ResourceLocation> textures = new ArrayList<>(resources.listResources("textures/block", id -> id.getPath().endsWith(".png")).keySet());
         List<Block> all = BuiltInRegistries.BLOCK.stream().filter(b -> !b.defaultBlockState().isAir()).toList();
         for (int i = 0; i < all.size(); i++) {
             // Two states a block with six different faces is more than the vanilla index holds.

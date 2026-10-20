@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.ARGB;
 import dev.chromastudio.client.ColourFormat;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ui.Bounds;
@@ -13,7 +14,6 @@ import java.util.Locale;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.util.ARGB;
 
 /**
  * The colour pickers: a saturation and value square with a hue bar, and three sliders in the space the

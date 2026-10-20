@@ -31,7 +31,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtUtils;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -132,7 +132,7 @@ public final class SchematicExporter {
      * block, property or value, so a palette from a modded game never comes out with a different block in its place.
      */
     public static BlockState stateFor(PaletteEntry e) {
-        Identifier id = Identifier.tryParse(e.blockId());
+        ResourceLocation id = ResourceLocation.tryParse(e.blockId());
         Block block = id == null ? null : BuiltInRegistries.BLOCK.getOptional(id).orElse(null);
         if (block == null) return null;
         BlockState state = block.defaultBlockState();
@@ -299,7 +299,7 @@ public final class SchematicExporter {
         return root;
     }
 
-    private static int dataVersion() { return SharedConstants.getCurrentVersion().dataVersion().version(); }
+    private static int dataVersion() { return SharedConstants.getCurrentVersion().getDataVersion().getVersion(); }
 
     private static CompoundTag vec(int x, int y, int z) {
         CompoundTag c = new CompoundTag();

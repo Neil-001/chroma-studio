@@ -1,9 +1,9 @@
 package dev.chromastudio.client.ui;
 
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**

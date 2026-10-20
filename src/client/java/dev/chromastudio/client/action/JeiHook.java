@@ -4,7 +4,7 @@ import dev.chromastudio.client.ChromaStudioClient;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.runtime.IJeiRuntime;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * The mod's JEI plugin, there only to be handed JEI's runtime so {@link RecipeViewers} can open recipes. Only JEI
@@ -13,7 +13,7 @@ import net.minecraft.resources.Identifier;
 @JeiPlugin
 public final class JeiHook implements IModPlugin {
     @Override
-    public Identifier getPluginUid() { return Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "recipes"); }
+    public ResourceLocation getPluginUid() { return ResourceLocation.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "recipes"); }
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) { RecipeViewers.jeiRuntime = runtime; }

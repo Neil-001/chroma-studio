@@ -1,16 +1,17 @@
 package dev.chromastudio.client.action;
 
-import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.GpuTexture;
 import dev.chromastudio.client.ChromaStudioClient;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.function.IntConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import org.lwjgl.opengl.GL11;
 
 /**
  * The screen picker: once armed, the next click anywhere takes the colour of the frame under the cursor, averaged
@@ -117,36 +118,30 @@ public final class ScreenPicker {
         void accept(int[] rgb);
     }
 
-    /** Reads the 3 by 3 pixels around a point given in GUI pixels from the last frame drawn. Near an edge the block of nine stays inside the frame. */
+    /**
+     * Reads the 3 by 3 pixels around a point given in GUI pixels off the frame being drawn, whose world is already
+     * in. Near an edge the block of nine stays inside the frame.
+     */
     private static void read(double guiX, double guiY, Pixels then) {
         Minecraft mc = Minecraft.getInstance();
         RenderTarget target = mc.getMainRenderTarget();
-        GpuTexture texture = target.getColorTexture();
-        int bytes = texture == null ? 0 : texture.getFormat().pixelSize();
-        // Only four bytes a pixel is understood here, which is what the game's own frame has.
-        if (bytes != 4 || target.width < SIDE || target.height < SIDE) return;
+        if (target.width < SIDE || target.height < SIDE) return;
         double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
         int px = Math.clamp((int) (guiX * scale) - 1, 0, target.width - SIDE);
         // The frame's rows run from the bottom up.
         int fromTop = Math.clamp((int) (guiY * scale) - 1, 0, target.height - SIDE);
         int py = target.height - SIDE - fromTop;
         try {
-            GpuBuffer buffer = RenderSystem.getDevice().createBuffer(() -> "Chroma Studio screen picker",
-                    GpuBuffer.USAGE_COPY_DST | GpuBuffer.USAGE_MAP_READ, (long) SIDE * SIDE * bytes);
-            RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(texture, buffer, 0L, () -> {
-                int[] out = new int[SIDE * SIDE];
-                try (GpuBuffer.MappedView view = RenderSystem.getDevice().createCommandEncoder().mapBuffer(buffer, true, false)) {
-                    ByteBuffer data = view.data();
-                    for (int row = 0; row < SIDE; row++)
-                        for (int col = 0; col < SIDE; col++) {
-                            int abgr = data.getInt((col + row * SIDE) * bytes);
-                            int rgb = (abgr & 0xFF) << 16 | abgr & 0xFF00 | abgr >> 16 & 0xFF;
-                            out[col + (SIDE - 1 - row) * SIDE] = rgb;
-                        }
+            RenderSystem.assertOnRenderThread();
+            ByteBuffer data = ByteBuffer.allocateDirect(SIDE * SIDE * 4).order(ByteOrder.nativeOrder());
+            GlStateManager._readPixels(px, py, SIDE, SIDE, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, data);
+            int[] out = new int[SIDE * SIDE];
+            for (int row = 0; row < SIDE; row++)
+                for (int col = 0; col < SIDE; col++) {
+                    int at = (col + row * SIDE) * 4;
+                    out[col + (SIDE - 1 - row) * SIDE] = (data.get(at) & 0xFF) << 16 | (data.get(at + 1) & 0xFF) << 8 | data.get(at + 2) & 0xFF;
                 }
-                buffer.close();
-                then.accept(out);
-            }, 0, px, py, SIDE, SIDE);
+            then.accept(out);
         } catch (RuntimeException e) {
             ChromaStudioClient.LOGGER.warn("Couldn't read the screen for the screen picker", e);
             cancel();

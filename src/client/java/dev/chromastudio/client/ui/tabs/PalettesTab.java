@@ -10,12 +10,16 @@ import static dev.chromastudio.client.ui.Theme.TEXT;
 import static dev.chromastudio.client.ui.Theme.WELL;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import dev.chromastudio.client.ARGB;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
@@ -26,6 +30,7 @@ import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -33,12 +38,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.ARGB;
-import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -421,7 +421,7 @@ public final class PalettesTab extends PanelTab {
             else if (hovered) gg.fill(x, y, x + w, y + h, HOVER);
             gg.drawString(font(), fit(name(row).getString(), w - 6), x + 3, y + 2, row.preset ? DIM : TEXT, false);
         });
-        if (listed.isEmpty()) g.drawWordWrap(font(), tr("palettes.chromastudio.search.none"), list.area.x() + 4, list.area.y() + 4, list.area.w() - 8, DIM, false);
+        if (listed.isEmpty()) g.drawWordWrap(font(), tr("palettes.chromastudio.search.none"), list.area.x() + 4, list.area.y() + 4, list.area.w() - 8, DIM);
 
         // A note about what just happened takes the whole line for its few seconds; else the name and the count share it.
         Component note = note();
@@ -438,7 +438,7 @@ public final class PalettesTab extends PanelTab {
             default -> {
                 g.fill(entriesArea.x(), entriesArea.y(), entriesArea.right(), entriesArea.bottom(), WELL);
                 Component hint = p == null ? tr("palettes.chromastudio.none_selected") : p.entries.isEmpty() ? tr("palettes.chromastudio.empty") : null;
-                if (hint != null) g.drawWordWrap(font(), hint, entriesArea.x() + 8, entriesArea.y() + 8, entriesArea.w() - 16, DIM, false);
+                if (hint != null) g.drawWordWrap(font(), hint, entriesArea.x() + 8, entriesArea.y() + 8, entriesArea.w() - 16, DIM);
             }
         }
     }

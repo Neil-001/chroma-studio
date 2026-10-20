@@ -10,6 +10,7 @@ import static dev.chromastudio.client.ui.Theme.TEXT;
 import static dev.chromastudio.client.ui.Theme.WELL;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import dev.chromastudio.client.ARGB;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
@@ -18,6 +19,9 @@ import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Handoff;
 import dev.chromastudio.client.ui.Theme;
@@ -52,12 +56,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.ARGB;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
@@ -549,7 +549,7 @@ public final class GradientTab extends PanelTab {
                 g2.drawString(font(), de, x + w - 4 - font().width(de), y + 5, DIM, false);
                 g2.drawString(font(), fit(o.entry.name().getString(), w - 30 - font().width(de)), x + 22, y + 5, TEXT, false);
                 if (over) {
-                    g2.setComponentTooltipForNextFrame(font(), List.of(o.entry.name(), tr("gradient.chromastudio.step.tip", swapStep + 1, step.ideal.hex(), de).copy().withColor(Theme.TIP_DIM),
+                    g2.renderComponentTooltip(font(), List.of(o.entry.name(), tr("gradient.chromastudio.step.tip", swapStep + 1, step.ideal.hex(), de).copy().withColor(Theme.TIP_DIM),
                             tr("gradient.chromastudio.swap.use").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
                 }
             }
@@ -642,13 +642,13 @@ public final class GradientTab extends PanelTab {
                 }
             }
             if (controls && i == swapStep) g.renderOutline(x, y, grid.cellW, CELL_H - 4, Theme.HIGHLIGHT);
-            if (onBack) g.setTooltipForNextFrame(font(), tr("gradient.chromastudio.swap.back"), mouseX, mouseY);
+            if (onBack) g.renderTooltip(font(), tr("gradient.chromastudio.swap.back"), mouseX, mouseY);
             else if (over) {
                 List<Component> tip = new ArrayList<>(List.of(s.entry.name(), tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE))
                         .copy().withColor(Theme.TIP_DIM)));
                 if (s.pinned) tip.add(tr("gradient.chromastudio.step.pinned").copy().withColor(Theme.TIP_SWAPPED));
                 tip.add(tr("gradient.chromastudio.step.swap").copy().withColor(Theme.TIP_DIM));
-                g.setComponentTooltipForNextFrame(font(), tip, mouseX, mouseY);
+                g.renderComponentTooltip(font(), tip, mouseX, mouseY);
             }
         }
     }
@@ -665,7 +665,7 @@ public final class GradientTab extends PanelTab {
             if (stop instanceof Entry e) Widgets.blockIcon(g, e.block(), x + 1, y);
             if (!draggingStop && mouseX >= x && mouseX < x + CHIP && mouseY >= y && mouseY < y + Widgets.H) {
                 Component what = stop instanceof Entry e ? e.name() : Component.literal(colourOf(stop).hex());
-                g.setComponentTooltipForNextFrame(font(), List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
+                g.renderComponentTooltip(font(), List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
             }
         }
 
@@ -682,7 +682,7 @@ public final class GradientTab extends PanelTab {
         int noteRoom = stripArea.w() / 2;
         if (result.isEmpty()) {
             Component text = problem != null ? problem : tr("gradient.chromastudio.working");
-            g.drawWordWrap(font(), text, stripArea.x() + 8, stripArea.y() + 8, stripArea.w() - 16, problem != null ? FAIR : DIM, false);
+            g.drawWordWrap(font(), text, stripArea.x() + 8, stripArea.y() + 8, stripArea.w() - 16, problem != null ? FAIR : DIM);
         } else {
             // While the swap list is open the steps under it don't react to the cursor.
             boolean overSwap = swapStep >= 0 && swapBox.contains(mouseX, mouseY);

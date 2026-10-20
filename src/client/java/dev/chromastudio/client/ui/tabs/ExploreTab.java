@@ -7,8 +7,12 @@ import static dev.chromastudio.client.ui.Theme.TEXT;
 import static dev.chromastudio.client.ui.Theme.WELL;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import dev.chromastudio.client.ARGB;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Handoff;
@@ -28,12 +32,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.util.ARGB;
 
 /**
  * The Explore tab: every block under the Match tab's filters as a dot, with OKLCH hue across and lightness up, and
@@ -170,7 +170,7 @@ public final class ExploreTab extends Tab {
             int ix = tipOnLeft ? Math.min(b.right() - 17, mouseX + 6) : Math.max(b.x() + 1, mouseX - 22), iy = Math.max(b.y() + 1, mouseY - 22);
             g.fill(ix - 1, iy - 1, ix + 17, iy + 17, Theme.sink(0xE0));
             Widgets.blockIcon(g, e.block(), ix, iy);
-            g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
+            g.renderComponentTooltip(font, tip, mouseX, mouseY);
         }
     }
 

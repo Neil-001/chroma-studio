@@ -2,9 +2,12 @@ package dev.chromastudio.client.ui.tabs;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.chromastudio.client.ARGB;
+import dev.chromastudio.client.Abgr;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
@@ -22,12 +25,9 @@ import java.util.function.BiConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.ARGB;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -53,7 +53,7 @@ final class DioramaPanel implements AutoCloseable {
     private long seed = System.nanoTime();
     private Arrangement arrangement;
     private DynamicTexture texture;
-    private Identifier textureId;
+    private ResourceLocation textureId;
     private boolean painted;
     /** The theme's well colour the flat wall was painted over. The picture holds it, so another theme needs it painted again. */
     private int paintedOver;
@@ -123,17 +123,17 @@ final class DioramaPanel implements AutoCloseable {
                 }
             // Room for the corners as the wall turns.
             float scale = Math.min(view.w() / (w * 1.3f), view.h() / (h * 1.4f));
-            DioramaPip.submit(g, view.x(), view.y(), view.w(), view.h(), scale, w, h, cells, yaw, pitch, ModSettings.dioramaPerspective);
+            DioramaPip.draw(g, view.x(), view.y(), view.w(), view.h(), scale, w, h, cells, yaw, pitch, ModSettings.dioramaPerspective);
             g.drawString(PanelTab.font(), Component.translatable("palettes.chromastudio.diorama.orbit"), view.x() + 3, view.bottom() - 10, Theme.DIM, false);
             return;
         }
         if (!painted || paintedOver != Theme.WELL) paint();
         int cell = Math.max(1, Math.min(view.w() / w, view.h() / h));
         int dw = w * cell, dh = h * cell, dx = view.x() + (view.w() - dw) / 2, dy = view.y() + (view.h() - dh) / 2;
-        g.blit(RenderPipelines.GUI_TEXTURED, textureId, dx, dy, 0f, 0f, dw, dh, w * TEXELS, h * TEXELS, w * TEXELS, h * TEXELS);
+        g.blit(textureId, dx, dy, dw, dh, 0f, 0f, w * TEXELS, h * TEXELS, w * TEXELS, h * TEXELS);
         if (mouseX >= dx && mouseX < dx + dw && mouseY >= dy && mouseY < dy + dh) {
             int entry = arrangement.at((mouseX - dx) / cell, h - 1 - (mouseY - dy) / cell, 0);
-            if (entry >= 0) g.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(kept.get(entry)), mouseX, mouseY);
+            if (entry >= 0) g.renderTooltip(PanelTab.font(), PaletteBlocks.name(kept.get(entry)), mouseX, mouseY);
         }
     }
 
@@ -142,8 +142,8 @@ final class DioramaPanel implements AutoCloseable {
         int w = arrangement.sizeX(), h = arrangement.sizeY();
         if (texture == null || texture.getPixels().getWidth() != w * TEXELS || texture.getPixels().getHeight() != h * TEXELS) {
             close();
-            textureId = Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "diorama_" + nextId++);
-            texture = new DynamicTexture(textureId::toString, new NativeImage(w * TEXELS, h * TEXELS, false));
+            textureId = ResourceLocation.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "diorama_" + nextId++);
+            texture = new DynamicTexture(new NativeImage(w * TEXELS, h * TEXELS, false));
             Minecraft.getInstance().getTextureManager().register(textureId, texture);
         }
         NativeImage image = texture.getPixels();
@@ -160,7 +160,7 @@ final class DioramaPanel implements AutoCloseable {
                 for (int ty = 0; ty < TEXELS; ty++)
                     for (int tx = 0; tx < TEXELS; tx++) {
                         int under = entry >= 0 ? NO_TEXTURE : Theme.WELL;
-                        image.setPixel(ox + tx, oy + ty, face == null ? under : over(face[ty * TEXELS + tx], Theme.WELL));
+                        Abgr.set(image, ox + tx, oy + ty, face == null ? under : over(face[ty * TEXELS + tx], Theme.WELL));
                     }
             }
         texture.upload();

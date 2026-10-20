@@ -2,18 +2,18 @@ package dev.chromastudio.client.ui.tabs;
 
 import static dev.chromastudio.client.ui.Theme.TEXT;
 
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Tab;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Util;
 
 /**
  * A tab made of a group of controls, with at most one small dialog open over it. While a dialog is open it takes all

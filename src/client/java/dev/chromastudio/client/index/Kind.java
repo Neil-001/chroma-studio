@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.BambooStalkBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.BushBlock;
 import net.minecraft.world.level.block.CactusBlock;
 import net.minecraft.world.level.block.CarpetBlock;
 import net.minecraft.world.level.block.DoorBlock;
@@ -14,14 +15,11 @@ import net.minecraft.world.level.block.GrowingPlantBlock;
 import net.minecraft.world.level.block.IronBarsBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.LiquidBlock;
-import net.minecraft.world.level.block.MossyCarpetBlock;
-import net.minecraft.world.level.block.ShelfBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.TransparentBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
-import net.minecraft.world.level.block.VegetationBlock;
 import net.minecraft.world.level.block.VineBlock;
 import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.WaterloggedTransparentBlock;
@@ -46,14 +44,12 @@ public enum Kind {
             new Rule(IronBarsBlock.class, PANE),
             new Rule(TrapDoorBlock.class, TRAPDOOR),
             new Rule(DoorBlock.class, DOOR),
-            new Rule(ShelfBlock.class, SHELF),
             new Rule(CarpetBlock.class, CARPET),
-            new Rule(MossyCarpetBlock.class, CARPET),
             // Copper grates share glass's class but aren't glass.
             new Rule(WaterloggedTransparentBlock.class, null),
             new Rule(TransparentBlock.class, GLASS),
             new Rule(LeavesBlock.class, LEAVES),
-            new Rule(VegetationBlock.class, PLANT),
+            new Rule(BushBlock.class, PLANT),
             new Rule(GrowingPlantBlock.class, PLANT),
             new Rule(VineBlock.class, PLANT),
             new Rule(SugarCaneBlock.class, PLANT),

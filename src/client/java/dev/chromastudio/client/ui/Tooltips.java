@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.BlockItem;
@@ -76,6 +77,6 @@ public final class Tooltips {
 
     private static boolean wanted() {
         return ModSettings.tooltipMode == TooltipMode.ALWAYS
-                || ModSettings.tooltipMode == TooltipMode.SHIFT && Minecraft.getInstance().hasShiftDown();
+                || ModSettings.tooltipMode == TooltipMode.SHIFT && Screen.hasShiftDown();
     }
 }

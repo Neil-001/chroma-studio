@@ -4,14 +4,19 @@ import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ThemeChoice;
 import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.core.color.Color;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -23,9 +28,6 @@ import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsList;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -197,7 +199,7 @@ public final class SettingsScreen extends Screen {
 
         @Override
         protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
-            g.drawWordWrap(font, tr("reset_all.confirm"), in.x(), in.y(), in.w(), Theme.TEXT, false);
+            g.drawWordWrap(font, tr("reset_all.confirm"), in.x(), in.y(), in.w(), Theme.TEXT);
         }
 
         @Override
@@ -285,23 +287,28 @@ public final class SettingsScreen extends Screen {
         return box[0];
     }
 
-    /** Opens the game's key binds screen. It has no way to show one category, so this scrolls its list to the mod's heading. */
+    /**
+     * Opens the game's key binds screen. It has no way to show one category, so this scrolls its list to the mod's
+     * heading. 1.21.1's headings hold no widget with their text, so this finds the heading's row the way the list
+     * builds it: every key, sorted, with a heading before each new category, every row 20 pixels high.
+     */
     private void openKeys() {
         KeyBindsScreen keys = new KeyBindsScreen(this, minecraft.options);
         minecraft.setScreen(keys);
-        String heading = Keys.CATEGORY.label().getString();
-        for (GuiEventListener child : keys.children()) {
-            if (!(child instanceof KeyBindsList binds)) continue;
-            int y = 0;
-            for (KeyBindsList.Entry e : binds.children()) {
-                if (e instanceof KeyBindsList.CategoryEntry && e.children().stream()
-                        .anyMatch(w -> w instanceof AbstractWidget name && name.getMessage().getString().equals(heading))) {
-                    binds.setScrollAmount(y);
-                    return;
-                }
-                y += e.getHeight();
+        KeyMapping[] mappings = minecraft.options.keyMappings.clone();
+        Arrays.sort(mappings);
+        int row = 0;
+        String category = null;
+        for (KeyMapping k : mappings) {
+            if (!k.getCategory().equals(category)) {
+                category = k.getCategory();
+                if (category.equals(Keys.CATEGORY)) break;
+                row++;
             }
+            row++;
         }
+        for (GuiEventListener child : keys.children())
+            if (child instanceof KeyBindsList binds) binds.setScrollAmount(row * 20);
     }
 
     @Override
@@ -332,26 +339,23 @@ public final class SettingsScreen extends Screen {
         if (popup != null) popup.render(g, mouseX, mouseY, delta);
     }
 
-    @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         if (popup != null) return popup.mouseClicked(event, doubled);
         if (list.mouseClicked(event, doubled)) {
             setFocused(null);
             return true;
         }
-        return super.mouseClicked(event, doubled);
+        return super.mouseClicked(event.x(), event.y(), event.button());
     }
 
-    @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         if (popup != null) return popup.mouseReleased(event);
-        return list.mouseReleased(event) || super.mouseReleased(event);
+        return list.mouseReleased(event) || super.mouseReleased(event.x(), event.y(), event.button());
     }
 
-    @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (popup != null) return popup.mouseDragged(event, dx, dy);
-        return list.mouseDragged(event, dx, dy) || super.mouseDragged(event, dx, dy);
+        return list.mouseDragged(event, dx, dy) || super.mouseDragged(event.x(), event.y(), event.button(), dx, dy);
     }
 
     @Override
@@ -360,7 +364,6 @@ public final class SettingsScreen extends Screen {
         return list.mouseScrolled(mx, my, h, v) || super.mouseScrolled(mx, my, h, v);
     }
 
-    @Override
     public boolean keyPressed(KeyEvent event) {
         if (popup != null) return popup.keyPressed(event);
         if (event.isEscape()) {
@@ -369,14 +372,30 @@ public final class SettingsScreen extends Screen {
             else searchField.setValue("");
             return true;
         }
-        return list.keyPressed(event) || super.keyPressed(event);
+        return list.keyPressed(event) || super.keyPressed(event.key(), event.scancode(), event.modifiers());
     }
 
-    @Override
     public boolean charTyped(CharacterEvent event) {
         if (popup != null) return popup.charTyped(event);
-        return list.charTyped(event) || super.charTyped(event);
+        return list.charTyped(event) || super.charTyped((char) event.codepoint(), event.modifiers());
     }
+
+    // 1.21.1 hands input over as plain numbers. These make the events the screen and its controls take.
+
+    @Override
+    public boolean mouseClicked(double x, double y, int button) { return mouseClicked(MouseButtonEvent.of(x, y, button), MouseButtonEvent.doubled(x, y, button)); }
+
+    @Override
+    public boolean mouseReleased(double x, double y, int button) { return mouseReleased(MouseButtonEvent.of(x, y, button)); }
+
+    @Override
+    public boolean mouseDragged(double x, double y, int button, double dx, double dy) { return mouseDragged(MouseButtonEvent.of(x, y, button), dx, dy); }
+
+    @Override
+    public boolean keyPressed(int key, int scancode, int modifiers) { return keyPressed(new KeyEvent(key, scancode, modifiers)); }
+
+    @Override
+    public boolean charTyped(char c, int modifiers) { return charTyped(new CharacterEvent(c, modifiers)); }
 
     @Override
     public void removed() {

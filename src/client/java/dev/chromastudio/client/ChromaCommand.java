@@ -11,7 +11,7 @@ import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * The client-side {@code /chroma} command. Each loader registers {@link #build()} with its own client dispatcher; the
@@ -33,7 +33,7 @@ public final class ChromaCommand {
         for (Subcommand sub : SUBCOMMANDS) sub.attach(root);
         return root.then(RequiredArgumentBuilder.<S, String>argument("target", StringArgumentType.greedyString()).executes(ctx -> {
             Object target = parse(StringArgumentType.getString(ctx, "target"),
-                    id -> BuiltInRegistries.BLOCK.containsKey(Identifier.parse(id)));
+                    id -> BuiltInRegistries.BLOCK.containsKey(ResourceLocation.parse(id)));
             if (target instanceof Component problem) {
                 say(problem);
                 return 0;

@@ -182,12 +182,11 @@ public final class HotbarFill {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player.hasInfiniteMaterials()) {
-            // The server ignores a creative player's drops that come too fast, and the client keeps the same count.
-            if (!player.getDropSpamThrottler().isUnderThreshold()) return Dropped.NOT_AT_ALL;
+            // 1.21.1's server takes a creative player's drops as fast as they come.
             mc.gameMode.handleCreativeModeItemDrop(stack.copy());
             return Dropped.ON_THE_GROUND;
         }
-        int slot = roomFor(stack, now, player.getInventory().getSelectedSlot());
+        int slot = roomFor(stack, now, player.getInventory().selected);
         if (slot >= 0) {
             if (before.stream().noneMatch(was -> was.slot == slot)) before.add(new Was(slot, now.get(slot).copy()));
             now.get(slot).grow(stack.getCount());

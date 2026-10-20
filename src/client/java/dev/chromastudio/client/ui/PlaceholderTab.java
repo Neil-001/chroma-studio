@@ -1,8 +1,8 @@
 package dev.chromastudio.client.ui;
 
+import dev.chromastudio.client.ARGB;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.util.ARGB;
 
 /** Stands in for a tab that hasn't been written yet: it draws its title in the middle. */
 final class PlaceholderTab extends Tab {

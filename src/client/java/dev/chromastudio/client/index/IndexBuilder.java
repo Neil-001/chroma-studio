@@ -12,26 +12,24 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.renderer.block.BlockModelShaper;
-import net.minecraft.client.renderer.block.model.BlockStateModel;
-import net.minecraft.client.renderer.block.model.BlockModelPart;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LiquidBlock;
-import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import org.joml.Vector3f;
-import org.joml.Vector3fc;
 
 /** Turns blocks into entries: walks a block's states, reads each face's textures off its model, and keeps the states that look different. */
 final class IndexBuilder {
@@ -40,7 +38,7 @@ final class IndexBuilder {
     private static final Direction[] DIRECTIONS = Direction.values();
 
     /** A texture on a face as the model gives it, before any image is read. */
-    private record Tex(Identifier sprite, int tintIndex) {}
+    private record Tex(ResourceLocation sprite, int tintIndex) {}
 
     /**
      * What a model shows: each face's textures with the area their quads cover, in the model's order, and the key
@@ -65,7 +63,7 @@ final class IndexBuilder {
     long readNanos, statsNanos;
     private final Map<String, Sampled> sampled = new HashMap<>();
     // Many states share one baked model, as a note block's 1,150 do, and a model is only walked once.
-    private final Map<BlockStateModel, Look> byModel = new IdentityHashMap<>();
+    private final Map<BakedModel, Look> byModel = new IdentityHashMap<>();
 
     IndexBuilder(BlockModelShaper models, BlockColors colours, ResourceManager resources,
                  Map<String, Textures.Frame> frames, IndexOptions options) {
@@ -132,19 +130,16 @@ final class IndexBuilder {
         }
     }
 
-    private static Look modelLook(BlockStateModel model, BlockState state) {
+    private static Look modelLook(BakedModel model, BlockState state) {
         List<Map<Tex, Double>> faces = emptyFaces();
-        List<BlockModelPart> parts = new ArrayList<>();
-        ChromaStudioClient.platform.modelParts(model, state, RandomSource.create(42L), parts);
-        for (BlockModelPart part : parts) {
-            // The quads on the block's outside, then those set back from it, such as a slab's top.
-            for (Direction side : DIRECTIONS) for (BakedQuad q : part.getQuads(side)) add(faces, q);
-            for (BakedQuad q : part.getQuads(null)) add(faces, q);
-        }
+        // The quads on the block's outside, then those set back from it, such as a slab's top. A model with several
+        // variants picks one by the random, so each call gets the same seed and picks the same.
+        for (Direction side : DIRECTIONS) for (BakedQuad q : ChromaStudioClient.platform.quads(model, state, side, RandomSource.create(42L))) add(faces, q);
+        for (BakedQuad q : ChromaStudioClient.platform.quads(model, state, null, RandomSource.create(42L))) add(faces, q);
         boolean drawn = faces.stream().anyMatch(f -> !f.isEmpty());
         // What a face with nothing drawn on it is taken to look like: the texture the block breaks into.
         TextureAtlasSprite particle = ChromaStudioClient.platform.particleIcon(model, state);
-        Identifier name = particle.contents().name();
+        ResourceLocation name = particle.contents().name();
         int tintIndex = -1;
         for (Map<Tex, Double> face : faces) for (Tex t : face.keySet()) if (t.sprite.equals(name)) tintIndex = Math.max(tintIndex, t.tintIndex);
         for (Map<Tex, Double> face : faces) if (face.isEmpty()) face.put(new Tex(name, tintIndex), 1.0);
@@ -152,14 +147,23 @@ final class IndexBuilder {
     }
 
     private static void add(List<Map<Tex, Double>> faces, BakedQuad q) {
-        Tex tex = new Tex(q.sprite().contents().name(), q.isTinted() ? q.tintIndex() : -1);
-        faces.get(q.direction().ordinal()).merge(tex, area(q), Double::sum);
+        Tex tex = new Tex(q.getSprite().contents().name(), q.isTinted() ? q.getTintIndex() : -1);
+        faces.get(q.getDirection().ordinal()).merge(tex, area(q), Double::sum);
     }
 
     /** A quad's area in blocks squared, as half the cross product of its diagonals. */
     private static double area(BakedQuad q) {
-        Vector3fc a = q.position(0), b = q.position(1), c = q.position(2), d = q.position(3);
-        return new Vector3f(c).sub(a).cross(new Vector3f(d).sub(b)).length() / 2;
+        Vector3f a = position(q, 0), b = position(q, 1), c = position(q, 2), d = position(q, 3);
+        return c.sub(a).cross(d.sub(b)).length() / 2;
+    }
+
+    // 1.21.1 packs a quad's vertices as ints, eight to a vertex, the position's three floats first.
+    private static final int VERTEX_INTS = 8;
+
+    private static Vector3f position(BakedQuad q, int vertex) {
+        int[] v = q.getVertices();
+        int at = vertex * VERTEX_INTS;
+        return new Vector3f(Float.intBitsToFloat(v[at]), Float.intBitsToFloat(v[at + 1]), Float.intBitsToFloat(v[at + 2]));
     }
 
     /** Water or lava. 1.21.11 has no fluid models to ask, so only these two are known by their textures; a modded fluid is read like a block. */
@@ -178,7 +182,7 @@ final class IndexBuilder {
         int tintIndex = water ? 0 : -1;
         List<Map<Tex, Double>> faces = emptyFaces();
         for (Direction side : DIRECTIONS) {
-            Identifier sprite = Identifier.withDefaultNamespace("block/" + name + (side.getAxis().isVertical() ? "_still" : "_flow"));
+            ResourceLocation sprite = ResourceLocation.withDefaultNamespace("block/" + name + (side.getAxis().isVertical() ? "_still" : "_flow"));
             faces.get(side.ordinal()).put(new Tex(sprite, tintIndex), 1.0);
         }
         return new Look(faces, true);
@@ -209,7 +213,7 @@ final class IndexBuilder {
         return tintIndex < 0 ? null : TintSource.of(colours, tintIndex);
     }
 
-    private Sampled sampled(Identifier sprite) {
+    private Sampled sampled(ResourceLocation sprite) {
         String name = sprite.toString();
         if (sampled.containsKey(name)) return sampled.get(name);
         Textures.Frame frame = frames.get(name);

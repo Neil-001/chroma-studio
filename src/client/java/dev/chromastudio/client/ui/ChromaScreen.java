@@ -1,13 +1,15 @@
 package dev.chromastudio.client.ui;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.cursor.CursorType;
-import com.mojang.blaze3d.platform.cursor.CursorTypes;
+import dev.chromastudio.client.ARGB;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ThemeChoice;
 import dev.chromastudio.client.TitleButtons;
 import dev.chromastudio.client.action.ScreenPicker;
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -21,13 +23,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * The mod's window: a title bar with the tabs and the close, fullscreen and pin buttons, over the selected tab. The
@@ -177,7 +174,6 @@ public final class ChromaScreen extends Screen {
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float delta) {
         // The screen picker reads the frame, so while it aims nothing of the window may be in it, the blur included.
         if (fullscreen() && !ScreenPicker.armed()) super.renderBackground(g, mouseX, mouseY, delta);
-        else minecraft.gui.renderDeferredSubtitles();
     }
 
     // ---- Title bar layout, shared by drawing and clicking ----
@@ -219,7 +215,8 @@ public final class ChromaScreen extends Screen {
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         if (ScreenPicker.armed()) {
             ScreenPicker.render(g, mouseX, mouseY);
-            g.requestCursor(CursorTypes.CROSSHAIR);
+            Cursors.request(Cursors.Shape.CROSSHAIR);
+            Cursors.apply();
             return;
         }
         Theme.sync();
@@ -241,28 +238,20 @@ public final class ChromaScreen extends Screen {
             // Wrapped, as widgets' own are. The game draws a tooltip a little above the cursor and doesn't mind the
             // screen's top, so one for a button up there is asked for lower down, where all its lines fit.
             List<FormattedCharSequence> lines = Tooltip.splitTooltip(minecraft, tip);
-            g.setTooltipForNextFrame(font, lines, mouseX, Math.max(mouseY, 16 + (lines.size() - 1) * 2));
+            g.renderTooltip(font, lines, mouseX, Math.max(mouseY, 16 + (lines.size() - 1) * 2));
         }
         // The game shows the arrow again by itself on any frame that asks for nothing, so also once the screen has closed.
-        CursorType cursor = cursor(free ? window.gripAt(mouseX, mouseY, width, height) : Window.Grip.NONE);
-        if (cursor != null && !overCog) g.requestCursor(cursor);
+        Cursors.Shape cursor = cursor(free ? window.gripAt(mouseX, mouseY, width, height) : Window.Grip.NONE);
+        if (cursor != null && !overCog) Cursors.request(cursor);
+        Cursors.apply();
     }
 
-    /**
-     * The two diagonal arrows, which the game has no use for and so doesn't make. Made on first use and kept, as the
-     * game keeps its own; where the system has no such shape, each is the arrow.
-     */
-    private static final class Diagonal {
-        static final CursorType NWSE = CursorType.createStandardCursor(GLFW.GLFW_RESIZE_NWSE_CURSOR, "resize_nwse", CursorTypes.ARROW);
-        static final CursorType NESW = CursorType.createStandardCursor(GLFW.GLFW_RESIZE_NESW_CURSOR, "resize_nesw", CursorTypes.ARROW);
-    }
-
-    private static CursorType cursor(Window.Grip grip) {
+    private static Cursors.Shape cursor(Window.Grip grip) {
         return switch (grip) {
-            case N, S -> CursorTypes.RESIZE_NS;
-            case E, W -> CursorTypes.RESIZE_EW;
-            case NW, SE -> Diagonal.NWSE;
-            case NE, SW -> Diagonal.NESW;
+            case N, S -> Cursors.Shape.RESIZE_NS;
+            case E, W -> Cursors.Shape.RESIZE_EW;
+            case NW, SE -> Cursors.Shape.RESIZE_NWSE;
+            case NE, SW -> Cursors.Shape.RESIZE_NESW;
             default -> null;
         };
     }
@@ -374,7 +363,6 @@ public final class ChromaScreen extends Screen {
 
     // ---- Input ----
 
-    @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         double mx = event.x(), my = event.y();
         if (ScreenPicker.armed()) {
@@ -421,7 +409,7 @@ public final class ChromaScreen extends Screen {
         }
         tabHasMouse = content().contains(mx, my) && tab().mouseClicked(event, doubled);
         // A window key bound to a mouse button: the game doesn't count presses for key binds while a screen is open.
-        return tabHasMouse || windowKey(key -> key.matchesMouse(event));
+        return tabHasMouse || windowKey(key -> key.matchesMouse(event.button()));
     }
 
     /** Does what the open, pin or fullscreen key does inside the window, if the press is one of them. */
@@ -434,7 +422,6 @@ public final class ChromaScreen extends Screen {
         return true;
     }
 
-    @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (window.dragging()) {
             if (window.dragTo(event.x(), event.y(), width, height)) layout(false);
@@ -443,7 +430,6 @@ public final class ChromaScreen extends Screen {
         return tabHasMouse && tab().mouseDragged(event, dx, dy);
     }
 
-    @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         if (window.dragging()) {
             window.release();
@@ -460,7 +446,6 @@ public final class ChromaScreen extends Screen {
         return content().contains(mx, my) && tab().mouseScrolled(mx, my, h, v);
     }
 
-    @Override
     public boolean keyPressed(KeyEvent event) {
         if (ScreenPicker.armed()) {
             if (event.isEscape()) ScreenPicker.cancel();
@@ -472,11 +457,27 @@ public final class ChromaScreen extends Screen {
             return true;
         }
         if (tab.keyPressed(event)) return true;
-        return !tab.typing() && windowKey(key -> key.matches(event));
+        return !tab.typing() && windowKey(key -> key.matches(event.key(), event.scancode()));
     }
 
-    @Override
     public boolean charTyped(CharacterEvent event) { return tab().charTyped(event); }
+
+    // 1.21.1 hands input over as plain numbers. These make the events the window and its tabs take, as newer versions give them.
+
+    @Override
+    public boolean mouseClicked(double x, double y, int button) { return mouseClicked(MouseButtonEvent.of(x, y, button), MouseButtonEvent.doubled(x, y, button)); }
+
+    @Override
+    public boolean mouseDragged(double x, double y, int button, double dx, double dy) { return mouseDragged(MouseButtonEvent.of(x, y, button), dx, dy); }
+
+    @Override
+    public boolean mouseReleased(double x, double y, int button) { return mouseReleased(MouseButtonEvent.of(x, y, button)); }
+
+    @Override
+    public boolean keyPressed(int key, int scancode, int modifiers) { return keyPressed(new KeyEvent(key, scancode, modifiers)); }
+
+    @Override
+    public boolean charTyped(char c, int modifiers) { return charTyped(new CharacterEvent(c, modifiers)); }
 
     /** Switches between the window and fullscreen. Does nothing when the screen is too small for a window. */
     public void toggleFullscreen() {
@@ -506,6 +507,7 @@ public final class ChromaScreen extends Screen {
 
     @Override
     public void removed() {
+        Cursors.reset();
         ScreenPicker.cancel();
         window.release();
         tabHasMouse = false;

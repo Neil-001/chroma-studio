@@ -1,5 +1,7 @@
 package dev.chromastudio.client.ui.tabs;
 
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
@@ -7,8 +9,6 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -77,7 +77,7 @@ abstract class Dialog {
             int shown = Math.min(STATUS_LINES, lines.size()), top = in.bottom() - shown * 9;
             for (int i = 0; i < shown; i++) g.drawString(PanelTab.font(), lines.get(i), in.x(), top + i * 9, statusColour, false);
             if (lines.size() > shown && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
-                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
+                g.renderTooltip(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
         }
     }
 

@@ -9,6 +9,7 @@ import static dev.chromastudio.client.ui.Theme.TEXT;
 import static dev.chromastudio.client.ui.Theme.WELL;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import dev.chromastudio.client.ARGB;
 import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ColourFormat;
@@ -28,6 +29,9 @@ import dev.chromastudio.client.index.Query;
 import dev.chromastudio.client.index.Target;
 import dev.chromastudio.client.index.TintContext;
 import dev.chromastudio.client.index.Tints;
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Handoff;
@@ -54,22 +58,19 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.util.ARGB;
-import net.minecraft.util.Util;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -373,7 +374,7 @@ public final class MatchTab extends Tab {
 
     private List<ResourceKey<Biome>> matchingBiomes() {
         if (biomeSearch.isEmpty()) return biomes;
-        return biomes.stream().filter(k -> k.identifier().toString().contains(biomeSearch)).toList();
+        return biomes.stream().filter(k -> k.location().toString().contains(biomeSearch)).toList();
     }
 
     /** Greys "Find the biome" out with the reason while it can't run. It depends on the target, so it is set again whenever that changes. */
@@ -402,13 +403,13 @@ public final class MatchTab extends Tab {
             Color c = Target.of(e, MatchState.entryState(), MatchState.entryFace(), TintContext.biome(key)).colour();
             all.add(new BiomeFit(key, c, metric.distance(wanted, c)));
         }
-        all.sort(Comparator.comparingDouble(BiomeFit::distance).thenComparing(f -> f.biome.identifier().toString()));
+        all.sort(Comparator.comparingDouble(BiomeFit::distance).thenComparing(f -> f.biome.location().toString()));
         return List.copyOf(all.subList(0, Math.min(5, all.size())));
     }
 
     private void chooseBiome(ResourceKey<Biome> key) {
         ModSettings.biomeMode = BiomeMode.CHOSEN;
-        ModSettings.biome = key.identifier().toString();
+        ModSettings.biome = key.location().toString();
         panel = Panel.NONE;
         MatchState.changed();
         build();
@@ -487,7 +488,7 @@ public final class MatchTab extends Tab {
         } else if (pending instanceof String id && index.ready()) {
             // A block has to wait for the index; a colour doesn't.
             ChromaScreen.pendingTarget = null;
-            Identifier key = Identifier.tryParse(id);
+            ResourceLocation key = ResourceLocation.tryParse(id);
             List<Entry> states = key == null ? List.<Entry>of() : BuiltInRegistries.BLOCK.getOptional(key).map(index::statesOf).orElse(List.of());
             if (states.isEmpty()) status(tr("not_indexed", id));
             else MatchState.setEntry(states.getFirst(), Face.ANY, null);
@@ -577,7 +578,7 @@ public final class MatchTab extends Tab {
         if (status != null && Util.getMillis() < statusUntil) {
             g.drawString(font, ellipsis(font, status.getString(), statusLine.w() - 4), statusLine.x() + 2, statusLine.y() + 1, TEXT, false);
         }
-        if (!tip.isEmpty() && !picker.dragging() && !draggingDistance) g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
+        if (!tip.isEmpty() && !picker.dragging() && !draggingDistance) g.renderComponentTooltip(font, tip, mouseX, mouseY);
     }
 
     @Override
@@ -866,7 +867,7 @@ public final class MatchTab extends Tab {
             case BIOMES -> {
                 List<ResourceKey<Biome>> listed = matchingBiomes();
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
-                    String id = listed.get(i).identifier().toString();
+                    String id = listed.get(i).location().toString();
                     if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
                     g2.drawString(font, ellipsis(font, id, w - 8), x + 4, y + 2, id.equals(ModSettings.biome) ? Theme.HIGHLIGHT : TEXT, false);
                 });
@@ -879,7 +880,7 @@ public final class MatchTab extends Tab {
                     Widgets.swatch(g2, x + 4, y + 3, 12, 12, fit.colour.rgb());
                     String de = deltaE(fit.distance, MatchState.metric());
                     g2.drawString(font, de, x + w - 4 - font.width(de), y + 5, DIM, false);
-                    g2.drawString(font, ellipsis(font, fit.biome.identifier().toString(), w - 32 - font.width(de)), x + 20, y + 5, TEXT, false);
+                    g2.drawString(font, ellipsis(font, fit.biome.location().toString(), w - 32 - font.width(de)), x + 20, y + 5, TEXT, false);
                     if (over) tip.add(tr("find_biome.use"));
                 });
                 if (fits.isEmpty()) {
@@ -916,7 +917,7 @@ public final class MatchTab extends Tab {
         panelWidgets.setFocused(null);
         if (controls.mouseClicked(e, doubled)) return true;
         // The recipe key bound to a mouse button: the game doesn't count presses for key binds while a screen is open.
-        if (Keys.RECIPE.matchesMouse(e) && lookUpRecipe()) return true;
+        if (Keys.RECIPE.matchesMouse(e.button()) && lookUpRecipe()) return true;
         if (left && picker.mouseClicked(mx, my)) return true;
         if (left && distance.contains(mx, my)) {
             draggingDistance = true;
@@ -941,7 +942,7 @@ public final class MatchTab extends Tab {
             int col = (int) ((mx - results.x() - 2) / CELL), i = line * columns() + col;
             if (col < 0 || col >= columns() || i >= shown.matches.size()) return false;
             BlockIndex.Match m = shown.matches.get(i);
-            act(new Row(RESULT, m.entry(), m.face(), m.distance(), false), Minecraft.getInstance().hasControlDown() ? ADD : BODY, e);
+            act(new Row(RESULT, m.entry(), m.face(), m.distance(), false), Screen.hasControlDown() ? ADD : BODY, e);
         } else if (line < rows.size()) {
             Row row = rows.get(line);
             int w = results.w();
@@ -1021,7 +1022,7 @@ public final class MatchTab extends Tab {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         ItemStack held = mc.player.containerMenu.getCarried();
-        if (held.isEmpty()) held = mc.player.getInventory().getSelectedItem();
+        if (held.isEmpty()) held = mc.player.getInventory().getSelected();
         if (held.isEmpty()) {
             status(tr("slot.empty"));
             return;
@@ -1079,8 +1080,8 @@ public final class MatchTab extends Tab {
             if (mc.player == null) return true;
             Inventory inventory = mc.player.getInventory();
             int size = Inventory.getSelectionSize();
-            inventory.setSelectedSlot(((inventory.getSelectedSlot() - (int) Math.signum(v)) % size + size) % size);
-            if (!inventory.getSelectedItem().isEmpty()) takeHeld();
+            inventory.selected = ((inventory.selected - (int) Math.signum(v)) % size + size) % size;
+            if (!inventory.getSelected().isEmpty()) takeHeld();
             return true;
         }
         return controls.mouseScrolled(x, y, h, v) || list.mouseScrolled(x, y, v);
@@ -1103,7 +1104,7 @@ public final class MatchTab extends Tab {
             controls.keyPressed(e);
             return true;
         }
-        if (Keys.RECIPE.matches(e) && lookUpRecipe()) return true;
+        if (Keys.RECIPE.matches(e.key(), e.scancode()) && lookUpRecipe()) return true;
         return controls.keyPressed(e);
     }
 

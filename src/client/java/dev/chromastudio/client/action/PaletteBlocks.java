@@ -24,8 +24,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -107,7 +107,7 @@ public final class PaletteBlocks {
 
     /** Where tints come from, by the biome setting. A range over all biomes has no one tint, so it reads where the player stands. */
     public static TintContext tint() {
-        Identifier id = ModSettings.biomeMode == BiomeMode.CHOSEN ? Identifier.tryParse(ModSettings.biome) : null;
+        ResourceLocation id = ModSettings.biomeMode == BiomeMode.CHOSEN ? ResourceLocation.tryParse(ModSettings.biome) : null;
         return id == null ? TintContext.HERE : TintContext.biome(ResourceKey.create(Registries.BIOME, id));
     }
 

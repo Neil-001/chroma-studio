@@ -1,6 +1,6 @@
 # 1.1.0
 
-Chroma Studio 1.1.0 is for Minecraft 1.21.11 on Fabric and NeoForge. It is the first release for this version, so it also brings everything in 1.0.0 below. Choose OKLCH, RGB or HSL for the colour controls, change the recipe key in Minecraft's key binds, and choose the order of the window's title buttons.
+Chroma Studio 1.1.0 is for Minecraft 1.21 and 1.21.1 on Fabric, and 1.21.1 on NeoForge. It is the first release for these versions, so it also brings everything in 1.0.0 below. Shelves aren't in Minecraft before 1.21.9, so that kind of block never turns up here. Choose OKLCH, RGB or HSL for the colour controls, change the recipe key in Minecraft's key binds, and choose the order of the window's title buttons.
 
 ## Features
 

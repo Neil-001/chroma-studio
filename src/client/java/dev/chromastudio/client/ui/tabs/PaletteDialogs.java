@@ -137,7 +137,7 @@ final class PaletteDialogs {
 
         @Override
         protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
-            g.drawWordWrap(PanelTab.font(), question, in.x(), in.y(), in.w(), Theme.TEXT, false);
+            g.drawWordWrap(PanelTab.font(), question, in.x(), in.y(), in.w(), Theme.TEXT);
         }
     }
 
@@ -552,7 +552,7 @@ final class PaletteDialogs {
             // A long palette's command runs past the box. Copy still takes all of it, and pointing at the box shows it.
             if (lines.size() > fit) {
                 g.drawString(PanelTab.font(), "...", in.right() - 12, bottom - 10, Theme.DIM, false);
-                if (mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < bottom) g.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
+                if (mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < bottom) g.renderTooltip(PanelTab.font(), lines, mouseX, mouseY);
             }
         }
     }
@@ -601,7 +601,7 @@ final class PaletteDialogs {
             int over = Math.max(0, entries.size() - 9);
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
                     : tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over);
-            g.drawWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
+            g.drawWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM);
         }
     }
 

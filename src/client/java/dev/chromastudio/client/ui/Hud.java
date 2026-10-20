@@ -1,12 +1,12 @@
 package dev.chromastudio.client.ui;
 
+import dev.chromastudio.client.ARGB;
 import java.util.List;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.ARGB;
-import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 
 /**

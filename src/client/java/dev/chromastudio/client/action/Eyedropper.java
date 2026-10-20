@@ -12,6 +12,7 @@ import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Face;
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.state.BlockState;
@@ -39,7 +40,7 @@ public final class Eyedropper {
     public static void press() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
-        boolean open = armed || mc.hasShiftDown();
+        boolean open = armed || Screen.hasShiftDown();
         BlockHitResult hit = hit(mc);
         if (hit == null) {
             say("eyedropper.chromastudio.no_block", "eyedropper.chromastudio.no_block.how");

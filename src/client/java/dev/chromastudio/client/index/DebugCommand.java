@@ -16,7 +16,7 @@ import java.util.Locale;
 import java.util.Optional;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 
 /** {@code /chroma debug <block id>}: prints what the index holds for a block, to check it against the game. */
@@ -32,7 +32,7 @@ public final class DebugCommand {
 
     private static int run(String text) {
         String name = text.trim().toLowerCase(Locale.ROOT);
-        Identifier id = Identifier.tryParse(name);
+        ResourceLocation id = ResourceLocation.tryParse(name);
         Optional<Block> block = id == null ? Optional.empty() : BuiltInRegistries.BLOCK.getOptional(id);
         if (block.isEmpty()) return say(Component.translatable("command.chromastudio.debug.unknown_block", text.trim()));
         if (!BlockIndex.get().ready()) return say(Component.translatable("command.chromastudio.debug.not_ready"));

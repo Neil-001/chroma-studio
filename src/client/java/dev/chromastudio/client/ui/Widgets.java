@@ -1,6 +1,10 @@
 package dev.chromastudio.client.ui;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import dev.chromastudio.client.input.CharacterEvent;
+import dev.chromastudio.client.input.InputWithModifiers;
+import dev.chromastudio.client.input.KeyEvent;
+import dev.chromastudio.client.input.MouseButtonEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,8 +25,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.AbstractContainerEventHandler;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.input.InputWithModifiers;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -104,7 +106,7 @@ public final class Widgets extends AbstractContainerEventHandler {
      */
     public <T> CycleButton<T> cycler(int x, int y, int w, Component label, List<T> values, T initial,
                                      Function<T, Component> names, Consumer<T> onChange, Component tip) {
-        CycleButton.Builder<T> builder = CycleButton.builder(names, initial).withValues(values);
+        CycleButton.Builder<T> builder = CycleButton.builder(names).withInitialValue(initial).withValues(values);
         if (label == null) builder.displayOnlyValue();
         if (tip != null) {
             Tooltip tooltip = Tooltip.create(tip);
@@ -230,7 +232,6 @@ public final class Widgets extends AbstractContainerEventHandler {
         }
     }
 
-    @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         if (viewport != null) {
             if (maxScroll() > 0 && event.button() == InputConstants.MOUSE_BUTTON_LEFT && overBar(viewport, event.x(), event.y())) {
@@ -252,28 +253,43 @@ public final class Widgets extends AbstractContainerEventHandler {
                     return true;
                 }
             }
-        boolean hit = super.mouseClicked(event, doubled);
+        boolean hit = super.mouseClicked(event.x(), event.y(), event.button());
         if (!hit) setFocused(null);   // a click on nothing ends typing
         return hit;
     }
 
-    @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         if (draggingBar) {
             draggingBar = false;
             return true;
         }
-        return super.mouseReleased(event);
+        return super.mouseReleased(event.x(), event.y(), event.button());
     }
 
-    @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (draggingBar) {
             scrollTo(barScroll(viewport, maxScroll(), event.y()));
             return true;
         }
-        return super.mouseDragged(event, dx, dy);
+        return super.mouseDragged(event.x(), event.y(), event.button(), dx, dy);
     }
+
+    // 1.21.1 hands input over as plain numbers. The tabs make the events above; the game's own calls come in here.
+
+    @Override
+    public boolean mouseClicked(double x, double y, int button) { return mouseClicked(MouseButtonEvent.of(x, y, button), false); }
+
+    @Override
+    public boolean mouseReleased(double x, double y, int button) { return mouseReleased(MouseButtonEvent.of(x, y, button)); }
+
+    @Override
+    public boolean mouseDragged(double x, double y, int button, double dx, double dy) { return mouseDragged(MouseButtonEvent.of(x, y, button), dx, dy); }
+
+    public boolean keyPressed(KeyEvent e) { return keyPressed(e.key(), e.scancode(), e.modifiers()); }
+
+    public boolean keyReleased(KeyEvent e) { return keyReleased(e.key(), e.scancode(), e.modifiers()); }
+
+    public boolean charTyped(CharacterEvent e) { return charTyped((char) e.codepoint(), e.modifiers()); }
 
     /**
      * Steps the number field or option button under the cursor: a notch is an arrow click on a field, and on a button
@@ -313,10 +329,10 @@ public final class Widgets extends AbstractContainerEventHandler {
             this.action = action;
         }
 
-        @Override public void onPress(InputWithModifiers input) { action.run(); }
+        @Override public void onPress() { action.run(); }
 
         @Override
-        protected void renderContents(GuiGraphics g, int mouseX, int mouseY, float delta) {
+        protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
             int x = getX(), y = getY();
             g.fill(x, y, x + width, y + height, !active ? Theme.CONTROL_OFF : isHovered() ? Theme.CONTROL_HOVER : Theme.CONTROL);
             int c = active ? Theme.TEXT : Theme.GREYED, cx = x + width / 2, cy = y + height / 2;

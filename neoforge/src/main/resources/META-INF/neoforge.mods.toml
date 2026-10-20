@@ -17,13 +17,13 @@ description = '''Find blocks by colour, build palettes and gradients, and export
 [[dependencies.chromastudio]]
 modId = "neoforge"
 type = "required"
-versionRange = "[21.11.42,)"
+versionRange = "[21.1.1,)"
 ordering = "NONE"
 side = "CLIENT"
 
 [[dependencies.chromastudio]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.11]"
+versionRange = "[1.21,1.21.1]"
 ordering = "NONE"
 side = "CLIENT"

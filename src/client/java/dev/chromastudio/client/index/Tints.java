@@ -15,12 +15,13 @@ import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.ColorResolver;
-import net.minecraft.world.level.EmptyBlockAndTintGetter;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
 
 /** The tint contexts, and the biomes they can be asked about. */
 public final class Tints {
@@ -98,15 +99,15 @@ public final class Tints {
         return Vanilla.LOOKUP;
     }
 
-    /** A world that is one biome everywhere and otherwise empty. */
+    /** A world that is one biome everywhere and otherwise empty. Only the tint is ever asked of it; there is no light. */
     private record OneBiome(Biome biome) implements BlockAndTintGetter {
         @Override public int getBlockTint(BlockPos pos, ColorResolver resolver) { return resolver.getColor(biome, pos.getX(), pos.getZ()); }
-        @Override public float getShade(Direction direction, boolean shaded) { return EmptyBlockAndTintGetter.INSTANCE.getShade(direction, shaded); }
-        @Override public LevelLightEngine getLightEngine() { return EmptyBlockAndTintGetter.INSTANCE.getLightEngine(); }
-        @Override public BlockEntity getBlockEntity(BlockPos pos) { return EmptyBlockAndTintGetter.INSTANCE.getBlockEntity(pos); }
-        @Override public BlockState getBlockState(BlockPos pos) { return EmptyBlockAndTintGetter.INSTANCE.getBlockState(pos); }
-        @Override public FluidState getFluidState(BlockPos pos) { return EmptyBlockAndTintGetter.INSTANCE.getFluidState(pos); }
-        @Override public int getHeight() { return EmptyBlockAndTintGetter.INSTANCE.getHeight(); }
-        @Override public int getMinY() { return EmptyBlockAndTintGetter.INSTANCE.getMinY(); }
+        @Override public float getShade(Direction direction, boolean shaded) { return 1; }
+        @Override public LevelLightEngine getLightEngine() { return null; }
+        @Override public BlockEntity getBlockEntity(BlockPos pos) { return null; }
+        @Override public BlockState getBlockState(BlockPos pos) { return Blocks.AIR.defaultBlockState(); }
+        @Override public FluidState getFluidState(BlockPos pos) { return Fluids.EMPTY.defaultFluidState(); }
+        @Override public int getHeight() { return 0; }
+        @Override public int getMinBuildHeight() { return 0; }
     }
 }

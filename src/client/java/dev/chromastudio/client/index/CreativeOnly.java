@@ -18,7 +18,7 @@ final class CreativeOnly {
             Blocks.SPAWNER, Blocks.TRIAL_SPAWNER, Blocks.VAULT,
             Blocks.PETRIFIED_OAK_SLAB,
             Blocks.COMMAND_BLOCK, Blocks.CHAIN_COMMAND_BLOCK, Blocks.REPEATING_COMMAND_BLOCK,
-            Blocks.JIGSAW, Blocks.STRUCTURE_BLOCK, Blocks.STRUCTURE_VOID, Blocks.TEST_BLOCK, Blocks.TEST_INSTANCE_BLOCK,
+            Blocks.JIGSAW, Blocks.STRUCTURE_BLOCK, Blocks.STRUCTURE_VOID,
             Blocks.BARRIER, Blocks.LIGHT,
             Blocks.BUDDING_AMETHYST, Blocks.CHORUS_PLANT, Blocks.FROSTED_ICE, Blocks.BUBBLE_COLUMN,
             Blocks.MOVING_PISTON, Blocks.PISTON_HEAD,

@@ -1,29 +1,28 @@
 package dev.chromastudio.client.ui.tabs;
 
-import com.mojang.blaze3d.ProjectionType;
 import com.mojang.blaze3d.platform.Lighting;
+import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexSorting;
 import com.mojang.math.Axis;
 import dev.chromastudio.client.ChromaStudioClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.navigation.ScreenRectangle;
-import net.minecraft.client.gui.render.pip.PictureInPictureRenderer;
-import net.minecraft.client.gui.render.state.pip.PictureInPictureRenderState;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.PerspectiveProjectionMatrixBuffer;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 /**
- * Draws a wall of blocks inside the GUI with the game's own block models, lit as items are. Each loader registers
- * it as a picture-in-picture renderer, and {@link #submit} asks for one wall to be drawn this frame.
+ * Draws a wall of blocks inside the GUI with the game's own block models, lit as items are. 1.21.1 has no
+ * picture-in-picture renderers, so {@link #draw} draws the wall straight into the screen, at the GUI's own
+ * resolution, as the game draws items.
  */
-public final class DioramaPip extends PictureInPictureRenderer<DioramaPip.State> {
+public final class DioramaPip {
+    private DioramaPip() {}
+
     private static final int FULL_BRIGHT = 15728880;
 
     /** The field of view with perspective, top to bottom, in degrees. */
@@ -35,89 +34,70 @@ public final class DioramaPip extends PictureInPictureRenderer<DioramaPip.State>
     private static final float FIT = 0.85f;
 
     /**
-     * One wall to draw. {@code cells} holds {@code width * height} states, row by row from the bottom, with null for
-     * air. {@code scale} is how many GUI pixels a block is across without perspective. {@code yaw} turns the wall's front to the viewer's
-     * right and {@code pitch} tips its top towards the viewer, in degrees, so adding a drag's movement to them makes
-     * the wall follow the cursor. With {@code perspective}, the wall's middle stays where it is and is drawn
-     * {@link #FIT} times the size.
+     * Draws a wall in the rectangle, clipped to it. {@code cells} holds {@code width * height} states, row by row
+     * from the bottom, with null for air. {@code scale} is how many GUI pixels a block is across without
+     * perspective. {@code yaw} turns the wall's front to the viewer's right and {@code pitch} tips its top towards
+     * the viewer, in degrees, so adding a drag's movement to them makes the wall follow the cursor. With
+     * {@code perspective}, the wall's middle stays where it is and is drawn {@link #FIT} times the size.
      */
-    public record State(int x0, int y0, int x1, int y1, float scale, ScreenRectangle scissorArea, ScreenRectangle bounds,
-                        int width, int height, BlockState[] cells, float yaw, float pitch, boolean perspective) implements PictureInPictureRenderState {}
-
-    /** Asks for a wall in the rectangle, clipped to it. */
-    public static void submit(GuiGraphics g, int x, int y, int w, int h, float scale, int width, int height, BlockState[] cells, float yaw, float pitch, boolean perspective) {
-        ScreenRectangle area = new ScreenRectangle(x, y, w, h);
-        ChromaStudioClient.platform.submitPicture(g, new State(x, y, x + w, y + h, scale, area, area, width, height, cells, yaw, pitch, perspective));
-    }
-
-    /** Holds the perspective projection for the game, and is made the first time one is asked for. */
-    private PerspectiveProjectionMatrixBuffer perspective;
-
-    public DioramaPip(MultiBufferSource.BufferSource buffers) { super(buffers); }
-
-    @Override
-    public Class<State> getRenderStateClass() { return State.class; }
-
-    @Override
-    protected void renderToTexture(State state, PoseStack pose) {
-        Minecraft mc = Minecraft.getInstance();
-        mc.gameRenderer.getLighting().setupFor(Lighting.Entry.ITEMS_3D);
-        // The blocks go through the game's own feature dispatcher, as its entity pictures do: 1.21.11's picture hands
-        // over only a pose, and the ways to draw a block straight into the buffers are deprecated.
-        FeatureRenderDispatcher features = mc.gameRenderer.getFeatureRenderDispatcher();
-        SubmitNodeCollector out = features.getSubmitNodeStorage();
-        if (state.perspective) lookThroughALens(pose);
+    public static void draw(GuiGraphics g, int x, int y, int w, int h, float scale, int width, int height, BlockState[] cells, float yaw, float pitch, boolean perspective) {
+        g.flush();   // what the GUI has queued is drawn as it was meant to be, before the depth and projection change
+        g.enableScissor(x, y, x + w, y + h);
+        // The wall has its own depth: its blocks hide each other, and nothing the GUI has drawn here hides them.
+        // The clear keeps to the clipped area.
+        RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
+        float cx = x + w / 2f, cy = y + h / 2f;
+        if (perspective) {
+            RenderSystem.backupProjectionMatrix();
+            RenderSystem.setProjectionMatrix(lens(cx, cy, h), VertexSorting.DISTANCE_TO_ORIGIN);
+        }
+        PoseStack pose = g.pose();
+        pose.pushPose();
+        // Without perspective the wall sits behind the GUI's plane, so what is drawn over the picture afterwards,
+        // such as its caption, shows. With it the lens puts the wall well behind that plane of its own accord.
+        pose.translate(cx, cy, perspective ? 0 : -scale * (width + height));
+        pose.scale(scale, scale, -scale);
+        Lighting.setupFor3DItems();
         // The GUI's y runs down the screen, so the wall is turned the right way up before it is tilted.
         pose.mulPose(Axis.ZP.rotationDegrees(180));
-        pose.mulPose(Axis.XP.rotationDegrees(-state.pitch));
-        pose.mulPose(Axis.YP.rotationDegrees(state.yaw));
-        pose.translate(-state.width / 2f, -state.height / 2f, -0.5f);
-        for (int y = 0; y < state.height; y++)
-            for (int x = 0; x < state.width; x++) {
-                BlockState block = state.cells[y * state.width + x];
+        pose.mulPose(Axis.XP.rotationDegrees(-pitch));
+        pose.mulPose(Axis.YP.rotationDegrees(yaw));
+        pose.translate(-width / 2f, -height / 2f, -0.5f);
+        MultiBufferSource.BufferSource buffers = g.bufferSource();
+        for (int row = 0; row < height; row++)
+            for (int col = 0; col < width; col++) {
+                BlockState block = cells[row * width + col];
                 if (block == null) continue;
                 pose.pushPose();
                 // Turned upright, the wall's x runs right to left, so the cells are laid the other way to match the flat view.
-                pose.translate(state.width - 1 - x, y, 0);
-                out.submitBlock(pose, block, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
+                pose.translate(width - 1 - col, row, 0);
+                ChromaStudioClient.platform.renderBlock(block, pose, buffers, FULL_BRIGHT, OverlayTexture.NO_OVERLAY);
                 pose.popPose();
             }
-        features.renderAllFeatures();
+        // Drawn now, while the projection and depth are the wall's.
+        g.flush();
+        pose.popPose();
+        if (perspective) RenderSystem.restoreProjectionMatrix();
+        g.disableScissor();
     }
 
     /**
-     * Swaps the flat projection the game has just set for this picture for one with perspective. The picture is
-     * drawn in its own pixels, with the wall's middle at the centre and depth 0, so the eye is put straight out from
-     * there, {@link #FIT} short of where a pixel at that depth would still be a pixel. The blocks themselves are
-     * placed as before.
+     * A projection with perspective for the picture, with the eye straight out from the wall's middle at the centre
+     * of the picture, {@link #FIT} short of where a GUI pixel at that depth would still be a GUI pixel. The eye is
+     * off the screen's centre, so the frustum is off-centre too: at the wall's depth it takes in the whole screen,
+     * {@link #FIT} times bigger about that point, and near and far are a twentieth and twenty times the depth. The
+     * GUI's own view matrix is undone first, so the blocks are placed as they are without perspective.
      */
-    private void lookThroughALens(PoseStack pose) {
-        // The game has moved the origin to the picture's centre, which is all the stack holds yet.
-        Matrix4f placed = pose.last().pose();
-        float halfW = placed.m30(), halfH = placed.m31();
-        float distance = halfH / (float) Math.tan(Math.toRadians(FOV / 2)) / FIT;
-        // Near and far are swapped, as the game's own projections have them: its depth runs from far to near.
-        // 1.21.11 draws with OpenGL alone, whose depth runs from -1 to 1.
-        Matrix4f lens = new Matrix4f()
-                .setPerspective((float) Math.toRadians(FOV), halfW / halfH, distance * 20, distance / 20, false)
+    private static Matrix4f lens(float cx, float cy, int h) {
+        Window window = Minecraft.getInstance().getWindow();
+        float w = window.getGuiScaledWidth(), screen = window.getGuiScaledHeight();
+        float distance = h / 2f / (float) Math.tan(Math.toRadians(FOV / 2)) / FIT;
+        float near = distance / 20, k = near / distance / FIT;
+        return new Matrix4f()
+                .setFrustum(-cx * k, (w - cx) * k, (cy - screen) * k, cy * k, near, distance * 20)
                 .translate(0, 0, -distance)
-                .scale(1, -1, 1)   // the picture's y runs down
-                .translate(-halfW, -halfH, 0);
-        if (perspective == null) perspective = new PerspectiveProjectionMatrixBuffer("PIP - DioramaPip perspective");
-        RenderSystem.setProjectionMatrix(perspective.getBuffer(lens), ProjectionType.PERSPECTIVE);
+                .scale(1, -1, 1)   // the GUI's y runs down
+                .translate(-cx, -cy, 0)
+                .mul(new Matrix4f(RenderSystem.getModelViewMatrix()).invert());
     }
-
-    @Override
-    public void close() {
-        super.close();
-        if (perspective != null) perspective.close();
-        perspective = null;
-    }
-
-    /** The wall turns about the middle of the picture. */
-    @Override
-    protected float getTranslateY(int height, int guiScale) { return height / 2f; }
-
-    @Override
-    protected String getTextureLabel() { return "chroma studio diorama"; }
 }

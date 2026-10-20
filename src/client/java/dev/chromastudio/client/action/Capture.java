@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import dev.chromastudio.client.ARGB;
 import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.Keys;
@@ -22,9 +23,9 @@ import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.ShapeRenderer;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
@@ -32,7 +33,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.shapes.Shapes;
 
 /**
  * Makes a palette from the blocks in a box of the world. Armed from the Palettes tab or by the capture key, it takes
@@ -161,10 +161,10 @@ public final class Capture {
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         pose.pushPose();
         pose.translate(x - cam.x, y - cam.y, z - cam.z);
-        ShapeRenderer.renderShape(pose, buffers.getBuffer(RenderTypes.lines()), Shapes.create(0, 0, 0, sx, sy, sz), 0, 0, 0, OUTLINE,
-                mc.getWindow().getAppropriateLineWidth());
+        LevelRenderer.renderLineBox(pose, buffers.getBuffer(RenderType.lines()), 0, 0, 0, sx, sy, sz,
+                ARGB.red(OUTLINE) / 255f, ARGB.green(OUTLINE) / 255f, ARGB.blue(OUTLINE) / 255f, ARGB.alpha(OUTLINE) / 255f);
         pose.popPose();
-        buffers.endBatch(RenderTypes.lines());
+        buffers.endBatch(RenderType.lines());
     }
 
     /** What a capture came to: a line to show the player, and whether a palette was made. */
@@ -180,8 +180,8 @@ public final class Capture {
         ClientLevel level = mc.level;
         PaletteSink sink = PaletteSink.current();
         if (level == null || sink == null) return new Result(Component.translatable("palettes.chromastudio.no_world"), false);
-        int x0 = Math.min(a.getX(), b.getX()), y0 = Math.max(level.getMinY(), Math.min(a.getY(), b.getY())), z0 = Math.min(a.getZ(), b.getZ());
-        int x1 = Math.max(a.getX(), b.getX()), y1 = Math.min(level.getMaxY(), Math.max(a.getY(), b.getY())), z1 = Math.max(a.getZ(), b.getZ());
+        int x0 = Math.min(a.getX(), b.getX()), y0 = Math.max(level.getMinBuildHeight(), Math.min(a.getY(), b.getY())), z0 = Math.min(a.getZ(), b.getZ());
+        int x1 = Math.max(a.getX(), b.getX()), y1 = Math.min((level.getMaxBuildHeight() - 1), Math.max(a.getY(), b.getY())), z1 = Math.max(a.getZ(), b.getZ());
         // A box wholly above or below the world holds nothing, however wide it is.
         if (y1 < y0) return new Result(Component.translatable("capture.chromastudio.empty"), false);
         // Each side is checked on its own first: three sides typed into the command can multiply past what a long holds.
