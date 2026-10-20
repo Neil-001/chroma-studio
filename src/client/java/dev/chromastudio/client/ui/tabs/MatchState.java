@@ -167,7 +167,7 @@ public final class MatchState {
     public static Metric metric() {
         try {
             return Metric.valueOf(ModSettings.metric);
-        } catch (IllegalArgumentException _) {
+        } catch (IllegalArgumentException ignored) {
             return Metric.OKLAB;
         }
     }

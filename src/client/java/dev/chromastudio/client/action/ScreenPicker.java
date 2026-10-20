@@ -1,7 +1,6 @@
 package dev.chromastudio.client.action;
 
 import com.mojang.blaze3d.buffers.GpuBuffer;
-import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuTexture;
@@ -10,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.function.IntConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -61,7 +60,7 @@ public final class ScreenPicker {
     }
 
     /** Draws the magnifier and the hint, and reads the frame under the cursor or the click. The window calls it in place of drawing itself. */
-    public static void render(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+    public static void render(GuiGraphics g, int mouseX, int mouseY) {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
         frames++;
@@ -78,7 +77,7 @@ public final class ScreenPicker {
         Component hint = Component.translatable("picker.chromastudio.hint");
         int w = font.width(hint) + 8;
         g.fill((g.guiWidth() - w) / 2, 4, (g.guiWidth() + w) / 2, 8 + font.lineHeight, 0xC0000000);
-        g.centeredText(font, hint, g.guiWidth() / 2, 6, 0xFFFFFFFF);
+        g.drawCenteredString(font, hint, g.guiWidth() / 2, 6, 0xFFFFFFFF);
 
         if (seen == null) return;
         // Beside the cursor, never under it, and inside the screen.
@@ -91,9 +90,9 @@ public final class ScreenPicker {
             int cx = x + 1 + i % SIDE * CELL, cy = y + 1 + i / SIDE * CELL;
             g.fill(cx, cy, cx + CELL, cy + CELL, 0xFF000000 | seen[i]);
         }
-        g.outline(x + CELL, y + CELL, CELL + 2, CELL + 2, 0xFFFFFFFF);
+        g.renderOutline(x + CELL, y + CELL, CELL + 2, CELL + 2, 0xFFFFFFFF);
         g.fill(x, y + size, x + textW, y + size + font.lineHeight + 2, 0xC0000000);
-        g.text(font, String.format("#%06X", mean(seen)), x + 2, y + size + 2, 0xFFFFFFFF, false);
+        g.drawString(font, String.format("#%06X", mean(seen)), x + 2, y + size + 2, 0xFFFFFFFF, false);
     }
 
     private static void finish(int rgb) {
@@ -121,9 +120,9 @@ public final class ScreenPicker {
     /** Reads the 3 by 3 pixels around a point given in GUI pixels from the last frame drawn. Near an edge the block of nine stays inside the frame. */
     private static void read(double guiX, double guiY, Pixels then) {
         Minecraft mc = Minecraft.getInstance();
-        RenderTarget target = mc.gameRenderer.mainRenderTarget();
+        RenderTarget target = mc.getMainRenderTarget();
         GpuTexture texture = target.getColorTexture();
-        int bytes = texture == null ? 0 : texture.getFormat().blockSize();
+        int bytes = texture == null ? 0 : texture.getFormat().pixelSize();
         // Only four bytes a pixel is understood here, which is what the game's own frame has.
         if (bytes != 4 || target.width < SIDE || target.height < SIDE) return;
         double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
@@ -136,7 +135,7 @@ public final class ScreenPicker {
                     GpuBuffer.USAGE_COPY_DST | GpuBuffer.USAGE_MAP_READ, (long) SIDE * SIDE * bytes);
             RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(texture, buffer, 0L, () -> {
                 int[] out = new int[SIDE * SIDE];
-                try (GpuBufferSlice.MappedView view = buffer.map(true, false)) {
+                try (GpuBuffer.MappedView view = RenderSystem.getDevice().createCommandEncoder().mapBuffer(buffer, true, false)) {
                     ByteBuffer data = view.data();
                     for (int row = 0; row < SIDE; row++)
                         for (int col = 0; col < SIDE; col++) {

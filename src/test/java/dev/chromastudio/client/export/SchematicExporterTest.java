@@ -24,9 +24,11 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import net.minecraft.SharedConstants;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.render.state.pip.PictureInPictureRenderState;
+import net.minecraft.client.renderer.block.model.BlockModelPart;
+import net.minecraft.client.renderer.block.model.BlockStateModel;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -238,7 +240,7 @@ class SchematicExporterTest {
         Path link = dir.resolve("chroma-six-blocks-strip-2.litematic.tmp");
         try {
             Files.createSymbolicLink(link, first);
-        } catch (IOException | UnsupportedOperationException _) {
+        } catch (IOException | UnsupportedOperationException ignored) {
             return;
         }
         Path second = SchematicExporter.export(ShareString.decode("chroma1:dirt/Six Blocks"), options(Layout.STRIP, false), dir, "Alex").file();
@@ -314,8 +316,9 @@ class SchematicExporterTest {
     private record Platform(Path gameDir) implements ClientPlatform {
         @Override public Path configDir() { return gameDir.resolve("config"); }
         @Override public boolean isModLoaded(String id) { return false; }
-        @Override public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockStateModelPart> out) { }
-        @Override public Material.Baked particleMaterial(BlockStateModel model, BlockState state) { return null; }
+        @Override public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockModelPart> out) { }
+        @Override public TextureAtlasSprite particleIcon(BlockStateModel model, BlockState state) { return null; }
+        @Override public void submitPicture(GuiGraphics g, PictureInPictureRenderState state) { }
         @Override public void sendChatCommand(String command) { }
     }
 }

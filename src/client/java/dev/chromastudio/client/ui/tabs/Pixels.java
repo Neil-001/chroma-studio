@@ -3,7 +3,7 @@ package dev.chromastudio.client.ui.tabs;
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.chromastudio.client.ChromaStudioClient;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
@@ -33,7 +33,7 @@ final class Pixels implements AutoCloseable {
     }
 
     /** Draws it filling a rectangle, with every pixel's alpha scaled by {@code opacity}. */
-    void draw(GuiGraphicsExtractor g, int x, int y, int w, int h, float opacity) {
+    void draw(GuiGraphics g, int x, int y, int w, int h, float opacity) {
         g.blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0, 0, w, h, width, height, width, height, ARGB.white(opacity));
     }
 

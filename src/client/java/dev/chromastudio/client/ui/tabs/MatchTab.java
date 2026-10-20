@@ -56,7 +56,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
@@ -563,7 +563,7 @@ public final class MatchTab extends Tab {
     // ---- Drawing ----
 
     @Override
-    public void render(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta) {
         sync();
         Font font = Minecraft.getInstance().font;
         hovered = null;
@@ -575,23 +575,23 @@ public final class MatchTab extends Tab {
         else panel(g, font, mouseX, mouseY, delta, tip);
 
         if (status != null && Util.getMillis() < statusUntil) {
-            g.text(font, ellipsis(font, status.getString(), statusLine.w() - 4), statusLine.x() + 2, statusLine.y() + 1, TEXT, false);
+            g.drawString(font, ellipsis(font, status.getString(), statusLine.w() - 4), statusLine.x() + 2, statusLine.y() + 1, TEXT, false);
         }
         if (!tip.isEmpty() && !picker.dragging() && !draggingDistance) g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
     }
 
     @Override
-    public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
+    public void renderPinned(GuiGraphics g, Bounds b, float opacity) {
         sync();
         Font font = Minecraft.getInstance().font;
         List<Component> none = new ArrayList<>();
         target(g, font, opacity, -1, -1, none);
-        g.text(font, picker.model.hex(), swatch.right() + 4, swatch.y() + 4, ARGB.multiplyAlpha(TEXT, opacity), false);
+        g.drawString(font, picker.model.hex(), swatch.right() + 4, swatch.y() + 4, ARGB.multiplyAlpha(TEXT, opacity), false);
         results(g, font, opacity, -1, -1, none);
     }
 
     /** The left column but for its widgets: the slot, the swatch, the pickers and the recent colours. */
-    private void target(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
+    private void target(GuiGraphics g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
         Entry entry = MatchState.entry();
         // Fullscreen has no panel of its own, only the blurred world, so everything outside the results gets a backing to be read against.
         g.fill(area.x(), area.y(), results.x() - 1, area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
@@ -624,7 +624,7 @@ public final class MatchTab extends Tab {
                 if (mouseX >= rx && mouseX < rx + cw - 1 && mouseY >= recent.y() && mouseY < recent.bottom()) {
                     tip.add(tr("recent.tip", String.format("#%06X", colours.get(i))));
                 }
-            } else g.outline(rx, recent.y(), cw - 1, recent.h(), ARGB.multiplyAlpha(Theme.CHIP, opacity));
+            } else g.renderOutline(rx, recent.y(), cw - 1, recent.h(), ARGB.multiplyAlpha(Theme.CHIP, opacity));
         }
     }
 
@@ -644,7 +644,7 @@ public final class MatchTab extends Tab {
 
     private static int blocksAt(double t) { return Math.clamp(Math.round(Math.exp(t * Math.log(ModSettings.VIEW_FAR))), 1, ModSettings.VIEW_FAR); }
 
-    private void distance(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, List<Component> tip) {
+    private void distance(GuiGraphics g, Font font, int mouseX, int mouseY, List<Component> tip) {
         Bounds d = distance;
         Minecraft mc = Minecraft.getInstance();
         boolean over = d.contains(mouseX, mouseY) || draggingDistance;
@@ -662,7 +662,7 @@ public final class MatchTab extends Tab {
         Component label = far ? tr("distance.far") : ModSettings.viewingDistance == 1 ? tr("distance.block") : tr("distance.blocks", ModSettings.viewingDistance);
         // The label keeps clear of the handle: on whichever side has the room.
         int lw = font.width(label), lx = kx < d.x() + d.w() / 2 ? d.right() - lw - 4 : d.x() + 4;
-        g.text(font, label, lx, d.y() + 4, TEXT, false);
+        g.drawString(font, label, lx, d.y() + 4, TEXT, false);
         if (d.contains(mouseX, mouseY)) {
             tip.add(tr("distance.tip"));
             tip.add(tr("distance.scale", MatchState.scale().texels).withColor(Theme.TIP_DIM));
@@ -676,7 +676,7 @@ public final class MatchTab extends Tab {
         MatchState.changed();
     }
 
-    private void results(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
+    private void results(GuiGraphics g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
         BlockIndex index = BlockIndex.get();
         Bounds r = results;
         g.fill(r.x(), r.y(), r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.sink(0x60), opacity));
@@ -699,7 +699,7 @@ public final class MatchTab extends Tab {
                     boolean on = over && mouseX >= cx && mouseX < cx + CELL;
                     Thumbnails.draw(g2, m.entry(), m.face(), shown.scale, shown.tint, cx + 2, y + 2, 16, opacity);
                     if (on) {
-                        g2.outline(cx + 1, y + 1, 18, 18, Theme.STRONG);
+                        g2.renderOutline(cx + 1, y + 1, 18, 18, Theme.STRONG);
                         hovered = new Row(RESULT, m.entry(), m.face(), m.distance(), false);
                         describe(hovered, BODY, tip);
                     }
@@ -712,7 +712,7 @@ public final class MatchTab extends Tab {
         if (index.building()) bar(g, r.x(), r.y(), r.w(), index.progress(), opacity);
     }
 
-    private static void bar(GuiGraphicsExtractor g, int x, int y, int w, float progress, float opacity) {
+    private static void bar(GuiGraphics g, int x, int y, int w, float progress, float opacity) {
         g.fill(x, y, x + w, y + 2, ARGB.multiplyAlpha(Theme.CHIP, opacity));
         g.fill(x, y, x + Math.round(w * Math.clamp(progress, 0, 1)), y + 2, ARGB.multiplyAlpha(Theme.HIGHLIGHT, opacity));
     }
@@ -724,7 +724,7 @@ public final class MatchTab extends Tab {
         return mx >= x + w - 13 ? ADD : BODY;
     }
 
-    private void row(GuiGraphicsExtractor g, Font font, Row row, int x, int y, int w, int h, boolean over, float opacity, int mouseX, List<Component> tip) {
+    private void row(GuiGraphics g, Font font, Row row, int x, int y, int w, int h, boolean over, float opacity, int mouseX, List<Component> tip) {
         int zone = over ? zone(row, x, w, mouseX) : -1;
         if (row.type != RESULT) g.fill(x, y, x + w, y + h, ARGB.multiplyAlpha(Theme.sink(0x38), opacity));
         if (over) g.fill(x, y, x + w, y + h, Theme.veil(0x20));
@@ -732,7 +732,7 @@ public final class MatchTab extends Tab {
         if (row.type == MAKE) {
             boolean can = PaletteSink.current() != null;
             Component label = tr("make_palette", BlockIndex.get().materialSet(row.entry).size());
-            g.text(font, label, x + 28, y + 5, can ? (over ? Theme.STRONG : ARGB.multiplyAlpha(Theme.HIGHLIGHT, opacity)) : ARGB.multiplyAlpha(GREYED, opacity), false);
+            g.drawString(font, label, x + 28, y + 5, can ? (over ? Theme.STRONG : ARGB.multiplyAlpha(Theme.HIGHLIGHT, opacity)) : ARGB.multiplyAlpha(GREYED, opacity), false);
             if (over) tip.add(can ? tr("make_palette.tip") : tr("no_palette"));
             return;
         }
@@ -765,21 +765,21 @@ public final class MatchTab extends Tab {
         right -= 15;
         // Every line gives the kind the width of the widest on show, so the columns to its left line up.
         right -= kindWidth;
-        g.text(font, kindName(e.kind().name()), right, y + 5, dim, false);
+        g.drawString(font, kindName(e.kind().name()), right, y + 5, dim, false);
         right -= 10;
         badge(g, right, y + 5, stats.badge(), dim);
         right -= 4;
         if (ModSettings.showDeltaE) {
             String de = deltaE(row.distance, shown.metric);
             right -= font.width(de);
-            g.text(font, de, right, y + 5, text, false);
+            g.drawString(font, de, right, y + 5, text, false);
             right -= 4;
         }
         String name = e.name().getString(), note = e.properties().isEmpty() ? "" : ", " + e.properties();
         String fitted = ellipsis(font, name + note, right - left);
         String shownName = fitted.length() >= name.length() ? name : fitted;
-        g.text(font, shownName, left, y + 5, text, false);
-        if (fitted.length() > name.length()) g.text(font, fitted.substring(name.length()), left + font.width(name), y + 5, dim, false);
+        g.drawString(font, shownName, left, y + 5, text, false);
+        if (fitted.length() > name.length()) g.drawString(font, fitted.substring(name.length()), left + font.width(name), y + 5, dim, false);
 
         if (ModSettings.biomeMode == BiomeMode.ALL && e.tinted()) strip(g, e, row.face, left, y + h - 3, Math.max(8, right - left), opacity);
         if (over) {
@@ -791,7 +791,7 @@ public final class MatchTab extends Tab {
     private static boolean sameBlock(Entry a, Entry b) { return a != null && b != null && a.id().equals(b.id()); }
 
     /** A small arrowhead: down when its set is open, right when shut. */
-    private static void triangle(GuiGraphicsExtractor g, int x, int cy, boolean open, int colour) {
+    private static void triangle(GuiGraphics g, int x, int cy, boolean open, int colour) {
         for (int i = 0; i < 3; i++) {
             if (open) g.fill(x + i, cy - 1 + i, x + 5 - i, cy + i, colour);
             else g.fill(x + i, cy - 2 + i, x + i + 1, cy + 3 - i, colour);
@@ -799,8 +799,8 @@ public final class MatchTab extends Tab {
     }
 
     /** The texture badge as a little picture: one flat square, a few specks, or a checker. */
-    private static void badge(GuiGraphicsExtractor g, int x, int y, Badge badge, int colour) {
-        g.outline(x, y, 7, 7, colour);
+    private static void badge(GuiGraphics g, int x, int y, Badge badge, int colour) {
+        g.renderOutline(x, y, 7, 7, colour);
         if (badge == Badge.FLAT) return;
         for (int j = 0; j < 5; j++)
             for (int i = 0; i < 5; i++) {
@@ -810,8 +810,8 @@ public final class MatchTab extends Tab {
     }
 
     /** The tints a block takes across every biome, darkest first, as a strip under its name. */
-    private void strip(GuiGraphicsExtractor g, Entry e, Face face, int x, int y, int w, float opacity) {
-        int[] tints = ranges.computeIfAbsent(e, _ -> {
+    private void strip(GuiGraphics g, Entry e, Face face, int x, int y, int w, float opacity) {
+        int[] tints = ranges.computeIfAbsent(e, key -> {
             int[] all = Tints.tintsAcross(e, face).stream().filter(t -> t != TintContext.NO_TINT).mapToInt(Integer::intValue).distinct().toArray();
             return Arrays.stream(all).boxed().sorted(Comparator.comparingDouble(t -> Color.ofRgb(t).oklch().l())).mapToInt(Integer::intValue).toArray();
         });
@@ -849,11 +849,11 @@ public final class MatchTab extends Tab {
         tip.add(tr("row.recipe", Keys.RECIPE.getTranslatedKeyMessage()).withColor(RecipeViewers.available() ? Theme.TIP_DIM : Theme.TIP_GREYED));
     }
 
-    private void panel(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, float delta, List<Component> tip) {
+    private void panel(GuiGraphics g, Font font, int mouseX, int mouseY, float delta, List<Component> tip) {
         Bounds r = results;
         g.fill(r.x(), r.y(), r.right(), r.bottom(), PANEL);
-        g.outline(r.x(), r.y(), r.w(), r.h(), BORDER);
-        g.text(font, tr("panel." + panel.name().toLowerCase(Locale.ROOT)), r.x() + 5, r.y() + 3, TEXT, false);
+        g.renderOutline(r.x(), r.y(), r.w(), r.h(), BORDER);
+        g.drawString(font, tr("panel." + panel.name().toLowerCase(Locale.ROOT)), r.x() + 5, r.y() + 3, TEXT, false);
         Bounds close = closeButton();
         boolean overClose = close.contains(mouseX, mouseY);
         int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = overClose ? Theme.STRONG : DIM;
@@ -868,7 +868,7 @@ public final class MatchTab extends Tab {
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
                     String id = listed.get(i).identifier().toString();
                     if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
-                    g2.text(font, ellipsis(font, id, w - 8), x + 4, y + 2, id.equals(ModSettings.biome) ? Theme.HIGHLIGHT : TEXT, false);
+                    g2.drawString(font, ellipsis(font, id, w - 8), x + 4, y + 2, id.equals(ModSettings.biome) ? Theme.HIGHLIGHT : TEXT, false);
                 });
                 if (listed.isEmpty()) Widgets.centred(g, tr("biome.none"), r.x() + r.w() / 2, r.y() + r.h() / 2, DIM);
             }
@@ -878,8 +878,8 @@ public final class MatchTab extends Tab {
                     if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
                     Widgets.swatch(g2, x + 4, y + 3, 12, 12, fit.colour.rgb());
                     String de = deltaE(fit.distance, MatchState.metric());
-                    g2.text(font, de, x + w - 4 - font.width(de), y + 5, DIM, false);
-                    g2.text(font, ellipsis(font, fit.biome.identifier().toString(), w - 32 - font.width(de)), x + 20, y + 5, TEXT, false);
+                    g2.drawString(font, de, x + w - 4 - font.width(de), y + 5, DIM, false);
+                    g2.drawString(font, ellipsis(font, fit.biome.identifier().toString(), w - 32 - font.width(de)), x + 20, y + 5, TEXT, false);
                     if (over) tip.add(tr("find_biome.use"));
                 });
                 if (fits.isEmpty()) {
@@ -892,8 +892,8 @@ public final class MatchTab extends Tab {
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
                     ItemStack stack = dyes.get(i);
                     if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
-                    g2.fakeItem(stack, x + 3, y + 1);
-                    g2.text(font, ellipsis(font, stack.getHoverName().getString(), w - 28), x + 24, y + 5, noGive.isPresent() ? GREYED : TEXT, false);
+                    g2.renderFakeItem(stack, x + 3, y + 1);
+                    g2.drawString(font, ellipsis(font, stack.getHoverName().getString(), w - 28), x + 24, y + 5, noGive.isPresent() ? GREYED : TEXT, false);
                     if (over) tip.add(noGive.isPresent() ? noGive.get() : tr("dye.give", MatchState.colour().hex()));
                 });
             }
@@ -1037,7 +1037,7 @@ public final class MatchTab extends Tab {
 
     private void armEyedropper() {
         Eyedropper.arm();
-        Minecraft.getInstance().gui.setScreen(null);
+        Minecraft.getInstance().setScreen(null);
     }
 
     @Override

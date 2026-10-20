@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
@@ -91,11 +91,11 @@ public final class SettingsScreen extends Screen {
         int room = colW - 3 * GAP, wanted = w[0] + w[1] + w[2] + w[3];
         if (wanted > room) for (int i = 0; i < w.length; i++) w[i] = w[i] * room / wanted;
         int by = height - 22, right = left + colW;
-        addRenderableWidget(Button.builder(keys, _ -> openKeys()).bounds(left, by, w[0], 18).tooltip(Tooltip.create(tr("keys.tip"))).build());
-        addRenderableWidget(Button.builder(done, _ -> onClose()).bounds(right - w[3], by, w[3], 18).build());
-        addRenderableWidget(Button.builder(resetAll, _ -> open(new Confirm())).bounds(right - w[3] - GAP - w[2], by, w[2], 18)
+        addRenderableWidget(Button.builder(keys, button -> openKeys()).bounds(left, by, w[0], 18).tooltip(Tooltip.create(tr("keys.tip"))).build());
+        addRenderableWidget(Button.builder(done, button -> onClose()).bounds(right - w[3], by, w[3], 18).build());
+        addRenderableWidget(Button.builder(resetAll, button -> open(new Confirm())).bounds(right - w[3] - GAP - w[2], by, w[2], 18)
                 .tooltip(Tooltip.create(tr("reset_all.tip"))).build());
-        Button undo = addRenderableWidget(Button.builder(undoAll, _ -> {
+        Button undo = addRenderableWidget(Button.builder(undoAll, button -> {
             ModSettings.restore(atOpen);
             applied(true);
         }).bounds(right - w[3] - 2 * GAP - w[2] - w[1], by, w[1], 18).build());
@@ -116,7 +116,7 @@ public final class SettingsScreen extends Screen {
         undos.keySet().removeIf(group -> !group.isEmpty());
         Map<String, List<String>> rows = new LinkedHashMap<>();
         ModSettings.GROUPS.forEach((group, names) -> rows.put(group, names.stream().filter(name -> !ModSettings.WINDOW_MEMORY.contains(name)).toList()));
-        rows.computeIfPresent("integrations", (_, names) -> Stream.concat(Stream.of(MOD_KEYS), names.stream()).toList());
+        rows.computeIfPresent("integrations", (key, names) -> Stream.concat(Stream.of(MOD_KEYS), names.stream()).toList());
         Map<String, List<String>> shown = SettingsFilter.filter(rows, search, SettingsScreen::text);
         noRows = shown.isEmpty();
 
@@ -196,8 +196,8 @@ public final class SettingsScreen extends Screen {
         }
 
         @Override
-        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            g.textWithWordWrap(font, tr("reset_all.confirm"), in.x(), in.y(), in.w(), Theme.TEXT, false);
+        protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
+            g.drawWordWrap(font, tr("reset_all.confirm"), in.x(), in.y(), in.w(), Theme.TEXT, false);
         }
 
         @Override
@@ -219,7 +219,7 @@ public final class SettingsScreen extends Screen {
         }
 
         @Override
-        protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+        protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
             Widgets.swatch(g, getX(), getY(), width, height, Theme.base(ThemeChoice.CUSTOM, (String) ModSettings.get(setting)));
         }
 
@@ -288,7 +288,7 @@ public final class SettingsScreen extends Screen {
     /** Opens the game's key binds screen. It has no way to show one category, so this scrolls its list to the mod's heading. */
     private void openKeys() {
         KeyBindsScreen keys = new KeyBindsScreen(this, minecraft.options);
-        minecraft.gui.setScreen(keys);
+        minecraft.setScreen(keys);
         String heading = Keys.CATEGORY.label().getString();
         for (GuiEventListener child : keys.children()) {
             if (!(child instanceof KeyBindsList binds)) continue;
@@ -305,8 +305,8 @@ public final class SettingsScreen extends Screen {
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-        super.extractBackground(g, mouseX, mouseY, delta);
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float delta) {
+        super.renderBackground(g, mouseX, mouseY, delta);
         g.fill(0, 0, width, height, Theme.WINDOW);
         g.fill(0, 0, width, TOP - 1, Theme.BAR);
         g.fill(0, height - BOTTOM + 1, width, height, Theme.BAR);
@@ -315,7 +315,7 @@ public final class SettingsScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         Theme.sync();
         if (stale) buildList();
         undos.forEach((group, undo) -> {
@@ -323,12 +323,12 @@ public final class SettingsScreen extends Screen {
         });
         // Under a popup nothing reacts to the cursor.
         int mx = popup == null ? mouseX : -1, my = popup == null ? mouseY : -1;
-        super.extractRenderState(g, mx, my, delta);
+        super.render(g, mx, my, delta);
         int left = left();
-        g.text(font, font.plainSubstrByWidth(title.getString(), searchField.getX() - 8 - left), left, 8, Theme.STRONG, false);
+        g.drawString(font, font.plainSubstrByWidth(title.getString(), searchField.getX() - 8 - left), left, 8, Theme.STRONG, false);
         list.render(g, mx, my, delta);
         Component none = tr("search.none");
-        if (noRows) g.text(font, none, (width - font.width(none)) / 2, TOP + 16, Theme.DIM, false);
+        if (noRows) g.drawString(font, none, (width - font.width(none)) / 2, TOP + 16, Theme.DIM, false);
         if (popup != null) popup.render(g, mouseX, mouseY, delta);
     }
 
@@ -386,5 +386,5 @@ public final class SettingsScreen extends Screen {
     }
 
     @Override
-    public void onClose() { minecraft.gui.setScreen(parent); }
+    public void onClose() { minecraft.setScreen(parent); }
 }

@@ -27,8 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.renderer.block.BlockStateModelSet;
-import net.minecraft.client.renderer.block.FluidStateModelSet;
+import net.minecraft.client.renderer.block.BlockModelShaper;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -92,7 +91,7 @@ public final class BlockIndex {
     public static PreparableReloadListener install(Collection<String> mods) {
         INSTANCE.mods = List.copyOf(mods);
         ChromaCommand.SUBCOMMANDS.add(DebugCommand::attach);
-        return (ResourceManagerReloadListener) _ -> {
+        return (ResourceManagerReloadListener) manager -> {
             if (!INSTANCE.ready() || IndexOptions.current().rebuildOnReload()) INSTANCE.start(true);
         };
     }
@@ -132,12 +131,12 @@ public final class BlockIndex {
         Minecraft mc = Minecraft.getInstance();
         IndexOptions options = IndexOptions.current();
         // The models and the rest are read on the client thread, so they all come from the same reload.
-        record Scene(BlockStateModelSet models, FluidStateModelSet fluids, BlockColors colours, ResourceManager resources, List<String> packs) {}
-        Scene scene = mc.submit(() -> new Scene(mc.getModelManager().getBlockStateModelSet(), mc.getModelManager().getFluidStateModelSet(),
+        record Scene(BlockModelShaper models, BlockColors colours, ResourceManager resources, List<String> packs) {}
+        Scene scene = mc.submit(() -> new Scene(mc.getModelManager().getBlockModelShaper(),
                 mc.getBlockColors(), mc.getResourceManager(), List.copyOf(mc.getResourcePackRepository().getSelectedIds()))).get(1, TimeUnit.MINUTES);
         long waited = System.nanoTime() - started;
         Path cache = TextureCache.file(TextureCache.folder(options), scene.packs, mods, options);
-        IndexBuilder builder = new IndexBuilder(scene.models, scene.fluids, scene.colours, scene.resources,
+        IndexBuilder builder = new IndexBuilder(scene.models, scene.colours, scene.resources,
                 useCache ? TextureCache.load(cache) : new HashMap<>(), options);
         int cached = builder.frames.size();
 
@@ -180,7 +179,7 @@ public final class BlockIndex {
             Entry first = entries.getFirst();
             byBlock.put(first.block(), entries);
             namespaces.add(first.id().substring(0, first.id().indexOf(':')));
-            materials.computeIfAbsent(MaterialSets.base(first.id()), _ -> new ArrayList<>()).add(first);
+            materials.computeIfAbsent(MaterialSets.base(first.id()), base -> new ArrayList<>()).add(first);
         }
         Comparator<Entry> inSet = Comparator.comparingInt(e -> MaterialSets.order(e.id()));
         for (List<Entry> set : materials.values()) set.sort(inSet.thenComparing(Entry::id));
@@ -320,7 +319,7 @@ public final class BlockIndex {
             if (!q.scores(f)) continue;
             Sampled face = e.sampled(f, q.tint);
             if (!q.keeps(face)) continue;
-            double[] byFace = scores.computeIfAbsent(face, _ -> {
+            double[] byFace = scores.computeIfAbsent(face, key -> {
                 double[] fresh = new double[Entry.SIDES.length];
                 Arrays.fill(fresh, Double.NaN);
                 return fresh;

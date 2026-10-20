@@ -45,7 +45,7 @@ public final class ChromaCommand {
     }
 
     /** Prints a line in the player's own chat. */
-    public static void say(Component message) { Minecraft.getInstance().gui.hud.getChat().addClientSystemMessage(message); }
+    public static void say(Component message) { Minecraft.getInstance().gui.getChat().addMessage(message); }
 
     /**
      * What the player asked for: an Integer for a colour, packed 0xRRGGBB; a String for a block, as its full id; or a

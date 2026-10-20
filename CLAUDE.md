@@ -1,16 +1,16 @@
 # Chroma Studio
 
-A client-only Fabric and NeoForge mod for Minecraft Java 26.2. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. It places nothing in the world and has no server side.
+A client-only Fabric and NeoForge mod for Minecraft Java 1.21.11. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. It places nothing in the world and has no server side.
 
 ## Commands
 
-Needs JDK 25. Versions are in `gradle.properties`. Run build and test after every change.
+Needs JDK 21 or newer; the code compiles for Java 21. Versions are in `gradle.properties`. Run build and test after every change.
 
-- `./gradlew build` builds both jars in `fabric/build/libs/` and `neoforge/build/libs/` and runs the tests. It compiles with `-Xlint:all,-classfile` and must stay free of warnings. The IDE's own, such as unused imports, count too: name a lambda or catch parameter that isn't used `_`.
+- `./gradlew build` builds both jars in `fabric/build/libs/` and `neoforge/build/libs/` and runs the tests. It compiles with `-Xlint:all,-classfile` and must stay free of warnings. The IDE's own, such as unused imports, count too. Java 21 has no unnamed `_` parameters, so call an unused catch parameter `ignored` and give an unused lambda parameter a plain name.
 - `./gradlew :fabric:test` runs the JUnit tests for the core and for client classes that don't need the game running, such as `ModSettings`. Only Fabric hosts them. `GameIndexTest` loads the game's registries and vanilla assets, but no client, so no models. `-Dchroma.timing=true` also runs the timing tests.
-- `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` starts a dev client. The Fabric one runs with Litematica and MaLiLib, to try the bridge, and Mod Menu, to try the settings screen from it. `-Pviewer=jei` or `-Pviewer=rei` adds that recipe viewer to either dev client; both need a newer loader API than the builds' minimum, so add `-Pfabric_version=0.161.0+26.2` or `-Pneoforge_version=26.2.0.93`, as CI uses. There is no `runServer`. The game opens its window on a Wayland desktop whenever there is one, whatever `DISPLAY` says. To run it on a virtual display, unset `WAYLAND_DISPLAY`.
+- `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` starts a dev client. The Fabric one runs with Litematica and MaLiLib, to try the bridge, and Mod Menu, to try the settings screen from it. `-Pviewer=jei` or `-Pviewer=rei` adds that recipe viewer to either dev client; both need a newer loader API than the builds' minimum, so add `-Pfabric_version=0.141.6+1.21.11` or `-Pneoforge_version=21.11.48`, as CI uses. There is no `runServer`. The game opens its window on a Wayland desktop whenever there is one, whatever `DISPLAY` says. To run it on a virtual display, unset `WAYLAND_DISPLAY`.
 
-Both jars target 26.2 only. This branch is `main` ported back to 26.2, which still ran on GLFW and shipped tinyfd; the lines under "Minecraft rules" say what that changes. Minecraft is unobfuscated, so use its own names without mappings. Builds use the minimum supported Fabric API and NeoForge versions; CI also compiles against newer ones.
+Both jars target 1.21.11 only. This branch is `main` ported back to 1.21.11, which is obfuscated: use Mojang's names, which Fabric's `fabric-loom-remap` plugin maps with `loom.officialMojangMappings()` and remaps the jar from, and which NeoForge runs on as they are. Builds use the minimum supported Fabric API and NeoForge versions; CI also compiles against newer ones. The lines under "Minecraft rules" say what else this version changes.
 
 ## Layout and boundaries
 
@@ -20,12 +20,12 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
   - `core/color` is the colour maths, and what a texture is summed up as: `TextureStats`, `Distribution`, `Badge`, `Scale`, `Viewing` and `Shading`.
   - `core/palette` has `Palette`, `ShareString`, `PaletteCodec` for the JSON, `Ramp` and `Gradient`, `Generator`, `Analyzer` and `WorldEditPattern`.
   - `core/export` has `Arrangement`, which lays a palette out, and `LitematicBits`.
-- Only `fabric/src/` and `neoforge/src/` may import their loader's classes. Shared client code uses `ClientPlatform`; changes to that contract must go into both loaders. `ClientPlatform.modelParts` and `particleMaterial` read a block's model for the index, because NeoForge deprecates the game's methods that take no world. Each loader also has these hooks, so a new one goes into both:
+- Only `fabric/src/` and `neoforge/src/` may import their loader's classes. Shared client code uses `ClientPlatform`; changes to that contract must go into both loaders. `ClientPlatform.modelParts` and `particleIcon` read a block's model for the index, because NeoForge deprecates the game's methods that take no world. `ClientPlatform.submitPicture` asks for a picture-in-picture, because the game keeps the GUI's render state to itself: Fabric opens the field and NeoForge adds a method. Each loader also has these hooks, so a new one goes into both:
   - `ChromaStudioClient.init` at client start, which loads the settings, creates the keys and registers the tabs and `ExportCommand`. The loader then registers `Keys.ALL` and `Keys.CATEGORY`, and calls `ChromaStudioClient.tick` at the end of every client tick.
   - The HUD layer goes to `Hud.render`, the client command event to `ChromaCommand.build()`, the item tooltip event to `Tooltips.append`, and the settings entry (Mod Menu's entrypoint, NeoForge's `IConfigScreenFactory`) to `SettingsScreen`.
   - Every system message goes to `HotbarFill.hidesFeedback`, and stays out of chat when it returns true: NeoForge from `ClientChatReceivedEvent.System`, Fabric from `ClientReceiveMessageEvents.ALLOW_GAME`.
   - The reload listener that `BlockIndex.install` gives it, and `BlockIndex.worldJoined` when the player joins.
-  - Its extra world geometry goes to `Capture.render`, and it registers `DioramaPip` as a picture-in-picture renderer.
+  - `Capture.render` is called after the game has drawn the entities, and it registers `DioramaPip` as a picture-in-picture renderer: Fabric through `SpecialGuiElementRegistry`, NeoForge through `RegisterPictureInPictureRenderersEvent`.
   - JEI finds `JeiHook` on Fabric through the `jei_mod_plugin` entrypoint and on NeoForge by its annotation.
 - The mod is client-only. Fabric's `environment` is `client` with only a `client` entrypoint. NeoForge's one `@Mod` class has `dist = Dist.CLIENT`, and the mod registers no payloads, so a server never checks for it. Don't add a server entrypoint, a payload or a registry entry.
 - There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
@@ -39,8 +39,8 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 - `PaletteStore` keeps the player's palettes and reads the bundled presets. A new preset is a JSON file in `assets/chromastudio/presets/`, its name in `PaletteStore.PRESETS` and a `preset.chromastudio.<file>` key.
 - A new `/chroma` subcommand goes in through `ChromaCommand.SUBCOMMANDS`. `/chroma debug <block id>` prints what the index holds for a block.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
-- Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them. Keep every Litematica call in `LitematicaBridge.Calls`, and JEI's and REI's each in its own inner class of `RecipeViewers`.
-- NeoForge compiles against Litematica's Fabric jars, because Forgematica keeps the package and class names and registers the id `litematica` too. Its compile path also has Fabric Loader's jar, only so the compiler can read the `@Environment` annotation on REI's classes; nothing may import from it.
+- Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. NeoForge compiles the bridge against Forgematica and MaFgLib, Litematica's and MaLiLib's NeoForge ports, from Modrinth's maven: Litematica's own Fabric jars carry intermediary names on this version. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them. Keep every Litematica call in `LitematicaBridge.Calls`, and JEI's and REI's each in its own inner class of `RecipeViewers`.
+- Forgematica keeps Litematica's package and class names and registers the id `litematica` too, so the bridge is one class for both loaders. NeoForge's compile path also has Fabric Loader's jar, only so the compiler can read the `@Environment` annotation on REI's classes; nothing may import from it.
 - `en_us.json` is written by hand. The nine other language files are generated, each with a `_comment` key saying so. `LangTest` fails when one lacks a key, has one English doesn't, or fills in different placeholders, so a new English key needs its nine translations in the same change.
 - `listing/README.md` says what the listing's files are for. `listing/description.md` is Modrinth's page and the source; `listing/art/curseforge.py` writes `listing/curseforge.html` from it for CurseForge, and CI fails when the two differ. Both sites load the pictures from `main`.
 
@@ -52,7 +52,8 @@ Both loaders compile the shared `src/main` and `src/client` code with their own 
 2. `IndexBuilder` walks a block's states and reads each face's textures off its model. States with the same textures on every face are one `Entry`, and a block keeps at most `statesCap` of them.
 3. `Textures` brings each sprite down to one 16 by 16 frame, and `TextureCache` keeps those on disk. It holds pixels, not statistics, which take about 0.1 s to work out again.
 4. `TextureStats` sums each face up at 16, 8, 4, 2 and 1 texels per side, each scale as a `Distribution` in OKLab.
-5. Statistics are cached untinted, and `Sampled` multiplies the tint in at query time.
+5. Statistics are cached untinted, and `Sampled` multiplies the tint in at query time. 1.21.11 has no `BlockTintSource`: a `TintSource` is the block colours asked for one tint index, with the state, world and position, as the game asks them for a quad.
+6. 1.21.11 has no fluid models. Water and lava are read by their sprite names, `block/water_still` and the rest, with water tinted through the block colours; a modded fluid is read like a block, from its particle texture.
 
 `BlockIndex.closest(target, query)` scores a face by the earth mover's distance between the target's `Distribution` and the face's, at the scale `Viewing` gives the viewing distance. A flat colour is a one-point distribution, so that reduces to the mean per-pixel ΔE. `IndexOptions.current()` is a build's view of the settings, and `BlockIndex.version()` changes with every finished build.
 
@@ -75,8 +76,10 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 
 ## Minecraft rules
 
-- The game has no `BlockRenderDispatcher`. A block is drawn through `BlockModelResolver` and `BlockModelRenderState`.
-- A tint comes from `BlockTintSource.colorInWorld(state, getter, pos)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
+- A block's model comes from `BlockModelShaper`, as `BlockStateModel` with `BlockModelPart`s, and a quad holds its `sprite()` and `tintIndex()` itself. The diorama submits its blocks to the game's `FeatureRenderDispatcher` and has it draw them, as the game's own pictures do: a picture's `renderToTexture` gets only a pose, and the ways to draw a block straight into the buffers are deprecated.
+- The GUI is drawn through `GuiGraphics`, with `render` and `renderBackground` on a screen, `renderWidget` and `renderContents` on a widget, and `drawString`, `drawCenteredString`, `drawWordWrap`, `renderOutline` and `renderFakeItem` for the drawing itself. The open screen is `mc.screen`, set with `mc.setScreen`.
+- A state's properties and values come as a map, `BlockState.getValues()`, their types apart; `IndexBuilder.valueName` names a value.
+- A tint comes from `BlockColors.getColor(state, getter, pos, tintIndex)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
 - The game darkens a block's faces by fixed factors: top 1.0, north and south 0.8, east and west 0.6, bottom 0.5. `Eyedropper` reads the index, not the screen, so its colour is the face unshaded.
 - The creative tabs can't be filled before a world has loaded. Until `BlockIndex.worldJoined`, every block with an item counts as listed.
 - Signs and beds have block models and are matched as any block.
@@ -118,8 +121,8 @@ The mod never places or changes blocks in the world. What it does to the game go
 - Spread, which `Badge` goes by, can't order every texture as the eye does: wool, gravel and granite come out grainy.
 - A block a block entity draws is matched by its particle texture, so its colour is only a guess.
 - The cache can't tell that a loaded pack's files were changed in place. Refresh on the settings screen reads every image again.
-- `Capture` only counts loaded chunks, and no exported layout has a side past 256 blocks.
-- EMI has no 26.2 release, so `RecipeViewers` calls it by name through reflection, and that path hasn't been run.
+- `Capture` only counts loaded chunks, and no exported layout has a side past 256 blocks. Its outline is drawn straight to the game's buffers after the entities, as 1.21.11 has no later hook for a mod's lines, so water in front of it hides it.
+- `RecipeViewers` calls EMI by name through reflection, as on `main`, and that path hasn't been run.
 - Hiding command replies is a best effort. When it isn't certain a line answers the mod's command, the line shows.
 - Left out on purpose: placement, world editing, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.
 

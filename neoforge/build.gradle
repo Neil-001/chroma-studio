@@ -3,10 +3,15 @@ plugins {
 }
 
 repositories {
-	maven {
-		name = 'Masa'
-		url = 'https://masa.dy.fi/maven/sakura-ryoko'
-		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
+	// Forgematica and MaFgLib have no maven of their own; Modrinth serves every project's files as one.
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Modrinth'
+				url = 'https://api.modrinth.com/maven'
+			}
+		}
+		filter { includeGroup 'maven.modrinth' }
 	}
 	exclusiveContent {
 		forRepository {
@@ -68,10 +73,11 @@ sourceSets {
 }
 
 dependencies {
-	// Litematica's Fabric jars, only to compile the bridge against. Forgematica keeps the same package and class names,
-	// and Minecraft's names are the same on both loaders.
-	compileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
-	compileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
+	// Forgematica and MaFgLib, Litematica's and MaLiLib's NeoForge ports, only to compile the bridge against. They keep
+	// Litematica's package and class names and register the id litematica, and carry Mojang's names, which Litematica's
+	// own Fabric jars don't on 1.21.11.
+	compileOnly("maven.modrinth:forgematica:${project.forgematica_version}") { transitive = false }
+	compileOnly("maven.modrinth:mafglib:${project.mafglib_version}") { transitive = false }
 	// The recipe viewers' APIs, only to compile RecipeViewers and JEI's plugin class against. JEI's is the loader-neutral jar.
 	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
 	compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:${project.rei_version}") { transitive = false }

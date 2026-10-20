@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.chromastudio.client.ui.Bounds;
 import net.minecraft.SharedConstants;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.Bootstrap;
 import org.junit.jupiter.api.BeforeAll;
@@ -21,7 +21,7 @@ class PanelTabTest {
     private static final class Plain extends PanelTab {
         Plain() { super("plain"); }
         @Override protected void layout(Bounds b) {}
-        @Override protected void draw(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {}
+        @Override protected void draw(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta) {}
         void show() { open(new Dialog(Component.literal("A dialog"), 120, 60) { @Override protected void build(Bounds in) {} }); }
         boolean showing() { return dialogOpen(); }
         boolean panel;

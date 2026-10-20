@@ -90,7 +90,7 @@ public final class Theme {
             case CUSTOM -> {
                 try {
                     yield Color.fromHex(custom).rgb();
-                } catch (IllegalArgumentException _) {
+                } catch (IllegalArgumentException ignored) {
                     yield DEFAULT_BASE;
                 }
             }

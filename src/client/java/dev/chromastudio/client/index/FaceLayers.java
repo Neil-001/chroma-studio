@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.world.level.block.state.BlockState;
 
 /** The textures on one face of one block state, and how they combine into what the face looks like. */
@@ -18,7 +17,7 @@ final class FaceLayers {
      * @param source what gives the tint, or null when the texture isn't tinted
      * @param area how much of the face its quads cover, in blocks squared
      */
-    record Layer(String sprite, Sampled plain, int tintIndex, BlockTintSource source, double area) {}
+    record Layer(String sprite, Sampled plain, int tintIndex, TintSource source, double area) {}
 
     // A quad this close to a whole face is an overlay on the ones before it.
     private static final double WHOLE = 0.99;

@@ -308,7 +308,7 @@ public final class ModSettings {
             Files.writeString(tmp, write(), StandardCharsets.UTF_8);
             try {
                 Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (IOException _) {
+            } catch (IOException ignored) {
                 Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
@@ -327,7 +327,7 @@ public final class ModSettings {
             JsonElement root = JsonParser.parseString(json);
             if (!root.isJsonObject()) return false;
             o = root.getAsJsonObject();
-        } catch (RuntimeException _) {
+        } catch (RuntimeException ignored) {
             return false;
         }
         for (String name : new ArrayList<>(FIELDS.keySet())) {
@@ -340,7 +340,7 @@ public final class ModSettings {
             } else if (type == int.class || type == double.class) {
                 if (!p.isNumber()) continue;
                 double v;
-                try { v = p.getAsDouble(); } catch (NumberFormatException _) { continue; }
+                try { v = p.getAsDouble(); } catch (NumberFormatException ignored) { continue; }
                 // Unlike set(), a number outside the limits isn't pulled inside them: it gets the default.
                 if (v >= min(name) && v <= max(name) && (type == double.class || v == Math.rint(v))) set(name, v);   // NaN fails the comparisons
             } else if (p.isString()) {

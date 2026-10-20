@@ -1,7 +1,7 @@
 package dev.chromastudio.client.ui;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -42,16 +42,16 @@ abstract class Popup {
     protected abstract void build(Bounds in);
 
     /** Draws what isn't a control. */
-    protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {}
+    protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {}
 
     void close() { onClose.run(); }
 
-    final void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+    final void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         g.fill(0, 0, g.guiWidth(), g.guiHeight(), Theme.SCRIM);
         g.fill(box.x(), box.y(), box.right(), box.bottom(), Theme.PANEL);
         g.fill(box.x(), box.y(), box.right(), box.y() + TITLE_H, Theme.BAR);
-        g.outline(box.x(), box.y(), box.w(), box.h(), Theme.BORDER);
-        g.text(Minecraft.getInstance().font, title, box.x() + 5, box.y() + 3, Theme.TEXT, false);
+        g.renderOutline(box.x(), box.y(), box.w(), box.h(), Theme.BORDER);
+        g.drawString(Minecraft.getInstance().font, title, box.x() + 5, box.y() + 3, Theme.TEXT, false);
         draw(g, inside(), mouseX, mouseY);
         widgets.render(g, mouseX, mouseY, delta);
     }

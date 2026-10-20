@@ -28,6 +28,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 
 /**
  * Turns a palette's entries into the game's blocks and the index's entries and back, and reads the settings the
@@ -60,8 +61,8 @@ public final class PaletteBlocks {
     public static PaletteEntry of(BlockState state) {
         BlockState byDefault = state.getBlock().defaultBlockState();
         List<String> properties = new ArrayList<>();
-        state.getValues().forEach(v -> {
-            if (!v.value().equals(byDefault.getValue(v.property()))) properties.add(v.property().getName() + "=" + v.valueName());
+        state.getValues().forEach((property, value) -> {
+            if (!value.equals(byDefault.getValue(property))) properties.add(property.getName() + "=" + valueName(property, value));
         });
         return new PaletteEntry(BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(), String.join(",", properties));
     }
@@ -113,7 +114,7 @@ public final class PaletteBlocks {
     public static Metric metric() {
         try {
             return Metric.valueOf(ModSettings.metric);
-        } catch (IllegalArgumentException _) {
+        } catch (IllegalArgumentException ignored) {
             return Metric.OKLAB;
         }
     }
@@ -164,4 +165,8 @@ public final class PaletteBlocks {
         }
         return out;
     }
+
+    /** A value's name in the game's form. 1.21.11 keeps a state's properties and values in a map, their types apart. */
+    @SuppressWarnings("unchecked")
+    private static <T extends Comparable<T>> String valueName(Property<T> property, Comparable<?> value) { return property.getName((T) value); }
 }

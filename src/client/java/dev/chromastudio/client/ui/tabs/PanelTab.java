@@ -8,7 +8,7 @@ import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -59,7 +59,7 @@ abstract class PanelTab extends Tab {
     protected abstract void layout(Bounds b);
 
     /** Draws what isn't a control. The cursor is off screen while a dialog is open. */
-    protected abstract void draw(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta);
+    protected abstract void draw(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta);
 
     protected final void open(Dialog d) {
         dialog = d;
@@ -89,7 +89,7 @@ abstract class PanelTab extends Tab {
     protected final int noteColour() { return noteColour; }
 
     @Override
-    public final void render(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
+    public final void render(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta) {
         int mx = dialog == null ? mouseX : -1, my = dialog == null ? mouseY : -1;
         draw(g, b, mx, my, delta);
         widgets.render(g, mx, my, delta);
@@ -101,7 +101,7 @@ abstract class PanelTab extends Tab {
     }
 
     /** Draws over the controls, for what scrolls in its own group. */
-    protected void drawOver(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {}
+    protected void drawOver(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta) {}
 
     protected boolean clicked(MouseButtonEvent e, boolean doubled) { return false; }
     protected boolean released(MouseButtonEvent e) { return false; }

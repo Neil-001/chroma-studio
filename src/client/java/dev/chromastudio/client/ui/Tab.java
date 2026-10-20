@@ -1,6 +1,6 @@
 package dev.chromastudio.client.ui;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -19,10 +19,10 @@ public abstract class Tab {
     public abstract void init(Bounds b);
 
     /** Drawing is clipped to {@code b}; tooltips aren't. */
-    public abstract void render(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta);
+    public abstract void render(GuiGraphics g, Bounds b, int mouseX, int mouseY, float delta);
 
     /** Draws the tab while the window is pinned: read-only, over the world, with every colour's alpha scaled by {@code opacity}. */
-    public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {}
+    public void renderPinned(GuiGraphics g, Bounds b, float opacity) {}
 
     public boolean mouseClicked(MouseButtonEvent e, boolean doubled) { return false; }
     /** Also called for a release outside the tab's area when the tab took the click. The same goes for drags. */

@@ -4,7 +4,7 @@ import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import java.util.function.BooleanSupplier;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.InputWithModifiers;
@@ -27,11 +27,11 @@ final class Chip extends AbstractButton {
     public void onPress(InputWithModifiers input) { press.run(); }
 
     @Override
-    protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+    protected void renderContents(GuiGraphics g, int mouseX, int mouseY, float delta) {
         boolean lit = on.getAsBoolean();
         int x = getX(), y = getY();
         g.fill(x, y, x + width, y + height, !active ? Theme.CHIP_OFF : lit ? (isHovered() ? Theme.LIT_HOVER : Theme.LIT) : isHovered() ? Theme.CONTROL : Theme.CHIP);
-        g.outline(x, y, width, height, lit && active ? Theme.HIGHLIGHT : Theme.BORDER);
+        g.renderOutline(x, y, width, height, lit && active ? Theme.HIGHLIGHT : Theme.BORDER);
         Widgets.centred(g, getMessage(), x + width / 2, y + (height - 8) / 2, !active ? Theme.CHIP_GREYED : lit ? Theme.ON_LIT : Theme.SOFT);
     }
 
