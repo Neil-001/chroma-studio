@@ -166,7 +166,7 @@ final class IndexBuilder {
         return new Vector3f(Float.intBitsToFloat(v[at]), Float.intBitsToFloat(v[at + 1]), Float.intBitsToFloat(v[at + 2]));
     }
 
-    /** Water or lava. 1.21.11 has no fluid models to ask, so only these two are known by their textures; a modded fluid is read like a block. */
+    /** Water or lava. 1.21.1 has no fluid models to ask, so only these two are known by their textures; a modded fluid is read like a block. */
     private static boolean vanillaFluid(BlockState state) {
         Fluid fluid = state.getFluidState().getType();
         return fluid == Fluids.WATER || fluid == Fluids.FLOWING_WATER || fluid == Fluids.LAVA || fluid == Fluids.FLOWING_LAVA;

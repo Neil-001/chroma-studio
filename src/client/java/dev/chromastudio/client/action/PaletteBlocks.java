@@ -166,7 +166,7 @@ public final class PaletteBlocks {
         return out;
     }
 
-    /** A value's name in the game's form. 1.21.11 keeps a state's properties and values in a map, their types apart. */
+    /** A value's name in the game's form. 1.21.1 keeps a state's properties and values in a map, their types apart. */
     @SuppressWarnings("unchecked")
     private static <T extends Comparable<T>> String valueName(Property<T> property, Comparable<?> value) { return property.getName((T) value); }
 }

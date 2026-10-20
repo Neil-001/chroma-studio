@@ -150,7 +150,7 @@ public final class Capture {
     /**
      * Outlines the box being picked: the first corner to the block aimed at, or just the block aimed at before the
      * first corner. Each loader calls this after the game has drawn the entities; {@code cam} is the camera. The
-     * lines go straight to the game's buffers, as 1.21.11 has no collector a mod can hand an outline to there.
+     * lines go straight to the game's buffers, as 1.21.1 has no collector a mod can hand an outline to there.
      */
     public static void render(PoseStack pose, Vec3 cam) {
         Minecraft mc = Minecraft.getInstance();

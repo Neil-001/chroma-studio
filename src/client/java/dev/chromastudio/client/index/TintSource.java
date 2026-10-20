@@ -6,7 +6,7 @@ import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * What gives a tinted texture its colour in a world. 1.21.11 has no tint source of its own: the block colours are
+ * What gives a tinted texture its colour in a world. 1.21.1 has no tint source of its own: the block colours are
  * asked with a state, a world, a position and the model's tint index, as the game asks them for a quad.
  */
 @FunctionalInterface

@@ -18,8 +18,8 @@ import org.lwjgl.opengl.GL11;
  * over 3 by 3 pixels. While it is armed the window isn't drawn, so what is under the cursor is the game and nothing
  * of the mod's, and a magnifier beside the cursor shows the nine pixels.
  *
- * <p>The game lays a frame's GUI out before it draws the world, so when {@link #render} runs the frame that can be
- * read is the last one shown, GUI and all. That is why the window steps aside rather than being read around.
+ * <p>On 1.21.1 {@link #render} reads the frame being drawn, whose world is already in, before it adds the hint and
+ * the magnifier. The window steps aside so that nothing it draws is read.
  */
 public final class ScreenPicker {
     private ScreenPicker() {}
