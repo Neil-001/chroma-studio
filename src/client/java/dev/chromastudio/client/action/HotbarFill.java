@@ -57,8 +57,41 @@ public final class HotbarFill {
         return !overlay && message.getSiblings().isEmpty() && message.getContents() instanceof TranslatableContents t && REPLIES.hides(t.getKey());
     }
 
+    /**
+     * 1.21.1's server refuses a creative player's drops that come too fast: its count rises by 20 a drop, falls by
+     * one a tick and refuses past 200, so it never passes 219 and takes one drop every 20 of its ticks without
+     * fail. The client keeps no such count here, can't see the creative inventory's own drops to keep one, and
+     * can't tell whether the server took a drop, so a fill sends its stacks one every 40 client ticks, which a
+     * server at half speed keeps up with, the first at once when none went in the last 40. Nothing goes while the
+     * game is paused, which stops the server's count falling, or while the player isn't in creative, when the game
+     * would send nothing; the stacks wait. Undo and leaving the world forget them.
+     */
+    private static final int DROP_INTERVAL = 40;
+    private static final List<ItemStack> DROPS = new ArrayList<>();
+    /** Ticks until the next stack may go. */
+    private static int dropWait;
+    /** The connection the queued stacks are for. In another world they are forgotten. */
+    private static Object dropsOn;
+
     /** Call at the end of every client tick. */
-    public static void tick() { REPLIES.tick(); }
+    public static void tick() {
+        REPLIES.tick();
+        // The server's count doesn't fall while the game is paused, so the wait doesn't either.
+        if (dropWait > 0 && !Minecraft.getInstance().isPaused()) dropWait--;
+        sendDueDrop();
+    }
+
+    private static void sendDueDrop() {
+        if (DROPS.isEmpty()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.getConnection() != dropsOn) {
+            DROPS.clear();
+            return;
+        }
+        if (dropWait > 0 || mc.isPaused() || !mc.player.hasInfiniteMaterials()) return;
+        mc.gameMode.handleCreativeModeItemDrop(DROPS.removeFirst());
+        dropWait = DROP_INTERVAL;
+    }
 
     /** Forgets a fill made in a world the player has since left. */
     private static void forgetOtherWorlds() {
@@ -182,8 +215,10 @@ public final class HotbarFill {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player.hasInfiniteMaterials()) {
-            // 1.21.1's server takes a creative player's drops as fast as they come.
-            mc.gameMode.handleCreativeModeItemDrop(stack.copy());
+            // Sent as fast as the server takes them, over the ticks to come. The fill counts it as dropped now.
+            DROPS.add(stack.copy());
+            dropsOn = mc.getConnection();
+            sendDueDrop();
             return Dropped.ON_THE_GROUND;
         }
         int slot = roomFor(stack, now, player.getInventory().selected);
@@ -215,6 +250,7 @@ public final class HotbarFill {
         if (why.isPresent()) return why.get();
         for (Was was : last) put(was.slot, was.stack);
         last = List.of();
+        DROPS.clear();   // what was still to drop is never dropped
         Hud.strip(List.of());
         return Component.translatable(lastDropped ? "hotbar.chromastudio.undone_dropped" : "hotbar.chromastudio.undone");
     }

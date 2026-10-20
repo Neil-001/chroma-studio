@@ -39,6 +39,7 @@ import dev.chromastudio.core.palette.HueArc;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Ramp;
+import dev.chromastudio.client.ui.DeferredTooltips;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -549,7 +550,7 @@ public final class GradientTab extends PanelTab {
                 g2.drawString(font(), de, x + w - 4 - font().width(de), y + 5, DIM, false);
                 g2.drawString(font(), fit(o.entry.name().getString(), w - 30 - font().width(de)), x + 22, y + 5, TEXT, false);
                 if (over) {
-                    g2.renderComponentTooltip(font(), List.of(o.entry.name(), tr("gradient.chromastudio.step.tip", swapStep + 1, step.ideal.hex(), de).copy().withColor(Theme.TIP_DIM),
+                    DeferredTooltips.components(font(), List.of(o.entry.name(), tr("gradient.chromastudio.step.tip", swapStep + 1, step.ideal.hex(), de).copy().withColor(Theme.TIP_DIM),
                             tr("gradient.chromastudio.swap.use").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
                 }
             }
@@ -642,13 +643,13 @@ public final class GradientTab extends PanelTab {
                 }
             }
             if (controls && i == swapStep) g.renderOutline(x, y, grid.cellW, CELL_H - 4, Theme.HIGHLIGHT);
-            if (onBack) g.renderTooltip(font(), tr("gradient.chromastudio.swap.back"), mouseX, mouseY);
+            if (onBack) DeferredTooltips.text(font(), tr("gradient.chromastudio.swap.back"), mouseX, mouseY);
             else if (over) {
                 List<Component> tip = new ArrayList<>(List.of(s.entry.name(), tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE))
                         .copy().withColor(Theme.TIP_DIM)));
                 if (s.pinned) tip.add(tr("gradient.chromastudio.step.pinned").copy().withColor(Theme.TIP_SWAPPED));
                 tip.add(tr("gradient.chromastudio.step.swap").copy().withColor(Theme.TIP_DIM));
-                g.renderComponentTooltip(font(), tip, mouseX, mouseY);
+                DeferredTooltips.components(font(), tip, mouseX, mouseY);
             }
         }
     }
@@ -665,7 +666,7 @@ public final class GradientTab extends PanelTab {
             if (stop instanceof Entry e) Widgets.blockIcon(g, e.block(), x + 1, y);
             if (!draggingStop && mouseX >= x && mouseX < x + CHIP && mouseY >= y && mouseY < y + Widgets.H) {
                 Component what = stop instanceof Entry e ? e.name() : Component.literal(colourOf(stop).hex());
-                g.renderComponentTooltip(font(), List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
+                DeferredTooltips.components(font(), List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
             }
         }
 

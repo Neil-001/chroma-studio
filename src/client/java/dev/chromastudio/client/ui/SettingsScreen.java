@@ -337,6 +337,7 @@ public final class SettingsScreen extends Screen {
         Component none = tr("search.none");
         if (noRows) g.drawString(font, none, (width - font.width(none)) / 2, TOP + 16, Theme.DIM, false);
         if (popup != null) popup.render(g, mouseX, mouseY, delta);
+        DeferredTooltips.draw(g);
     }
 
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {

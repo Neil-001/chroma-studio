@@ -18,6 +18,7 @@ import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.export.LayoutOptions;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.client.ui.DeferredTooltips;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -133,7 +134,7 @@ final class DioramaPanel implements AutoCloseable {
         g.blit(textureId, dx, dy, dw, dh, 0f, 0f, w * TEXELS, h * TEXELS, w * TEXELS, h * TEXELS);
         if (mouseX >= dx && mouseX < dx + dw && mouseY >= dy && mouseY < dy + dh) {
             int entry = arrangement.at((mouseX - dx) / cell, h - 1 - (mouseY - dy) / cell, 0);
-            if (entry >= 0) g.renderTooltip(PanelTab.font(), PaletteBlocks.name(kept.get(entry)), mouseX, mouseY);
+            if (entry >= 0) DeferredTooltips.text(PanelTab.font(), PaletteBlocks.name(kept.get(entry)), mouseX, mouseY);
         }
     }
 

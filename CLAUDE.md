@@ -80,7 +80,7 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 ## Minecraft rules
 
 - A block's model comes from `BlockModelShaper` as a `BakedModel`, whose quads are asked for by side with a random, so each call gets the same seed; a quad holds its `getSprite()` and `getTintIndex()`, and its vertices packed as ints. `DioramaPip` draws its wall straight into the screen with `renderBlock`, at the GUI's resolution, as the game draws items: with its own depth, which it clears in the picture's area, and with perspective through a projection of its own that undoes the GUI's view matrix.
-- The GUI is drawn through `GuiGraphics`, with `render` and `renderBackground` on a screen, `renderWidget` on a widget, and `drawString`, `drawCenteredString`, `drawWordWrap`, `renderOutline` and `renderFakeItem` for the drawing itself. A tooltip is drawn where it is asked for, with `renderTooltip`, above everything through its depth. A blit's alpha goes through `g.setColor`. The open screen is `mc.screen`, set with `mc.setScreen`.
+- The GUI is drawn through `GuiGraphics`, with `render` and `renderBackground` on a screen, `renderWidget` on a widget, and `drawString`, `drawCenteredString`, `drawWordWrap`, `renderOutline` and `renderFakeItem` for the drawing itself. The game calls only `render`, so `ChromaScreen.render` draws its background itself. A tooltip asked for while drawing goes to `DeferredTooltips`, which draws it once the screen has finished, as one drawn at once would be clipped by a scissor in force. A blit's alpha goes through `g.setColor`, with blending enabled around it, which the plain blit leaves as it finds it. The open screen is `mc.screen`, set with `mc.setScreen`.
 - A state's properties and values come as a map, `BlockState.getValues()`, their types apart; `IndexBuilder.valueName` names a value.
 - Screens and widgets take 1.21.1's plain input arguments, such as `keyPressed(int key, int scancode, int modifiers)` and `mouseClicked(double, double, int)`, and buttons `onPress()`; see `client/input/`. The key category is a translation key, `Keys.CATEGORY`.
 - The screen picker reads its pixels straight off the frame being drawn, whose world is already in, with `GlStateManager._readPixels`.
@@ -88,8 +88,8 @@ An entry whose block has a block entity and an empty model, such as a chest, a b
 - `NativeImage.getPixelRGBA` and `setPixelRGBA` take ABGR. Go through `Abgr`, which takes and returns ARGB.
 - The game darkens a block's faces by fixed factors: top 1.0, north and south 0.8, east and west 0.6, bottom 0.5. `Eyedropper` reads the index, not the screen, so its colour is the face unshaded.
 - The creative tabs can't be filled before a world has loaded. Until `BlockIndex.worldJoined`, every block with an item counts as listed.
-- Signs and beds have block models and are matched as any block.
-- The game has no `#minecraft:dyeable` tag of its own. What can be dyed is set by `crafting_dye` recipes, which a client isn't sent.
+- Signs and beds have no block models here, only a particle texture, so they are matched as blocks a block entity draws, like chests. 26.2 gave them models.
+- The game ships the `#minecraft:dyeable` item tag here, with the items `Dye` lists itself. 26.x dropped it for `crafting_dye` recipes, which a client isn't sent.
 - The game lays a frame's GUI out before it draws the world, so the frame `ScreenPicker` can read is the last one shown.
 - The game ships tinyfd, so `FileDialog` is tinyfd's, on its own thread because the dialog holds up the one that shows it. Asked with the title `tinyfd_query` it shows nothing and says whether it has a window to show, which is how a missing dialog is told from a cancel. Every caller has a path field too.
 - The game has no way to ask for a mouse cursor, so `Cursors` sets one through GLFW. Ask for a shape each frame with `Cursors.request` and apply it when the screen has drawn; a frame that asks for none gets the arrow back, and so does a closed screen. Where the system has no such shape, the arrow stays.
@@ -116,7 +116,7 @@ The mod never places or changes blocks in the world. What it does to the game go
 
 - Giving a block, filling the hotbar and dyeing need creative mode or operator rights, and are greyed out with the reason otherwise.
 - `Give.stack` is how a block's item reaches the player: the creative slot packet in creative, `/give` or `/item replace` for an operator in survival, and otherwise the reason it can't.
-- A hotbar fill puts the blocks past the ninth where `HotbarPlan` says for `hotbarOverflowMode`: in free inventory slots, in shulker boxes, or on the ground. `HotbarFill` sets those slots itself, so Undo can empty them. It drops with the creative inventory's drop packet, which the server takes only so fast, or with `/give` for an operator in survival.
+- A hotbar fill puts the blocks past the ninth where `HotbarPlan` says for `hotbarOverflowMode`: in free inventory slots, in shulker boxes, or on the ground. `HotbarFill` sets those slots itself, so Undo can empty them. It drops with the creative inventory's drop packet, one every 40 ticks so the server takes them, or with `/give` for an operator in survival.
 - Commands go through `ClientPlatform.sendChatCommand`, without the slash, as if the player had typed them. It does nothing outside a world.
 - The game's replies to a hotbar fill's commands are kept out of chat, through `CommandReplies`. An error always shows.
 - Exported files are never silently overwritten.
@@ -127,7 +127,7 @@ The mod never places or changes blocks in the world. What it does to the game go
 - A block a block entity draws is matched by its particle texture, so its colour is only a guess.
 - The cache can't tell that a loaded pack's files were changed in place. Refresh on the settings screen reads every image again.
 - `Capture` only counts loaded chunks, and no exported layout has a side past 256 blocks. Its outline is drawn straight to the game's buffers after the entities, so water in front of it hides it.
-- 1.21.1's server takes a creative player's drops as fast as they come, so a hotbar fill that drops on the ground doesn't wait between them.
+- 1.21.1's server refuses a creative player's drops that come too fast, as newer ones do, but the client keeps no count of them here, can't see the creative inventory's own drops and can't tell whether the server took one, so `HotbarFill` sends a fill's drops one every 40 client ticks, which a server at half speed keeps up with, waits while the game is paused or the player isn't in creative, and forgets them on Undo or leaving the world. A server further behind, or the creative inventory's own drops in between, can still cost a stack the reply counted.
 - `RecipeViewers` calls EMI by name through reflection, as on `main`, and that path hasn't been run.
 - Hiding command replies is a best effort. When it isn't certain a line answers the mod's command, the line shows.
 - Left out on purpose: placement, world editing, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.

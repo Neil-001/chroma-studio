@@ -21,8 +21,8 @@ public final class Dye {
     private Dye() {}
 
     /**
-     * The tag older versions listed dyeable items in. This version has none: what can be dyed is decided by the
-     * {@code crafting_dye} recipes, which a client isn't sent. A mod or data pack that still fills the tag is heard.
+     * The tag the game lists dyeable items in on this version, which newer versions dropped for {@code crafting_dye}
+     * recipes a client isn't sent. A mod or data pack that adds to it is heard.
      */
     private static final TagKey<Item> DYEABLE = TagKey.create(Registries.ITEM, ResourceLocation.withDefaultNamespace("dyeable"));
 

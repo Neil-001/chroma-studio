@@ -219,6 +219,8 @@ public final class ChromaScreen extends Screen {
             Cursors.apply();
             return;
         }
+        // 1.21.1's game calls render alone and leaves the background to it.
+        renderBackground(g, mouseX, mouseY, delta);
         Theme.sync();
         Bounds frame = frame(), content = content();
         // A drag in progress keeps hold of the cursor's meaning, wherever the cursor has got to.
@@ -238,12 +240,13 @@ public final class ChromaScreen extends Screen {
             // Wrapped, as widgets' own are. The game draws a tooltip a little above the cursor and doesn't mind the
             // screen's top, so one for a button up there is asked for lower down, where all its lines fit.
             List<FormattedCharSequence> lines = Tooltip.splitTooltip(minecraft, tip);
-            g.renderTooltip(font, lines, mouseX, Math.max(mouseY, 16 + (lines.size() - 1) * 2));
+            DeferredTooltips.text(font, lines, mouseX, Math.max(mouseY, 16 + (lines.size() - 1) * 2));
         }
         // The game shows the arrow again by itself on any frame that asks for nothing, so also once the screen has closed.
         Cursors.Shape cursor = cursor(free ? window.gripAt(mouseX, mouseY, width, height) : Window.Grip.NONE);
         if (cursor != null && !overCog) Cursors.request(cursor);
         Cursors.apply();
+        DeferredTooltips.draw(g);
     }
 
     private static Cursors.Shape cursor(Window.Grip grip) {

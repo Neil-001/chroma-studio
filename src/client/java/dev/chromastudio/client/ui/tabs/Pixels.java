@@ -1,6 +1,7 @@
 package dev.chromastudio.client.ui.tabs;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
 import dev.chromastudio.client.Abgr;
 import dev.chromastudio.client.ChromaStudioClient;
 import net.minecraft.client.Minecraft;
@@ -33,9 +34,13 @@ final class Pixels implements AutoCloseable {
 
     /** Draws it filling a rectangle, with every pixel's alpha scaled by {@code opacity}. */
     void draw(GuiGraphics g, int x, int y, int w, int h, float opacity) {
+        // 1.21.1's plain blit leaves blending as it finds it, and a fill before it leaves it off.
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         g.setColor(1, 1, 1, opacity);
         g.blit(id, x, y, w, h, 0, 0, width, height, width, height);
         g.setColor(1, 1, 1, 1);
+        RenderSystem.disableBlend();
     }
 
     @Override
