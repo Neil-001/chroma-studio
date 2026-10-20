@@ -25,6 +25,7 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.ShareString;
 import dev.chromastudio.core.palette.WorldEditPattern;
+import dev.chromastudio.client.ui.DeferredTooltips;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -552,7 +553,7 @@ final class PaletteDialogs {
             // A long palette's command runs past the box. Copy still takes all of it, and pointing at the box shows it.
             if (lines.size() > fit) {
                 g.drawString(PanelTab.font(), "...", in.right() - 12, bottom - 10, Theme.DIM, false);
-                if (mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < bottom) g.renderTooltip(PanelTab.font(), lines, mouseX, mouseY);
+                if (mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < bottom) DeferredTooltips.text(PanelTab.font(), lines, mouseX, mouseY);
             }
         }
     }

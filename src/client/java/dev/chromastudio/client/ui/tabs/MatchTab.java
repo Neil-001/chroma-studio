@@ -46,6 +46,7 @@ import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.color.Scale;
 import dev.chromastudio.core.color.Viewing;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.client.ui.DeferredTooltips;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -578,7 +579,7 @@ public final class MatchTab extends Tab {
         if (status != null && Util.getMillis() < statusUntil) {
             g.drawString(font, ellipsis(font, status.getString(), statusLine.w() - 4), statusLine.x() + 2, statusLine.y() + 1, TEXT, false);
         }
-        if (!tip.isEmpty() && !picker.dragging() && !draggingDistance) g.renderComponentTooltip(font, tip, mouseX, mouseY);
+        if (!tip.isEmpty() && !picker.dragging() && !draggingDistance) DeferredTooltips.components(font, tip, mouseX, mouseY);
     }
 
     @Override

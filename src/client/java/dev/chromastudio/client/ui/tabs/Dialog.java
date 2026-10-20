@@ -5,6 +5,7 @@ import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
+import dev.chromastudio.client.ui.DeferredTooltips;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -77,7 +78,7 @@ abstract class Dialog {
             int shown = Math.min(STATUS_LINES, lines.size()), top = in.bottom() - shown * 9;
             for (int i = 0; i < shown; i++) g.drawString(PanelTab.font(), lines.get(i), in.x(), top + i * 9, statusColour, false);
             if (lines.size() > shown && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
-                g.renderTooltip(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
+                DeferredTooltips.text(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
         }
     }
 

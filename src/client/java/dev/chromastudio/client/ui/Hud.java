@@ -54,6 +54,7 @@ public final class Hud {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui) return;
         ChromaScreen.renderPinned(g);
+        DeferredTooltips.draw(g);
         Font font = mc.font;
         long now = Util.getMillis();
         int centre = g.guiWidth() / 2, y = g.guiHeight() - ABOVE_HOTBAR;

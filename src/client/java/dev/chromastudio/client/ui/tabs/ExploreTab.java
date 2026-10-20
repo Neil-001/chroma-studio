@@ -23,6 +23,7 @@ import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Face;
 import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.client.ui.DeferredTooltips;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -170,7 +171,7 @@ public final class ExploreTab extends Tab {
             int ix = tipOnLeft ? Math.min(b.right() - 17, mouseX + 6) : Math.max(b.x() + 1, mouseX - 22), iy = Math.max(b.y() + 1, mouseY - 22);
             g.fill(ix - 1, iy - 1, ix + 17, iy + 17, Theme.sink(0xE0));
             Widgets.blockIcon(g, e.block(), ix, iy);
-            g.renderComponentTooltip(font, tip, mouseX, mouseY);
+            DeferredTooltips.components(font, tip, mouseX, mouseY);
         }
     }
 

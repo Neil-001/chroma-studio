@@ -58,7 +58,17 @@ public final class HotbarFill {
     }
 
     /** Call at the end of every client tick. */
-    public static void tick() { REPLIES.tick(); }
+    /**
+     * 1.21.1's server refuses a creative player's drops that come too fast: its count rises by 20 a drop, falls by
+     * one a tick and stops drops past 200. The client keeps no such count on this version, so this does.
+     */
+    private static final int DROP_SPAM_LIMIT = 200, DROP_SPAM_PER_DROP = 20;
+    private static int dropSpam;
+
+    public static void tick() {
+        REPLIES.tick();
+        if (dropSpam > 0) dropSpam--;
+    }
 
     /** Forgets a fill made in a world the player has since left. */
     private static void forgetOtherWorlds() {
@@ -182,7 +192,9 @@ public final class HotbarFill {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player.hasInfiniteMaterials()) {
-            // 1.21.1's server takes a creative player's drops as fast as they come.
+            // The server ignores a creative player's drops that come too fast, and the count here keeps pace with its own.
+            if (dropSpam >= DROP_SPAM_LIMIT) return Dropped.NOT_AT_ALL;
+            dropSpam += DROP_SPAM_PER_DROP;
             mc.gameMode.handleCreativeModeItemDrop(stack.copy());
             return Dropped.ON_THE_GROUND;
         }
