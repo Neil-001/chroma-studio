@@ -17,6 +17,8 @@ Chroma Studio finds the blocks closest to a colour. Build palettes and gradients
 
 </center>
 
+Press **C** to open the window, and **X** to read the colour of the block you're looking at.
+
 ## How is Chroma Studio better?
 
 Chroma Studio compares whole textures rather than just their average colour, and ranks matches by how close the colours look to the eye. It accounts for biome tints and texture busyness too. You can gather a material's slabs and stairs, check your palette for missing shades and export it for Litematica or WorldEdit, all in the same window.
@@ -38,5 +40,5 @@ Chroma Studio compares whole textures rather than just their average colour, and
 
 ## Links
 
-- [Read the wiki](https://github.com/Neil-001/chroma-studio/wiki).
-- [Report a bug or suggest a feature](https://github.com/Neil-001/chroma-studio/issues).
+- [The wiki](https://github.com/Neil-001/chroma-studio/wiki) contains full documentation on how to use the mod.
+- Report a bug or suggest a feature in the [issue tracker](https://github.com/Neil-001/chroma-studio/issues).
