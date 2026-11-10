@@ -5,8 +5,8 @@
 
 The description is listing/description.md as it is. The gallery is the pictures listing/gallery/README.md lists,
 with its titles and descriptions, in its order; a picture whose title the project already shows is left alone
-unless --replace is given, which removes and uploads it again. The icon is listing/media/icon.png. --dry-run says
-what would change and changes nothing. CurseForge has no API for any of this, so its page is done by hand from
+unless --replace is given, which removes and uploads it again. The icon is listing/media/icon.png, and is left
+alone when the listing has no such file. --dry-run says what would change and changes nothing. CurseForge has no API for any of this, so its page is done by hand from
 listing/curseforge.html.
 """
 import json
@@ -21,7 +21,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LISTING = ROOT / "listing"
 API = "https://api.modrinth.com/v2"
-AGENT = "Neil-001/chroma-studio (listing upload; github.com/Neil-001/chroma-studio)"
+# Modrinth asks for a user agent that says who is calling. In the workflow that is the repository.
+REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "")
+AGENT = f"{REPOSITORY} (listing upload; github.com/{REPOSITORY})" if REPOSITORY else "listing upload"
 TITLE_MAX, DESCRIPTION_MAX = 64, 255
 
 
@@ -109,7 +111,11 @@ def main(argv):
     print(f"project {before['title']!r} ({before['slug']}), status {before['status']}, {len(before['gallery'])} gallery pictures now")
 
     api.set_description((LISTING / "description.md").read_text(encoding="utf-8"))
-    api.set_icon(LISTING / "media" / "icon.png")
+    icon = LISTING / "media" / "icon.png"
+    if icon.is_file():
+        api.set_icon(icon)
+    else:
+        print("no listing/media/icon.png, so the icon is left alone")
 
     shown = {image["title"]: image for image in before["gallery"] if image.get("title")}
     for ordering, (file, title, description) in enumerate(entries):

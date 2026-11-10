@@ -6,8 +6,9 @@
 
 Modrinth takes description.md as it is, <center> tags included. CurseForge's markdown drops <center>, but its
 HTML keeps a paragraph's text-align style, which is what its own editor writes. So each paragraph inside a
-<center> block becomes <p style="text-align: center;">, and the rest is plain HTML from the markdown. Needs the
-markdown package: pip install markdown.
+<center> block becomes <p style="text-align: center;">, and the rest is plain HTML from the markdown. Two things
+are then swapped for CurseForge's page, listed under FOR_CURSEFORGE. Needs the markdown package: pip install
+markdown.
 """
 import re
 import sys
@@ -22,10 +23,18 @@ LISTING = Path(__file__).resolve().parent.parent
 SOURCE = LISTING / "description.md"
 TARGET = LISTING / "curseforge.html"
 CENTRE = '<p style="text-align: center;">'
+# What CurseForge's page says differently, as (pattern, replacement) pairs applied to the HTML.
+FOR_CURSEFORGE = (
+    # The Fabric API badge links to Fabric API on the site the reader is on.
+    (r"https://modrinth\.com/mod/fabric-api", "https://www.curseforge.com/minecraft/mc-mods/fabric-api"),
+    # devins-badges as PNG instead of SVG, which not every place CurseForge shows a description is sure to draw.
+    (r"(/devins-badges@[^\"]*)_vector\.svg", r"\1_64h.png"),
+)
 
 
 def md(text):
-    return markdown.markdown(text, extensions=["tables"], output_format="html").strip("\n")
+    # Modrinth nests a list item indented by two spaces; Python-Markdown wants to be told so.
+    return markdown.markdown(text, extensions=["tables"], output_format="html", tab_length=2).strip("\n")
 
 
 def render(text):
@@ -41,6 +50,8 @@ def render(text):
     html = "\n".join(part for part in parts if part)
     if "<center>" in html or "</center>" in html:
         sys.exit("a <center> tag isn't on a line of its own, or its block isn't closed")
+    for pattern, replacement in FOR_CURSEFORGE:
+        html = re.sub(pattern, replacement, html)
     return html + "\n"
 
 

@@ -31,36 +31,37 @@ class ReleaseJarsTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
 
-    def jar(self, path, loader="fabric", version="1.0.0", minecraft=None):
+    def jar(self, path, loader="fabric", version="1.0.0", minecraft=None, name="Example Mod"):
         path = self.root / path
         path.parent.mkdir(parents=True, exist_ok=True)
         with ZipFile(path, "w") as archive:
             if loader == "fabric":
                 minecraft = minecraft or ">=26.1 <=26.1.2"
                 archive.writestr("fabric.mod.json", json.dumps(dict(
-                    id="chromastudio", version=version, depends=dict(minecraft=minecraft))))
+                    id="examplemod", name=name, version=version, depends=dict(minecraft=minecraft))))
             else:
                 archive.writestr("META-INF/neoforge.mods.toml", f'''
 [[mods]]
-modId = "chromastudio"
+modId = "examplemod"
+displayName = "{name}"
 version = "{version}"
-[[dependencies.chromastudio]]
+[[dependencies.examplemod]]
 modId = "minecraft"
 versionRange = "{minecraft or '[26.1,26.1.2]'}"
 ''')
         return path
 
     def dual(self):
-        self.jar("fabric/build/libs/chromastudio-fabric-1.0.0.jar")
-        self.jar("neoforge/build/libs/chromastudio-neoforge-1.0.0.jar", "neoforge")
+        self.jar("fabric/build/libs/examplemod-fabric-1.0.0.jar")
+        self.jar("neoforge/build/libs/examplemod-neoforge-1.0.0.jar", "neoforge")
 
     def collect(self):
         return release_jars.collect("1.0.0", "26.1", "25", self.root)
 
     def test_both_loaders_have_distinct_versions_and_metadata(self):
         self.dual()
-        self.jar("fabric/build/libs/chromastudio-fabric-1.0.0-sources.jar", version="wrong")
-        self.jar("fabric/build/libs/chromastudio-fabric-1.0.0-dev.jar", version="wrong")
+        self.jar("fabric/build/libs/examplemod-fabric-1.0.0-sources.jar", version="wrong")
+        self.jar("fabric/build/libs/examplemod-fabric-1.0.0-dev.jar", version="wrong")
         jars = self.collect()
         self.assertEqual([jar["version"] for jar in jars],
                          ["1.0.0+mc26.1-fabric", "1.0.0+mc26.1-neoforge"])
@@ -68,11 +69,21 @@ versionRange = "{minecraft or '[26.1,26.1.2]'}"
         self.assertEqual([jar["java"] for jar in jars], ["25", "25"])
         self.assertEqual([jar["minecraft"] for jar in jars],
                          [">=26.1 <=26.1.2", "[26.1,26.1.2]"])
+        self.assertEqual([jar["name"] for jar in jars], ["Example Mod", "Example Mod"])
         self.assertEqual(len(list((self.root / "dist").glob("*.jar"))), 2)
+
+    def test_the_name_comes_from_the_jars_and_they_must_agree(self):
+        self.dual()
+        self.jar("neoforge/build/libs/examplemod-neoforge-1.0.0.jar", "neoforge", name="Other Mod")
+        with self.assertRaisesRegex(ValueError, "disagree"):
+            self.collect()
+        self.jar("neoforge/build/libs/examplemod-neoforge-1.0.0.jar", "neoforge", name="")
+        with self.assertRaisesRegex(ValueError, "no mod name"):
+            self.collect()
 
     def test_stonecutter_preserves_versions_and_collects_copies_once(self):
         for mc in ["1.21", "1.21.11"]:
-            source = self.jar(f"versions/{mc}/build/libs/chromastudio-{mc}.jar",
+            source = self.jar(f"versions/{mc}/build/libs/examplemod-{mc}.jar",
                               version=f"1.0.0+mc{mc}", minecraft=mc)
             target = self.root / "build/libs" / source.name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -82,8 +93,8 @@ versionRange = "{minecraft or '[26.1,26.1.2]'}"
         self.assertTrue(all(jar["java"] == "21" and jar["loader"] == "fabric" for jar in jars))
 
     def test_three_component_line_on_java_21(self):
-        self.jar("fabric/build/libs/chromastudio-fabric-1.1.0.jar", version="1.1.0", minecraft=">=1.21 <=1.21.1")
-        self.jar("neoforge/build/libs/chromastudio-neoforge-1.1.0.jar", "neoforge", "1.1.0", "[1.21,1.21.1]")
+        self.jar("fabric/build/libs/examplemod-fabric-1.1.0.jar", version="1.1.0", minecraft=">=1.21 <=1.21.1")
+        self.jar("neoforge/build/libs/examplemod-neoforge-1.1.0.jar", "neoforge", "1.1.0", "[1.21,1.21.1]")
         jars = release_jars.collect("1.1.0", "1.21.1", "21", self.root)
         self.assertEqual([(jar["version"], jar["java"], jar["minecraft"]) for jar in jars],
                          [("1.1.0+mc1.21.1-fabric", "21", ">=1.21 <=1.21.1"),
@@ -98,20 +109,20 @@ versionRange = "{minecraft or '[26.1,26.1.2]'}"
 
     def test_wrong_version_fails_before_copying(self):
         self.dual()
-        self.jar("neoforge/build/libs/chromastudio-neoforge-1.0.0.jar", "neoforge", "1.0.1")
+        self.jar("neoforge/build/libs/examplemod-neoforge-1.0.0.jar", "neoforge", "1.0.1")
         with self.assertRaisesRegex(ValueError, "expected 1.0.0"):
             self.collect()
         self.assertFalse((self.root / "dist").exists())
 
     def test_missing_loader_fails(self):
         self.dual()
-        (self.root / "neoforge/build/libs/chromastudio-neoforge-1.0.0.jar").unlink()
+        (self.root / "neoforge/build/libs/examplemod-neoforge-1.0.0.jar").unlink()
         with self.assertRaisesRegex(ValueError, "both Fabric and NeoForge"):
             self.collect()
 
     def test_wrong_loader_fails(self):
         self.dual()
-        self.jar("neoforge/build/libs/chromastudio-neoforge-1.0.0.jar")
+        self.jar("neoforge/build/libs/examplemod-neoforge-1.0.0.jar")
         with self.assertRaisesRegex(ValueError, "wrong loader"):
             self.collect()
 
@@ -146,9 +157,10 @@ class ReleasePlanTest(unittest.TestCase):
             git("update-ref", "refs/remotes/origin/26.1/stable", "HEAD")
             git("update-ref", "refs/remotes/origin/main", "HEAD")
 
-            def plan(branches):
+            def plan(branches, main_releases=True):
+                env = dict(os.environ, RELEASE_MAIN="true" if main_releases else "")
                 return json.loads(subprocess.check_output(
-                    [str(SCRIPTS / "release-plan.sh"), branches], cwd=root, text=True,
+                    [str(SCRIPTS / "release-plan.sh"), branches], cwd=root, text=True, env=env,
                     stderr=subprocess.DEVNULL))
 
             result = plan("all")
@@ -171,6 +183,12 @@ class ReleasePlanTest(unittest.TestCase):
                              [("main", "26.3", "1.0.0+mc26.3")])
             self.assertEqual(main[0]["sha"], git("rev-parse", "HEAD").strip())
             self.assertEqual(plan("all"), [result[1]], "all still means the stable branches")
+            self.assertEqual(plan(""), main, "left empty, it is main where main releases")
+            self.assertEqual(plan("", main_releases=False), [result[1]], "and all elsewhere")
+            with self.assertRaises(subprocess.CalledProcessError):
+                plan("main", main_releases=False)
+            with self.assertRaises(subprocess.CalledProcessError):
+                plan("26.1/stable,main", main_releases=False)
             git("tag", "1.0.0+mc26.3")
             self.assertEqual(plan("main"), [])
 
