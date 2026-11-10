@@ -72,7 +72,9 @@ The mod never places or changes blocks in the world. It acts only through the pl
 
 `main` is for the newest Minecraft version. Each older line the mod still supports lives on a `<line>/stable` branch, such as `26.2/stable` or `1.21.1/stable`, ported from `main` and kept to its own Minecraft. Develop on `main`, and backport to a stable branch only what makes sense for its version. Each branch's `CLAUDE.md` says how it differs from `main`.
 
-Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. Its `branches` input is `main` by default, a comma-separated list of `main` and `*/stable` branches, or `all` for every `*/stable` branch.
+Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. Its `branches` input is a comma-separated list of `main` and `*/stable` branches, or `all` for every `*/stable` branch. Left empty, it is `main`.
+
+The workflows and `.github/scripts/` name no mod, and Curve Generator's repository has the same files. Make a change to them in both. They read the mod's name from the jars' metadata. `main` releases here because the repository variable `RELEASE_MAIN` is `true`. Curve Generator leaves it unset and releases only from stable branches.
 
 1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases. A stable branch gets the same two changes in a PR against it, with the changelog section as released on `main` and any note about that line.
 2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes. Add `-f branches=26.2/stable`, say, for a stable branch, or `-f branches=all` for every one.
@@ -81,6 +83,8 @@ Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseFor
 
 Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. A branch whose tag exists is skipped, so `all` releases only the branches with a new version. The workflow creates the tag last, after publishing.
 
-After a partial failure, re-run failed jobs. Modrinth skips existing versions; CurseForge doesn't. Check CurseForge for each failed job's jar before retrying, and retry only if it's absent. Don't start a fresh run with CurseForge in `targets` after a partial release. To limit sites, pass `-f targets=curseforge,github`, for example.
+After a partial failure, re-run failed jobs or start a fresh run. Neither uploads a jar twice. The workflow asks Modrinth whether it has the version. CurseForge can't be asked, so each CurseForge upload leaves an artifact named `curseforge-<version>`, kept for 90 days, and a later job that finds it skips CurseForge. Delete that artifact to upload the version again.
+
+One case still needs a look at CurseForge's files page. When a publish job fails at its CurseForge step or while saving that artifact, the upload may have gone through without leaving it. The workflow tries the upload once, so check for the jar and retry only if it's absent. To limit sites, pass `-f targets=curseforge,github`, for example.
 
 The `CHANGELOG.md` section goes to all three sites as written. Start with a short paragraph about what changes for players. List merged PRs under `## Features` and `## Fixes`, one bullet per PR ending in `(#21)`, for example. Rewrite titles for players and omit CI, refactors and docs.

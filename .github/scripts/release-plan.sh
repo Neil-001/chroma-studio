@@ -8,13 +8,21 @@
 # A branch whose tag already exists is left out, so maintenance branches with no new version are
 # skipped.
 #
+# main only releases in a repository that sets RELEASE_MAIN to true, one that publishes its newest
+# line straight from main. Elsewhere main is promoted to a */stable branch first, and asking for
+# main is an error. Left empty, <branches> is main where main releases and "all" elsewhere.
+#
 # A */stable branch's Minecraft line is its name without "/stable". main has no line in its name,
 # so it takes minecraft_version from its gradle.properties.
 #
 # Needs a clone with every remote branch and tag fetched.
 set -euo pipefail
 
-requested=${1:-all}
+main_releases=${RELEASE_MAIN:-}
+requested=${1:-}
+if [ -z "${requested// /}" ]; then
+	if [ "$main_releases" = true ]; then requested=main; else requested=all; fi
+fi
 
 if [ "$requested" = all ]; then
 	mapfile -t branches < <(git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin | grep '/stable$' || true)
@@ -34,7 +42,9 @@ read_version() {
 plan='[]'
 for branch in "${branches[@]}"; do
 	case $branch in
-		main|*/stable) ;;
+		main)
+			[ "$main_releases" = true ] || { echo "::error::main doesn't release here: the repository variable RELEASE_MAIN isn't true. Release its */stable branch." >&2; exit 1; } ;;
+		*/stable) ;;
 		*) echo "::error::$branch is not main or a */stable branch. Only those release." >&2; exit 1 ;;
 	esac
 	sha=$(git rev-parse -q --verify "refs/remotes/origin/$branch") || { echo "::error::Branch $branch does not exist." >&2; exit 1; }
