@@ -1,3 +1,11 @@
+# 1.2.0-beta.1
+
+Save a gradient and load it back later with the very blocks it had, your swaps included. Other mods can now read your saved gradients, match colours to blocks of their choosing and open the Gradient tab. This beta is for Minecraft 26.3 on Fabric and NeoForge, and is meant for mods building on it, ahead of 1.2.0.
+
+## Features
+
+- Save gradients from the Gradient tab and load them back, with their settings and every step's block, and an API for other mods to read them, match colours among chosen blocks and open the tab (#42)
+
 # 1.1.0
 
 Choose OKLCH, RGB or HSL for the colour controls, change the recipe key in Minecraft's key binds, and choose the order of the window's title buttons. This release is for Minecraft 26.3 on Fabric and NeoForge.
