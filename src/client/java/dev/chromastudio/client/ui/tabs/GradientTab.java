@@ -35,6 +35,7 @@ import dev.chromastudio.core.palette.HueArc;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Ramp;
+import dev.chromastudio.core.palette.StoredGradient;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -70,6 +71,8 @@ import net.minecraft.world.level.block.Blocks;
  *
  * <p>A click on a step opens the swap list under the strip: the next-best blocks for that step's colour. The one
  * chosen is pinned to the step, and the other steps are solved again around it.
+ *
+ * <p>"Saved…" saves the gradient on show, with its controls, steps and swaps, and loads one saved before.
  */
 public final class GradientTab extends PanelTab {
     private static final int MAX_STOPS = 8, CHIP = 18, CELL_MIN = 18, CELL_MAX = 40, IDEAL_H = 10, BLOCK_H = 7, CELL_H = IDEAL_H + 16 + BLOCK_H + 4;
@@ -97,6 +100,8 @@ public final class GradientTab extends PanelTab {
      */
     private static final Map<Integer, Entry> PINS = new HashMap<>();
     private static Object pinsFor, pinsBuild;
+    /** The name the gradient on show was last saved or loaded under, or null. Saving offers it again. */
+    private static String savedName;
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
         Thread t = new Thread(task, "Chroma Studio gradient");
@@ -185,6 +190,10 @@ public final class GradientTab extends PanelTab {
         boolean seeded = Handoff.gradientSeed instanceof Entry;
         if (Handoff.gradientSeed instanceof Entry seed) addStop(seed);
         Handoff.gradientSeed = null;
+        // A saved gradient another mod asked to show, once.
+        boolean loaded = Handoff.gradientLoad != null;
+        if (loaded) apply(Handoff.gradientLoad);
+        Handoff.gradientLoad = null;
         selectedStop = Math.clamp(selectedStop, 0, STOPS.size() - 1);
 
         int x = b.x() + PAD, y = b.y() + PAD;
@@ -277,6 +286,7 @@ public final class GradientTab extends PanelTab {
             say(tr("gradient.chromastudio.copied", result.size()), GOOD);
         }, none);
         x = action(x, actionsY, "export", () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
+        x = action(x, actionsY, "saved", () -> open(new SavedGradients(this::toSave, none, savedName != null ? savedName : asPalette().name, this::load)), null);
         x = action(x, actionsY, "save", () -> {
             Palette p = asPalette();
             PaletteSink sink = PaletteSink.current();
@@ -298,7 +308,7 @@ public final class GradientTab extends PanelTab {
         // The swap list follows the window as it is resized.
         if (swapStep >= 0) placeSwap();
         // A new stop, or settings changed on the settings screen, make the answer on show a stale one.
-        if (seeded || stale() || result.isEmpty() && problem == null && !solving) solve();
+        if (seeded || loaded || stale() || result.isEmpty() && problem == null && !solving) solve();
     }
 
     /** The filters lie over the strip and the badge under it. */
@@ -380,6 +390,59 @@ public final class GradientTab extends PanelTab {
         Palette p = new Palette(tr("gradient.chromastudio.palette_name", colourOf(STOPS.getFirst()).hex(), colourOf(STOPS.getLast()).hex()).getString());
         p.entries.addAll(entries());
         return p;
+    }
+
+    // ---- Saving and loading ----
+
+    /** The gradient on show, to save under a name. Only while there is an answer. */
+    private StoredGradient toSave(String name) {
+        List<StoredGradient.Stop> stops = new ArrayList<>();
+        for (Object stop : STOPS) stops.add(new StoredGradient.Stop(colourOf(stop).rgb(), stop instanceof Entry e ? PaletteBlocks.of(e) : null));
+        List<StoredGradient.Step> blocks = new ArrayList<>();
+        for (Step s : result) blocks.add(new StoredGradient.Step(s.ideal.rgb(), PaletteBlocks.of(s.entry), s.pinned));
+        Kind kind = MatchState.filters().kind;
+        savedName = name;
+        return new StoredGradient(name, stops, steps, easing.name(), arc.name(), spread, kind == null ? "" : kind.name(), blocks);
+    }
+
+    /** Shows a saved gradient in place of the one on show. */
+    private void load(StoredGradient g) {
+        apply(g);
+        say(tr("gradient.chromastudio.store.loaded", g.name()), GOOD);
+        changed();
+    }
+
+    /**
+     * Takes a saved gradient's stops and controls, and pins the blocks the player chose by hand to their steps, for
+     * the next solve. A block this game no longer has gives its stop the colour it showed, and its pin is let go.
+     */
+    private static void apply(StoredGradient g) {
+        STOPS.clear();
+        for (StoredGradient.Stop stop : g.stops()) {
+            Entry e = stop.isBlock() ? PaletteBlocks.entry(stop.block()) : null;
+            if (STOPS.size() < MAX_STOPS) STOPS.add(e != null ? e : Color.ofRgb(stop.rgb()));
+        }
+        selectedStop = 0;
+        steps = Math.clamp(g.steps(), (int) ModSettings.min("gradientSteps"), (int) ModSettings.max("gradientSteps"));
+        easing = named(Easing.class, g.easing(), easing);
+        arc = named(HueArc.class, g.arc(), arc);
+        spread = g.spread();
+        MatchFilters filters = MatchState.filters();
+        Kind kind = g.kind().isEmpty() ? null : named(Kind.class, g.kind(), filters.kind);
+        if (kind != filters.kind) {
+            filters.kind = kind;
+            MatchState.changed();
+        }
+        PINS.clear();
+        for (int i = 0; i < g.blocks().size(); i++) {
+            StoredGradient.Step step = g.blocks().get(i);
+            Entry e = step.byHand() ? PaletteBlocks.entry(step.block()) : null;
+            if (e != null) PINS.put(i, e);
+        }
+        // The pins belong to the gradient just taken, so the solve keeps them.
+        pinsFor = pinKey();
+        pinsBuild = build();
+        savedName = g.name();
     }
 
     // ---- Solving ----

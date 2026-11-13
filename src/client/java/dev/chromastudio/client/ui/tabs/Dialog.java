@@ -90,6 +90,12 @@ abstract class Dialog {
         return true;
     }
 
+    boolean mouseScrolled(double x, double y, double h, double v) { return widgets.mouseScrolled(x, y, h, v); }
+
+    boolean mouseDragged(MouseButtonEvent e, double dx, double dy) { return widgets.mouseDragged(e, dx, dy); }
+
+    boolean mouseReleased(MouseButtonEvent e) { return widgets.mouseReleased(e); }
+
     boolean keyPressed(KeyEvent e) {
         if (widgets.keyPressed(e)) return true;
         if (e.isConfirmation()) return confirm();
