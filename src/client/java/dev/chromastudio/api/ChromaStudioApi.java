@@ -123,6 +123,9 @@ public final class ChromaStudioApi {
      *
      * @param allowed the block states to choose among, each matched as that state shows itself, so a log's axis and a
      *                stair's facing count. A state given twice counts once, and one the index doesn't know is left out.
+     *                The index keeps a limited number of looks a block, eight unless the player lowers the setting, and
+     *                a state past that limit is matched with its block's default look, as a block with many shapes,
+     *                such as stairs, may have. Its tint is still its own.
      * @param face    the face to match: {@link Direction#UP} for a block seen from above, a side for one seen from the side
      * @param biome   the biome that tints blocks such as grass, leaves and water. With null the tint is the one where
      *                the player stands, and outside a world there is none.

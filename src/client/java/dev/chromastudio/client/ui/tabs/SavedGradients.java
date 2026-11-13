@@ -9,6 +9,7 @@ import dev.chromastudio.core.palette.StoredGradient;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -25,7 +26,7 @@ final class SavedGradients extends Dialog {
 
     /** The gradient on show under a name, or null with why it can't be saved. */
     private final Function<String, StoredGradient> current;
-    private final Component unsaveable;
+    private final Supplier<Component> unsaveable;
     private final Consumer<StoredGradient> load;
     private String name;
     private EditBox field;
@@ -34,11 +35,11 @@ final class SavedGradients extends Dialog {
 
     /**
      * @param current    the gradient on show, saved under a name
-     * @param unsaveable why the gradient on show can't be saved, or null when it can
+     * @param unsaveable why the gradient on show can't be saved now, or null when it can. It is asked again on saving, as a new answer may be on its way
      * @param name       the name the field starts with
      * @param load       shows a saved gradient in the tab
      */
-    SavedGradients(Function<String, StoredGradient> current, Component unsaveable, String name, Consumer<StoredGradient> load) {
+    SavedGradients(Function<String, StoredGradient> current, Supplier<Component> unsaveable, String name, Consumer<StoredGradient> load) {
         super(tr("gradient.chromastudio.store.title"), 260, 170);
         this.current = current;
         this.unsaveable = unsaveable;
@@ -57,14 +58,15 @@ final class SavedGradients extends Dialog {
         field = widgets.search(in.x(), in.y(), in.w() - saveW - PanelTab.GAP, tr("palettes.chromastudio.name_hint"), s -> name = s);
         field.setMaxLength(Integer.MAX_VALUE);
         field.setValue(name);
-        if (first && unsaveable == null) {
+        Component why = unsaveable.get();
+        if (first && why == null) {
             field.setFocused(true);
             widgets.setFocused(field);
         }
         Button button = widgets.button(in.right() - saveW, in.y(), save, this::confirm);
-        if (unsaveable != null) {
-            Widgets.disable(button, unsaveable);
-            Widgets.disable(field, unsaveable);
+        if (why != null) {
+            Widgets.disable(button, why);
+            Widgets.disable(field, why);
         } else button.setTooltip(Tooltip.create(tr("gradient.chromastudio.store.save.tip")));
         Bounds list = new Bounds(in.x(), in.y() + PanelTab.ROW + 2, in.w(), in.bottom() - STATUS_H - (in.y() + PanelTab.ROW + 2));
         if (rows == null) rows = new Widgets.ScrollList(list, ROW_H, () -> Math.max(1, saved.size()));
@@ -73,7 +75,10 @@ final class SavedGradients extends Dialog {
 
     @Override
     protected boolean confirm() {
-        if (unsaveable != null) return false;
+        if (unsaveable.get() != null) {
+            refresh();
+            return true;
+        }
         if (name.isBlank()) {
             status(tr("palettes.chromastudio.name_needed"), Theme.FAIR);
             return true;
