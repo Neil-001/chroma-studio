@@ -100,6 +100,12 @@ public final class GradientTab extends PanelTab {
      */
     private static final Map<Integer, Entry> PINS = new HashMap<>();
     private static Object pinsFor, pinsBuild;
+    /**
+     * The saved gradient whose blocks are on show as they were saved, and what they were shown for, as the pins are,
+     * or null once anything has been solved since. A window opened afresh shows it again rather than solving.
+     */
+    private static StoredGradient restored;
+    private static Object restoredFor, restoredBuild;
     /** The name the gradient on show was last saved or loaded under, or null. Saving offers it again. */
     private static String savedName;
 
@@ -194,6 +200,8 @@ public final class GradientTab extends PanelTab {
         StoredGradient asked = Handoff.gradientLoad;
         Handoff.gradientLoad = null;
         boolean loaded = asked != null && !restore(asked);
+        // A window opened afresh shows a loaded gradient's own blocks again, while nothing it was shown for has changed.
+        if (asked == null && result.isEmpty() && !solving && restored != null && pinKey().equals(restoredFor) && build() == restoredBuild) show(restored);
         selectedStop = Math.clamp(selectedStop, 0, STOPS.size() - 1);
 
         int x = b.x() + PAD, y = b.y() + PAD;
@@ -427,6 +435,15 @@ public final class GradientTab extends PanelTab {
      */
     private boolean restore(StoredGradient g) {
         apply(g);
+        return show(g);
+    }
+
+    /**
+     * Shows a saved gradient's blocks as the answer, for stops and controls already taken from it, and keeps it as
+     * what the tab shows until something changes, across windows too. Returns false when they can't be shown.
+     */
+    private boolean show(StoredGradient g) {
+        restored = null;
         if (!BlockIndex.get().ready() || g.blocks().size() != steps) return false;
         Scale scale = PaletteBlocks.scale();
         List<Step> shown = new ArrayList<>();
@@ -453,6 +470,9 @@ public final class GradientTab extends PanelTab {
         poolMetric = PaletteBlocks.metric();
         solvedFor = inputs();
         solvedBuild = build();
+        restored = g;
+        restoredFor = pinKey();
+        restoredBuild = solvedBuild;
         return true;
     }
 
@@ -498,6 +518,7 @@ public final class GradientTab extends PanelTab {
      */
     private void solve() {
         int number = ASKED.incrementAndGet();
+        restored = null;
         solvedFor = inputs();
         solvedBuild = build();
         swapStep = -1;
@@ -519,6 +540,14 @@ public final class GradientTab extends PanelTab {
         List<Gradient.Candidate> candidates = chosenFrom.candidates;
         Map<String, Entry> byId = chosenFrom.byId;
         Map<String, TextureStats> looks = chosenFrom.looks;
+        // A loaded gradient's swaps stay, though the filters now leave their blocks out: the player chose them.
+        for (Entry e : PINS.values()) {
+            if (byId.containsKey(e.id())) continue;
+            TextureStats stats = PaletteBlocks.stats(e);
+            byId.put(e.id(), e);
+            looks.put(e.id(), stats);
+            candidates.add(new Gradient.Candidate(e.id(), stats.distribution(scale), stats.spread()));
+        }
         if (candidates.size() < steps) {
             fail(tr("gradient.chromastudio.too_few", candidates.size(), steps));
             return;
