@@ -540,13 +540,15 @@ public final class GradientTab extends PanelTab {
         List<Gradient.Candidate> candidates = chosenFrom.candidates;
         Map<String, Entry> byId = chosenFrom.byId;
         Map<String, TextureStats> looks = chosenFrom.looks;
-        // A loaded gradient's swaps stay, though the filters now leave their blocks out: the player chose them.
+        // A loaded gradient's swaps stay, though the filters now leave their blocks out or offer another state of
+        // them: the player chose that very state.
         for (Entry e : PINS.values()) {
-            if (byId.containsKey(e.id())) continue;
+            if (byId.get(e.id()) == e) continue;
             TextureStats stats = PaletteBlocks.stats(e);
-            byId.put(e.id(), e);
+            Gradient.Candidate pinned = new Gradient.Candidate(e.id(), stats.distribution(scale), stats.spread());
+            if (byId.put(e.id(), e) != null) candidates.removeIf(c -> c.key().equals(e.id()));
             looks.put(e.id(), stats);
-            candidates.add(new Gradient.Candidate(e.id(), stats.distribution(scale), stats.spread()));
+            candidates.add(pinned);
         }
         if (candidates.size() < steps) {
             fail(tr("gradient.chromastudio.too_few", candidates.size(), steps));
