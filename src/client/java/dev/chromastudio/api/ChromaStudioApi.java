@@ -20,11 +20,9 @@ import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.StoredGradient;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
@@ -133,13 +131,11 @@ public final class ChromaStudioApi {
     public static BlockMatcher matcher(Collection<BlockState> allowed, Direction face, @Nullable ResourceKey<Biome> biome) {
         Face side = Face.values()[face.ordinal()];
         TintContext tint = biome == null ? TintContext.HERE : TintContext.biome(biome);
-        Set<BlockState> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         List<BlockState> blocks = new ArrayList<>();
         List<Distribution> looks = new ArrayList<>();
         int version = BlockIndex.get().version();
         if (BlockIndex.get().ready()) {
-            for (BlockState state : allowed) {
-                if (!seen.add(state)) continue;
+            for (BlockState state : new LinkedHashSet<>(allowed)) {
                 Entry e = BlockIndex.get().entryOf(state);
                 if (e == null) continue;
                 blocks.add(state);

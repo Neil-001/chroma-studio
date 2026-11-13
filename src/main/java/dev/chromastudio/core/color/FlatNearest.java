@@ -46,14 +46,10 @@ public final class FlatNearest {
     /** The index of the texture closest to a colour, the first among equals, or -1 when there are none. */
     public int nearest(Color c) {
         Oklab lab = c.oklab();
-        double l = lab.l(), a = lab.a(), b = lab.b(), least = Double.POSITIVE_INFINITY;
+        double least = Double.POSITIVE_INFINITY;
         int best = -1;
         for (int i = 0; i < size; i++) {
-            double sum = 0;
-            for (int at = starts[i], end = starts[i + 1]; at < end && sum < least; at += 4) {
-                double dl = colours[at] - l, da = colours[at + 1] - a, db = colours[at + 2] - b;
-                sum += colours[at + 3] * Math.sqrt(dl * dl + da * da + db * db);
-            }
+            double sum = distance(lab, i, least);
             if (sum < least) {
                 least = sum;
                 best = i;
@@ -63,11 +59,13 @@ public final class FlatNearest {
     }
 
     /** The distance from a colour to one texture, as {@link Distribution#emd} in OKLab gives it. */
-    public double distance(Color c, int texture) {
-        Oklab lab = c.oklab();
-        double sum = 0;
-        for (int at = starts[texture]; at < starts[texture + 1]; at += 4) {
-            double dl = colours[at] - lab.l(), da = colours[at + 1] - lab.a(), db = colours[at + 2] - lab.b();
+    public double distance(Color c, int texture) { return distance(c.oklab(), texture, Double.POSITIVE_INFINITY); }
+
+    /** The distance to one texture, given up as soon as it reaches {@code limit}, since it can then only lose. */
+    private double distance(Oklab lab, int texture, double limit) {
+        double l = lab.l(), a = lab.a(), b = lab.b(), sum = 0;
+        for (int at = starts[texture], end = starts[texture + 1]; at < end && sum < limit; at += 4) {
+            double dl = colours[at] - l, da = colours[at + 1] - a, db = colours[at + 2] - b;
             sum += colours[at + 3] * Math.sqrt(dl * dl + da * da + db * db);
         }
         return sum;

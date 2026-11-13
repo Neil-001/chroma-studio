@@ -36,6 +36,7 @@ final class SavedGradients extends Dialog {
      * @param current    the gradient on show, saved under a name
      * @param unsaveable why the gradient on show can't be saved, or null when it can
      * @param name       the name the field starts with
+     * @param load       shows a saved gradient in the tab
      */
     SavedGradients(Function<String, StoredGradient> current, Component unsaveable, String name, Consumer<StoredGradient> load) {
         super(tr("gradient.chromastudio.store.title"), 260, 170);

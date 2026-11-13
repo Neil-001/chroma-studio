@@ -423,7 +423,7 @@ public final class GradientTab extends PanelTab {
             if (STOPS.size() < MAX_STOPS) STOPS.add(e != null ? e : Color.ofRgb(stop.rgb()));
         }
         selectedStop = 0;
-        steps = Math.clamp(g.steps(), (int) ModSettings.min("gradientSteps"), (int) ModSettings.max("gradientSteps"));
+        steps = g.steps();
         easing = named(Easing.class, g.easing(), easing);
         arc = named(HueArc.class, g.arc(), arc);
         spread = g.spread();

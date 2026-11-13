@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -15,6 +16,7 @@ import java.util.List;
  * by name with no two alike but for case. The public API reads it from other threads, so every method is synchronized.
  */
 public final class GradientStore {
+    private static final Comparator<StoredGradient> BY_NAME = (a, b) -> a.name().compareToIgnoreCase(b.name());
     private static GradientStore instance;
 
     /** The store over the game's config folder, loaded on first use. */
@@ -42,7 +44,7 @@ public final class GradientStore {
             unreadable = true;
             ChromaStudioClient.LOGGER.warn("Couldn't read the saved gradients in {}", file, e);
         }
-        all.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        all.sort(BY_NAME);
     }
 
     /** Reads the file afresh. */
@@ -72,7 +74,7 @@ public final class GradientStore {
         load();
         all.removeIf(old -> old.name().equalsIgnoreCase(g.name()));
         all.add(g);
-        all.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        all.sort(BY_NAME);
         return save();
     }
 
