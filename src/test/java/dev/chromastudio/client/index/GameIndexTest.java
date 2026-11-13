@@ -1,6 +1,7 @@
 package dev.chromastudio.client.index;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.chromastudio.api.BlockMatcher;
 import dev.chromastudio.api.ChromaStudioApi;
 import dev.chromastudio.client.BiomeMode;
 import dev.chromastudio.client.ModSettings;
@@ -554,6 +555,59 @@ class GameIndexTest {
         }
     }
 
+    /** The API's matcher: the closest of some blocks on one face, made on the client thread and asked from any. */
+    @Test
+    void theApisMatcherChoosesAmongTheBlocksGivenOnTheFaceGiven() {
+        BlockState logX = block("oak_log").defaultBlockState().setValue(BlockStateProperties.AXIS, Direction.Axis.X);
+        index(List.of(
+                List.of(entry(block("stone"), "block/stone")),
+                List.of(entry(block("red_concrete"), "block/red_concrete")),
+                List.of(entry(block("white_concrete"), "block/white_concrete")),
+                List.of(entry(block("oak_log"), "block/oak_log_top", "block/oak_log_top", "block/oak_log", "block/oak_log", "block/oak_log", "block/oak_log"),
+                        entry(logX, false, "block/oak_log", "block/oak_log", "block/oak_log", "block/oak_log", "block/oak_log_top", "block/oak_log_top"))));
+        BlockState red = block("red_concrete").defaultBlockState(), white = block("white_concrete").defaultBlockState(),
+                stone = block("stone").defaultBlockState(), logY = block("oak_log").defaultBlockState(), diamond = block("diamond_block").defaultBlockState();
+        int redRgb = stats("block/red_concrete").mean(Scale.T1).rgb();
+
+        BlockMatcher m = ChromaStudioApi.matcher(List.of(white, stone, diamond, white, red), Direction.UP, null);
+        assertEquals(List.of(white, stone, red), m.blocks(), "in order, each once, and only what the index knows");
+        assertEquals(red, m.closest(redRgb));
+        assertEquals(red, m.closest(0xFF000000 | redRgb), "alpha is ignored");
+        assertEquals(white, m.closest(0xFFFFFF));
+        assertTrue(m.distance(redRgb, red) < 0.01);
+        assertTrue(m.distance(redRgb, white) > m.distance(redRgb, red));
+        assertTrue(Double.isNaN(m.distance(redRgb, diamond)));
+        assertEquals(ChromaStudioApi.indexVersion(), m.indexVersion());
+        assertTrue(ChromaStudioApi.indexReady());
+
+        // Each state is matched as it shows itself, on the face asked for.
+        int endGrain = stats("block/oak_log_top").mean(Scale.T1).rgb();
+        assertEquals(logY, ChromaStudioApi.matcher(List.of(logX, logY), Direction.UP, null).closest(endGrain));
+        assertEquals(logX, ChromaStudioApi.matcher(List.of(logY, logX), Direction.WEST, null).closest(endGrain));
+        int bark = stats("block/oak_log").mean(Scale.T1).rgb();
+        assertEquals(logX, ChromaStudioApi.matcher(List.of(logY, logX), Direction.UP, null).closest(bark));
+
+        // The same as the index's own search, on the same face and blocks.
+        Query q = query().scale(Scale.T8).face(Face.UP);
+        q.kinds.clear();
+        java.util.Random r = new java.util.Random(3);
+        for (int i = 0; i < 200; i++) {
+            int rgb = r.nextInt(0x1000000);
+            BlockState own = BlockIndex.get().closest(Target.of(Color.ofRgb(rgb)), q).stream().map(x -> x.entry().state())
+                    .filter(s -> s == white || s == stone || s == red).findFirst().orElseThrow();
+            assertEquals(own, m.closest(rgb), Integer.toHexString(rgb));
+        }
+
+        // Many threads at once get the answers one thread does.
+        List<Integer> colours = r.ints(5000, 0, 0x1000000).boxed().toList();
+        List<BlockState> alone = colours.stream().map(m::closest).toList();
+        assertEquals(alone, colours.parallelStream().map(m::closest).toList());
+
+        BlockMatcher none = ChromaStudioApi.matcher(List.of(diamond), Direction.NORTH, null);
+        assertTrue(none.isEmpty());
+        assertNull(none.closest(redRgb));
+    }
+
     /** A chest is drawn by its block entity, so all the index has of it is the planks it breaks into. */
     @Test
     void blocksABlockEntityDrawsAreLeftOutUnlessAskedFor() {
@@ -819,5 +873,15 @@ class GameIndexTest {
                 assertTrue(ms < 100, metric + " took " + ms + " ms");
             }
         }
+        // The API's matcher, as a mod painting a shape uses it: a few hundred blocks and tens of thousands of colours.
+        List<BlockState> allowed = all.subList(0, 400).stream().map(Block::defaultBlockState).toList();
+        BlockMatcher matcher = ChromaStudioApi.matcher(allowed, Direction.NORTH, null);
+        int[] colours = new java.util.Random(5).ints(30_000, 0, 0x1000000).toArray();
+        for (int c : colours) matcher.closest(c ^ 0x010101);
+        long start = System.nanoTime();
+        for (int c : colours) matcher.closest(c);
+        double ms = (System.nanoTime() - start) / 1e6;
+        System.out.printf("matcher: %d blocks, %d new colours: %.1f ms%n", matcher.blocks().size(), colours.length, ms);
+        assertTrue(ms < 500, "the matcher took " + ms + " ms");
     }
 }
