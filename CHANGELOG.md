@@ -1,10 +1,10 @@
-# 1.2.0-beta.1
+# 1.2.0
 
-Save a gradient and load it back later with the very blocks it had, your swaps included. Other mods can now read your saved gradients, match colours to blocks of their choosing and open the Gradient tab. This beta is for Minecraft 26.3 on Fabric and NeoForge, and is meant for mods building on it, ahead of 1.2.0.
+Save a gradient and load it back later with the very blocks it had, your swaps included. Other mods can now read your saved gradients and palettes and match colours to blocks: Curve Generator 3.0.0 uses this to paint its shapes with your gradients and palettes. This release is for Minecraft 26.3 on Fabric and NeoForge.
 
 ## Features
 
-- Save gradients from the Gradient tab and load them back, with their settings and every step's block, and an API for other mods to read them, match colours among chosen blocks and open the tab (#42)
+- Save gradients in the Gradient tab and load them back with their settings and every step's block, and let other mods, such as Curve Generator, read them and match colours to blocks (#42)
 
 # 1.1.0
 
