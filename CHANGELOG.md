@@ -1,3 +1,7 @@
+# 1.2.1
+
+Nothing changes for Minecraft 1.21 and 1.21.1 in this release. It only brings the version number in step with the other Minecraft versions, where 1.2.1 lets the Gradient tab's buttons along the bottom take a second line when they don't fit. Here they already did that in 1.2.0. This release is for Minecraft 1.21 and 1.21.1 on Fabric, and 1.21.1 on NeoForge.
+
 # 1.2.0
 
 Save a gradient and load it back later with the very blocks it had, your swaps included. Other mods can now read your saved gradients and palettes and match colours to blocks: Curve Generator 3.0.0 uses this to paint its shapes with your gradients and palettes. This release is for Minecraft 1.21 and 1.21.1 on Fabric, and 1.21.1 on NeoForge.
