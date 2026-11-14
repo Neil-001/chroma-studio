@@ -1,6 +1,7 @@
 package dev.chromastudio.client.ui;
 
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.palette.StoredGradient;
 import java.util.List;
 
 /**
@@ -18,6 +19,9 @@ public final class Handoff {
 
     /** An {@code Entry} the Gradient tab adds as a stop. Set by a right-click on a Match result. */
     public static Object gradientSeed;
+
+    /** A saved gradient the Gradient tab loads in place of what it shows. Set by the public API's {@code openGradientTab}. */
+    public static StoredGradient gradientLoad;
 
     /** Entries the Explore tab highlights. Set by the Analyse panel; the Explore tab keeps them until a new list arrives or the player clears them. */
     public static List<PaletteEntry> exploreHighlight;

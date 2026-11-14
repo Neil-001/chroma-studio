@@ -23,6 +23,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - The mod is client-only. Fabric's `environment` is `client` with only a `client` entrypoint. NeoForge's one `@Mod` class has `dist = Dist.CLIENT`, and the mod registers no payloads, so a server never checks for it. Don't add a server entrypoint, a payload or a registry entry.
 - There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
+- The Fabric jar carries intermediary names, so a Fabric mod compiles against the API with Loom's `modCompileOnly`, which remaps it; NeoForge's jar has Mojang's names and takes plain `compileOnly`. The API is otherwise the same as on `main`.
 - Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them.
 - A new setting follows the comment on `ModSettings`, and needs a label and a `.tip` in the language file, which the settings screen's search reads.
 - `en_us.json` is written by hand, and the nine other language files are generated from it. A new English key needs its nine translations in the same change, or `LangTest` fails.
@@ -35,7 +36,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 ## Minecraft rules
 
 - A block's model comes from `BlockModelShaper`, as `BlockStateModel` with `BlockModelPart`s, and a quad holds its `sprite()` and `tintIndex()` itself. The diorama submits its blocks to the game's `FeatureRenderDispatcher` and has it draw them, as the game's own pictures do: a picture's `renderToTexture` gets only a pose, and the ways to draw a block straight into the buffers are deprecated.
-- The GUI is drawn through `GuiGraphics`, with `render` and `renderBackground` on a screen, `renderWidget` and `renderContents` on a widget, and `drawString`, `drawCenteredString`, `drawWordWrap`, `renderOutline` and `renderFakeItem` for the drawing itself. The open screen is `mc.screen`, set with `mc.setScreen`.
+- The GUI is drawn through `GuiGraphics`, which is `main`'s `GuiGraphicsExtractor`, with `render` and `renderBackground` on a screen, `renderWidget` and `renderContents` on a widget, and `drawString` (`main`'s `text`), `drawCenteredString`, `drawWordWrap`, `renderOutline` and `renderFakeItem` for the drawing itself. The open screen is `mc.screen`, set with `mc.setScreen`.
 - A state's properties and values come as a map, `BlockState.getValues()`, their types apart.
 - A tint comes from `BlockColors.getColor(state, getter, pos, tintIndex)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
 - Signs and beds have no block models here, only a particle texture, so they are matched as blocks a block entity draws, like chests. 26.2 gave them models.
