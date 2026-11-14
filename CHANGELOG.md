@@ -1,3 +1,11 @@
+# 1.2.0
+
+Save a gradient and load it back later with the very blocks it had, your swaps included. Other mods can now read your saved gradients and palettes and match colours to blocks: Curve Generator 3.0.0 uses this to paint its shapes with your gradients and palettes. This release is for Minecraft 26.2 on Fabric and NeoForge.
+
+## Features
+
+- Save gradients in the Gradient tab and load them back with their settings and every step's block, and let other mods, such as Curve Generator, read them and match colours to blocks (#42)
+
 # 1.1.0
 
 Chroma Studio 1.1.0 is for Minecraft 26.2 on Fabric and NeoForge. It is the first release for this version, so it also brings everything in 1.0.0 below. Choose OKLCH, RGB or HSL for the colour controls, change the recipe key in Minecraft's key binds, and choose the order of the window's title buttons.
