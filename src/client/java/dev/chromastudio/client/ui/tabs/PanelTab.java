@@ -21,6 +21,8 @@ import net.minecraft.network.chat.Component;
  */
 abstract class PanelTab extends Tab {
     static final int PAD = 3, GAP = 2, ROW = Widgets.H + GAP;
+    /** How far in front a dialog is drawn: past the tab's block icons, which reach about 160, and short of tooltips at 400, so its own icons stay behind them. */
+    private static final int DIALOG_Z = 200;
 
     protected final Widgets widgets = new Widgets();
     protected Bounds bounds;
@@ -95,8 +97,15 @@ abstract class PanelTab extends Tab {
         widgets.render(g, mx, my, delta);
         drawOver(g, b, mx, my, delta);
         if (dialog != null) {
+            // 1.21.1 keeps text back until the end of the frame and draws block icons in front of flat colour, so
+            // the tab's labels and icons would show through the dialog. Drawing them now and the dialog in front
+            // of the icons keeps it on top.
+            g.flush();
+            g.pose().pushPose();
+            g.pose().translate(0, 0, DIALOG_Z);
             g.fill(b.x(), b.y(), b.right(), b.bottom(), Theme.SCRIM);
             dialog.render(g, mouseX, mouseY, delta);
+            g.pose().popPose();
         }
     }
 
@@ -121,19 +130,19 @@ abstract class PanelTab extends Tab {
 
     @Override
     public final boolean mouseReleased(MouseButtonEvent e) {
-        if (dialog != null) return dialog.widgets.mouseReleased(e);
+        if (dialog != null) return dialog.mouseReleased(e);
         return released(e) | widgets.mouseReleased(e);
     }
 
     @Override
     public final boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
-        if (dialog != null) return dialog.widgets.mouseDragged(e, dx, dy);
+        if (dialog != null) return dialog.mouseDragged(e, dx, dy);
         return dragged(e, dx, dy) || widgets.mouseDragged(e, dx, dy);
     }
 
     @Override
     public final boolean mouseScrolled(double x, double y, double h, double v) {
-        if (dialog != null) return dialog.widgets.mouseScrolled(x, y, h, v) || true;
+        if (dialog != null) return dialog.mouseScrolled(x, y, h, v) || true;
         return scrolled(x, y, h, v) || widgets.mouseScrolled(x, y, h, v);
     }
 

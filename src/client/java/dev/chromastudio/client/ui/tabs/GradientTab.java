@@ -40,6 +40,7 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Ramp;
 import dev.chromastudio.client.ui.DeferredTooltips;
+import dev.chromastudio.core.palette.StoredGradient;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -71,6 +72,8 @@ import net.minecraft.world.level.block.Blocks;
  *
  * <p>A click on a step opens the swap list under the strip: the next-best blocks for that step's colour. The one
  * chosen is pinned to the step, and the other steps are solved again around it.
+ *
+ * <p>"Saved…" saves the gradient on show, with its controls, steps and swaps, and loads one saved before.
  */
 public final class GradientTab extends PanelTab {
     private static final int MAX_STOPS = 8, CHIP = 18, CELL_MIN = 18, CELL_MAX = 40, IDEAL_H = 10, BLOCK_H = 7, CELL_H = IDEAL_H + 16 + BLOCK_H + 4;
@@ -98,6 +101,14 @@ public final class GradientTab extends PanelTab {
      */
     private static final Map<Integer, Entry> PINS = new HashMap<>();
     private static Object pinsFor, pinsBuild;
+    /**
+     * The saved gradient whose blocks are on show as they were saved, and what they were shown for, as the pins are,
+     * or null once anything has been solved since. A window opened afresh shows it again rather than solving.
+     */
+    private static StoredGradient restored;
+    private static Object restoredFor, restoredBuild;
+    /** The name the gradient on show was last saved or loaded under, or null. Saving offers it again. */
+    private static String savedName;
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
         Thread t = new Thread(task, "Chroma Studio gradient");
@@ -142,6 +153,9 @@ public final class GradientTab extends PanelTab {
     /** The gap between stops a drag would drop into now, as {@link Reorder} counts them. */
     private int dropGap;
     private int badgeY;
+    /** The actions along the bottom, in order, and the row and right edge they are being placed in. */
+    private static final String[] ACTIONS = {"hotbar", "copy", "export", "saved", "save", "swap"};
+    private int actionRowY, actionsRight, actionsLeft;
     /** The filters behind "More…", which lie over the strip while they are open. */
     private boolean filtersOpen;
     private final Widgets filterWidgets = new Widgets();
@@ -186,6 +200,12 @@ public final class GradientTab extends PanelTab {
         boolean seeded = Handoff.gradientSeed instanceof Entry;
         if (Handoff.gradientSeed instanceof Entry seed) addStop(seed);
         Handoff.gradientSeed = null;
+        // A saved gradient another mod asked to show, once.
+        StoredGradient asked = Handoff.gradientLoad;
+        Handoff.gradientLoad = null;
+        boolean loaded = asked != null && !restore(asked);
+        // A window opened afresh shows a loaded gradient's own blocks again, while nothing it was shown for has changed.
+        if (asked == null && result.isEmpty() && !solving && restored != null && pinKey().equals(restoredFor) && build() == restoredBuild) show(restored);
         selectedStop = Math.clamp(selectedStop, 0, STOPS.size() - 1);
 
         int x = b.x() + PAD, y = b.y() + PAD;
@@ -268,23 +288,37 @@ public final class GradientTab extends PanelTab {
             rebuild();
         })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip", counted)));
 
-        // The actions sit along the bottom, and the strip and its badge take what's between.
-        int actionsY = b.bottom() - PAD - Widgets.H;
+        // The actions sit along the bottom, and the strip and its badge take what's between. They take a second row
+        // where the window is too narrow for them, as it is in some languages at its smallest.
+        int rows = 1, rowW = 0;
+        for (String key : ACTIONS) {
+            int labelW = Widgets.buttonWidth(tr("gradient.chromastudio.action." + key));
+            if (rowW > 0 && rowW + labelW > b.w() - 2 * PAD) {
+                rows++;
+                rowW = 0;
+            }
+            rowW += labelW + GAP;
+        }
+        int actionsY = b.bottom() - PAD - Widgets.H - (rows - 1) * ROW;
+        actionRowY = actionsY;
+        actionsLeft = b.x() + PAD;
+        actionsRight = b.right() - PAD;
         Component none = result.isEmpty() ? (problem != null ? problem : tr("gradient.chromastudio.working")) : null;
         x = b.x() + PAD;
-        x = action(x, actionsY, "hotbar", () -> open(new PaletteDialogs.Hotbar(entries())), none != null ? none : HotbarFill.unavailable().orElse(null));
-        x = action(x, actionsY, "copy", () -> {
+        x = action(x, "hotbar", () -> open(new PaletteDialogs.Hotbar(entries())), none != null ? none : HotbarFill.unavailable().orElse(null));
+        x = action(x, "copy", () -> {
             Minecraft.getInstance().keyboardHandler.setClipboard(entries().stream().map(PaletteEntry::idWithProperties).collect(Collectors.joining("\n")));
             say(tr("gradient.chromastudio.copied", result.size()), GOOD);
         }, none);
-        x = action(x, actionsY, "export", () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
-        x = action(x, actionsY, "save", () -> {
+        x = action(x, "export", () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
+        x = action(x, "saved", () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
+        x = action(x, "save", () -> {
             Palette p = asPalette();
             PaletteSink sink = PaletteSink.current();
             if (sink != null && sink.createPalette(p.name, p.entries)) say(tr("gradient.chromastudio.saved", p.name), GOOD);
             else say(tr("capture.chromastudio.failed"), BAD);
         }, none);
-        action(x, actionsY, "swap", () -> {
+        action(x, "swap", () -> {
             Collections.reverse(STOPS);
             selectedStop = STOPS.size() - 1 - selectedStop;
             changed();
@@ -299,7 +333,7 @@ public final class GradientTab extends PanelTab {
         // The swap list follows the window as it is resized.
         if (swapStep >= 0) placeSwap();
         // A new stop, or settings changed on the settings screen, make the answer on show a stale one.
-        if (seeded || stale() || result.isEmpty() && problem == null && !solving) solve();
+        if (seeded || loaded || stale() || result.isEmpty() && problem == null && !solving) solve();
     }
 
     /** The filters lie over the strip and the badge under it. */
@@ -347,9 +381,14 @@ public final class GradientTab extends PanelTab {
 
     private static int widest(List<Component> labels) { return labels.stream().mapToInt(Widgets::tw).max().orElse(40) + 10; }
 
-    private int action(int x, int y, String key, Runnable run, Component unavailable) {
+    /** Places an action at x on the current row of actions, or at the start of the next where it doesn't fit, and returns where the next goes. */
+    private int action(int x, String key, Runnable run, Component unavailable) {
         Component label = tr("gradient.chromastudio.action." + key);
-        Button button = widgets.button(x, y, label, run);
+        if (x > actionsLeft && x + Widgets.buttonWidth(label) > actionsRight) {
+            x = actionsLeft;
+            actionRowY += ROW;
+        }
+        Button button = widgets.button(x, actionRowY, label, run);
         if (unavailable != null) Widgets.disable(button, unavailable);
         else button.setTooltip(Tooltip.create(tr("gradient.chromastudio.action." + key + ".tip")));
         return x + Widgets.buttonWidth(label) + GAP;
@@ -383,6 +422,116 @@ public final class GradientTab extends PanelTab {
         return p;
     }
 
+    // ---- Saving and loading ----
+
+    /** Why the gradient on show can't be saved now, or null when it can: there must be an answer, and no newer one on its way. */
+    private Component unsaveable() {
+        if (solving || result.isEmpty() && problem == null) return tr("gradient.chromastudio.working");
+        return result.isEmpty() ? problem : null;
+    }
+
+    /** The gradient on show, to save under a name. Only while {@link #unsaveable} is null. */
+    private StoredGradient toSave(String name) {
+        List<StoredGradient.Stop> stops = new ArrayList<>();
+        for (Object stop : STOPS) stops.add(new StoredGradient.Stop(colourOf(stop).rgb(), stop instanceof Entry e ? PaletteBlocks.of(e) : null));
+        List<StoredGradient.Step> blocks = new ArrayList<>();
+        for (Step s : result) blocks.add(new StoredGradient.Step(s.ideal.rgb(), PaletteBlocks.of(s.entry), s.pinned));
+        Kind kind = MatchState.filters().kind;
+        savedName = name;
+        return new StoredGradient(name, stops, steps, easing.name(), arc.name(), spread, kind == null ? "" : kind.name(), blocks);
+    }
+
+    /** Shows a saved gradient in place of the one on show. */
+    private void load(StoredGradient g) {
+        boolean shown = restore(g);
+        say(tr("gradient.chromastudio.store.loaded", g.name()), GOOD);
+        if (!shown) solve();
+        rebuild();
+    }
+
+    /**
+     * Takes a saved gradient's stops and controls, and shows the very blocks it was saved with, whatever the filters
+     * and settings would choose now. Only a later change solves it again, keeping the blocks chosen by hand. Returns
+     * false when the saved blocks can't be shown, as when one is gone from the game or the index isn't built yet,
+     * and the caller must solve instead.
+     */
+    private boolean restore(StoredGradient g) {
+        apply(g);
+        return show(g);
+    }
+
+    /**
+     * Shows a saved gradient's blocks as the answer, for stops and controls already taken from it, and keeps it as
+     * what the tab shows until something changes, across windows too. Returns false when they can't be shown.
+     */
+    private boolean show(StoredGradient g) {
+        restored = null;
+        if (!BlockIndex.get().ready() || g.blocks().size() != steps) return false;
+        Scale scale = PaletteBlocks.scale();
+        List<Step> shown = new ArrayList<>();
+        double mean = 0;
+        for (StoredGradient.Step step : g.blocks()) {
+            Entry e = PaletteBlocks.entry(step.block());
+            if (e == null) return false;
+            TextureStats stats = PaletteBlocks.stats(e);
+            Color ideal = Color.ofRgb(step.ideal());
+            double deltaE = Distribution.of(ideal).emd(stats.distribution(scale), Metric.OKLAB);
+            mean += deltaE / g.blocks().size();
+            shown.add(new Step(ideal, e, stats.mean(scale), deltaE, step.byHand()));
+        }
+        Pool chosenFrom = pool(scale);
+        // Any solve still on its way was for what was on show before.
+        ASKED.incrementAndGet();
+        solving = false;
+        problem = null;
+        swapStep = -1;
+        result = List.copyOf(shown);
+        meanDeltaE = mean;
+        pool = chosenFrom.candidates;
+        poolById = chosenFrom.byId;
+        poolMetric = PaletteBlocks.metric();
+        solvedFor = inputs();
+        solvedBuild = build();
+        restored = g;
+        restoredFor = pinKey();
+        restoredBuild = solvedBuild;
+        return true;
+    }
+
+    /**
+     * Takes a saved gradient's stops and controls, and pins the blocks the player chose by hand to their steps, for
+     * the next solve. A block this game no longer has gives its stop the colour it showed, and its pin is let go.
+     * The other filters, which the Match tab shares, are left as the player has them.
+     */
+    private static void apply(StoredGradient g) {
+        STOPS.clear();
+        for (StoredGradient.Stop stop : g.stops()) {
+            Entry e = stop.isBlock() ? PaletteBlocks.entry(stop.block()) : null;
+            if (STOPS.size() < MAX_STOPS) STOPS.add(e != null ? e : Color.ofRgb(stop.rgb()));
+        }
+        selectedStop = 0;
+        steps = g.steps();
+        easing = named(Easing.class, g.easing(), easing);
+        arc = named(HueArc.class, g.arc(), arc);
+        spread = g.spread();
+        MatchFilters filters = MatchState.filters();
+        Kind kind = g.kind().isEmpty() ? null : named(Kind.class, g.kind(), filters.kind);
+        if (kind != filters.kind) {
+            filters.kind = kind;
+            MatchState.changed();
+        }
+        PINS.clear();
+        for (int i = 0; i < g.blocks().size(); i++) {
+            StoredGradient.Step step = g.blocks().get(i);
+            Entry e = step.byHand() ? PaletteBlocks.entry(step.block()) : null;
+            if (e != null) PINS.put(i, e);
+        }
+        // The pins belong to the gradient just taken, so the solve keeps them.
+        pinsFor = pinKey();
+        pinsBuild = build();
+        savedName = g.name();
+    }
+
     // ---- Solving ----
 
     /**
@@ -391,6 +540,7 @@ public final class GradientTab extends PanelTab {
      */
     private void solve() {
         int number = ASKED.incrementAndGet();
+        restored = null;
         solvedFor = inputs();
         solvedBuild = build();
         swapStep = -1;
@@ -408,15 +558,19 @@ public final class GradientTab extends PanelTab {
         Metric metric = PaletteBlocks.metric();
         List<Oklch> stops = STOPS.stream().map(s -> colourOf(s).oklch()).toList();
         List<Oklch> ideal = Ramp.of(stops, steps, easing, arc);
-        List<Gradient.Candidate> candidates = new ArrayList<>();
-        Map<String, Entry> byId = new HashMap<>();
-        Map<String, TextureStats> looks = new HashMap<>();
-        // One block fills at most one step: the filters give each block that passes them once.
-        for (Entry e : MatchState.filters().candidates(BlockIndex.get(), PaletteBlocks.face(), scale, PaletteBlocks.tint())) {
-            byId.put(e.id(), e);
+        Pool chosenFrom = pool(scale);
+        List<Gradient.Candidate> candidates = chosenFrom.candidates;
+        Map<String, Entry> byId = chosenFrom.byId;
+        Map<String, TextureStats> looks = chosenFrom.looks;
+        // A loaded gradient's swaps stay, though the filters now leave their blocks out or offer another state of
+        // them: the player chose that very state.
+        for (Entry e : PINS.values()) {
+            if (byId.get(e.id()) == e) continue;
             TextureStats stats = PaletteBlocks.stats(e);
+            Gradient.Candidate pinned = new Gradient.Candidate(e.id(), stats.distribution(scale), stats.spread());
+            if (byId.put(e.id(), e) != null) candidates.removeIf(c -> c.key().equals(e.id()));
             looks.put(e.id(), stats);
-            candidates.add(new Gradient.Candidate(e.id(), stats.distribution(scale), stats.spread()));
+            candidates.add(pinned);
         }
         if (candidates.size() < steps) {
             fail(tr("gradient.chromastudio.too_few", candidates.size(), steps));
@@ -463,6 +617,24 @@ public final class GradientTab extends PanelTab {
                 rebuild();
             });
         });
+    }
+
+    /** The blocks a gradient is chosen from, by their ids, and how each looks. */
+    private record Pool(List<Gradient.Candidate> candidates, Map<String, Entry> byId, Map<String, TextureStats> looks) {}
+
+    /** The blocks that pass the filters, read on the client thread, since a tint may need the world. */
+    private static Pool pool(Scale scale) {
+        List<Gradient.Candidate> candidates = new ArrayList<>();
+        Map<String, Entry> byId = new HashMap<>();
+        Map<String, TextureStats> looks = new HashMap<>();
+        // One block fills at most one step: the filters give each block that passes them once.
+        for (Entry e : MatchState.filters().candidates(BlockIndex.get(), PaletteBlocks.face(), scale, PaletteBlocks.tint())) {
+            byId.put(e.id(), e);
+            TextureStats stats = PaletteBlocks.stats(e);
+            looks.put(e.id(), stats);
+            candidates.add(new Gradient.Candidate(e.id(), stats.distribution(scale), stats.spread()));
+        }
+        return new Pool(candidates, byId, looks);
     }
 
     private void fail(Component why) {
@@ -839,6 +1011,12 @@ public final class GradientTab extends PanelTab {
     @Override
     public void tick() {
         super.tick();
+        // A load asked for while the tab was already on show, which lays nothing out again.
+        if (Handoff.gradientLoad != null && !dialogOpen()) {
+            StoredGradient asked = Handoff.gradientLoad;
+            Handoff.gradientLoad = null;
+            load(asked);
+        }
         MatchState.follow();
         // A change made while this tab is the one on show came from its own controls, which already show it.
         filtersSeen = MatchState.filters().state();
