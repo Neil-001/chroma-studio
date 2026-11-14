@@ -23,6 +23,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - The mod is client-only. Fabric's `environment` is `client` with only a `client` entrypoint. NeoForge's one `@Mod` class has `dist = Dist.CLIENT`, and the mod registers no payloads, so a server never checks for it. Don't add a server entrypoint, a payload or a registry entry.
 - There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
+- The Fabric jar carries intermediary names, so a Fabric mod compiles against the API with Loom's `modCompileOnly`, which remaps it; NeoForge's jar has Mojang's names and takes plain `compileOnly`. The API is otherwise the same as on `main`.
 - Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them.
 - A new setting follows the comment on `ModSettings`, and needs a label and a `.tip` in the language file, which the settings screen's search reads.
 - `en_us.json` is written by hand, and the nine other language files are generated from it. A new English key needs its nine translations in the same change, or `LangTest` fails.
@@ -35,7 +36,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 ## Minecraft rules
 
 - A block's model comes from `BlockModelShaper`, as `BlockStateModel` with `BlockModelPart`s, and a quad holds its `sprite()` and `tintIndex()` itself. The diorama submits its blocks to the game's `FeatureRenderDispatcher` and has it draw them, as the game's own pictures do: a picture's `renderToTexture` gets only a pose, and the ways to draw a block straight into the buffers are deprecated.
-- The GUI is drawn through `GuiGraphics`, with `render` and `renderBackground` on a screen, `renderWidget` and `renderContents` on a widget, and `drawString`, `drawCenteredString`, `drawWordWrap`, `renderOutline` and `renderFakeItem` for the drawing itself. The open screen is `mc.screen`, set with `mc.setScreen`.
+- The GUI is drawn through `GuiGraphics`, which is `main`'s `GuiGraphicsExtractor`, with `render` and `renderBackground` on a screen, `renderWidget` and `renderContents` on a widget, and `drawString` (`main`'s `text`), `drawCenteredString`, `drawWordWrap`, `renderOutline` and `renderFakeItem` for the drawing itself. The open screen is `mc.screen`, set with `mc.setScreen`.
 - A state's properties and values come as a map, `BlockState.getValues()`, their types apart.
 - A tint comes from `BlockColors.getColor(state, getter, pos, tintIndex)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
 - Signs and beds have no block models here, only a particle texture, so they are matched as blocks a block entity draws, like chests. 26.2 gave them models.
@@ -75,15 +76,17 @@ The mod never places or changes blocks in the world. It acts only through the pl
 
 `main` is for the newest Minecraft version. Each older line the mod still supports lives on a `<line>/stable` branch, such as `26.2/stable` or `1.21.1/stable`, ported from `main` and kept to its own Minecraft. Develop on `main`, and backport to a stable branch only what makes sense for its version. Each branch's `CLAUDE.md` says how it differs from `main`.
 
-Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. Its `branches` input is `main` by default, a comma-separated list of `main` and `*/stable` branches, or `all` for every `*/stable` branch.
+Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. Its comments and those in `.github/scripts/` say how it works. Its `branches` input is a comma-separated list of `main` and `*/stable` branches, or `all` for every `*/stable` branch. Left empty, it is `main`.
+
+Those files name no mod, and Curve Generator's repository has the same ones, so make a change to them in both. `main` releases here because the repository variable `RELEASE_MAIN` is `true`.
 
 1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases. A stable branch gets the same two changes in a PR against it, with the changelog section as released on `main` and any note about that line.
 2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes. Add `-f branches=26.2/stable`, say, for a stable branch, or `-f branches=all` for every one.
 3. Run `gh workflow run release.yml` with the same `branches` to publish.
-4. Run `gh workflow run listing.yml` when the description, gallery or icon changed. CurseForge has no API for its page: paste `listing/curseforge.html` and upload the gallery by hand.
+4. Run `gh workflow run listing.yml` when the description, gallery or icon changed. CurseForge has no API for its page, so paste `listing/curseforge.html` and upload the gallery by hand.
 
-Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. A branch whose tag exists is skipped, so `all` releases only the branches with a new version. The workflow creates the tag last, after publishing.
+Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. A branch whose tag exists is skipped, so `all` releases only the branches with a new version.
 
-After a partial failure, re-run failed jobs. Modrinth skips existing versions; CurseForge doesn't. Check CurseForge for each failed job's jar before retrying, and retry only if it's absent. Don't start a fresh run with CurseForge in `targets` after a partial release. To limit sites, pass `-f targets=curseforge,github`, for example.
+After a partial failure, re-run failed jobs or start a fresh run. Neither uploads a jar twice. Delete the artifact `curseforge-<version>` to upload a version to CurseForge again. If a publish job failed at its CurseForge step or while saving that artifact, the upload may have gone through, so check CurseForge's files page and retry only if the jar is absent. To limit sites, pass `-f targets=curseforge,github`, for example.
 
 The `CHANGELOG.md` section goes to all three sites as written. Start with a short paragraph about what changes for players. List merged PRs under `## Features` and `## Fixes`, one bullet per PR ending in `(#21)`, for example. Rewrite titles for players and omit CI, refactors and docs.

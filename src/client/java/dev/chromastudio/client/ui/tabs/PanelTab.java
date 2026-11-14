@@ -121,19 +121,19 @@ abstract class PanelTab extends Tab {
 
     @Override
     public final boolean mouseReleased(MouseButtonEvent e) {
-        if (dialog != null) return dialog.widgets.mouseReleased(e);
+        if (dialog != null) return dialog.mouseReleased(e);
         return released(e) | widgets.mouseReleased(e);
     }
 
     @Override
     public final boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
-        if (dialog != null) return dialog.widgets.mouseDragged(e, dx, dy);
+        if (dialog != null) return dialog.mouseDragged(e, dx, dy);
         return dragged(e, dx, dy) || widgets.mouseDragged(e, dx, dy);
     }
 
     @Override
     public final boolean mouseScrolled(double x, double y, double h, double v) {
-        if (dialog != null) return dialog.widgets.mouseScrolled(x, y, h, v) || true;
+        if (dialog != null) return dialog.mouseScrolled(x, y, h, v) || true;
         return scrolled(x, y, h, v) || widgets.mouseScrolled(x, y, h, v);
     }
 
