@@ -29,7 +29,7 @@ Chroma Studio compares whole textures rather than just their average colour, and
 - Match modded blocks and resource packs.
 - Filter by block type, mod, colour and texture busyness.
 - Turn a material's slabs, stairs and other blocks into a palette in one click.
-- Build gradients with multiple colour stops and swap individual blocks.
+- Build gradients with multiple colour stops, swap individual blocks, and save them to load later.
 - Make palettes from colour harmonies, images or blocks in the world.
 - Save palettes with tags and notes, and share them as text.
 - Check palettes for missing shades or accents.
@@ -37,6 +37,7 @@ Chroma Studio compares whole textures rather than just their average colour, and
 - Export `.litematic` and `.nbt` schematics, or copy WorldEdit patterns and commands.
 - Fill your hotbar with a palette or gradient, with undo, in creative mode or as an operator.
 - Explore every block by hue and lightness.
+- Paint shapes with your gradients and palettes in [Curve Generator](https://modrinth.com/mod/curvegen) 3.0.0 or newer.
 
 ## Links
 
