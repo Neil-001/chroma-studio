@@ -4,7 +4,7 @@ The Gradient tab's buttons along the bottom no longer run past the window's edge
 
 ## Fixes
 
-- The Gradient tab's buttons along the bottom wrap onto a second line when the window is too narrow for them (#PR)
+- The Gradient tab's buttons along the bottom wrap onto a second line when the window is too narrow for them (#48)
 
 # 1.2.0
 
