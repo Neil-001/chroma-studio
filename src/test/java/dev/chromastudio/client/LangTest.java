@@ -89,7 +89,7 @@ class LangTest {
             keys.add("palettes.chromastudio." + action);
             keys.add("palettes.chromastudio." + action + ".tip");
         }
-        for (String action : List.of("hotbar", "copy", "export", "save", "swap")) {
+        for (String action : List.of("hotbar", "copy", "export", "saved", "save", "swap")) {
             keys.add("gradient.chromastudio.action." + action);
             keys.add("gradient.chromastudio.action." + action + ".tip");
         }
