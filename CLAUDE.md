@@ -44,6 +44,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - 1.21.1 has no shelves or pale moss carpets, and its plants are `BushBlock`s. The shelf kind stays in the filters and never matches.
 - The game runs on GLFW and ships tinyfd, which `FileDialog` uses. Its GUI has no way to ask for a mouse cursor, so ask `Cursors.request` for a shape each frame.
 - Mouse buttons count from 0 here. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number.
+- The game ships JetBrains' annotations but not JSpecify, so `@Nullable` comes from `org.jetbrains.annotations`, the public API's included. A caller compiling against the jar sees the same nullness, only under that name.
 - `NativeImage.getPixelRGBA` and `setPixelRGBA` take ABGR. Go through `Abgr`, which takes and returns ARGB.
 
 ## Conventions
