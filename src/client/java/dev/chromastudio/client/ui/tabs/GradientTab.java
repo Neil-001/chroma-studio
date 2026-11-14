@@ -19,6 +19,7 @@ import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.client.ui.Bounds;
+import dev.chromastudio.client.ui.Flow;
 import dev.chromastudio.client.ui.Handoff;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
@@ -152,6 +153,9 @@ public final class GradientTab extends PanelTab {
     /** The gap between stops a drag would drop into now, as {@link Reorder} counts them. */
     private int dropGap;
     private int badgeY;
+    /** The actions along the bottom, in order, and where the last layout placed them. */
+    private static final String[] ACTIONS = {"hotbar", "copy", "export", "saved", "save", "swap"};
+    private Flow.Spot[] actionSpots;
     /** The filters behind "More…", which lie over the strip while they are open. */
     private boolean filtersOpen;
     private final Widgets filterWidgets = new Widgets();
@@ -284,24 +288,27 @@ public final class GradientTab extends PanelTab {
             rebuild();
         })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip", counted)));
 
-        // The actions sit along the bottom, and the strip and its badge take what's between.
-        int actionsY = b.bottom() - PAD - Widgets.H;
+        // The actions sit along the bottom, and the strip and its badge take what's between. Where the window is too
+        // narrow for them, as it is at its smallest in some languages, they wrap onto a second row.
+        int[] actionWidths = new int[ACTIONS.length];
+        for (int i = 0; i < ACTIONS.length; i++) actionWidths[i] = Widgets.buttonWidth(tr("gradient.chromastudio.action." + ACTIONS[i]));
+        actionSpots = Flow.place(actionWidths, b.x() + PAD, b.right() - PAD, GAP);
+        int actionsY = b.bottom() - PAD - Widgets.H - (Flow.rows(actionSpots) - 1) * ROW;
         Component none = result.isEmpty() ? (problem != null ? problem : tr("gradient.chromastudio.working")) : null;
-        x = b.x() + PAD;
-        x = action(x, actionsY, "hotbar", () -> open(new PaletteDialogs.Hotbar(entries())), none != null ? none : HotbarFill.unavailable().orElse(null));
-        x = action(x, actionsY, "copy", () -> {
+        action(0, actionsY, () -> open(new PaletteDialogs.Hotbar(entries())), none != null ? none : HotbarFill.unavailable().orElse(null));
+        action(1, actionsY, () -> {
             Minecraft.getInstance().keyboardHandler.setClipboard(entries().stream().map(PaletteEntry::idWithProperties).collect(Collectors.joining("\n")));
             say(tr("gradient.chromastudio.copied", result.size()), GOOD);
         }, none);
-        x = action(x, actionsY, "export", () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
-        x = action(x, actionsY, "saved", () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
-        x = action(x, actionsY, "save", () -> {
+        action(2, actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
+        action(3, actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
+        action(4, actionsY, () -> {
             Palette p = asPalette();
             PaletteSink sink = PaletteSink.current();
             if (sink != null && sink.createPalette(p.name, p.entries)) say(tr("gradient.chromastudio.saved", p.name), GOOD);
             else say(tr("capture.chromastudio.failed"), BAD);
         }, none);
-        action(x, actionsY, "swap", () -> {
+        action(5, actionsY, () -> {
             Collections.reverse(STOPS);
             selectedStop = STOPS.size() - 1 - selectedStop;
             changed();
@@ -364,12 +371,13 @@ public final class GradientTab extends PanelTab {
 
     private static int widest(List<Component> labels) { return labels.stream().mapToInt(Widgets::tw).max().orElse(40) + 10; }
 
-    private int action(int x, int y, String key, Runnable run, Component unavailable) {
-        Component label = tr("gradient.chromastudio.action." + key);
-        Button button = widgets.button(x, y, label, run);
+    /** Places the action at this index in {@link #ACTIONS} where {@link #actionSpots} has it, its first row at y. */
+    private void action(int index, int y, Runnable run, Component unavailable) {
+        String key = ACTIONS[index];
+        Flow.Spot spot = actionSpots[index];
+        Button button = widgets.button(spot.x(), y + spot.row() * ROW, tr("gradient.chromastudio.action." + key), run);
         if (unavailable != null) Widgets.disable(button, unavailable);
         else button.setTooltip(Tooltip.create(tr("gradient.chromastudio.action." + key + ".tip")));
-        return x + Widgets.buttonWidth(label) + GAP;
     }
 
     /** The block the player holds, as the index has it, or null. */

@@ -1,3 +1,11 @@
+# 1.2.1
+
+The Gradient tab's buttons along the bottom no longer run past the window's edge at its smallest size in German, Spanish, French, Japanese, Polish, Portuguese and Russian. When they don't fit on one line they now take a second. This release is for Minecraft 26.2 on Fabric and NeoForge.
+
+## Fixes
+
+- The Gradient tab's buttons along the bottom wrap onto a second line when the window is too narrow for them (#48)
+
 # 1.2.0
 
 Save a gradient and load it back later with the very blocks it had, your swaps included. Other mods can now read your saved gradients and palettes and match colours to blocks: Curve Generator 3.0.0 uses this to paint its shapes with your gradients and palettes. This release is for Minecraft 26.2 on Fabric and NeoForge.
