@@ -165,7 +165,7 @@
   "settings.chromastudio.litematicaPlacement": "Litematica 배치 위치",
   "settings.chromastudio.litematicaPlacement.tip": "내보낸 설계도를 놓을 위치입니다. 바라보는 블록 또는 항상 서 있는 곳 중에서 고릅니다.",
   "settings.chromastudio.hotbarAxiom": "핫바 채우기에 Axiom 핫바 사용",
-  "settings.chromastudio.hotbarAxiom.tip": "Axiom이 설치되어 있으면 핫바 채우기가 팔레트의 열 번째 이후 블록을 Axiom의 다음 추가 핫바에 아홉 개씩 넣고, 그 자리에 있던 것을 바꿉니다. 왼쪽 Alt를 누르고 있으면 전환할 수 있습니다. 크리에이티브 모드에서만 됩니다.",
+  "settings.chromastudio.hotbarAxiom.tip": "Axiom이 설치되어 있으면 핫바 채우기가 팔레트의 열 번째 이후 블록을 Axiom의 다음 추가 핫바에 아홉 개씩 넣고, 그 자리에 있던 것을 바꿉니다. Axiom의 Builder Mode 메뉴에서 전환할 수 있습니다. 크리에이티브 모드에서만 됩니다.",
   "option.chromastudio.facechoice.any": "아무 면",
   "option.chromastudio.facechoice.top": "윗면",
   "option.chromastudio.facechoice.side": "옆면",

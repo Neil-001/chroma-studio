@@ -165,7 +165,7 @@
   "settings.chromastudio.litematicaPlacement": "Posicionamento no Litematica",
   "settings.chromastudio.litematicaPlacement.tip": "Onde um esquema exportado é colocado: no bloco para o qual você olha ou sempre onde você está.",
   "settings.chromastudio.hotbarAxiom": "Barras do Axiom ao preencher a barra de atalhos",
-  "settings.chromastudio.hotbarAxiom.tip": "Com o Axiom instalado, Barra põe os blocos de uma paleta a partir do décimo nas próximas barras extras do Axiom, nove em cada, substituindo o que havia lá. Segure Alt esquerdo para trocar para elas. Só no modo criativo.",
+  "settings.chromastudio.hotbarAxiom.tip": "Com o Axiom instalado, Barra põe os blocos de uma paleta a partir do décimo nas próximas barras extras do Axiom, nove em cada, substituindo o que havia lá. Troque para elas pelo menu Builder Mode do Axiom. Só no modo criativo.",
   "option.chromastudio.facechoice.any": "Qualquer",
   "option.chromastudio.facechoice.top": "Topo",
   "option.chromastudio.facechoice.side": "Lado",

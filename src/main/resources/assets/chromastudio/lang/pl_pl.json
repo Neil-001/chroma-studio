@@ -165,7 +165,7 @@
   "settings.chromastudio.litematicaPlacement": "Umieszczanie w Litematice",
   "settings.chromastudio.litematicaPlacement.tip": "Gdzie umieszczany jest wyeksportowany schemat: przy bloku, na który patrzysz, albo zawsze tam, gdzie stoisz.",
   "settings.chromastudio.hotbarAxiom": "Paski Axiom przy wypełnianiu paska szybkiego dostępu",
-  "settings.chromastudio.hotbarAxiom.tip": "Z zainstalowanym Axiom Pasek wkłada bloki palety od dziesiątego do kolejnych dodatkowych pasków Axiom, po dziewięć, zastępując to, co tam było. Przytrzymaj lewy Alt, aby się na nie przełączyć. Działa tylko w trybie kreatywnym.",
+  "settings.chromastudio.hotbarAxiom.tip": "Z zainstalowanym Axiom Pasek wkłada bloki palety od dziesiątego do kolejnych dodatkowych pasków Axiom, po dziewięć, zastępując to, co tam było. Przełączysz się na nie w menu Builder Mode Axiom. Działa tylko w trybie kreatywnym.",
   "option.chromastudio.facechoice.any": "Dowolna",
   "option.chromastudio.facechoice.top": "Góra",
   "option.chromastudio.facechoice.side": "Bok",

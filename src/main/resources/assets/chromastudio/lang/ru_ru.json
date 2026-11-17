@@ -165,7 +165,7 @@
   "settings.chromastudio.litematicaPlacement": "Размещение в Litematica",
   "settings.chromastudio.litematicaPlacement.tip": "Где размещается экспортированная схема: у блока, на который вы смотрите, или всегда там, где вы стоите.",
   "settings.chromastudio.hotbarAxiom": "Панели Axiom при заполнении панели быстрого доступа",
-  "settings.chromastudio.hotbarAxiom.tip": "Если установлен Axiom, блоки палитры начиная с десятого попадают в следующие дополнительные панели Axiom, по девять, заменяя то, что там было. Удерживайте левый Alt, чтобы переключиться на них. Только в творческом режиме.",
+  "settings.chromastudio.hotbarAxiom.tip": "Если установлен Axiom, блоки палитры начиная с десятого попадают в следующие дополнительные панели Axiom, по девять, заменяя то, что там было. Переключиться на них можно в меню Builder Mode в Axiom. Только в творческом режиме.",
   "option.chromastudio.facechoice.any": "Любая",
   "option.chromastudio.facechoice.top": "Верх",
   "option.chromastudio.facechoice.side": "Бок",

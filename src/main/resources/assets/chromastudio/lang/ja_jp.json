@@ -165,7 +165,7 @@
   "settings.chromastudio.litematicaPlacement": "Litematica の配置",
   "settings.chromastudio.litematicaPlacement.tip": "書き出した設計図を置く場所です。見ているブロックの位置、または常に今立っている位置から選びます。",
   "settings.chromastudio.hotbarAxiom": "ホットバーを埋めるときに Axiom のホットバーを使う",
-  "settings.chromastudio.hotbarAxiom.tip": "Axiom が入っていると、ホットバーはパレットの 10 個目以降のブロックを Axiom の次の追加ホットバーに 9 個ずつ入れ、そこにあった物と置き換えます。左 Alt を押し続けると切り替えられます。クリエイティブモードでのみ使えます。",
+  "settings.chromastudio.hotbarAxiom.tip": "Axiom が入っていると、ホットバーはパレットの 10 個目以降のブロックを Axiom の次の追加ホットバーに 9 個ずつ入れ、そこにあった物と置き換えます。Axiom の Builder Mode メニューから切り替えられます。クリエイティブモードでのみ使えます。",
   "option.chromastudio.facechoice.any": "任意",
   "option.chromastudio.facechoice.top": "上面",
   "option.chromastudio.facechoice.side": "側面",

@@ -164,7 +164,7 @@
   "settings.chromastudio.litematicaPlacement": "Litematica placement",
   "settings.chromastudio.litematicaPlacement.tip": "Where an exported schematic is placed: at the block you look at, or always where you stand.",
   "settings.chromastudio.hotbarAxiom": "Axiom hotbars in a hotbar fill",
-  "settings.chromastudio.hotbarAxiom.tip": "With Axiom installed, Hotbar puts a palette's blocks past the ninth in Axiom's next extra hotbars, nine to each, replacing what's there. Hold Left Alt to switch to them. Works in creative mode only.",
+  "settings.chromastudio.hotbarAxiom.tip": "With Axiom installed, Hotbar puts a palette's blocks past the ninth in Axiom's next extra hotbars, nine to each, replacing what's there. Switch to them from Axiom's Builder Mode menu. Works in creative mode only.",
   "option.chromastudio.facechoice.any": "Any",
   "option.chromastudio.facechoice.top": "Top",
   "option.chromastudio.facechoice.side": "Side",

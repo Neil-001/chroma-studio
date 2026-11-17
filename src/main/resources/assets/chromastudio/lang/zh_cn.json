@@ -165,7 +165,7 @@
   "settings.chromastudio.litematicaPlacement": "Litematica 放置位置",
   "settings.chromastudio.litematicaPlacement.tip": "导出的原理图放在哪里：你注视的方块处，或始终在你站立的位置。",
   "settings.chromastudio.hotbarAxiom": "填充快捷栏时使用 Axiom 快捷栏",
-  "settings.chromastudio.hotbarAxiom.tip": "装有 Axiom 时，快捷栏会把调色板第十个及之后的方块放进 Axiom 接下来的额外快捷栏，每栏九个，并替换原有物品。按住左 Alt 可切换到它们。仅限创造模式。",
+  "settings.chromastudio.hotbarAxiom.tip": "装有 Axiom 时，快捷栏会把调色板第十个及之后的方块放进 Axiom 接下来的额外快捷栏，每栏九个，并替换原有物品。可在 Axiom 的 Builder Mode 菜单中切换到它们。仅限创造模式。",
   "option.chromastudio.facechoice.any": "任意",
   "option.chromastudio.facechoice.top": "顶面",
   "option.chromastudio.facechoice.side": "侧面",
