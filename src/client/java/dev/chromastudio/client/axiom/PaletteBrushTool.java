@@ -165,12 +165,15 @@ final class PaletteBrushTool implements CustomTool {
 
     /** The palette's blocks as a row of their colours, each named when hovered. */
     private static void swatches(Palette p) {
+        // As many to a row as the panel is wide, so a narrow panel wraps them rather than cutting the last off.
+        float size = ImGui.getFrameHeight(), gap = ImGui.getStyle().getItemSpacingX();
+        int perRow = Math.max(1, (int) ((ImGui.getContentRegionAvailX() + gap) / (size + gap)));
         int column = 0;
         for (int i = 0; i < p.entries.size(); i++) {
             PaletteEntry e = p.entries.get(i);
             Color c = PaletteBlocks.colour(e);
             if (c == null) continue;
-            if (column > 0 && column % 10 != 0) ImGui.sameLine();
+            if (column % perRow != 0) ImGui.sameLine();
             ImGui.colorButton("##swatch" + i, c.red() / 255f, c.green() / 255f, c.blue() / 255f, 1f, ImGuiColorEditFlags.NoTooltip);
             ImGui.setItemTooltip(PaletteBlocks.name(e).getString() + (e.weight() > 1 ? " ×" + e.weight() : ""));
             column++;
