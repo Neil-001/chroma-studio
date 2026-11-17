@@ -581,7 +581,7 @@ final class PaletteDialogs {
 
         /** A recolour or scatter of a palette. */
         Axiom(Palette palette) {
-            super(tr("axiom.chromastudio.title"), 300, 120);
+            super(tr("axiom.chromastudio.title"), 300, 140);
             this.palette = palette;
             this.gradientName = null;
             this.steps = null;
