@@ -56,4 +56,31 @@ class HotbarPlanTest {
                     assertEquals(true, p.boxes().stream().allMatch(n -> n >= 1 && n <= HotbarPlan.BOX));
                 }
     }
+
+    @Test
+    void axiomTakesTheHotbarsAfterTheActiveOneNineToEach() {
+        assertEquals(List.of(), HotbarPlan.axiom(0, 0));
+        assertEquals(0, HotbarPlan.axiomHotbars(0));
+        List<HotbarPlan.Spot> spots = HotbarPlan.axiom(0, 12);
+        assertEquals(new HotbarPlan.Spot(1, 0), spots.get(0));
+        assertEquals(new HotbarPlan.Spot(1, 8), spots.get(8));
+        assertEquals(new HotbarPlan.Spot(2, 0), spots.get(9));
+        assertEquals(new HotbarPlan.Spot(2, 2), spots.get(11));
+        assertEquals(2, HotbarPlan.axiomHotbars(12));
+        // From a hotbar further on, it carries on past it, onto the next page when it gets there.
+        assertEquals(List.of(new HotbarPlan.Spot(9, 0), new HotbarPlan.Spot(9, 1)), HotbarPlan.axiom(8, 2));
+    }
+
+    @Test
+    void axiomGivesEveryBlockItsOwnSlotNeverTheActiveHotbar() {
+        for (int active = 0; active < 20; active++)
+            for (int rest = 0; rest <= 60; rest++) {
+                List<HotbarPlan.Spot> spots = HotbarPlan.axiom(active, rest);
+                assertEquals(rest, spots.size());
+                assertEquals(rest, spots.stream().distinct().count());
+                final int a = active;
+                assertEquals(true, spots.stream().allMatch(s -> s.hotbar() > a && s.slot() >= 0 && s.slot() < 9));
+                assertEquals(HotbarPlan.axiomHotbars(rest), spots.stream().map(HotbarPlan.Spot::hotbar).distinct().count());
+            }
+    }
 }

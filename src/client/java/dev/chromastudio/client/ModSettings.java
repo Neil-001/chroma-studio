@@ -121,6 +121,8 @@ public final class ModSettings {
 
     // Integrations
     public static PlacementChoice litematicaPlacement = PlacementChoice.LOOKING_AT;
+    /** Whether a hotbar fill puts the blocks past the ninth in Axiom's next hotbars, when Axiom is there and can. */
+    public static boolean hotbarAxiom = false;
 
     /** Every setting by the group the settings screen lists it under, in the order shown and saved. */
     public static final Map<String, List<String>> GROUPS = new LinkedHashMap<>();
@@ -145,7 +147,7 @@ public final class ModSettings {
         GROUPS.put("gradient", List.of("gradientSteps", "easing", "hueArc", "spreadMatching"));
         GROUPS.put("palettes", List.of("generateCount", "captureCount", "hotbarOverflowMode", "dioramaPerspective", "exportFolder", "defaultLayout", "patchSize", "exportGap"));
         GROUPS.put("tooltips", List.of("tooltipMode", "tooltipSwatch", "tooltipHex", "tooltipKind", "tooltipBadge", "tooltipDeltaE", "readoutSeconds"));
-        GROUPS.put("integrations", List.of("litematicaPlacement"));
+        GROUPS.put("integrations", List.of("litematicaPlacement", "hotbarAxiom"));
 
         limit("windowX", CENTRED, WINDOW_MAX);
         limit("windowY", CENTRED, WINDOW_MAX);

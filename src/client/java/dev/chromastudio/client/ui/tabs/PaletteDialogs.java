@@ -4,8 +4,10 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.OverflowMode;
 import dev.chromastudio.client.PaletteStore;
+import dev.chromastudio.client.action.AxiomHotbars;
 import dev.chromastudio.client.action.FileDialog;
 import dev.chromastudio.client.action.HotbarFill;
+import dev.chromastudio.client.action.HotbarPlan;
 import dev.chromastudio.client.action.ImageImport;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.export.LitematicaBridge;
@@ -41,6 +43,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.core.BlockPos;
@@ -564,7 +567,7 @@ final class PaletteDialogs {
         private Component result;
 
         Hotbar(List<PaletteEntry> entries) {
-            super(tr("palettes.chromastudio.hotbar.title"), 270, 124);
+            super(tr("palettes.chromastudio.hotbar.title"), 270, 124 + Widgets.H + PanelTab.GAP);
             this.entries = List.copyOf(entries);
         }
 
@@ -578,11 +581,24 @@ final class PaletteDialogs {
             Function<OverflowMode, Component> names = m -> tr("option.chromastudio.overflowmode." + m.name().toLowerCase(Locale.ROOT));
             int modeW = modes.stream().mapToInt(m -> Widgets.buttonWidth(CommonComponents.optionNameValue(boxes, names.apply(m)))).max().orElse(0);
             modeW = Math.min(modeW, in.w() - undoW - Widgets.buttonWidth(fill) - 2 * PanelTab.GAP);   // a long translation never squeezes Fill below its text
-            widgets.cycler(in.x(), y, modeW, boxes, modes, ModSettings.hotbarOverflowMode, names, m -> {
+            CycleButton<OverflowMode> modeButton = widgets.cycler(in.x(), y, modeW, boxes, modes, ModSettings.hotbarOverflowMode, names, m -> {
                         ModSettings.hotbarOverflowMode = m;
                         ModSettings.save();
                         result = null;
                     }, tr("settings.chromastudio.hotbarOverflowMode.tip"));
+            // Axiom's hotbars take the blocks past the ninth instead of boxes, so while they do the boxes' mode has no say.
+            if (entries.size() > 9 && HotbarFill.usesAxiom()) Widgets.disable(modeButton, tr("hotbar.chromastudio.axiom.instead"));
+            // A row of its own over the others, greyed with the reason when Axiom is missing or can't take them now.
+            Component axiom = tr("palettes.chromastudio.hotbar.axiom");
+            int axiomW = Math.min(in.w(), Math.max(Widgets.buttonWidth(CommonComponents.optionNameValue(axiom, CommonComponents.OPTION_ON)),
+                    Widgets.buttonWidth(CommonComponents.optionNameValue(axiom, CommonComponents.OPTION_OFF))));
+            CycleButton<Boolean> axiomButton = widgets.toggle(in.x(), y - Widgets.H - PanelTab.GAP, axiomW, axiom, ModSettings.hotbarAxiom, v -> {
+                ModSettings.hotbarAxiom = v;
+                ModSettings.save();
+                result = null;
+                refresh();
+            }, tr("settings.chromastudio.hotbarAxiom.tip"));
+            AxiomHotbars.unavailable().ifPresent(why -> Widgets.disable(axiomButton, why));
             int fillX = in.x() + modeW + PanelTab.GAP, fillW = in.right() - undoW - PanelTab.GAP - fillX;
             Button fillButton = widgets.button(fillX, y, fillW, fill, () -> {
                 result = HotbarFill.fill(entries);
@@ -593,13 +609,14 @@ final class PaletteDialogs {
                 result = HotbarFill.undo();
                 refresh();
             });
-            if (!HotbarFill.canUndo()) Widgets.disable(undoButton, HotbarFill.unavailable().orElse(tr("hotbar.chromastudio.nothing_to_undo")));
+            HotbarFill.whyNoUndo().ifPresent(why -> Widgets.disable(undoButton, why));
         }
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
             int over = Math.max(0, entries.size() - 9);
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
+                    : HotbarFill.usesAxiom() ? tr("palettes.chromastudio.hotbar.about.axiom", over, HotbarPlan.axiomHotbars(over))
                     : tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over);
             g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
         }
