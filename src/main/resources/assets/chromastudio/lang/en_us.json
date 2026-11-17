@@ -636,5 +636,17 @@
   "tone.chromastudio.all": "Any tone",
   "tone.chromastudio.warm": "Warm",
   "tone.chromastudio.cool": "Cool",
-  "tone.chromastudio.neutral": "Neutral"
+  "tone.chromastudio.neutral": "Neutral",
+  "axiom.chromastudio.brush": "Chroma palette brush",
+  "axiom.chromastudio.brush.palette": "Palette",
+  "axiom.chromastudio.brush.radius": "Radius",
+  "axiom.chromastudio.brush.scatter": "Scatter",
+  "axiom.chromastudio.brush.scatter.tip": "Paints the palette's blocks at random, each as often as its weight says.",
+  "axiom.chromastudio.brush.recolour": "Recolour",
+  "axiom.chromastudio.brush.recolour.tip": "Swaps each block for the palette's block closest in colour. Air and liquids stay as they are.",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio is still reading the blocks' colours.",
+  "axiom.chromastudio.brush.empty": "None of this palette's blocks are in this game.",
+  "axiom.chromastudio.eyedropper": "Chroma eyedropper",
+  "axiom.chromastudio.eyedropper.how": "Use it on a block to make that block's colour the Match target.",
+  "axiom.chromastudio.eyedropper.last": "Picked: %s"
 }

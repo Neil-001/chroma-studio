@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "すべての色調",
   "tone.chromastudio.warm": "暖色",
   "tone.chromastudio.cool": "寒色",
-  "tone.chromastudio.neutral": "中間色"
+  "tone.chromastudio.neutral": "中間色",
+  "axiom.chromastudio.brush": "Chroma パレットブラシ",
+  "axiom.chromastudio.brush.palette": "パレット",
+  "axiom.chromastudio.brush.radius": "半径",
+  "axiom.chromastudio.brush.scatter": "散布",
+  "axiom.chromastudio.brush.scatter.tip": "パレットのブロックを重みに応じてランダムに塗ります。",
+  "axiom.chromastudio.brush.recolour": "色を置き換え",
+  "axiom.chromastudio.brush.recolour.tip": "各ブロックをパレット内で最も色の近いブロックに置き換えます。空気と液体はそのままです。",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio はまだブロックの色を読み込んでいます。",
+  "axiom.chromastudio.brush.empty": "このパレットのブロックはこのゲームにありません。",
+  "axiom.chromastudio.eyedropper": "Chroma スポイト",
+  "axiom.chromastudio.eyedropper.how": "ブロックに使うと、その色がマッチの対象になります。",
+  "axiom.chromastudio.eyedropper.last": "選択: %s"
 }

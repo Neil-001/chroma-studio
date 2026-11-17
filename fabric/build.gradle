@@ -37,6 +37,20 @@ repositories {
 			includeGroup 'dev.architectury'
 		}
 	}
+	// Axiom's client API and ImGui binding come from JitPack, which builds GitHub repositories as they're asked for.
+	// Axiom itself is closed source and never a dependency: put its jar in run/fabric/mods to try the bridge.
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'JitPack'
+				url = 'https://jitpack.io'
+			}
+		}
+		filter {
+			includeGroup 'com.github.Moulberry'
+			includeGroup 'com.github.moulberry.imgui-java'
+		}
+	}
 }
 
 loom {
@@ -95,6 +109,10 @@ dependencies {
 	if (findProperty('viewer') == 'rei') {
 		localRuntime("me.shedaniel:RoughlyEnoughItems-fabric:${project.rei_version}")
 	}
+
+	// Axiom is optional: only dev.chromastudio.client.axiom refers to its API, and only once the mod is known to be loaded.
+	compileOnly("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
+	compileOnly("com.github.moulberry.imgui-java:imgui-java-binding:${project.axiom_imgui_version}") { transitive = false }
 
 	// Tests cover the pure-Java core (dev.chromastudio.core), the settings file, and the block index against the game's own assets.
 	testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"

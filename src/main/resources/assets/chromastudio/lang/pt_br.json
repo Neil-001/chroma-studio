@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "Qualquer tom",
   "tone.chromastudio.warm": "Quente",
   "tone.chromastudio.cool": "Frio",
-  "tone.chromastudio.neutral": "Neutro"
+  "tone.chromastudio.neutral": "Neutro",
+  "axiom.chromastudio.brush": "Pincel de paleta Chroma",
+  "axiom.chromastudio.brush.palette": "Paleta",
+  "axiom.chromastudio.brush.radius": "Raio",
+  "axiom.chromastudio.brush.scatter": "Espalhar",
+  "axiom.chromastudio.brush.scatter.tip": "Pinta os blocos da paleta ao acaso, cada um tantas vezes quanto o seu peso indica.",
+  "axiom.chromastudio.brush.recolour": "Recolorir",
+  "axiom.chromastudio.brush.recolour.tip": "Troca cada bloco pelo bloco da paleta de cor mais próxima. Ar e líquidos ficam como estão.",
+  "axiom.chromastudio.brush.not_ready": "O Chroma Studio ainda está lendo as cores dos blocos.",
+  "axiom.chromastudio.brush.empty": "Nenhum dos blocos desta paleta existe neste jogo.",
+  "axiom.chromastudio.eyedropper": "Conta-gotas Chroma",
+  "axiom.chromastudio.eyedropper.how": "Use num bloco para que a cor dele seja o alvo de Combinar.",
+  "axiom.chromastudio.eyedropper.last": "Escolhido: %s"
 }

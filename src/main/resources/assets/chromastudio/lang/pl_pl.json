@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "Dowolny ton",
   "tone.chromastudio.warm": "Ciepły",
   "tone.chromastudio.cool": "Zimny",
-  "tone.chromastudio.neutral": "Neutralny"
+  "tone.chromastudio.neutral": "Neutralny",
+  "axiom.chromastudio.brush": "Pędzel palety Chroma",
+  "axiom.chromastudio.brush.palette": "Paleta",
+  "axiom.chromastudio.brush.radius": "Promień",
+  "axiom.chromastudio.brush.scatter": "Rozsyp",
+  "axiom.chromastudio.brush.scatter.tip": "Maluje bloki z palety losowo, każdy tak często, jak mówi jego waga.",
+  "axiom.chromastudio.brush.recolour": "Przekoloruj",
+  "axiom.chromastudio.brush.recolour.tip": "Zamienia każdy blok na blok z palety o najbliższym kolorze. Powietrze i ciecze zostają bez zmian.",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio wciąż odczytuje kolory bloków.",
+  "axiom.chromastudio.brush.empty": "Żadnego z bloków tej palety nie ma w tej grze.",
+  "axiom.chromastudio.eyedropper": "Pipeta Chroma",
+  "axiom.chromastudio.eyedropper.how": "Użyj jej na bloku, aby jego kolor stał się celem karty Dopasuj.",
+  "axiom.chromastudio.eyedropper.last": "Wybrano: %s"
 }
