@@ -392,6 +392,7 @@
   "palettes.chromastudio.hotbar.about.when_full": "Pone los primeros nueve bloques en tu barra de herramientas y los otros %s en huecos libres del inventario, con una caja de shulker para los que no tienen hueco. Deshacer devuelve lo que había.",
   "palettes.chromastudio.hotbar.about.always": "Pone los primeros nueve bloques en tu barra de herramientas y los otros %s en cajas de shulker de tu inventario. Deshacer devuelve lo que había.",
   "palettes.chromastudio.hotbar.about.axiom": "Pone los nueve primeros bloques en tu barra rápida y los otros %s en las siguientes %s barras de Axiom, reemplazando lo que hay. Deshacer devuelve lo que había.",
+  "palettes.chromastudio.hotbar.about.axiom_one": "Pone los nueve primeros bloques en tu barra rápida y los otros %s en la siguiente barra de Axiom, reemplazando lo que hay. Deshacer devuelve lo que había.",
   "palettes.chromastudio.hotbar.boxes": "Cajas de shulker",
   "palettes.chromastudio.hotbar.axiom": "Barras de Axiom",
   "gradient.chromastudio.stop.tip": "Haz clic para seleccionar, arrastra para reordenar, clic derecho para quitar",

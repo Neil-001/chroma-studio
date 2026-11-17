@@ -392,6 +392,7 @@
   "palettes.chromastudio.hotbar.about.when_full": "Coloca os primeiros nove blocos na sua barra de atalhos e os demais em espaços livres do inventário (blocos restantes: %s), com uma caixa de shulker para os que ficam sem espaço. Desfazer devolve o que estava lá.",
   "palettes.chromastudio.hotbar.about.always": "Coloca os primeiros nove blocos na sua barra de atalhos e os demais em caixas de shulker no seu inventário (blocos restantes: %s). Desfazer devolve o que estava lá.",
   "palettes.chromastudio.hotbar.about.axiom": "Põe os nove primeiros blocos na sua barra de atalhos e os outros %s nas próximas %s barras do Axiom, substituindo o que há. Desfazer devolve o que havia.",
+  "palettes.chromastudio.hotbar.about.axiom_one": "Põe os nove primeiros blocos na sua barra de atalhos e os outros %s na próxima barra do Axiom, substituindo o que há. Desfazer devolve o que havia.",
   "palettes.chromastudio.hotbar.boxes": "Caixas de shulker",
   "palettes.chromastudio.hotbar.axiom": "Barras do Axiom",
   "gradient.chromastudio.stop.tip": "Clique para selecionar, arraste para reordenar, clique com o botão direito para remover",

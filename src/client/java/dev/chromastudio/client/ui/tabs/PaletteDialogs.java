@@ -616,7 +616,8 @@ final class PaletteDialogs {
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
             int over = Math.max(0, entries.size() - 9);
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
-                    : HotbarFill.usesAxiom() ? tr("palettes.chromastudio.hotbar.about.axiom", over, HotbarPlan.axiomHotbars(over))
+                    : HotbarFill.usesAxiom() ? (HotbarPlan.axiomHotbars(over) == 1 ? tr("palettes.chromastudio.hotbar.about.axiom_one", over)
+                            : tr("palettes.chromastudio.hotbar.about.axiom", over, HotbarPlan.axiomHotbars(over)))
                     : tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over);
             g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
         }

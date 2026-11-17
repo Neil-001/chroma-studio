@@ -392,6 +392,7 @@
   "palettes.chromastudio.hotbar.about.when_full": "Legt die ersten neun Blöcke in deine Schnellleiste und die anderen %s in freie Inventarplätze, mit einer Shulkerkiste für alles ohne Platz. „Rückgängig“ stellt wieder her, was vorher dort war.",
   "palettes.chromastudio.hotbar.about.always": "Legt die ersten neun Blöcke in deine Schnellleiste und die anderen %s in Shulkerkisten in deinem Inventar. „Rückgängig“ stellt wieder her, was vorher dort war.",
   "palettes.chromastudio.hotbar.about.axiom": "Legt die ersten neun Blöcke in deine Hotbar und die anderen %s in die nächsten %s Hotbars von Axiom und ersetzt, was dort war. Rückgängig legt zurück, was dort war.",
+  "palettes.chromastudio.hotbar.about.axiom_one": "Legt die ersten neun Blöcke in deine Hotbar und die anderen %s in die nächste Axiom-Hotbar und ersetzt, was dort war. Rückgängig legt zurück, was dort war.",
   "palettes.chromastudio.hotbar.boxes": "Shulkerkisten",
   "palettes.chromastudio.hotbar.axiom": "Axiom-Hotbars",
   "gradient.chromastudio.stop.tip": "Klicken zum Auswählen, Ziehen zum Umordnen, Rechtsklick zum Entfernen",

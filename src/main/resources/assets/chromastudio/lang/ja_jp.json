@@ -392,6 +392,7 @@
   "palettes.chromastudio.hotbar.about.when_full": "最初の 9 個のブロックをホットバーに入れ、残りの %s 個をインベントリの空きスロットに入れ、スロットがない分はシュルカーボックスに入れます。「元に戻す」で、元にあったものを戻します。",
   "palettes.chromastudio.hotbar.about.always": "最初の 9 個のブロックをホットバーに入れ、残りの %s 個をインベントリのシュルカーボックスに入れます。「元に戻す」で、元にあったものを戻します。",
   "palettes.chromastudio.hotbar.about.axiom": "最初の 9 個をホットバーに、残りの %s 個を次の %s 個の Axiom ホットバーに入れ、そこにあった物と置き換えます。元に戻すと、あった物が戻ります。",
+  "palettes.chromastudio.hotbar.about.axiom_one": "最初の 9 個をホットバーに、残りの %s 個を次の Axiom ホットバーに入れ、そこにあった物と置き換えます。元に戻すと、あった物が戻ります。",
   "palettes.chromastudio.hotbar.boxes": "シュルカーボックス",
   "palettes.chromastudio.hotbar.axiom": "Axiom ホットバー",
   "gradient.chromastudio.stop.tip": "クリックで選択、ドラッグで並べ替え、右クリックで削除",

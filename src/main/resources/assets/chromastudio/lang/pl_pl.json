@@ -392,6 +392,7 @@
   "palettes.chromastudio.hotbar.about.when_full": "Umieszcza pierwszych dziewięć bloków na pasku szybkiego dostępu, a resztę w wolnych miejscach ekwipunku (pozostałych bloków: %s), ze skrzynią shulkera dla tych bez miejsca. Cofnij przywraca to, co tam było.",
   "palettes.chromastudio.hotbar.about.always": "Umieszcza pierwszych dziewięć bloków na pasku szybkiego dostępu, a resztę w skrzyniach shulkera w ekwipunku (pozostałych bloków: %s). Cofnij przywraca to, co tam było.",
   "palettes.chromastudio.hotbar.about.axiom": "Wkłada pierwsze dziewięć bloków do paska, a pozostałe (%s) do kolejnych pasków Axiom (%s), zastępując to, co tam było. Cofnij przywraca to, co było.",
+  "palettes.chromastudio.hotbar.about.axiom_one": "Wkłada pierwsze dziewięć bloków do paska, a pozostałe (%s) do następnego paska Axiom, zastępując to, co tam było. Cofnij przywraca to, co było.",
   "palettes.chromastudio.hotbar.boxes": "Skrzynie shulkera",
   "palettes.chromastudio.hotbar.axiom": "Paski Axiom",
   "gradient.chromastudio.stop.tip": "Kliknij, aby zaznaczyć, przeciągnij, aby zmienić kolejność, kliknij prawym przyciskiem, aby usunąć",

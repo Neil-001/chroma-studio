@@ -391,6 +391,7 @@
   "palettes.chromastudio.hotbar.about.when_full": "Puts the first nine blocks in your hotbar and the other %s in free inventory slots, with a shulker box for any with no slot. Undo puts back what was there.",
   "palettes.chromastudio.hotbar.about.always": "Puts the first nine blocks in your hotbar and the other %s in shulker boxes in your inventory. Undo puts back what was there.",
   "palettes.chromastudio.hotbar.about.axiom": "Puts the first nine blocks in your hotbar and the other %s in the next %s of Axiom's hotbars, replacing what's there. Undo puts back what was there.",
+  "palettes.chromastudio.hotbar.about.axiom_one": "Puts the first nine blocks in your hotbar and the other %s in the next Axiom hotbar, replacing what's there. Undo puts back what was there.",
   "palettes.chromastudio.hotbar.boxes": "Shulker boxes",
   "palettes.chromastudio.hotbar.axiom": "Axiom hotbars",
   "gradient.chromastudio.stop.tip": "Click to select, drag to reorder, right-click to remove",

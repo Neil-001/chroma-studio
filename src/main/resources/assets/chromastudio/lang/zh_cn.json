@@ -392,6 +392,7 @@
   "palettes.chromastudio.hotbar.about.when_full": "将前九个方块放入你的快捷栏，其余 %s 个放入物品栏的空格，没有空格的放入潜影盒。撤销会放回原来的物品。",
   "palettes.chromastudio.hotbar.about.always": "将前九个方块放入你的快捷栏，其余 %s 个放入物品栏中的潜影盒。撤销会放回原来的物品。",
   "palettes.chromastudio.hotbar.about.axiom": "把前九个方块放进你的快捷栏，其余 %s 个放进接下来的 %s 个 Axiom 快捷栏，替换原有物品。撤销会放回原来的物品。",
+  "palettes.chromastudio.hotbar.about.axiom_one": "把前九个方块放进你的快捷栏，其余 %s 个放进下一个 Axiom 快捷栏，替换原有物品。撤销会放回原来的物品。",
   "palettes.chromastudio.hotbar.boxes": "潜影盒",
   "palettes.chromastudio.hotbar.axiom": "Axiom 快捷栏",
   "gradient.chromastudio.stop.tip": "点击选中，拖动调整顺序，右键移除",

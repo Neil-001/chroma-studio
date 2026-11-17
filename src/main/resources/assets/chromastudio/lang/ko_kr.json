@@ -392,6 +392,7 @@
   "palettes.chromastudio.hotbar.about.when_full": "처음 블록 아홉 개를 핫바에 넣고 나머지 %s개는 인벤토리의 빈 칸에 넣으며, 칸이 없는 것은 셜커 상자에 넣습니다. 되돌리기를 누르면 원래 있던 것이 돌아옵니다.",
   "palettes.chromastudio.hotbar.about.always": "처음 블록 아홉 개를 핫바에 넣고 나머지 %s개는 인벤토리의 셜커 상자에 넣습니다. 되돌리기를 누르면 원래 있던 것이 돌아옵니다.",
   "palettes.chromastudio.hotbar.about.axiom": "처음 아홉 블록은 핫바에, 나머지 %s개는 다음 Axiom 핫바 %s개에 넣고 그 자리의 것을 바꿉니다. 실행 취소하면 있던 것이 돌아옵니다.",
+  "palettes.chromastudio.hotbar.about.axiom_one": "처음 아홉 블록은 핫바에, 나머지 %s개는 다음 Axiom 핫바에 넣고 그 자리의 것을 바꿉니다. 실행 취소하면 있던 것이 돌아옵니다.",
   "palettes.chromastudio.hotbar.boxes": "셜커 상자",
   "palettes.chromastudio.hotbar.axiom": "Axiom 핫바",
   "gradient.chromastudio.stop.tip": "클릭하면 선택, 드래그하면 순서 변경, 오른쪽 클릭하면 제거",
