@@ -1,0 +1,242 @@
+package dev.chromastudio.core.palette;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+/**
+ * Lua scripts for Axiom's Script Brush, made from a palette or a gradient. Axiom places the blocks; these are only
+ * text for the player to paste into its script editor.
+ *
+ * <p>What the scripts lean on, as Axiom 6.1 has it: the brush compiles a script once a stroke and then runs it for
+ * each position with the globals {@code x}, {@code y} and {@code z} set, keeping every other global between
+ * positions. {@code blocks.stone} is a block's id, {@code blocks.create.casing} one of another mod's, and either is
+ * nil for a block the game lacks. A script returns a block, or nil to leave the position alone.
+ * {@code $int(Name, default, min, max)$} and its kin anywhere in the text become controls in the brush's window, so
+ * no {@code $} from a name may reach the script.
+ */
+public final class AxiomScript {
+    /** The most characters Axiom counts, as {@link #counted}, that a server lets a player without import rights run. */
+    public static final int SERVER_LIMIT = 1000;
+
+    private static final Pattern NOT_COUNTED = Pattern.compile("local|function|return|if|for|then|end|and|or|nil|\\s");
+
+    /**
+     * One row of a recolour: the block the brush finds, the block it puts there with that block's fixed properties,
+     * and the properties it copies over from what it found, such as a stair's {@code facing}.
+     */
+    public record Remap(String from, PaletteEntry to, List<String> copied) {
+        public Remap {
+            copied = List.copyOf(copied);
+        }
+    }
+
+    /** The axis a gradient runs along. */
+    public enum Axis { X, Y, Z }
+
+    // Turns "minecraft:stone" with "axis=y" into a block, or nil when the game lacks it. Shared by every script.
+    private static final String BLOCK_FUNCTION = """
+            local function block(ns, path, props)
+            \tlocal t = blocks
+            \tif ns ~= "minecraft" then t = blocks[ns] end
+            \tlocal b = t and t[path]
+            \tif b == nil then return nil end
+            \tif props then
+            \t\tfor p in string.gmatch(props, "[^,]+") do b = withBlockProperty(b, p) end
+            \tend
+            \treturn b
+            end
+            """;
+
+    private AxiomScript() {}
+
+    /**
+     * A brush that swaps each block it touches for the one a recolour gives it, keeping the properties each row
+     * copies, and leaves every other block alone. The rows are put in a table the first time the stroke runs the
+     * script, so the cost of a long table is paid once.
+     *
+     * <p>A recolour of every block runs to a thousand rows or more, and the game copies text through a buffer of
+     * 64 KiB, so the script is kept small: each block it puts down is written out once, in a list, and the rows are
+     * one long string of {@code from=number} pairs that the script reads into its table.
+     */
+    public static String recolour(String title, List<Remap> rows) {
+        if (rows.isEmpty()) throw new IllegalArgumentException("A recolour needs at least one block to change");
+        List<String> targets = new ArrayList<>();
+        Map<String, Integer> numbers = new HashMap<>();
+        List<String> pairs = new ArrayList<>();
+        for (Remap r : rows) {
+            StringBuilder target = new StringBuilder("{").append(ref(r.to().blockId(), r.to().properties()));
+            for (String p : r.copied()) target.append(", ").append(quote(p));
+            String t = target.append("}").toString();
+            Integer n = numbers.get(t);
+            if (n == null) {
+                targets.add(t);
+                numbers.put(t, n = targets.size());
+            }
+            pairs.add(shortId(r.from()) + "=" + n);
+        }
+        StringBuilder s = header(title, "Recolours each block the brush touches; a block it has no row for is left alone.");
+        s.append("if chroma_rows == nil then\n");
+        s.append(indent(BLOCK_FUNCTION));
+        s.append("\t-- What each block becomes, and the properties it keeps from the block it replaces.\n");
+        s.append("\tlocal targets = {\n");
+        for (String t : targets) s.append("\t\t").append(t).append(",\n");
+        s.append("\t}\n");
+        s.append("\t-- Each block the brush changes, and the number of what it becomes.\n");
+        s.append("\tlocal data = [[\n");
+        StringBuilder line = new StringBuilder();
+        for (String pair : pairs) {
+            if (!line.isEmpty() && line.length() + pair.length() >= 100) {
+                s.append(line).append("\n");
+                line.setLength(0);
+            }
+            if (!line.isEmpty()) line.append(' ');
+            line.append(pair);
+        }
+        s.append(line).append("\n]]\n");
+        s.append("""
+                \tlocal rows = {}
+                \tfor from, n in string.gmatch(data, "(%S+)=(%d+)") do
+                \t\tlocal ns, path = string.match(from, "^([^:]+):(.+)")
+                \t\tif ns == nil then ns, path = "minecraft", from end
+                \t\tlocal b, t = block(ns, path), targets[tonumber(n)]
+                \t\tif b ~= nil and t[1] ~= nil then rows[b] = t end
+                \tend
+                \tchroma_rows = rows
+                end
+
+                local row = chroma_rows[getBlock(x, y, z)]
+                if row == nil then return nil end
+                local out = row[1]
+                if #row > 1 then
+                \tlocal here = getBlockState(x, y, z)
+                \tfor i = 2, #row do
+                \t\tlocal value = getBlockProperty(here, row[i])
+                \t\tif value ~= nil then out = withBlockProperty(out, row[i] .. "=" .. value) end
+                \tend
+                end
+                return out
+                """);
+        return s.toString();
+    }
+
+    /** {@code stone} for {@code minecraft:stone}, and any other id as it is. */
+    private static String shortId(String id) {
+        return id.startsWith(PaletteEntry.DEFAULT_NAMESPACE) ? id.substring(PaletteEntry.DEFAULT_NAMESPACE.length()) : id;
+    }
+
+    /** A brush that paints blocks from the palette at random, each as often as its weight says. */
+    public static String scatter(Palette p) {
+        if (p.entries.isEmpty()) throw new IllegalArgumentException("The palette is empty");
+        StringBuilder s = header(p.name, "Paints random blocks from the palette, as often as their weights say.");
+        s.append(airControl());
+        s.append("if chroma_picks == nil then\n");
+        s.append(indent(BLOCK_FUNCTION));
+        s.append("\tlocal picks, total = {}, 0\n");
+        s.append("\tlocal function put(b, weight)\n");
+        s.append("\t\tif b ~= nil then total = total + weight; picks[#picks + 1] = {total, b} end\n");
+        s.append("\tend\n");
+        for (PaletteEntry e : p.entries) s.append("\tput(").append(ref(e.blockId(), e.properties())).append(", ").append(e.weight()).append(")\n");
+        s.append("\tchroma_picks, chroma_total = picks, total\n");
+        s.append("end\n\n");
+        s.append(airCheck());
+        s.append("""
+                if chroma_total == 0 then return nil end
+                local roll = math.random() * chroma_total
+                for i = 1, #chroma_picks do
+                \tif roll < chroma_picks[i][1] then return chroma_picks[i][2] end
+                end
+                return chroma_picks[#chroma_picks][2]
+                """);
+        return s.toString();
+    }
+
+    /**
+     * A brush that paints a gradient's blocks along an axis, the first block at {@code start} and the last at
+     * {@code start + length - 1}, held at either end past them. Along Y the two ends are controls in the brush's
+     * window; along X or Z the start is fixed where the script was made and the length is a control, negative to run
+     * the other way. A blend control lets neighbouring steps mix at their edges.
+     */
+    public static String gradient(String title, List<PaletteEntry> steps, Axis axis, int start, int length) {
+        if (steps.size() < 2) throw new IllegalArgumentException("A gradient needs at least two steps");
+        if (length == 0) throw new IllegalArgumentException("A gradient needs a length");
+        StringBuilder s = header(title, "Paints the gradient's " + steps.size() + " blocks along " + axis.name() + ".");
+        String along = axis.name().toLowerCase(Locale.ROOT);
+        if (axis == Axis.Y) {
+            int end = length > 0 ? start + length - 1 : start + length + 1;
+            int low = Math.min(start, end), high = Math.max(start, end);
+            s.append("local first = $int(Bottom, ").append(low).append(", -64, 319)$\n");
+            s.append("local last = $int(Top, ").append(high).append(", -64, 319)$\n");
+        } else {
+            int limit = Math.max(256, Math.abs(length));
+            s.append("local first = ").append(start).append("\n");
+            s.append("local last = first + $int(Length, ").append(length).append(", ").append(-limit).append(", ").append(limit).append(")$\n");
+            s.append("if last > first then last = last - 1 else last = last + 1 end\n");
+        }
+        s.append("local blend = $float(Blend, 0.5, 0.0, 2.0)$\n");
+        s.append(airControl());
+        s.append("if chroma_steps == nil then\n");
+        s.append(indent(BLOCK_FUNCTION));
+        s.append("\tlocal steps = {}\n");
+        for (PaletteEntry e : steps) s.append("\tsteps[#steps + 1] = ").append(ref(e.blockId(), e.properties())).append(" or false\n");
+        s.append("\tchroma_steps = steps\n");
+        s.append("end\n\n");
+        s.append(airCheck());
+        // Each step takes an equal share of the blocks from first to last, both ends included.
+        s.append("local n = #chroma_steps\n");
+        s.append("local span = last - first\n");
+        s.append("local t = ((").append(along).append(" - first) * (span < 0 and -1 or 1) + 0.5) / (math.abs(span) + 1)\n");
+        s.append("""
+                local i = math.floor(t * n + (math.random() - 0.5) * blend) + 1
+                if i < 1 then i = 1 elseif i > n then i = n end
+                return chroma_steps[i] or nil
+                """);
+        return s.toString();
+    }
+
+    /** How long Axiom judges a script to be: its length without whitespace or the keywords it doesn't count. */
+    public static int counted(String script) { return NOT_COUNTED.matcher(script).replaceAll("").length(); }
+
+    /**
+     * A name made safe for a Lua comment: no line breaks, which would end the comment, and no {@code $}, which Axiom
+     * would read as the start of a control.
+     */
+    static String safe(String name) {
+        String s = name == null ? "" : name.replaceAll("[\\r\\n$]+", " ").strip();
+        return s.isEmpty() ? "Untitled" : s;
+    }
+
+    private static StringBuilder header(String title, String what) {
+        StringBuilder s = new StringBuilder();
+        s.append("-- Chroma Studio: ").append(safe(title)).append("\n");
+        s.append("-- ").append(what).append("\n\n");
+        return s;
+    }
+
+    private static String airControl() { return "local paint_air = $boolean(Paint air, false)$\n\n"; }
+
+    private static String airCheck() { return "if not paint_air and getBlock(x, y, z) == blocks.air then return nil end\n"; }
+
+    /** A call that gives a block, written so that any id, however its path is spelled, comes through. */
+    static String ref(String id, String properties) {
+        int colon = id.indexOf(':');
+        String ns = colon < 0 ? "minecraft" : id.substring(0, colon), path = id.substring(colon + 1);
+        StringBuilder s = new StringBuilder("block(").append(quote(ns)).append(", ").append(quote(path));
+        if (properties != null && !properties.isEmpty()) s.append(", ").append(quote(properties));
+        return s.append(")").toString();
+    }
+
+    /** A Lua string literal. Ids and property names never need escaping, but a quote or backslash costs nothing to guard. */
+    static String quote(String text) {
+        return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\036") + "\"";
+    }
+
+    private static String indent(String text) {
+        List<String> out = new ArrayList<>();
+        for (String line : text.split("\n")) out.add(line.isEmpty() ? line : "\t" + line);
+        return String.join("\n", out) + "\n";
+    }
+}

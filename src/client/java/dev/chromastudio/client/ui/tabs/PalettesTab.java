@@ -219,6 +219,7 @@ public final class PalettesTab extends PanelTab {
                 new Tool("diorama", new ItemStack(Items.BRICKS), () -> togglePanel(Panel.DIORAMA), needsBlocks != null ? needsBlocks : needsIndex, panel == Panel.DIORAMA),
                 new Tool("export", new ItemStack(Items.PAPER), () -> open(new PaletteDialogs.Export(p, Layout.valueOf(ModSettings.defaultLayout.name()), System.nanoTime())), needsBlocks, false),
                 new Tool("worldedit", new ItemStack(Items.WOODEN_AXE), () -> open(new PaletteDialogs.WorldEdit(p)), needsBlocks, false),
+                new Tool("axiom", new ItemStack(Items.BRUSH), () -> open(new PaletteDialogs.Axiom(p)), needsBlocks != null ? needsBlocks : needsIndex, false),
                 new Tool("hotbar", new ItemStack(Items.CHEST), () -> open(new PaletteDialogs.Hotbar(p.entries)),
                         needsBlocks != null ? needsBlocks : HotbarFill.unavailable().orElse(null), false));
         int labelled = (tools.size() - 1) * GAP;
