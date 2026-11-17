@@ -20,8 +20,9 @@ import net.minecraft.world.level.block.state.BlockState;
  * {@link ServiceLoader}) is reached by name rather than compiled against: the build then needs no extra repository,
  * and NeoForge, which Axiom doesn't support, compiles the same code. Every call is caught.
  * <p>
- * Axiom only knows its active block while its editor is open. Outside it, the API answers plain stone, which can't
- * be told apart from stone chosen on purpose, so a stone answer comes with a note saying so.
+ * Axiom's API only gives the active block while its editor is open. Outside it, the API answers plain stone, which
+ * can't be told apart from stone chosen on purpose (and stone is also Axiom's own choice after a restart), so a stone
+ * answer comes with a note saying so.
  */
 public final class AxiomBlock {
     private AxiomBlock() {}
