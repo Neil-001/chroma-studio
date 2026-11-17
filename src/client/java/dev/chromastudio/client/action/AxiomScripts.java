@@ -64,7 +64,7 @@ public final class AxiomScripts {
      * A recolour into a palette: every block the brush may find, or only those of {@code from}, matched to the
      * palette's blocks of the same kind, which includes the stairs, slabs and walls of the palette's materials.
      * Blocks with a block entity, such as chests and signs, and blocks whose kind the palette has none of are left
-     * alone. Empty when nothing would change, with the reason.
+     * alone. Refused, with the reason, when nothing would change.
      */
     public static Made recolour(Palette to, @Nullable Palette from) throws Refused {
         if (!BlockIndex.get().ready()) throw new Refused(Component.translatable("palettes.chromastudio.index_building"));

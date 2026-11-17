@@ -609,7 +609,8 @@ final class PaletteDialogs {
 
         /** The palette a recolour changes blocks from, or null for any block. */
         private Palette from() {
-            for (Palette p : fromChoices()) if (p != null && AxiomScripts.shownName(p).equals(fromName)) return p;
+            // The palette itself stands for any block, so a remembered name that happens to be its own isn't a choice.
+            for (Palette p : fromChoices()) if (p != palette && AxiomScripts.shownName(p).equals(fromName)) return p;
             return null;
         }
 
