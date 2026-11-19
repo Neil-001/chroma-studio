@@ -373,6 +373,7 @@
   "palettes.chromastudio.worldedit.sent": "Команда отправлена.",
   "palettes.chromastudio.worldedit.copied": "Команда скопирована.",
   "clipboard.chromastudio.too_large": "Слишком велико: %s КБ, предел %s КБ.",
+  "clipboard.chromastudio.not_copied": "Не скопировано",
   "palettes.chromastudio.hotbar.title": "Заполнение панели быстрого доступа",
   "palettes.chromastudio.hotbar.fill": "Заполнить",
   "palettes.chromastudio.hotbar.undo": "Отменить",

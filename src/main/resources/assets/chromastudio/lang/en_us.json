@@ -372,6 +372,7 @@
   "palettes.chromastudio.worldedit.sent": "Sent the command.",
   "palettes.chromastudio.worldedit.copied": "Copied the command.",
   "clipboard.chromastudio.too_large": "Too large to copy: %s KB, over the %s KB limit.",
+  "clipboard.chromastudio.not_copied": "Not copied",
   "palettes.chromastudio.hotbar.title": "Fill the hotbar",
   "palettes.chromastudio.hotbar.fill": "Fill",
   "palettes.chromastudio.hotbar.undo": "Undo",

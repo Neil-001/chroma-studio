@@ -373,6 +373,7 @@
   "palettes.chromastudio.worldedit.sent": "Wysłano polecenie.",
   "palettes.chromastudio.worldedit.copied": "Skopiowano polecenie.",
   "clipboard.chromastudio.too_large": "Za duże do skopiowania: %s KB, limit %s KB.",
+  "clipboard.chromastudio.not_copied": "Nie skopiowano",
   "palettes.chromastudio.hotbar.title": "Wypełnianie paska szybkiego dostępu",
   "palettes.chromastudio.hotbar.fill": "Wypełnij",
   "palettes.chromastudio.hotbar.undo": "Cofnij",

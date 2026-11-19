@@ -56,7 +56,9 @@ final class AxiomEditor {
 
     /** Leaves the editor before the window opens, when it's open. */
     static void leaveForWindow() {
-        if (!active()) return;
+        // Axiom says it's active a frame late, so a player who has just left by Axiom's own key still counts as in it;
+        // whether it's switched on changes at once.
+        if (!active() || !call(h -> (boolean) h.enabled.invoke())) return;
         remember();
         if (!call(h -> { h.disable.invoke(); return true; })) return;
         left = true;
@@ -83,8 +85,8 @@ final class AxiomEditor {
         // A pinned window stays over the world: in the editor it would be squeezed over the 3D view as the open one would.
         if (screen != null || ChromaScreen.isPinned()) return;
         left = false;
-        call(h -> { h.enable.invoke(); return true; });
-        if (!call(h -> (boolean) h.enabled.invoke()))
+        // A failed call has already been logged, and the editor stays closed as it is without this integration.
+        if (call(h -> { h.enable.invoke(); return true; }) && !call(h -> (boolean) h.enabled.invoke()))
             Hud.readout(Component.translatable("axiom.chromastudio.editor.not_back"), Component.translatable("axiom.chromastudio.editor.not_back.how"),
                     ModSettings.readoutSeconds);
     }

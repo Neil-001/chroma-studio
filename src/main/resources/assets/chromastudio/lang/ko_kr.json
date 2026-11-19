@@ -373,6 +373,7 @@
   "palettes.chromastudio.worldedit.sent": "명령어를 보냈습니다.",
   "palettes.chromastudio.worldedit.copied": "명령어를 복사했습니다.",
   "clipboard.chromastudio.too_large": "너무 커서 복사할 수 없습니다: %s KB (한도 %s KB)",
+  "clipboard.chromastudio.not_copied": "복사하지 않았습니다",
   "palettes.chromastudio.hotbar.title": "핫바 채우기",
   "palettes.chromastudio.hotbar.fill": "채우기",
   "palettes.chromastudio.hotbar.undo": "되돌리기",

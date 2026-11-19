@@ -373,6 +373,7 @@
   "palettes.chromastudio.worldedit.sent": "Comando enviado.",
   "palettes.chromastudio.worldedit.copied": "Comando copiado.",
   "clipboard.chromastudio.too_large": "Grande demais para copiar: %s KB, limite %s KB.",
+  "clipboard.chromastudio.not_copied": "Não copiado",
   "palettes.chromastudio.hotbar.title": "Preencher a barra de atalhos",
   "palettes.chromastudio.hotbar.fill": "Preencher",
   "palettes.chromastudio.hotbar.undo": "Desfazer",

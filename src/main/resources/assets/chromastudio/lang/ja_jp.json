@@ -373,6 +373,7 @@
   "palettes.chromastudio.worldedit.sent": "コマンドを送信しました。",
   "palettes.chromastudio.worldedit.copied": "コマンドをコピーしました。",
   "clipboard.chromastudio.too_large": "大きすぎてコピーできません：%s KB（上限 %s KB）",
+  "clipboard.chromastudio.not_copied": "コピーしませんでした",
   "palettes.chromastudio.hotbar.title": "ホットバーを埋める",
   "palettes.chromastudio.hotbar.fill": "埋める",
   "palettes.chromastudio.hotbar.undo": "元に戻す",

@@ -373,6 +373,7 @@
   "palettes.chromastudio.worldedit.sent": "已发送命令。",
   "palettes.chromastudio.worldedit.copied": "已复制命令。",
   "clipboard.chromastudio.too_large": "太大，无法复制：%s KB，上限 %s KB。",
+  "clipboard.chromastudio.not_copied": "未复制",
   "palettes.chromastudio.hotbar.title": "填充快捷栏",
   "palettes.chromastudio.hotbar.fill": "填充",
   "palettes.chromastudio.hotbar.undo": "撤销",

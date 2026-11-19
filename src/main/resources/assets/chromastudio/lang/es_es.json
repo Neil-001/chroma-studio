@@ -373,6 +373,7 @@
   "palettes.chromastudio.worldedit.sent": "Comando enviado.",
   "palettes.chromastudio.worldedit.copied": "Comando copiado.",
   "clipboard.chromastudio.too_large": "Demasiado grande: %s KB, más de %s KB.",
+  "clipboard.chromastudio.not_copied": "No se ha copiado",
   "palettes.chromastudio.hotbar.title": "Llenar la barra de herramientas",
   "palettes.chromastudio.hotbar.fill": "Llenar",
   "palettes.chromastudio.hotbar.undo": "Deshacer",

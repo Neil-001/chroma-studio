@@ -373,6 +373,7 @@
   "palettes.chromastudio.worldedit.sent": "Befehl gesendet.",
   "palettes.chromastudio.worldedit.copied": "Befehl kopiert.",
   "clipboard.chromastudio.too_large": "Zu groß zum Kopieren: %s KB, über %s KB.",
+  "clipboard.chromastudio.not_copied": "Nicht kopiert",
   "palettes.chromastudio.hotbar.title": "Schnellleiste füllen",
   "palettes.chromastudio.hotbar.fill": "Füllen",
   "palettes.chromastudio.hotbar.undo": "Rückgängig",
