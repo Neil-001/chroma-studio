@@ -45,12 +45,22 @@ public final class Eyedropper {
             say("eyedropper.chromastudio.no_block", "eyedropper.chromastudio.no_block.how");
             return;
         }
+        read(hit, open);
+    }
+
+    /**
+     * Makes the face that {@code hit} names the Match target, as a press of the key does once it has found a block,
+     * and opens the window on it when {@code open} is set. Returns whether there was a colour to take.
+     */
+    public static boolean read(BlockHitResult hit, boolean open) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) return false;
         BlockPos pos = hit.getBlockPos();
         BlockState state = mc.level.getBlockState(pos);
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) {
             say("eyedropper.chromastudio.not_ready", "eyedropper.chromastudio.not_ready.how");
-            return;
+            return false;
         }
         Entry entry = index.entryOf(state);
         // Water and lava are indexed as their blocks; a waterlogged block that isn't indexed still shows its water.
@@ -62,7 +72,7 @@ public final class Eyedropper {
         if (entry == null) {
             Hud.readout(Component.translatable("eyedropper.chromastudio.not_indexed", state.getBlock().getName()),
                     Component.translatable("eyedropper.chromastudio.not_indexed.how"), ModSettings.readoutSeconds);
-            return;
+            return false;
         }
         armed = false;
         // Minecraft's directions and the core's faces are in the same order.
@@ -78,6 +88,7 @@ public final class Eyedropper {
         Component name = properties.isEmpty() ? entry.name() : Component.translatable("match.chromastudio.name_with_state", entry.name(), properties);
         Hud.readout(name, Component.translatable("eyedropper.chromastudio.readout", faceName(face), colour.hex()), ModSettings.readoutSeconds);
         if (open) ChromaScreen.open("match");
+        return true;
     }
 
     public static Component faceName(Face face) {

@@ -15,6 +15,7 @@ import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
@@ -154,7 +155,7 @@ public final class GradientTab extends PanelTab {
     private int dropGap;
     private int badgeY;
     /** The actions along the bottom, in order, and where the last layout placed them. */
-    private static final String[] ACTIONS = {"hotbar", "copy", "export", "saved", "save", "swap"};
+    private static final String[] ACTIONS = {"hotbar", "copy", "export", "axiom", "saved", "save", "swap"};
     private Flow.Spot[] actionSpots;
     /** The filters behind "More…", which lie over the strip while they are open. */
     private boolean filtersOpen;
@@ -301,14 +302,16 @@ public final class GradientTab extends PanelTab {
             say(tr("gradient.chromastudio.copied", result.size()), GOOD);
         }, none);
         action(2, actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
-        action(3, actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
-        action(4, actionsY, () -> {
+        action(3, actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())),
+                AxiomBridge.whyNot().orElse(none));
+        action(4, actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
+        action(5, actionsY, () -> {
             Palette p = asPalette();
             PaletteSink sink = PaletteSink.current();
             if (sink != null && sink.createPalette(p.name, p.entries)) say(tr("gradient.chromastudio.saved", p.name), GOOD);
             else say(tr("capture.chromastudio.failed"), BAD);
         }, none);
-        action(5, actionsY, () -> {
+        action(6, actionsY, () -> {
             Collections.reverse(STOPS);
             selectedStop = STOPS.size() - 1 - selectedStop;
             changed();

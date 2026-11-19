@@ -21,6 +21,7 @@ import dev.chromastudio.client.action.Eyedropper;
 import dev.chromastudio.client.action.Give;
 import dev.chromastudio.client.action.RecipeViewers;
 import dev.chromastudio.client.action.ScreenPicker;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
@@ -201,9 +202,16 @@ public final class MatchTab extends Tab {
         int lw = Math.clamp(b.w() * 36 / 100, 146, 210), x = b.x() + PAD, w = lw - 2 * PAD, y = b.y() + PAD;
         slot = new Bounds(x, y - 1, 18, 18);
         swatch = new Bounds(x + 20, y, 16, 16);
-        hexField = controls.field(x + 38, y, w - 38, model.hex(), text -> typed(hexField, text, model::typeHex));
+        // Axiom's active block sits at the end of the hex row, which keeps room for its seven characters.
+        Component axiom = tr("axiom");
+        int axiomW = Widgets.buttonWidth(axiom);
+        hexField = controls.field(x + 38, y, w - 38 - axiomW - GAP, model.hex(), text -> typed(hexField, text, model::typeHex));
         hexField.setMaxLength(7);
         hexField.setTooltip(Tooltip.create(tr("hex.tip")));
+        AbstractWidget axiomButton = controls.button(x + w - axiomW, y, axiomW, axiom, this::takeAxiom);
+        Optional<Component> noAxiom = AxiomBridge.whyNot();
+        if (noAxiom.isPresent()) Widgets.disable(axiomButton, noAxiom.get());
+        else axiomButton.setTooltip(Tooltip.create(tr("axiom.tip")));
         y += ROW;
         int half = (w - GAP) / 2;
         fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;
@@ -1034,6 +1042,9 @@ public final class MatchTab extends Tab {
             MatchState.remember();
         }
     }
+
+    /** Makes Axiom's active block the target, saying how it went. */
+    private void takeAxiom() { status(AxiomBridge.takeActiveBlock().message()); }
 
     private void armEyedropper() {
         Eyedropper.arm();
