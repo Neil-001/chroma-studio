@@ -689,6 +689,7 @@
   "hotbar.chromastudio.axiom.inactive": "Axiom está desactivado aquí, como en un servidor que no lo admite, así que sus barras no se pueden usar.",
   "hotbar.chromastudio.axiom.failed_undo": "Las barras de Axiom no aceptaron el cambio y algunas casillas no se pudieron restaurar. El registro dice por qué.",
   "hotbar.chromastudio.axiom.undo_first": "Pulsa Deshacer primero. El último llenado de las barras de Axiom falló a medias, y Deshacer devuelve lo que dejó.",
+  "hotbar.chromastudio.axiom.moved": "Acaba de cambiar adónde van los bloques a partir del décimo, así que no se llenó nada. Vuelve a leer el diálogo y pulsa Llenar.",
   "palettes.chromastudio.hotbar.about.axiom.replaces_one": "Pone los nueve primeros bloques en tu barra de herramientas y los otros %1$s en %2$s, reemplazando lo que hay ahora en una de sus casillas. Deshacer lo devuelve.",
   "palettes.chromastudio.hotbar.about.axiom.replaces": "Pone los nueve primeros bloques en tu barra de herramientas y los otros %1$s en %2$s, reemplazando lo que hay ahora en %3$s de sus casillas. Deshacer lo devuelve.",
   "palettes.chromastudio.hotbar.about.axiom": "Pone los nueve primeros bloques en tu barra de herramientas y los otros %1$s en %2$s, donde esas casillas están vacías ahora. Deshacer devuelve lo que había.",

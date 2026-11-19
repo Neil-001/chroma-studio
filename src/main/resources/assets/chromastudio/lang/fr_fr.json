@@ -689,6 +689,7 @@
   "hotbar.chromastudio.axiom.inactive": "Axiom est désactivé ici, comme sur un serveur qui ne le prend pas en charge, donc ses barres ne sont pas utilisables.",
   "hotbar.chromastudio.axiom.failed_undo": "Les barres d'Axiom n'ont pas pris le changement et certains emplacements n'ont pas pu être remis. Le journal dit pourquoi.",
   "hotbar.chromastudio.axiom.undo_first": "Appuie d'abord sur Annuler. Le dernier remplissage des barres d'Axiom a échoué en route, et Annuler remet ce qu'il a laissé.",
+  "hotbar.chromastudio.axiom.moved": "L'endroit où vont les blocs après le neuvième vient de changer, donc rien n'a été rempli. Relis la fenêtre et appuie sur Remplir.",
   "palettes.chromastudio.hotbar.about.axiom.replaces_one": "Place les neuf premiers blocs dans ta barre d'action et les %1$s autres dans %2$s, en remplaçant ce qu'il y a dans un de leurs emplacements. Annuler le remet.",
   "palettes.chromastudio.hotbar.about.axiom.replaces": "Place les neuf premiers blocs dans ta barre d'action et les %1$s autres dans %2$s, en remplaçant ce qu'il y a dans %3$s de leurs emplacements. Annuler le remet.",
   "palettes.chromastudio.hotbar.about.axiom": "Place les neuf premiers blocs dans ta barre d'action et les %1$s autres dans %2$s, où ces emplacements sont vides pour l'instant. Annuler remet ce qu'il y avait.",

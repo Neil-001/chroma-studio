@@ -689,6 +689,7 @@
   "hotbar.chromastudio.axiom.inactive": "O Axiom está desligado aqui, como num servidor que não o suporta, então as barras dele não podem ser usadas.",
   "hotbar.chromastudio.axiom.failed_undo": "As barras do Axiom não aceitaram a mudança e alguns espaços não puderam ser restaurados. O registro diz por quê.",
   "hotbar.chromastudio.axiom.undo_first": "Aperte Desfazer primeiro. O último preenchimento das barras do Axiom falhou no meio, e Desfazer devolve o que ficou para trás.",
+  "hotbar.chromastudio.axiom.moved": "Para onde vão os blocos a partir do décimo acabou de mudar, então nada foi preenchido. Leia a janela de novo e aperte Preencher.",
   "palettes.chromastudio.hotbar.about.axiom.replaces_one": "Põe os nove primeiros blocos na sua barra de atalhos e os outros %1$s em %2$s, substituindo o que há agora em um de seus espaços. Desfazer o devolve.",
   "palettes.chromastudio.hotbar.about.axiom.replaces": "Põe os nove primeiros blocos na sua barra de atalhos e os outros %1$s em %2$s, substituindo o que há agora em %3$s de seus espaços. Desfazer o devolve.",
   "palettes.chromastudio.hotbar.about.axiom": "Põe os nove primeiros blocos na sua barra de atalhos e os outros %1$s em %2$s, onde esses espaços estão vazios agora. Desfazer devolve o que havia.",

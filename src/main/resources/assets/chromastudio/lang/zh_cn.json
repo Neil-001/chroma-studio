@@ -689,6 +689,7 @@
   "hotbar.chromastudio.axiom.inactive": "Axiom 在此处未启用（例如在不支持它的服务器上），因此无法使用其快捷栏。",
   "hotbar.chromastudio.axiom.failed_undo": "Axiom 快捷栏未接受此更改，且部分格子未能恢复。原因见日志。",
   "hotbar.chromastudio.axiom.undo_first": "请先按撤销。上次填充 Axiom 快捷栏中途失败了，撤销会放回它留下的东西。",
+  "hotbar.chromastudio.axiom.moved": "第九个之后的方块的去向刚刚变了，因此没有填充任何东西。请重新阅读对话框后再按填充。",
   "palettes.chromastudio.hotbar.about.axiom.replaces_one": "把前九个方块放进你的快捷栏，其余 %1$s 个放进%2$s，会替换其中 1 个格子里现有的东西。撤销会放回。",
   "palettes.chromastudio.hotbar.about.axiom.replaces": "把前九个方块放进你的快捷栏，其余 %1$s 个放进%2$s，会替换其中 %3$s 个格子里现有的东西。撤销会放回。",
   "palettes.chromastudio.hotbar.about.axiom": "把前九个方块放进你的快捷栏，其余 %1$s 个放进%2$s，那些格子目前是空的。撤销会放回原来的物品。",

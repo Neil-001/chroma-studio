@@ -689,6 +689,7 @@
   "hotbar.chromastudio.axiom.inactive": "Axiom jest tu wyłączony, na przykład na serwerze bez jego obsługi, więc jego paski są niedostępne.",
   "hotbar.chromastudio.axiom.failed_undo": "Paski Axiom nie przyjęły zmiany, a części miejsc nie udało się przywrócić. Powód jest w dzienniku.",
   "hotbar.chromastudio.axiom.undo_first": "Najpierw naciśnij Cofnij. Ostatnie wypełnianie pasków Axiom przerwało się w połowie, a Cofnij przywraca to, co po nim zostało.",
+  "hotbar.chromastudio.axiom.moved": "Właśnie zmieniło się, dokąd trafiają bloki od dziesiątego, więc nic nie wypełniono. Przeczytaj okno jeszcze raz i naciśnij Wypełnij.",
   "palettes.chromastudio.hotbar.about.axiom.replaces_one": "Wkłada pierwsze dziewięć bloków do paska, a pozostałe (%1$s) do: %2$s, zastępując zawartość jednego z ich miejsc. Cofnij ją przywraca.",
   "palettes.chromastudio.hotbar.about.axiom.replaces": "Wkłada pierwsze dziewięć bloków do paska, a pozostałe (%1$s) do: %2$s, zastępując zawartość ich miejsc (%3$s). Cofnij ją przywraca.",
   "palettes.chromastudio.hotbar.about.axiom": "Wkłada pierwsze dziewięć bloków do paska, a pozostałe (%1$s) do: %2$s, gdzie te miejsca są teraz puste. Cofnij przywraca to, co było.",

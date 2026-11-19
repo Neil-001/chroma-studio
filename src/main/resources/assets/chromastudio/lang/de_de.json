@@ -689,6 +689,7 @@
   "hotbar.chromastudio.axiom.inactive": "Axiom ist hier aus, etwa auf einem Server ohne Axiom-Unterstützung, daher sind seine Schnellleisten nicht nutzbar.",
   "hotbar.chromastudio.axiom.failed_undo": "Axioms Schnellleisten haben die Änderung nicht angenommen, und manche Plätze ließen sich nicht zurücksetzen. Das Protokoll nennt den Grund.",
   "hotbar.chromastudio.axiom.undo_first": "Drücke zuerst Rückgängig. Das letzte Füllen von Axioms Schnellleisten ist mittendrin gescheitert, und Rückgängig legt zurück, was es hinterlassen hat.",
+  "hotbar.chromastudio.axiom.moved": "Wohin die Blöcke ab dem zehnten kommen, hat sich gerade geändert, daher wurde nichts gefüllt. Lies den Dialog noch einmal und drücke Füllen.",
   "palettes.chromastudio.hotbar.about.axiom.replaces_one": "Legt die ersten neun Blöcke in deine Schnellleiste und die anderen %1$s in %2$s und ersetzt dabei, was gerade in einem ihrer Plätze liegt. Rückgängig legt es zurück.",
   "palettes.chromastudio.hotbar.about.axiom.replaces": "Legt die ersten neun Blöcke in deine Schnellleiste und die anderen %1$s in %2$s und ersetzt dabei, was gerade in %3$s ihrer Plätze liegt. Rückgängig legt es zurück.",
   "palettes.chromastudio.hotbar.about.axiom": "Legt die ersten neun Blöcke in deine Schnellleiste und die anderen %1$s in %2$s, wo diese Plätze gerade leer sind. Rückgängig legt zurück, was dort war.",

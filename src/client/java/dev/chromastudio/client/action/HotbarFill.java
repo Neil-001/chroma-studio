@@ -130,11 +130,14 @@ public final class HotbarFill {
     /**
      * Fills the hotbar and says what happened. Entries with no item, such as water, are passed over. The slots past
      * the last entry are left as they are. The blocks past the ninth go where {@link HotbarPlan} says, by the
-     * settings' mode.
+     * settings' mode. {@code intoAxiom} is whether the player was told they go into Axiom's hotbars; if that is no
+     * longer so, nothing is filled.
      */
-    public static Component fill(List<PaletteEntry> entries) {
+    public static Component fill(List<PaletteEntry> entries, boolean intoAxiom) {
         Optional<Component> why = whyNoFill();
         if (why.isPresent()) return why.get();
+        // Decided once, here, against what the player was shown: Axiom's hotbars can come or go between the two.
+        boolean axiom = usesAxiom();
         LocalPlayer player = Minecraft.getInstance().player;
         Inventory inventory = player.getInventory();
         List<ItemStack> stacks = new ArrayList<>();
@@ -147,7 +150,8 @@ public final class HotbarFill {
             places.add(i + 1);
         }
         if (stacks.isEmpty()) return Component.translatable("hotbar.chromastudio.nothing");
-        if (stacks.size() > HOTBAR && usesAxiom()) return fillAxiom(stacks, places);
+        if (stacks.size() > HOTBAR && axiom != intoAxiom) return Component.translatable("hotbar.chromastudio.axiom.moved");
+        if (stacks.size() > HOTBAR && axiom) return fillAxiom(stacks, places);
         int hotbar = heldHotbar();
 
         // The inventory as it will be once the commands sent so far have run, which is what /give goes by.
