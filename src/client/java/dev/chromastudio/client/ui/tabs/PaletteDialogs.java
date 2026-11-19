@@ -676,6 +676,8 @@ final class PaletteDialogs {
         private final int blocks;
         /** What the last fill or undo did. It takes the description's place, so it has the room to be read whole in any language. */
         private Component result;
+        /** Whether a fill would use Axiom's hotbars when the controls were laid out. */
+        private boolean builtForAxiom;
 
         Hotbar(List<PaletteEntry> entries) {
             super(tr("palettes.chromastudio.hotbar.title"), 270, 124 + Widgets.H + PanelTab.GAP);
@@ -686,6 +688,7 @@ final class PaletteDialogs {
         @Override
         protected void build(Bounds in) {
             Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
+            builtForAxiom = HotbarFill.usesAxiom();
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo"), boxes = tr("palettes.chromastudio.hotbar.boxes");
             int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo);
             // The mode is the settings' own, shown and changed here, so the dialog always says which one a fill goes by.
@@ -752,6 +755,17 @@ final class PaletteDialogs {
                 all.addAll(warning);
                 g.setTooltipForNextFrame(PanelTab.font(), all, mouseX, mouseY);
             }
+        }
+
+        /**
+         * Lays the controls out again when Axiom's hotbars come or go while the dialog is open, as when a call into
+         * them fails, so the controls and the description say what Fill will do before it is clicked.
+         */
+        @Override
+        void tick() {
+            if (HotbarFill.usesAxiom() == builtForAxiom) return;
+            result = null;
+            refresh();
         }
 
         /** What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to keep. */

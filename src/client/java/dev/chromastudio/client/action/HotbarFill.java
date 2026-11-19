@@ -47,8 +47,12 @@ public final class HotbarFill {
     private record Was(int slot, ItemStack stack) {}
 
     private static List<Was> last = List.of();
-    /** Axiom's number for the hotbar the last fill's first nine went into, or -1 without Axiom. */
+    /** Axiom's number for the hotbar the last fill's first nine went into, {@link #NO_AXIOM} or {@link #UNKNOWN}. */
     private static int lastHotbar = -1;
+    /** For {@link #lastHotbar}: Axiom isn't loaded, so the hotbar in hand is the only one. */
+    private static final int NO_AXIOM = -1;
+    /** For {@link #lastHotbar}: Axiom is loaded but couldn't say which hotbar was held, so Undo can't know where it belongs. */
+    private static final int UNKNOWN = -2;
     /** What the last fill replaced when it went into Axiom's hotbars, the first nine included, kept by Axiom's hotbar. */
     private static List<HotbarWrites.Was<ItemStack>> lastAxiom = List.of();
     /** Whether the last fill went into Axiom's hotbars, failed partway and couldn't put back all it wrote, which only Undo can. */
@@ -108,7 +112,9 @@ public final class HotbarFill {
      * Whether Undo has to go through Axiom: the fill wrote Axiom's other hotbars, or the player has since switched
      * away from the hotbar it filled, which only Axiom can reach now.
      */
-    private static boolean undoNeedsAxiom() { return !lastAxiom.isEmpty() || lastHotbar >= 0 && heldHotbar() != lastHotbar; }
+    private static boolean undoNeedsAxiom() {
+        return !lastAxiom.isEmpty() || lastHotbar == UNKNOWN || lastHotbar >= 0 && heldHotbar() != lastHotbar;
+    }
 
     /** Whether a fill puts the blocks past the ninth in Axiom's hotbars: the setting is on and Axiom can take them. */
     public static boolean usesAxiom() { return ModSettings.hotbarAxiom && AxiomBridge.hotbarsUnavailable().isEmpty(); }
@@ -238,7 +244,8 @@ public final class HotbarFill {
         // Past two hotbars a list would crowd out the rest of the message, so it says nine to each instead.
         int hotbars = HotbarPlan.axiomHotbars(rest);
         MutableComponent parts = Component.empty();
-        if (hotbars > 2) {
+        // Only when the blocks are one run of the palette, as a skipped entry such as water would shift the boundaries.
+        if (hotbars > 2 && places.getLast() - places.get(HOTBAR) == rest - 1) {
             parts.append(Component.translatable("hotbar.chromastudio.rest.axiom.many", places.get(HOTBAR), places.getLast(), axiomHotbarNames(active, rest)));
         } else {
             for (int h = 0; h < hotbars; h++) {
@@ -287,13 +294,13 @@ public final class HotbarFill {
         }
     }
 
-    /** Axiom's number for the hotbar in hand, or -1 without Axiom or when it can't say. */
+    /** Axiom's number for the hotbar in hand, {@link #NO_AXIOM} without Axiom, or {@link #UNKNOWN} when it can't say. */
     private static int heldHotbar() {
-        if (!AxiomBridge.isPresent()) return -1;
+        if (!AxiomBridge.isPresent()) return NO_AXIOM;
         try {
             return AxiomBridge.activeHotbar();
         } catch (Throwable _) {
-            return -1;
+            return UNKNOWN;
         }
     }
 
@@ -405,6 +412,8 @@ public final class HotbarFill {
             if (failed != null) {
                 ChromaStudioClient.LOGGER.warn("Axiom's hotbars couldn't be put back", failed);
                 AxiomBridge.hotbarsFailed(failed);
+                // What wasn't put back is still to be, so no new fill may take its place.
+                lastFailed = true;
                 return Component.translatable("hotbar.chromastudio.axiom.failed_undo");
             }
         }
