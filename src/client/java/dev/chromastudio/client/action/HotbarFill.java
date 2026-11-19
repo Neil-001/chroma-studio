@@ -6,6 +6,7 @@ import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.OverflowMode;
 import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.ui.Hud;
+import dev.chromastudio.core.hotbar.HotbarWrites;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,6 +31,10 @@ import net.minecraft.world.item.component.ItemContainerContents;
  * Puts a palette's blocks in the player's hotbar: the first nine, and the rest in free inventory slots, in shulker
  * boxes or on the ground, by {@link OverflowMode}; or, when the setting asks for it and {@link AxiomBridge#hotbarsUnavailable} says it can,
  * in Axiom's next hotbars. It remembers what was in every slot it touched, so the last fill can be undone.
+ *
+ * <p>With Axiom, the hotbar a fill wrote may not be the one in hand by the time of Undo, since Axiom swaps the
+ * player's hotbar for another of its own. So what a fill replaced in the hotbar is kept by Axiom's number for it, and
+ * Undo writes it back there, through Axiom when that hotbar is no longer the one held.
  */
 public final class HotbarFill {
     private HotbarFill() {}
@@ -41,15 +46,11 @@ public final class HotbarFill {
     /** A slot of the inventory, 0 to 35 with the hotbar first or 40 for the off hand, and what it held before the fill. */
     private record Was(int slot, ItemStack stack) {}
 
-    /** A slot of one of Axiom's hotbars, and what it held before the fill. */
-    private record AxiomWas(int hotbar, int slot, ItemStack stack) {}
-
     private static List<Was> last = List.of();
-    /**
-     * What the last fill replaced when it went into Axiom's hotbars, the first nine included. Those are kept by
-     * hotbar rather than by inventory slot, since the player may have switched hotbars before undoing.
-     */
-    private static List<AxiomWas> lastAxiom = List.of();
+    /** Axiom's number for the hotbar the last fill's first nine went into, or -1 without Axiom. */
+    private static int lastHotbar = -1;
+    /** What the last fill replaced when it went into Axiom's hotbars, the first nine included, kept by Axiom's hotbar. */
+    private static List<HotbarWrites.Was<ItemStack>> lastAxiom = List.of();
     /** Whether the last fill dropped anything, which Undo can't pick up again. */
     private static boolean lastDropped;
     /** The connection the last fill was made on. Its slots are another inventory's once the player is in another world. */
@@ -88,8 +89,8 @@ public final class HotbarFill {
         forgetOtherWorlds();
         if (last.isEmpty() && lastAxiom.isEmpty()) return Optional.of(Component.translatable("hotbar.chromastudio.nothing_to_undo"));
         Optional<Component> why = unavailable();
-        // Axiom writes the held hotbar only in creative mode, so outside it an undo would quietly do nothing there.
-        return why.isPresent() || lastAxiom.isEmpty() ? why : AxiomBridge.hotbarsUnavailable();
+        // Undo may have to write a hotbar the player has since switched away from, which only Axiom can reach.
+        return why.isPresent() || lastAxiom.isEmpty() && lastHotbar < 0 ? why : AxiomBridge.hotbarsUnsupported();
     }
 
     /** Whether a fill puts the blocks past the ninth in Axiom's hotbars: the setting is on and Axiom can take them. */
@@ -117,6 +118,7 @@ public final class HotbarFill {
         }
         if (stacks.isEmpty()) return Component.translatable("hotbar.chromastudio.nothing");
         if (stacks.size() > HOTBAR && usesAxiom()) return fillAxiom(stacks);
+        int hotbar = heldHotbar();
 
         // The inventory as it will be once the commands sent so far have run, which is what /give goes by.
         List<ItemStack> now = new ArrayList<>();
@@ -126,7 +128,7 @@ public final class HotbarFill {
         for (int i = 0; i < placed; i++) {
             Optional<Component> problem = Give.stack(stacks.get(i), i);
             if (problem.isPresent()) {
-                remember(before, false);
+                remember(before, false, hotbar);
                 return problem.get();
             }
             if (!player.hasInfiniteMaterials()) REPLIES.sent();
@@ -162,7 +164,7 @@ public final class HotbarFill {
                 case NOT_AT_ALL -> leftOut++;
             }
         }
-        remember(before, dropped + droppedBoxes > 0);
+        remember(before, dropped + droppedBoxes > 0, hotbar);
 
         List<ItemStack> strip = new ArrayList<>(Collections.nCopies(HOTBAR, ItemStack.EMPTY));
         for (int i = 0; i < placed; i++) strip.set(i, stacks.get(i));
@@ -180,55 +182,104 @@ public final class HotbarFill {
 
     /**
      * Puts the first nine blocks in the hotbar and the rest, nine to each, in the Axiom hotbars after the one held,
-     * replacing what was there. Axiom saves those hotbars itself a few seconds later.
+     * replacing what was there, all or nothing. Axiom saves those hotbars itself a few seconds later.
      */
     private static Component fillAxiom(List<ItemStack> stacks) {
         LocalPlayer player = Minecraft.getInstance().player;
-        List<ItemStack> rest = stacks.subList(HOTBAR, stacks.size());
         // Checked before anything is written, so a block the world has turned off never leaves a fill half done.
-        for (ItemStack stack : rest)
+        for (ItemStack stack : stacks)
             if (!stack.isItemEnabled(player.connection.enabledFeatures())) return Component.translatable("give.chromastudio.disabled", stack.getHoverName());
-        List<AxiomWas> before = new ArrayList<>();
-        int hotbars = HotbarPlan.axiomHotbars(rest.size());
+        int active;
         try {
-            int active = AxiomBridge.activeHotbar();
-            for (int i = 0; i < HOTBAR; i++) {
-                ItemStack was = AxiomBridge.hotbarItem(active, i);
-                Optional<Component> problem = Give.stack(stacks.get(i), i);
-                if (problem.isPresent()) {
-                    rememberAxiom(before);
-                    return problem.get();
-                }
-                before.add(new AxiomWas(active, i, was));
-            }
-            List<HotbarPlan.Spot> spots = HotbarPlan.axiom(active, rest.size());
-            for (int k = 0; k < spots.size(); k++) {
-                HotbarPlan.Spot at = spots.get(k);
-                ItemStack was = AxiomBridge.hotbarItem(at.hotbar(), at.slot());
-                AxiomBridge.setHotbarItem(at.hotbar(), at.slot(), rest.get(k));
-                before.add(new AxiomWas(at.hotbar(), at.slot(), was));
-            }
-        } catch (Throwable t) {
-            ChromaStudioClient.LOGGER.warn("Axiom's hotbars didn't take the fill", t);
-            rememberAxiom(before);
+            active = AxiomBridge.activeHotbar();
+        } catch (Throwable _) {
             return Component.translatable("hotbar.chromastudio.axiom.failed");
         }
-        rememberAxiom(before);
-        Hud.strip(stacks.subList(0, HOTBAR), Component.translatable("hotbar.chromastudio.mode.axiom"));
+        List<HotbarWrites.Slot> slots = new ArrayList<>();
+        for (int i = 0; i < HOTBAR; i++) slots.add(new HotbarWrites.Slot(active, i));
+        int rest = stacks.size() - HOTBAR;
+        for (HotbarPlan.Spot at : HotbarPlan.axiom(active, rest)) slots.add(new HotbarWrites.Slot(at.hotbar(), at.slot()));
+        HotbarWrites.Result<ItemStack> result = HotbarWrites.write(axiomHotbars(active), slots, stacks);
+        if (!result.worked()) {
+            ChromaStudioClient.LOGGER.warn("Axiom's hotbars didn't take the fill", result.failure());
+            // Putting back what it wrote failed too, so Undo is left to try again.
+            if (!result.undo().isEmpty()) rememberAxiom(result.undo());
+            return Component.translatable(result.undo().isEmpty() ? "hotbar.chromastudio.axiom.failed" : "hotbar.chromastudio.axiom.failed_undo");
+        }
+        rememberAxiom(result.undo());
+        Component where = axiomHotbarNames(active + 1, HotbarPlan.axiomHotbars(rest));
+        Hud.strip(stacks.subList(0, HOTBAR), Component.translatable("hotbar.chromastudio.mode.axiom", where));
         return Component.translatable("hotbar.chromastudio.filled", HOTBAR).append(" ")
-                .append(Component.translatable(hotbars == 1 ? "hotbar.chromastudio.rest.axiom" : "hotbar.chromastudio.rest.axioms", rest.size(), hotbars));
+                .append(Component.translatable("hotbar.chromastudio.rest.axiom", rest, where, AxiomBridge.hotbarKey()));
     }
 
-    private static void rememberAxiom(List<AxiomWas> before) {
+    /** Names a run of Axiom hotbars as the player sees them, numbered from 1: the first is Axiom's number {@code first}. */
+    public static Component axiomHotbarNames(int first, int count) {
+        return count == 1 ? Component.translatable("hotbar.chromastudio.axiom.hotbar", first + 1)
+                : Component.translatable("hotbar.chromastudio.axiom.hotbars", first + 1, first + count);
+    }
+
+    /** What a fill into Axiom's hotbars would do now: the Axiom hotbars it uses, and how many of their slots hold something. */
+    public record AxiomPreview(Component hotbars, int replaced) {}
+
+    /**
+     * What a fill of this many blocks would put in Axiom's hotbars and replace there, for the dialog to say before the
+     * fill. Nothing when the fill wouldn't use them or they can't be read.
+     */
+    public static Optional<AxiomPreview> axiomPreview(int blocks) {
+        int rest = blocks - HOTBAR;
+        if (rest <= 0 || !usesAxiom()) return Optional.empty();
+        try {
+            int active = AxiomBridge.activeHotbar(), replaced = 0;
+            for (HotbarPlan.Spot at : HotbarPlan.axiom(active, rest)) if (!AxiomBridge.hotbarItem(at.hotbar(), at.slot()).isEmpty()) replaced++;
+            return Optional.of(new AxiomPreview(axiomHotbarNames(active + 1, HotbarPlan.axiomHotbars(rest)), replaced));
+        } catch (Throwable _) {
+            return Optional.empty();
+        }
+    }
+
+    /** Axiom's number for the hotbar in hand, or -1 without Axiom or when it can't say. */
+    private static int heldHotbar() {
+        if (AxiomBridge.hotbarsUnsupported().isPresent()) return -1;
+        try {
+            return AxiomBridge.activeHotbar();
+        } catch (Throwable _) {
+            return -1;
+        }
+    }
+
+    /**
+     * Axiom's hotbars as a fill writes them, with {@code active} the one in hand: that one is the player's own, so it
+     * is written as {@link #put} writes any slot, and the others through Axiom.
+     */
+    private static HotbarWrites.Hotbars<ItemStack> axiomHotbars(int active) {
+        return new HotbarWrites.Hotbars<>() {
+            @Override
+            public ItemStack get(int hotbar, int slot) throws Throwable { return AxiomBridge.hotbarItem(hotbar, slot); }
+
+            @Override
+            public void set(int hotbar, int slot, ItemStack item) throws Throwable {
+                if (hotbar == active) put(slot, item);
+                else AxiomBridge.setHotbarItem(hotbar, slot, item);
+            }
+
+            @Override
+            public boolean same(ItemStack a, ItemStack b) { return ItemStack.matches(a, b); }
+        };
+    }
+
+    private static void rememberAxiom(List<HotbarWrites.Was<ItemStack>> before) {
         last = List.of();
+        lastHotbar = -1;
         lastAxiom = List.copyOf(before);
         lastDropped = false;
         lastOn = Minecraft.getInstance().getConnection();
     }
 
-    private static void remember(List<Was> before, boolean dropped) {
+    private static void remember(List<Was> before, boolean dropped, int hotbar) {
         lastAxiom = List.of();
         last = List.copyOf(before);
+        lastHotbar = hotbar;
         lastDropped = dropped;
         lastOn = Minecraft.getInstance().getConnection();
     }
@@ -277,25 +328,38 @@ public final class HotbarFill {
         return -1;
     }
 
-    /** Puts back what the last fill replaced, and says so. What it dropped stays on the ground. */
+    /**
+     * Puts back what the last fill replaced, and says so, writing the hotbar slots back to the Axiom hotbar they were
+     * in even if the player holds another now. What it dropped stays on the ground.
+     */
     public static Component undo() {
         Optional<Component> why = whyNoUndo();
         if (why.isPresent()) return why.get();
-        if (!lastAxiom.isEmpty()) {
-            try {
-                for (AxiomWas was : lastAxiom) AxiomBridge.setHotbarItem(was.hotbar, was.slot, was.stack);
-            } catch (Throwable t) {
-                ChromaStudioClient.LOGGER.warn("Axiom's hotbars couldn't be put back", t);
-                return Component.translatable("hotbar.chromastudio.axiom.failed");
-            }
-            lastAxiom = List.of();
-            Hud.strip(List.of());
-            return Component.translatable("hotbar.chromastudio.undone_axiom");
+        List<HotbarWrites.Was<ItemStack>> hotbars = new ArrayList<>(lastAxiom);
+        List<Was> slots = new ArrayList<>();
+        for (Was was : last) {
+            if (was.slot < HOTBAR && lastHotbar >= 0) hotbars.add(new HotbarWrites.Was<>(lastHotbar, was.slot, was.stack));
+            else slots.add(was);
         }
-        for (Was was : last) put(was.slot, was.stack);
+        if (!hotbars.isEmpty()) {
+            Throwable failed;
+            try {
+                failed = HotbarWrites.restore(axiomHotbars(AxiomBridge.activeHotbar()), hotbars);
+            } catch (Throwable t) {
+                failed = t;
+            }
+            if (failed != null) {
+                ChromaStudioClient.LOGGER.warn("Axiom's hotbars couldn't be put back", failed);
+                return Component.translatable("hotbar.chromastudio.axiom.failed_undo");
+            }
+        }
+        for (Was was : slots) put(was.slot, was.stack);
+        boolean axiom = !lastAxiom.isEmpty();
         last = List.of();
+        lastAxiom = List.of();
+        lastHotbar = -1;
         Hud.strip(List.of());
-        return Component.translatable(lastDropped ? "hotbar.chromastudio.undone_dropped" : "hotbar.chromastudio.undone");
+        return Component.translatable(axiom ? "hotbar.chromastudio.undone_axiom" : lastDropped ? "hotbar.chromastudio.undone_dropped" : "hotbar.chromastudio.undone");
     }
 
     /** Sets one slot, to nothing for an empty stack: by the creative packet, or as an operator by command. */

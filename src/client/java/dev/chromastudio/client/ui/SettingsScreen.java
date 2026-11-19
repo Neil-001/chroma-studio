@@ -246,9 +246,11 @@ public final class SettingsScreen extends Screen {
         if (name.equals("dioramaPerspective"))
             return list.cycler(x, y, CONTROL_W, null, List.of(false, true), (Boolean) value,
                     v -> Component.translatable("option.chromastudio.projection." + (v ? "perspective" : "orthographic")), v -> ModSettings.set(name, v), tip);
-        // Greyed rather than hidden without Axiom, so the setting can be found and its tooltip says what it needs.
-        if (name.equals("hotbarAxiom") && !AxiomBridge.isPresent())
-            return Widgets.disable(list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v)), AxiomBridge.whyNot().orElseThrow());
+        // Greyed rather than hidden without Axiom, or with an Axiom whose hotbars this version can't use, so the setting
+        // can be found and its tooltip says what it needs. Only the fill dialog greys it for the moment's reasons, such
+        // as survival mode, since the choice still stands for later.
+        if (name.equals("hotbarAxiom") && AxiomBridge.hotbarsUnsupported().isPresent())
+            return Widgets.disable(list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v)), AxiomBridge.hotbarsUnsupported().orElseThrow());
         if (type == boolean.class) return list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v), tip);
         if (type == int.class || type == double.class) {
             boolean whole = type == int.class;
