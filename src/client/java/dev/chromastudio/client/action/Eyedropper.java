@@ -2,6 +2,7 @@ package dev.chromastudio.client.action;
 
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.TintContext;
@@ -20,8 +21,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
 /**
- * The in-world eyedropper: reads the face of the block the player looks at, as it is placed and in the biome it is
- * in, and makes it the Match target. {@code Keys.onEyedropper} runs {@link #press}.
+ * The in-world eyedropper: reads the face of the block the player looks at, or in Axiom's editor the block under the
+ * mouse, as it is placed and in the biome it is in, and makes it the Match target. {@code Keys.onEyedropper} runs
+ * {@link #press}.
  */
 public final class Eyedropper {
     private Eyedropper() {}
@@ -40,7 +42,8 @@ public final class Eyedropper {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         boolean open = armed || mc.hasShiftDown();
-        BlockHitResult hit = hit(mc);
+        // Axiom's editor hides the crosshair and points with the mouse instead, so there it reads what the mouse is over.
+        BlockHitResult hit = AxiomBridge.editorOpen() ? AxiomBridge.blockUnderMouse() : hit(mc);
         if (hit == null) {
             say("eyedropper.chromastudio.no_block", "eyedropper.chromastudio.no_block.how");
             return;
@@ -81,7 +84,7 @@ public final class Eyedropper {
         Color colour = index.colourOf(state, face, tint).orElseThrow();
         MatchState.setEntry(entry, state, face, tint);
         MatchState.remember();
-        mc.keyboardHandler.setClipboard(colour.hex());
+        Clipboard.copy(colour.hex());
 
         // The state as placed, which may be one the index folded into another's entry.
         String properties = Entry.properties(state);

@@ -13,6 +13,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.Capture;
+import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.axiom.AxiomBridge;
@@ -150,8 +151,7 @@ public final class PalettesTab extends PanelTab {
         List<Action> bottom = List.of(
                 new Action("import", () -> open(new PaletteDialogs.Import(made -> { say(tr("palettes.chromastudio.imported", made.name), GOOD); showEntries(); })), null),
                 new Action("share", () -> {
-                    Minecraft.getInstance().keyboardHandler.setClipboard(PaletteDialogs.share(p));
-                    say(tr("palettes.chromastudio.shared"), GOOD);
+                    Clipboard.copy(PaletteDialogs.share(p)).ifPresentOrElse(why -> say(why, BAD), () -> say(tr("palettes.chromastudio.shared"), GOOD));
                 }, p == null ? needsOne : p.entries.isEmpty() ? tr("palettes.chromastudio.need_entries") : null),
                 new Action("copy", () -> { flush(); store.copy(p); showEntries(); }, p == null ? needsOne : null));
 

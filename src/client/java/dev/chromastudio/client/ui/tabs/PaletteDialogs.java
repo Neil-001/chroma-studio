@@ -4,6 +4,7 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.OverflowMode;
 import dev.chromastudio.client.PaletteStore;
+import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.FileDialog;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.ImageImport;
@@ -369,6 +370,8 @@ final class PaletteDialogs {
         private boolean gap = ModSettings.exportGap;
         private final long seed;
         private Component skipped;
+        /** Where else the file can go, shown under the dialog's controls once it's written: Axiom's editor loads it. */
+        private Component hint;
         private int labelW;
 
         /** {@code seed} places the diorama layouts, so an export from the Diorama panel comes out as it shows. */
@@ -436,6 +439,7 @@ final class PaletteDialogs {
             y += PanelTab.ROW;
             label(g, "palettes.chromastudio.export.patch", half, y);
             if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.FAIR, false);
+            else if (hint != null) g.text(PanelTab.font(), PanelTab.fit(hint.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.DIM, false);
         }
 
         @Override
@@ -461,6 +465,7 @@ final class PaletteDialogs {
 
         private void run(boolean place) {
             skipped = null;
+            hint = null;
             LayoutOptions options = new LayoutOptions(layout, height, patch, width, gap, seed);
             SchematicExporter.Result result;
             try {
@@ -473,6 +478,8 @@ final class PaletteDialogs {
                 return;
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
+            // Axiom's File > Import Schematic reads .litematic files, but not .nbt ones.
+            if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.isPresent()) hint = tr("palettes.chromastudio.export.axiom");
             // A path has no spaces to wrap at. The name is what tells two exports apart, and its end holds the layout and the number.
             status(tr("command.chromastudio.export.done", middle(shortPath(result.file()), box.w() - 10)), Theme.GOOD);
             if (!place) return;
@@ -520,8 +527,8 @@ final class PaletteDialogs {
                 status(tr("palettes.chromastudio.worldedit.sent"), Theme.GOOD);
             });
             copy = widgets.button(in.right() - sendW - PanelTab.GAP - copyW, in.bottom() - Widgets.H - STATUS_H, copyLabel, () -> {
-                Minecraft.getInstance().keyboardHandler.setClipboard(command());
-                status(tr("palettes.chromastudio.worldedit.copied"), Theme.GOOD);
+                Clipboard.copy(command()).ifPresentOrElse(why -> status(why, Theme.BAD),
+                        () -> status(tr("palettes.chromastudio.worldedit.copied"), Theme.GOOD));
             });
             // The field comes last: giving it its text tells its responder, which greys the buttons.
             EditBox field = widgets.search(x, y, in.right() - x, tr("palettes.chromastudio.worldedit.from.hint"), s -> { from = s; enable(); });

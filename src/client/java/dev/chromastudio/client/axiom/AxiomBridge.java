@@ -6,8 +6,10 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.List;
 import java.util.Optional;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -49,19 +51,43 @@ public final class AxiomBridge {
         }
     }
 
-    /** Call at the end of every client tick, for the tools in Axiom's editor. */
-    public static void tick() {
-        if (isPresent()) AxiomTools.tick();
+    // Axiom's editor, which Chroma Studio's window steps out of while it's open.
+
+    /** Call before the window opens: leaves Axiom's editor when it's open, to go back once the window has closed. */
+    public static void leaveEditorForWindow() {
+        if (isPresent()) AxiomEditor.leaveForWindow();
     }
+
+    /** Whether Axiom's editor is open. False without Axiom, or when this version of it can't say. */
+    public static boolean editorOpen() { return isPresent() && AxiomEditor.active(); }
+
+    /** Call at the end of every client tick, for the tools and the window's trips out of the editor. */
+    public static void tick(Minecraft mc) {
+        if (!isPresent()) return;
+        AxiomTools.tick();
+        AxiomEditor.tick(mc);
+    }
+
+    /** The block under the mouse in Axiom's editor, or null when there's none or the editor isn't open. */
+    public static @Nullable BlockHitResult blockUnderMouse() { return editorOpen() ? AxiomBlock.underMouse() : null; }
 
     // Axiom's active block, for the Match tab.
 
     /** What {@link #takeActiveBlock} did: whether the Match target changed, and a line saying how it went. */
     public record Taken(boolean taken, Component message) {}
 
+    /** Why the Match tab can't take Axiom's active block now, or nothing when it can. */
+    public static Optional<Component> activeBlockUnavailable() {
+        Optional<Component> why = whyNot();
+        return why.isPresent() ? why : AxiomBlock.unavailable();
+    }
+
+    /** What taking Axiom's active block would do, for the button's tooltip. Only when {@link #activeBlockUnavailable} is empty. */
+    public static Component activeBlockTip() { return AxiomBlock.tip(); }
+
     /** Makes Axiom's active block the Match target. */
     public static Taken takeActiveBlock() {
-        Optional<Component> why = whyNot();
+        Optional<Component> why = activeBlockUnavailable();
         return why.isPresent() ? new Taken(false, why.get()) : AxiomBlock.take();
     }
 

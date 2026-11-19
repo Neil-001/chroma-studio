@@ -8,6 +8,7 @@ import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ThemeChoice;
 import dev.chromastudio.client.TitleButtons;
 import dev.chromastudio.client.action.ScreenPicker;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -84,6 +85,8 @@ public final class ChromaScreen extends Screen {
         if (screen == null) {
             screen = pinned != null ? pinned : new ChromaScreen();
             pinned = null;
+            // Axiom's editor would squeeze the window into its 3D view, so the window steps out of it until it closes.
+            AxiomBridge.leaveEditorForWindow();
             mc.gui.setScreen(screen);
         }
         if (tabId != null) screen.select(tabId);

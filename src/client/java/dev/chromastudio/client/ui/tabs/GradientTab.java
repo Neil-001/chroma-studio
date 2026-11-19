@@ -13,6 +13,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
+import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.axiom.AxiomBridge;
@@ -303,8 +304,8 @@ public final class GradientTab extends PanelTab {
         Component none = result.isEmpty() ? (problem != null ? problem : tr("gradient.chromastudio.working")) : null;
         action(0, actionsY, () -> open(new PaletteDialogs.Hotbar(entries())), none != null ? none : HotbarFill.unavailable().orElse(null));
         action(1, actionsY, () -> {
-            Minecraft.getInstance().keyboardHandler.setClipboard(entries().stream().map(PaletteEntry::idWithProperties).collect(Collectors.joining("\n")));
-            say(tr("gradient.chromastudio.copied", result.size()), GOOD);
+            Clipboard.copy(entries().stream().map(PaletteEntry::idWithProperties).collect(Collectors.joining("\n")))
+                    .ifPresentOrElse(why -> say(why, BAD), () -> say(tr("gradient.chromastudio.copied", result.size()), GOOD));
         }, none);
         action(2, actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
         action(3, actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())),
