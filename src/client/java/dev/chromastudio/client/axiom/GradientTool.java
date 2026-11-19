@@ -51,10 +51,14 @@ final class GradientTool implements CustomTool {
     /** The key for the gradient on the Gradient tab, which no saved gradient's name can be, as names are never blank. */
     private static final String ON_TAB = "";
 
+    /** One block the preview changes: where it is, what was there when the preview was made, and what goes there. */
+    private record Planned(int x, int y, int z, BlockState was, BlockState next) {}
+
     /** A gradient the panel offers: its key, the label it shows, and its blocks in order. */
     private record Choice(String key, String label, List<PaletteEntry> steps) {}
 
     private final BlockRegion change = AxiomTools.regions.createBlock();
+    private final List<Planned> planned = new ArrayList<>();
     private final BooleanRegion touched = AxiomTools.regions.createBoolean();
     private final BooleanRegion ends = AxiomTools.regions.createBoolean();
     private final BooleanRegion one = AxiomTools.regions.createBoolean();
@@ -65,6 +69,11 @@ final class GradientTool implements CustomTool {
     private boolean likeFirst = true;
     private final int[] reach = {16};
     private BlockPos first, second;
+    /**
+     * The block the build is found from, and whose kind {@link #likeFirst} keeps to: the first block used, which stays
+     * the same when the ends swap, so a swap only turns the gradient round. It moves with its end when that end moves.
+     */
+    private BlockPos seed;
 
     /** What the preview on show was made for, so it's made again only when something changes. */
     private Object previewFor;
@@ -86,6 +95,7 @@ final class GradientTool implements CustomTool {
     public void reset() {
         first = null;
         second = null;
+        seed = null;
         clearPreview();
     }
 
@@ -94,12 +104,16 @@ final class GradientTool implements CustomTool {
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) return false;
         BlockPos at = hit.getBlockPos().immutable();
-        if (first == null) first = at;
-        else if (second == null) {
+        if (first == null) {
+            first = at;
+            seed = at;
+        } else if (second == null) {
             if (!at.equals(first)) second = at;
         } else if (!at.equals(first) && !at.equals(second)) {
             // Moves whichever end is nearer, so the player can adjust either without starting over.
-            if (at.distSqr(first) <= at.distSqr(second)) first = at;
+            boolean nearFirst = at.distSqr(first) <= at.distSqr(second);
+            if ((nearFirst ? first : second).equals(seed)) seed = at;
+            if (nearFirst) first = at;
             else second = at;
         }
         return true;
@@ -134,6 +148,8 @@ final class GradientTool implements CustomTool {
         if (!Objects.equals(key, previewFor)) {
             preview(level, choice);
             previewFor = key;
+            // A big preview can take longer than the tick check waits, which mustn't take it for the editor closing.
+            drawn = System.nanoTime();
         }
         if (second == null) {
             BlockHitResult hit = AxiomTools.tools.raycastBlock();
@@ -157,9 +173,9 @@ final class GradientTool implements CustomTool {
         if (first == null || second == null || steps.size() < 2) return;
 
         GradientLine line = new GradientLine(first.getX(), first.getY(), first.getZ(), second.getX(), second.getY(), second.getZ());
-        BlockState start = level.getBlockState(first);
+        BlockState start = level.getBlockState(seed);
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        BuildSearch.Found found = BuildSearch.from(first.getX(), first.getY(), first.getZ(), (x, y, z) -> {
+        BuildSearch.Found found = BuildSearch.from(seed.getX(), seed.getY(), seed.getZ(), (x, y, z) -> {
             BlockState s = level.getBlockState(pos.set(x, y, z));
             if (s.isAir() || s.getBlock() instanceof LiquidBlock) return false;
             return (!likeFirst || s.getBlock() == start.getBlock()) && line.reaches(x, y, z, reach[0]);
@@ -175,9 +191,10 @@ final class GradientTool implements CustomTool {
                 leftAlone++;
                 continue;
             }
-            touched.add(x, y, z);
             BlockState next = steps.get(line.step(x, y, z, steps.size(), blend));
             if (next == now) continue;
+            touched.add(x, y, z);
+            planned.add(new Planned(x, y, z, now, next));
             change.addBlock(x, y, z, next);
             AxiomTools.tools.setBlockRenderOverride(x, y, z, next);
         }
@@ -193,6 +210,7 @@ final class GradientTool implements CustomTool {
 
     private void clearPreview() {
         change.clear();
+        planned.clear();
         touched.clear();
         ends.clear();
         leftAlone = 0;
@@ -204,12 +222,21 @@ final class GradientTool implements CustomTool {
         }
     }
 
-    /** Sends the change to Axiom as one entry in its history, and starts over. False when there's nothing to change. */
+    /**
+     * Sends the change to Axiom as one entry in its history, and starts over. A block that has changed since the
+     * preview was made, as when another player broke it or put a chest there, is left as it now is, so nothing fills
+     * a gap or replaces a block the preview didn't show. False when there's nothing to change.
+     */
     private boolean apply() {
-        if (change.isEmpty()) return false;
-        AxiomTools.tools.pushBlockRegionChange(change);
+        ClientLevel level = Minecraft.getInstance().level;
+        if (planned.isEmpty() || level == null) return false;
+        change.clear();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (Planned p : planned) if (level.getBlockState(pos.set(p.x(), p.y(), p.z())) == p.was()) change.addBlock(p.x(), p.y(), p.z(), p.next());
+        boolean any = !change.isEmpty();
+        if (any) AxiomTools.tools.pushBlockRegionChange(change);
         reset();
-        return true;
+        return any;
     }
 
     @Override

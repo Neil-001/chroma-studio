@@ -20,6 +20,9 @@ public final class GradientLine {
      */
     private static final double MIX = 0.5;
 
+    /** How far past an end plane a block's centre may be, for rounding, and still count as on it. */
+    private static final double EDGE = 1e-6;
+
     private final int ax, ay, az;
     private final double dx, dy, dz, length;
 
@@ -38,12 +41,12 @@ public final class GradientLine {
     private double along(int x, int y, int z) { return (x - ax) * dx + (y - ay) * dy + (z - az) * dz; }
 
     /**
-     * Whether a block lies between the planes across the line through the two ends, the ends' own blocks included, and
-     * no further than {@code reach} blocks from the line.
+     * Whether a block's centre lies between the planes across the line through the two ends' centres, or on one, and
+     * no further than {@code reach} blocks from the line. The ends' own blocks are on those planes, so they count.
      */
     public boolean reaches(int x, int y, int z, double reach) {
         double s = along(x, y, z);
-        return s >= -0.5 && s <= length + 0.5 && distance(x, y, z) <= reach;
+        return s >= -EDGE && s <= length + EDGE && distance(x, y, z) <= reach;
     }
 
     /** How far a block's centre is from the line, square to it, in blocks. */
@@ -58,8 +61,12 @@ public final class GradientLine {
      * are shared equally among the steps, so the first and last steps are as wide as the others. With
      * {@link Blend#MIXED} the step may be the next one up or down near a band's edge, chosen by the block's position
      * alone, so the same block always gets the same step.
+     *
+     * <p>When the line is shorter than the gradient has steps, sharing would skip both ends' steps, so instead each
+     * block takes the step nearest its place along the line, and the two ends get the first and last steps.
      */
     public int step(int x, int y, int z, int steps, Blend blend) {
+        if (length + 1 < steps) return Math.clamp(Math.round(along(x, y, z) / length * (steps - 1)), 0, steps - 1);
         double u = (along(x, y, z) + 0.5) / (length + 1) * steps;
         if (blend == Blend.MIXED) u += (noise(x, y, z) - 0.5) * MIX;
         return Math.clamp((long) Math.floor(u), 0, steps - 1);

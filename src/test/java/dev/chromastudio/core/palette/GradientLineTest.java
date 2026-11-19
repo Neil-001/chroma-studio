@@ -88,6 +88,26 @@ class GradientLineTest {
     }
 
     @Test
+    void aLineShorterThanTheGradientStillEndsOnItsFirstAndLastSteps() {
+        GradientLine line = new GradientLine(0, 0, 0, 0, 3, 0);
+        for (Blend blend : Blend.values()) {
+            assertEquals(0, line.step(0, 0, 0, 32, blend));
+            assertEquals(10, line.step(0, 1, 0, 32, blend));
+            assertEquals(21, line.step(0, 2, 0, 32, blend));
+            assertEquals(31, line.step(0, 3, 0, 32, blend));
+        }
+    }
+
+    @Test
+    void aDiagonalLineReachesNothingBehindItsEnds() {
+        GradientLine line = new GradientLine(0, 0, 0, 4, 1, 0);
+        assertFalse(line.reaches(0, -1, 0, 2));
+        assertFalse(line.reaches(4, 2, 0, 2));
+        assertTrue(line.reaches(0, 0, 0, 2));
+        assertTrue(line.reaches(4, 1, 0, 2));
+    }
+
+    @Test
     void twoEndsMustDiffer() {
         assertThrows(IllegalArgumentException.class, () -> new GradientLine(1, 2, 3, 1, 2, 3));
     }
