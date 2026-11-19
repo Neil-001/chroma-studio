@@ -171,10 +171,10 @@ public final class Widgets extends AbstractContainerEventHandler {
     public EditBox field(int x, int y, int w, String value, Consumer<String> onChange) {
         EditBox f = new EditBox(font(), x, y, w, H, Component.empty()) {
             // The game copies a field's selection itself, and some fields hold more than the clipboard takes without
-            // crashing, such as a palette's notes, so a selection that large goes through Clipboard and isn't copied.
+            // crashing, such as a palette's notes, so copies go through Clipboard, and a cut that large is refused.
             @Override
             public boolean keyPressed(KeyEvent event) {
-                if ((event.isCopy() || event.isCut()) && !ClipboardSize.fits(getHighlighted())) {
+                if (event.isCopy() || (event.isCut() && !ClipboardSize.fits(getHighlighted()))) {
                     Clipboard.copy(getHighlighted()).ifPresent(Clipboard::toast);
                     return true;
                 }

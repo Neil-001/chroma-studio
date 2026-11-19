@@ -56,9 +56,9 @@ final class AxiomEditor {
 
     /** Leaves the editor before the window opens, when it's open. */
     static void leaveForWindow() {
-        // Axiom says it's active a frame late, so a player who has just left by Axiom's own key still counts as in it;
-        // whether it's switched on changes at once.
-        if (!active() || !call(h -> (boolean) h.enabled.invoke())) return;
+        // Axiom says it's active a frame late, so a player who has just pressed Axiom's own key would be counted wrongly
+        // either way. Whether it's switched on changes at once.
+        if (!call(h -> (boolean) h.enabled.invoke())) return;
         remember();
         if (!call(h -> { h.disable.invoke(); return true; })) return;
         left = true;
@@ -86,7 +86,8 @@ final class AxiomEditor {
         if (screen != null || ChromaScreen.isPinned()) return;
         left = false;
         // A failed call has already been logged, and the editor stays closed as it is without this integration.
-        if (call(h -> { h.enable.invoke(); return true; }) && !call(h -> (boolean) h.enabled.invoke()))
+        // known() is false once a call has thrown, which stays silent too.
+        if (call(h -> { h.enable.invoke(); return true; }) && !call(h -> (boolean) h.enabled.invoke()) && known())
             Hud.readout(Component.translatable("axiom.chromastudio.editor.not_back"), Component.translatable("axiom.chromastudio.editor.not_back.how"),
                     ModSettings.readoutSeconds);
     }

@@ -376,7 +376,7 @@ final class PaletteDialogs {
 
         /** {@code seed} places the diorama layouts, so an export from the Diorama panel comes out as it shows. */
         Export(Palette palette, Layout layout, long seed) {
-            super(tr("palettes.chromastudio.export.title"), 290, 140);
+            super(tr("palettes.chromastudio.export.title"), 290, 150);
             this.palette = palette;
             this.layout = layout;
             this.seed = seed;
@@ -438,8 +438,9 @@ final class PaletteDialogs {
             label(g, "palettes.chromastudio.export.width", half, y);
             y += PanelTab.ROW;
             label(g, "palettes.chromastudio.export.patch", half, y);
+            // The hint sits over the warning when there are both, in the room the dialog keeps for it.
             if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.FAIR, false);
-            else if (hint != null) g.text(PanelTab.font(), PanelTab.fit(hint.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.DIM, false);
+            if (hint != null) g.text(PanelTab.font(), PanelTab.fit(hint.getString(), in.w()), in.x(), in.bottom() - STATUS_H - (skipped != null ? 18 : 9), Theme.DIM, false);
         }
 
         @Override
