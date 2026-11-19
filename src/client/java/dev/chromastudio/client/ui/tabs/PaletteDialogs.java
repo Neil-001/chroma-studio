@@ -676,8 +676,10 @@ final class PaletteDialogs {
         private final int blocks;
         /** What the last fill or undo did. It takes the description's place, so it has the room to be read whole in any language. */
         private Component result;
+        /** Whether the description stays under the result, as after a fill refused because where it goes had just changed. */
+        private boolean describe;
         /** What {@link #state} was when the controls were laid out. */
-        private List<Boolean> built = List.of();
+        private List<Object> built = List.of();
 
         Hotbar(List<PaletteEntry> entries) {
             super(tr("palettes.chromastudio.hotbar.title"), 270, 124 + Widgets.H + PanelTab.GAP);
@@ -718,12 +720,15 @@ final class PaletteDialogs {
             int fillX = in.x() + modeW + PanelTab.GAP, fillW = in.right() - undoW - PanelTab.GAP - fillX;
             Button fillButton = widgets.button(fillX, y, fillW, fill, () -> {
                 // Fill goes the way the dialog says, or not at all: a click can come before the tick that lays it out again.
-                result = HotbarFill.fill(entries, built.getFirst());
+                result = HotbarFill.fill(entries, (Boolean) built.getFirst());
+                // When Fill refused because Axiom's hotbars came or went, the player is asked to read what it does now.
+                describe = !state().getFirst().equals(built.getFirst());
                 refresh();
             });
             HotbarFill.whyNoFill().ifPresent(why -> Widgets.disable(fillButton, why));
             Button undoButton = widgets.button(in.right() - undoW, y, undo, () -> {
                 result = HotbarFill.undo();
+                describe = false;
                 refresh();
             });
             HotbarFill.whyNoUndo().ifPresent(why -> Widgets.disable(undoButton, why));
@@ -741,7 +746,7 @@ final class PaletteDialogs {
             // The result takes the description's place. A warning that the next fill replaces what the player keeps in
             // Axiom's hotbars keeps rows of its own at the bottom, in the warning colour, however long the result.
             int fit = Math.max(1, (in.bottom() - 2 * Widgets.H - 2 * PanelTab.GAP - in.y()) / 9);
-            List<FormattedCharSequence> warning = result != null && !replaces ? List.of() : PanelTab.font().split(text, in.w());
+            List<FormattedCharSequence> warning = result != null && !replaces && !describe ? List.of() : PanelTab.font().split(text, in.w());
             List<FormattedCharSequence> said = result != null ? PanelTab.font().split(result, in.w()) : List.of();
             int warningRows = result == null ? fit : Math.min(warning.size(), fit - 2);
             int saidRows = result == null ? 0 : Math.min(said.size(), Math.max(1, fit - (warningRows > 0 ? warningRows + 1 : 0)));
@@ -766,17 +771,20 @@ final class PaletteDialogs {
         void tick() {
             if (state().equals(built)) return;
             result = null;
+            describe = false;
             refresh();
         }
 
         /**
          * What the controls show that can change while the dialog is open, as when a call into Axiom fails or the
-         * player's game mode changes: whether a fill would use Axiom's hotbars, whether it could, and whether Fill and
-         * Undo can be used. The first is what Fill goes by.
+         * player's game mode changes: whether a fill would use Axiom's hotbars, and why the toggle, Fill and Undo can't
+         * be used, if they can't. The first is what Fill goes by.
          */
-        private static List<Boolean> state() {
-            return List.of(HotbarFill.usesAxiom(), AxiomBridge.hotbarsUnavailable().isEmpty(), HotbarFill.whyNoFill().isEmpty(), HotbarFill.whyNoUndo().isEmpty());
+        private static List<Object> state() {
+            return List.of(HotbarFill.usesAxiom(), reason(AxiomBridge.hotbarsUnavailable()), reason(HotbarFill.whyNoFill()), reason(HotbarFill.whyNoUndo()));
         }
+
+        private static String reason(Optional<Component> why) { return why.map(Component::getString).orElse(""); }
 
         /** What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to keep. */
         private static Component about(int over, HotbarFill.AxiomPreview p) {
