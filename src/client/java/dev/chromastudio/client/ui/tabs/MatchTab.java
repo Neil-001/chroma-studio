@@ -16,6 +16,7 @@ import dev.chromastudio.client.FaceChoice;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
+import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.Dye;
 import dev.chromastudio.client.action.Eyedropper;
 import dev.chromastudio.client.action.Give;
@@ -209,9 +210,9 @@ public final class MatchTab extends Tab {
         hexField.setMaxLength(7);
         hexField.setTooltip(Tooltip.create(tr("hex.tip")));
         AbstractWidget axiomButton = controls.button(x + w - axiomW, y, axiomW, axiom, this::takeAxiom);
-        Optional<Component> noAxiom = AxiomBridge.whyNot();
+        Optional<Component> noAxiom = AxiomBridge.activeBlockUnavailable();
         if (noAxiom.isPresent()) Widgets.disable(axiomButton, noAxiom.get());
-        else axiomButton.setTooltip(Tooltip.create(tr("axiom.tip")));
+        else axiomButton.setTooltip(Tooltip.create(AxiomBridge.activeBlockTip()));
         y += ROW;
         int half = (w - GAP) / 2;
         fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;
@@ -989,8 +990,7 @@ public final class MatchTab extends Tab {
                 status(tr("added", entryName(entry)));
             }
         } else if (e.hasShiftDown()) {
-            Minecraft.getInstance().keyboardHandler.setClipboard(entry.toString());
-            status(tr("copied", entry.toString()));
+            status(Clipboard.copy(entry.toString()).orElseGet(() -> tr("copied", entry.toString())));
         } else {
             Optional<Component> why = Give.stack(new ItemStack(entry.block()), -1);
             status(why.orElseGet(() -> tr("gave", entry.name())));

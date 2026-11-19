@@ -1,5 +1,6 @@
 package dev.chromastudio.client.axiom;
 
+import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.axiom.AxiomBridge.Refused;
 import dev.chromastudio.client.axiom.AxiomBridge.Script;
@@ -142,7 +143,7 @@ final class AxiomScripts {
     }
 
     /** Puts a script on the clipboard. */
-    static void copy(Script script) { Minecraft.getInstance().keyboardHandler.setClipboard(script.text()); }
+    static void copy(Script script) { Clipboard.copy(script.text()); }
 
     /** One entry a block for every block a recolour may find: the blocks of a palette, or every block the index holds. */
     private static List<Entry> sources(@Nullable Palette from) {

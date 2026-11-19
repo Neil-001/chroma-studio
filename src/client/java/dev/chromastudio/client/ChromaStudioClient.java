@@ -58,7 +58,7 @@ public final class ChromaStudioClient {
         while (Keys.CAPTURE.consumeClick()) if (mc.gui.screen() == null) Keys.onCapture.run();
         Capture.tick(mc);
         HotbarFill.tick();
-        AxiomBridge.tick();
+        AxiomBridge.tick(mc);
     }
 
     /** Opens the window on the tab it last showed, or brings a pinned one back. */
