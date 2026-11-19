@@ -677,7 +677,6 @@
   "hotbar.chromastudio.rest.axiom": "残りの %1$s 個は順に入れました: %2$s。%3$s で Axiom のメニューを開いてスクロールすると切り替えられます。",
   "hotbar.chromastudio.rest.axiom.blocks": "%1$s〜%2$s 個目を %3$s に",
   "hotbar.chromastudio.rest.axiom.block": "%1$s 個目を %2$s に",
-  "hotbar.chromastudio.rest.axiom.many": "%1$s〜%2$s 個目を %3$s に 9 個ずつ",
   "hotbar.chromastudio.mode.axiom": "残り: %s",
   "hotbar.chromastudio.undone_axiom": "ホットバーと Axiom のホットバーを元に戻しました。",
   "hotbar.chromastudio.axiom.changed": "Chroma Studio はこのバージョンの Axiom のホットバーに対応していないため、使えません。新しい Chroma Studio なら使えるかもしれません。それまでは、10 個目以降のブロックはシュルカーボックスの設定に従います。",

@@ -677,7 +677,6 @@
   "hotbar.chromastudio.rest.axiom": "Pozostałe (%1$s) trafiły po kolei: %2$s. Aby się do nich dostać, otwórz menu Axiom klawiszem %3$s i przewiń.",
   "hotbar.chromastudio.rest.axiom.blocks": "bloki od %1$s do %2$s do: %3$s",
   "hotbar.chromastudio.rest.axiom.block": "blok %1$s do: %2$s",
-  "hotbar.chromastudio.rest.axiom.many": "bloki od %1$s do %2$s do: %3$s, po dziewięć",
   "hotbar.chromastudio.mode.axiom": "Reszta: %s",
   "hotbar.chromastudio.undone_axiom": "Pasek szybkiego dostępu i paski Axiom wróciły do poprzedniego stanu.",
   "hotbar.chromastudio.axiom.changed": "Chroma Studio nie zna pasków tej wersji Axiom, więc nie może ich użyć. Nowsza wersja Chroma Studio może to potrafić. Do tego czasu bloki od dziesiątego trafiają tam, gdzie każe ustawienie skrzynek shulkerowych.",

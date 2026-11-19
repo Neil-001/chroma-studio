@@ -677,7 +677,6 @@
   "hotbar.chromastudio.rest.axiom": "나머지 %1$s개는 순서대로 넣었습니다: %2$s. %3$s 키로 Axiom 메뉴를 열고 스크롤하면 바꿀 수 있습니다.",
   "hotbar.chromastudio.rest.axiom.blocks": "%1$s~%2$s번째 블록은 %3$s에",
   "hotbar.chromastudio.rest.axiom.block": "%1$s번째 블록은 %2$s에",
-  "hotbar.chromastudio.rest.axiom.many": "%1$s~%2$s번째 블록은 %3$s에 아홉 개씩",
   "hotbar.chromastudio.mode.axiom": "나머지: %s",
   "hotbar.chromastudio.undone_axiom": "핫바와 Axiom 핫바를 원래대로 되돌렸습니다.",
   "hotbar.chromastudio.axiom.changed": "Chroma Studio가 이 버전 Axiom의 핫바를 몰라서 쓸 수 없습니다. 더 새로운 Chroma Studio라면 쓸 수 있을지도 모릅니다. 그때까지 열 번째부터의 블록은 셜커 상자 설정을 따릅니다.",

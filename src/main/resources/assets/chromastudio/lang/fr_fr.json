@@ -677,7 +677,6 @@
   "hotbar.chromastudio.rest.axiom": "Les %1$s autres sont allés dans l'ordre : %2$s. Pour y accéder, ouvre le menu d'Axiom avec %3$s et fais défiler.",
   "hotbar.chromastudio.rest.axiom.blocks": "les blocs %1$s à %2$s dans %3$s",
   "hotbar.chromastudio.rest.axiom.block": "le bloc %1$s dans %2$s",
-  "hotbar.chromastudio.rest.axiom.many": "les blocs %1$s à %2$s dans %3$s, neuf par barre",
   "hotbar.chromastudio.mode.axiom": "Le reste : %s",
   "hotbar.chromastudio.undone_axiom": "Ta barre d'action et les barres d'Axiom ont été remises comme avant.",
   "hotbar.chromastudio.axiom.changed": "Chroma Studio ne connaît pas les barres de cette version d'Axiom et ne peut donc pas les utiliser. Une version plus récente de Chroma Studio le pourra peut-être. En attendant, les blocs après le neuvième suivent le réglage des boîtes de Shulker.",

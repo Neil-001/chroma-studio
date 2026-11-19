@@ -677,7 +677,6 @@
   "hotbar.chromastudio.rest.axiom": "其余 %1$s 个已按顺序放入：%2$s。用 %3$s 打开 Axiom 菜单并滚动滚轮即可切换过去。",
   "hotbar.chromastudio.rest.axiom.blocks": "第 %1$s 至 %2$s 个放入%3$s",
   "hotbar.chromastudio.rest.axiom.block": "第 %1$s 个放入%2$s",
-  "hotbar.chromastudio.rest.axiom.many": "第 %1$s 至 %2$s 个放入%3$s，每栏九个",
   "hotbar.chromastudio.mode.axiom": "其余: %s",
   "hotbar.chromastudio.undone_axiom": "已将快捷栏和 Axiom 快捷栏恢复原样。",
   "hotbar.chromastudio.axiom.changed": "Chroma Studio 不认识此版本 Axiom 的快捷栏，因此无法使用。更新的 Chroma Studio 也许可以。在那之前，第九个之后的方块按潜影盒设置处理。",

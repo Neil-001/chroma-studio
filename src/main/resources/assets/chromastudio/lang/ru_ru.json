@@ -677,7 +677,6 @@
   "hotbar.chromastudio.rest.axiom": "Остальные (%1$s) легли по порядку: %2$s. Чтобы переключиться на них, откройте меню Axiom клавишей %3$s и крутите колёсико.",
   "hotbar.chromastudio.rest.axiom.blocks": "блоки с %1$s по %2$s — в %3$s",
   "hotbar.chromastudio.rest.axiom.block": "блок %1$s — в %2$s",
-  "hotbar.chromastudio.rest.axiom.many": "блоки с %1$s по %2$s — в %3$s, по девять",
   "hotbar.chromastudio.mode.axiom": "Остальные: %s",
   "hotbar.chromastudio.undone_axiom": "Панель быстрого доступа и панели Axiom вернулись как были.",
   "hotbar.chromastudio.axiom.changed": "Chroma Studio не знает панели этой версии Axiom и не может их использовать. Более новая версия Chroma Studio, возможно, сможет. До тех пор блоки после девятого идут по настройке ящиков шалкера.",

@@ -676,7 +676,6 @@
   "hotbar.chromastudio.rest.axiom": "The other %1$s went in order: %2$s. To reach them, open Axiom's menu with %3$s and scroll.",
   "hotbar.chromastudio.rest.axiom.blocks": "blocks %1$s to %2$s into %3$s",
   "hotbar.chromastudio.rest.axiom.block": "block %1$s into %2$s",
-  "hotbar.chromastudio.rest.axiom.many": "blocks %1$s to %2$s into %3$s, nine to each",
   "hotbar.chromastudio.mode.axiom": "The rest: %s",
   "hotbar.chromastudio.undone_axiom": "Put your hotbar and Axiom's hotbars back as they were.",
   "hotbar.chromastudio.axiom.changed": "Chroma Studio doesn't know this version of Axiom's hotbars, so it can't use them. A newer Chroma Studio may. Until then, the blocks past the ninth go by the shulker box setting.",

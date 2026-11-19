@@ -676,8 +676,8 @@ final class PaletteDialogs {
         private final int blocks;
         /** What the last fill or undo did. It takes the description's place, so it has the room to be read whole in any language. */
         private Component result;
-        /** Whether a fill would use Axiom's hotbars when the controls were laid out. */
-        private boolean builtForAxiom;
+        /** Whether a fill would use Axiom's hotbars, and whether it could, when the controls were laid out. */
+        private boolean builtForAxiom, builtAxiomReady;
 
         Hotbar(List<PaletteEntry> entries) {
             super(tr("palettes.chromastudio.hotbar.title"), 270, 124 + Widgets.H + PanelTab.GAP);
@@ -689,6 +689,7 @@ final class PaletteDialogs {
         protected void build(Bounds in) {
             Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
             builtForAxiom = HotbarFill.usesAxiom();
+            builtAxiomReady = AxiomBridge.hotbarsUnavailable().isEmpty();
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo"), boxes = tr("palettes.chromastudio.hotbar.boxes");
             int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo);
             // The mode is the settings' own, shown and changed here, so the dialog always says which one a fill goes by.
@@ -717,7 +718,9 @@ final class PaletteDialogs {
             AxiomBridge.hotbarsUnavailable().ifPresent(why -> Widgets.disable(axiomButton, why));
             int fillX = in.x() + modeW + PanelTab.GAP, fillW = in.right() - undoW - PanelTab.GAP - fillX;
             Button fillButton = widgets.button(fillX, y, fillW, fill, () -> {
-                result = HotbarFill.fill(entries);
+                // A click can come before the tick that lays the dialog out again, so Fill never runs another way
+                // than the one the dialog says.
+                if (!axiomChanged()) result = HotbarFill.fill(entries);
                 refresh();
             });
             HotbarFill.whyNoFill().ifPresent(why -> Widgets.disable(fillButton, why));
@@ -763,9 +766,14 @@ final class PaletteDialogs {
          */
         @Override
         void tick() {
-            if (HotbarFill.usesAxiom() == builtForAxiom) return;
+            if (!axiomChanged()) return;
             result = null;
             refresh();
+        }
+
+        /** Whether Axiom's hotbars have come or gone since the controls were laid out. */
+        private boolean axiomChanged() {
+            return HotbarFill.usesAxiom() != builtForAxiom || AxiomBridge.hotbarsUnavailable().isEmpty() != builtAxiomReady;
         }
 
         /** What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to keep. */

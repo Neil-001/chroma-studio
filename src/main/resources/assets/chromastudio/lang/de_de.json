@@ -677,7 +677,6 @@
   "hotbar.chromastudio.rest.axiom": "Die anderen %1$s kamen der Reihe nach: %2$s. Um sie zu erreichen, öffne Axioms Menü mit %3$s und scrolle.",
   "hotbar.chromastudio.rest.axiom.blocks": "Blöcke %1$s bis %2$s in %3$s",
   "hotbar.chromastudio.rest.axiom.block": "Block %1$s in %2$s",
-  "hotbar.chromastudio.rest.axiom.many": "Blöcke %1$s bis %2$s in %3$s, je neun",
   "hotbar.chromastudio.mode.axiom": "Der Rest: %s",
   "hotbar.chromastudio.undone_axiom": "Deine Schnellleiste und Axioms Schnellleisten sind wieder wie vorher.",
   "hotbar.chromastudio.axiom.changed": "Chroma Studio kennt die Schnellleisten dieser Axiom-Version nicht und kann sie daher nicht nutzen. Eine neuere Version von Chroma Studio kann es vielleicht. Bis dahin gehen die Blöcke ab dem zehnten nach der Shulkerkisten-Einstellung.",

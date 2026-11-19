@@ -105,7 +105,10 @@ public final class HotbarFill {
         forgetOtherWorlds();
         if (last.isEmpty() && lastAxiom.isEmpty()) return Optional.of(Component.translatable("hotbar.chromastudio.nothing_to_undo"));
         Optional<Component> why = unavailable();
-        return why.isPresent() || !undoNeedsAxiom() ? why : AxiomBridge.hotbarsUnreachable();
+        if (why.isPresent()) return why;
+        // Axiom couldn't say which hotbar the fill went into, so there is no knowing where to put it back.
+        if (lastHotbar == UNKNOWN) return Optional.of(AxiomBridge.hotbarsUnsupported().orElse(Component.translatable("hotbar.chromastudio.axiom.changed")));
+        return undoNeedsAxiom() ? AxiomBridge.hotbarsUnreachable() : Optional.empty();
     }
 
     /**
@@ -241,12 +244,12 @@ public final class HotbarFill {
         rememberAxiom(result.undo());
         Hud.strip(stacks.subList(0, HOTBAR), Component.translatable("hotbar.chromastudio.mode.axiom", axiomHotbarNames(active, rest)));
         // Which blocks went to which hotbar, by their place in the palette, so the player knows where to look for one.
-        // Past two hotbars a list would crowd out the rest of the message, so it says nine to each instead.
+        // Past two hotbars a list would crowd out the rest of the message, so it names the run of hotbars instead.
         int hotbars = HotbarPlan.axiomHotbars(rest);
         MutableComponent parts = Component.empty();
         // Only when the blocks are one run of the palette, as a skipped entry such as water would shift the boundaries.
         if (hotbars > 2 && places.getLast() - places.get(HOTBAR) == rest - 1) {
-            parts.append(Component.translatable("hotbar.chromastudio.rest.axiom.many", places.get(HOTBAR), places.getLast(), axiomHotbarNames(active, rest)));
+            parts.append(Component.translatable("hotbar.chromastudio.rest.axiom.blocks", places.get(HOTBAR), places.getLast(), axiomHotbarNames(active, rest)));
         } else {
             for (int h = 0; h < hotbars; h++) {
                 int from = HOTBAR + 9 * h, to = Math.min(HOTBAR + rest, from + 9) - 1;
