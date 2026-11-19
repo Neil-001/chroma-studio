@@ -6,7 +6,6 @@ import dev.chromastudio.client.OverflowMode;
 import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.FileDialog;
 import dev.chromastudio.client.action.HotbarFill;
-import dev.chromastudio.client.action.HotbarPlan;
 import dev.chromastudio.client.action.ImageImport;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.axiom.AxiomBridge;
@@ -673,16 +672,28 @@ final class PaletteDialogs {
     /** Fills the hotbar from a list of entries, and undoes it. */
     static final class Hotbar extends Dialog {
         private final List<PaletteEntry> entries;
+        /** How many of the entries a fill puts somewhere, which is what its counts and hotbars go by. */
+        private final int blocks;
         /** What the last fill or undo did. It takes the description's place, so it has the room to be read whole in any language. */
         private Component result;
+        /** Whether the description stays under the result, as after a fill refused because where it goes had just changed. */
+        private boolean describe;
+        /** What {@link #state} was when the controls were laid out. */
+        private List<Object> built = List.of();
+        /** Whether the dialog has been drawn since it was laid out, so the player has seen what Fill does now. */
+        private boolean shown;
 
         Hotbar(List<PaletteEntry> entries) {
             super(tr("palettes.chromastudio.hotbar.title"), 270, 124 + Widgets.H + PanelTab.GAP);
             this.entries = List.copyOf(entries);
+            this.blocks = HotbarFill.holdable(entries);
         }
 
         @Override
         protected void build(Bounds in) {
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
+            built = state();
+            shown = false;
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo"), boxes = tr("palettes.chromastudio.hotbar.boxes");
             int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo);
             // The mode is the settings' own, shown and changed here, so the dialog always says which one a fill goes by.
@@ -697,7 +708,7 @@ final class PaletteDialogs {
                         result = null;
                     }, tr("settings.chromastudio.hotbarOverflowMode.tip"));
             // Axiom's hotbars take the blocks past the ninth instead of boxes, so while they do the boxes' mode has no say.
-            if (entries.size() > 9 && HotbarFill.usesAxiom()) Widgets.disable(modeButton, tr("hotbar.chromastudio.axiom.instead"));
+            if (preview.isPresent()) Widgets.disable(modeButton, tr("hotbar.chromastudio.axiom.instead"));
             // A row of its own over the others, greyed with the reason when Axiom is missing or can't take them now.
             Component axiom = tr("palettes.chromastudio.hotbar.axiom");
             int axiomW = Math.min(in.w(), Math.max(Widgets.buttonWidth(CommonComponents.optionNameValue(axiom, CommonComponents.OPTION_ON)),
@@ -711,12 +722,18 @@ final class PaletteDialogs {
             AxiomBridge.hotbarsUnavailable().ifPresent(why -> Widgets.disable(axiomButton, why));
             int fillX = in.x() + modeW + PanelTab.GAP, fillW = in.right() - undoW - PanelTab.GAP - fillX;
             Button fillButton = widgets.button(fillX, y, fillW, fill, () -> {
-                result = HotbarFill.fill(entries);
+                // Fill goes the way the dialog says, or not at all: a click can come before the tick that lays it out again.
+                // A second click queued behind one that changed the dialog waits until the player has seen the change.
+                if (!shown) return;
+                result = HotbarFill.fill(entries, (Boolean) built.getFirst());
+                // When Fill refused because Axiom's hotbars came or went, the player is asked to read what it does now.
+                describe = !state().getFirst().equals(built.getFirst());
                 refresh();
             });
-            HotbarFill.unavailable().ifPresent(why -> Widgets.disable(fillButton, why));
+            HotbarFill.whyNoFill().ifPresent(why -> Widgets.disable(fillButton, why));
             Button undoButton = widgets.button(in.right() - undoW, y, undo, () -> {
                 result = HotbarFill.undo();
+                describe = false;
                 refresh();
             });
             HotbarFill.whyNoUndo().ifPresent(why -> Widgets.disable(undoButton, why));
@@ -724,12 +741,62 @@ final class PaletteDialogs {
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            int over = Math.max(0, entries.size() - 9);
-            Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
-                    : HotbarFill.usesAxiom() ? (HotbarPlan.axiomHotbars(over) == 1 ? tr("palettes.chromastudio.hotbar.about.axiom_one", over)
-                            : tr("palettes.chromastudio.hotbar.about.axiom", over, HotbarPlan.axiomHotbars(over)))
-                    : tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over);
-            g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
+            shown = true;
+            // Read every frame, so what it says is what a click on Fill would do, even after a fill or undo just now.
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
+            boolean replaces = preview.filter(p -> p.replaced() > 0).isPresent();
+            int over = Math.max(0, blocks - 9);
+            Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", blocks)
+                    : preview.map(p -> about(over, p))
+                            .orElseGet(() -> tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over));
+            // The result takes the description's place. A warning that the next fill replaces what the player keeps in
+            // Axiom's hotbars keeps rows of its own at the bottom, in the warning colour, however long the result.
+            int fit = Math.max(1, (in.bottom() - 2 * Widgets.H - 2 * PanelTab.GAP - in.y()) / 9);
+            List<FormattedCharSequence> warning = result != null && !replaces && !describe ? List.of() : PanelTab.font().split(text, in.w());
+            List<FormattedCharSequence> said = result != null ? PanelTab.font().split(result, in.w()) : List.of();
+            int warningRows = result == null ? fit : Math.min(warning.size(), fit - 2);
+            int saidRows = result == null ? 0 : Math.min(said.size(), Math.max(1, fit - (warningRows > 0 ? warningRows + 1 : 0)));
+            for (int i = 0; i < saidRows; i++) g.text(PanelTab.font(), said.get(i), in.x(), in.y() + i * 9, Theme.TEXT, false);
+            int warningTop = in.y() + (saidRows > 0 ? (saidRows + 1) * 9 : 0);
+            int colour = replaces ? Theme.FAIR : Theme.DIM;
+            for (int i = 0; i < Math.min(warningRows, warning.size()); i++) g.text(PanelTab.font(), warning.get(i), in.x(), warningTop + i * 9, colour, false);
+            // Whatever was cut is shown whole while the pointer is over the text.
+            if ((said.size() > saidRows || warning.size() > warningRows) && mouseX >= in.x() && mouseX < in.right() && mouseY >= in.y() && mouseY < in.y() + fit * 9) {
+                List<FormattedCharSequence> all = new ArrayList<>(said);
+                if (!said.isEmpty() && !warning.isEmpty()) all.add(FormattedCharSequence.EMPTY);
+                all.addAll(warning);
+                g.setTooltipForNextFrame(PanelTab.font(), all, mouseX, mouseY);
+            }
+        }
+
+        /**
+         * Lays the controls out again when Axiom's hotbars come or go while the dialog is open, as when a call into
+         * them fails, so the controls and the description say what Fill will do before it is clicked.
+         */
+        @Override
+        void tick() {
+            if (state().equals(built)) return;
+            result = null;
+            describe = false;
+            refresh();
+        }
+
+        /**
+         * What the controls show that can change while the dialog is open, as when a call into Axiom fails or the
+         * player's game mode changes: whether a fill would use Axiom's hotbars, and why the toggle, Fill and Undo can't
+         * be used, if they can't. The first is what Fill goes by.
+         */
+        private static List<Object> state() {
+            return List.of(HotbarFill.usesAxiom(), reason(AxiomBridge.hotbarsUnavailable()), reason(HotbarFill.whyNoFill()), reason(HotbarFill.whyNoUndo()));
+        }
+
+        private static String reason(Optional<Component> why) { return why.map(Component::getString).orElse(""); }
+
+        /** What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to keep. */
+        private static Component about(int over, HotbarFill.AxiomPreview p) {
+            if (p.replaced() == 0) return tr("palettes.chromastudio.hotbar.about.axiom", over, p.hotbars());
+            return p.replaced() == 1 ? tr("palettes.chromastudio.hotbar.about.axiom.replaces_one", over, p.hotbars())
+                    : tr("palettes.chromastudio.hotbar.about.axiom.replaces", over, p.hotbars(), p.replaced());
         }
     }
 

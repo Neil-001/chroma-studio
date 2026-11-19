@@ -60,7 +60,14 @@ public final class AxiomBridge {
         return why.isPresent() ? new Taken(false, why.get()) : AxiomBlock.take();
     }
 
-    // Axiom's extra hotbars, for a hotbar fill. The calls after the first throw when Axiom's methods fail; callers catch it.
+    // Axiom's extra hotbars, for a hotbar fill. The calls that throw do so when Axiom's methods fail, which also turns
+    // the hotbars off for the session; callers catch it.
+
+    /** Why Axiom's hotbars can't be used anywhere: Axiom is missing or isn't a version Chroma Studio knows. For the setting. */
+    public static Optional<Component> hotbarsUnsupported() {
+        Optional<Component> why = whyNot();
+        return why.isPresent() ? why : AxiomHotbars.unsupported();
+    }
 
     /** Why a fill can't use Axiom's hotbars now, or nothing when it can. */
     public static Optional<Component> hotbarsUnavailable() {
@@ -68,14 +75,26 @@ public final class AxiomBridge {
         return why.isPresent() ? why : AxiomHotbars.unavailable();
     }
 
+    /** Why an Undo can't put back what a fill wrote in Axiom's hotbars now. It may try after a failed call; a fill may not. */
+    public static Optional<Component> hotbarsUnreachable() {
+        Optional<Component> why = whyNot();
+        return why.isPresent() ? why : AxiomHotbars.unreachable();
+    }
+
+    /** Turns Axiom's hotbars off for the session after they didn't take a write, though no call threw. */
+    public static void hotbarsFailed(Throwable t) { AxiomHotbars.failed(t); }
+
     /** The hotbar the player holds now. */
     public static int activeHotbar() throws Throwable { return AxiomHotbars.active(); }
 
     /** A copy of what one slot of a hotbar holds, the active one included. */
     public static ItemStack hotbarItem(int hotbar, int slot) throws Throwable { return AxiomHotbars.get(hotbar, slot); }
 
-    /** Sets one slot of a hotbar, to nothing for an empty stack. The active hotbar's slots are the real hotbar's. */
+    /** Sets one slot of a hotbar other than the active one, which callers write as the player's own hotbar. */
     public static void setHotbarItem(int hotbar, int slot, ItemStack stack) throws Throwable { AxiomHotbars.set(hotbar, slot, stack); }
+
+    /** The key that opens Axiom's menu of hotbars, as the player has it bound, or Left Alt, its default. */
+    public static Component hotbarKey() { return AxiomHotbars.switchKey(); }
 
     // Scripts for Axiom's Script Brush. They are only text, so these work without Axiom; the controls that offer them don't.
 
