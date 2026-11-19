@@ -1,6 +1,6 @@
 # Chroma Studio
 
-A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. It places nothing in the world and has no server side.
+A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. On its own it places nothing in the world, and it has no server side. With Axiom installed it adds tools to Axiom's editor.
 
 ## Commands
 
@@ -24,6 +24,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
 - Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them.
+- Axiom is optional, Fabric-only and closed source. Compile against its client API and ImGui binding only, never its jar, and never ship or commit either. Only `dev.chromastudio.client.axiom` may refer to Axiom, the rest of the mod enters it through `AxiomBridge`, and what isn't in the client API is reached by guarded reflection that fails with a reason the player can read. To try it, put Axiom's jar in `run/fabric/mods/`.
 - A new setting follows the comment on `ModSettings`, and needs a label and a `.tip` in the language file, which the settings screen's search reads.
 - `en_us.json` is written by hand, and the nine other language files are generated from it. A new English key needs its nine translations in the same change, or `LangTest` fails.
 - Read `listing/README.md` before changing anything in `listing/`.
@@ -57,16 +58,18 @@ Most classes say what they do in a comment at the top, and their fields and meth
 
 ## Giving blocks and sending commands
 
-The mod never places or changes blocks in the world. It acts only through the player's own inventory or chat:
+The mod never places or changes blocks in the world itself. It acts only through the player's own inventory or chat:
 
 - Giving a block, filling the hotbar and dyeing need creative mode or operator rights, and are greyed out with the reason otherwise. A block's item reaches the player through `Give.stack`.
 - Commands go through `ClientPlatform.sendChatCommand`, as if the player had typed them.
 - Exported files are never silently overwritten.
 
+The one exception is a tool the player is using in Axiom's editor. It hands its blocks to Axiom's `pushBlockRegionChange`, so Axiom's permissions, server checks and undo apply, and each stroke is one entry in Axiom's history. Nothing else changes the world, and nothing does so without the player's own click.
+
 ## Limits
 
 - Spread, which `Badge` goes by, can't order every texture as the eye does: wool, gravel and granite come out grainy.
-- Left out on purpose: placement, world editing, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.
+- Left out on purpose: placement and world editing outside Axiom's editor, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.
 
 ## Releasing
 
