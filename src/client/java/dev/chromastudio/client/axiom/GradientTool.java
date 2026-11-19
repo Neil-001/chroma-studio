@@ -20,11 +20,13 @@ import dev.chromastudio.core.palette.StoredGradient;
 import imgui.moulberry92.ImGui;
 import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.LiquidBlock;
@@ -127,8 +129,8 @@ final class GradientTool implements CustomTool {
         drawn = System.nanoTime();
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
-        Choice choice = current();
-        Object key = choice == null ? null : List.of(choice.steps(), Objects.toString(first), Objects.toString(second), blend, likeFirst, reach[0]);
+        Choice choice = current(choices());
+        Object key = choice == null ? null : Arrays.asList(choice.steps(), first, second, blend, likeFirst, reach[0]);
         if (!Objects.equals(key, previewFor)) {
             preview(level, choice);
             previewFor = key;
@@ -181,8 +183,11 @@ final class GradientTool implements CustomTool {
         }
     }
 
-    /** Whether the gradient may change a block: a full cube with no block entity. Stairs, slabs and walls keep their shapes. */
-    private static boolean paintable(ClientLevel level, BlockPos pos, BlockState s) {
+    /**
+     * Whether the gradient may change a block, or put one in: a full cube with no block entity. Stairs, slabs and walls
+     * keep their shapes.
+     */
+    private static boolean paintable(BlockGetter level, BlockPos pos, BlockState s) {
         return !(s.getBlock() instanceof EntityBlock) && s.isCollisionShapeFullBlock(level, pos);
     }
 
@@ -210,7 +215,7 @@ final class GradientTool implements CustomTool {
     @Override
     public void displayImguiOptions() {
         List<Choice> all = choices();
-        Choice shown = current();
+        Choice shown = current(all);
 
         ImGui.text(tr("axiom.chromastudio.gradient_tool.gradient"));
         if (all.isEmpty()) {
@@ -304,8 +309,7 @@ final class GradientTool implements CustomTool {
         return out;
     }
 
-    private Choice current() {
-        List<Choice> all = choices();
+    private Choice current(List<Choice> all) {
         // The panel's choice, while it's still in the list: the player may have deleted it in Chroma Studio's window.
         for (Choice c : all) if (c.key().equals(picked)) return c;
         return all.isEmpty() ? null : all.getFirst();
@@ -319,7 +323,7 @@ final class GradientTool implements CustomTool {
         List<BlockState> out = new ArrayList<>();
         for (PaletteEntry e : c.steps()) {
             BlockState s = PaletteBlocks.state(e);
-            if (s != null && !(s.getBlock() instanceof EntityBlock) && s.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) out.add(s);
+            if (s != null && paintable(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)) out.add(s);
         }
         return out;
     }
