@@ -86,8 +86,9 @@ final class AxiomCommand {
         }
     }
 
+    /** How to use the command, or, without Axiom, why it can't be used at all. */
     private static int usage() {
-        ChromaCommand.say(Component.translatable("command.chromastudio.axiom.usage"));
+        ChromaCommand.say(AxiomBridge.whyNot().orElse(Component.translatable("command.chromastudio.axiom.usage")));
         return 0;
     }
 
