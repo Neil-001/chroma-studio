@@ -1,5 +1,6 @@
 package dev.chromastudio.client;
 
+import dev.chromastudio.client.action.AxiomBlock;
 import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.action.Eyedropper;
 import dev.chromastudio.client.action.HotbarFill;
@@ -32,6 +33,7 @@ public final class ChromaStudioClient {
         PaletteSink.setCurrent(PaletteStore.get());
         Keys.onEyedropper = Eyedropper::press;
         Capture.install();
+        AxiomBlock.install();
         ChromaScreen.registerTab("match", MatchTab::new, 0);
         ChromaScreen.registerTab("gradient", GradientTab::new, 10);
         ChromaScreen.registerTab("palettes", PalettesTab::new, 20);
