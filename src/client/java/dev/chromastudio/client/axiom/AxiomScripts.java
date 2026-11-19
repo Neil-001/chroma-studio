@@ -50,7 +50,7 @@ final class AxiomScripts {
      * The longest script, in bytes of UTF-8, that is copied. The game hands the clipboard its text through LWJGL's
      * stack of 64 KiB, and text longer than what's left of it crashes the game, so a longer script is refused.
      */
-    static final int CLIPBOARD_BYTES = 40_000;
+    private static final int CLIPBOARD_BYTES = 40_000;
 
     /**
      * A recolour into a palette: every block the brush may find, or only those of {@code from}, matched to the
@@ -160,7 +160,7 @@ final class AxiomScripts {
      * The properties a recolour carries from one block to the other: those both have by the same name, where the
      * new block takes every value the old one can have, such as a stair's facing, half and shape.
      */
-    static List<String> shared(Block from, Block to) {
+    private static List<String> shared(Block from, Block to) {
         List<String> out = new ArrayList<>();
         for (Property<?> p : from.getStateDefinition().getProperties()) {
             Property<?> q = to.getStateDefinition().getProperty(p.getName());

@@ -83,8 +83,6 @@ public final class HotbarFill {
         return Give.canGive() ? Optional.empty() : Optional.of(Component.translatable("hotbar.chromastudio.no_permission"));
     }
 
-    public static boolean canUndo() { return whyNoUndo().isEmpty(); }
-
     /** Why the last fill can't be undone now, or nothing when it can. */
     public static Optional<Component> whyNoUndo() {
         forgetOtherWorlds();
