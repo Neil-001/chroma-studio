@@ -84,8 +84,8 @@ public final class AxiomBridge {
     /** Sets one slot of a hotbar other than the active one, which callers write as the player's own hotbar. */
     public static void setHotbarItem(int hotbar, int slot, ItemStack stack) throws Throwable { AxiomHotbars.set(hotbar, slot, stack); }
 
-    /** The key that opens Axiom's menu of hotbars, as the player has it bound. */
-    public static Component hotbarKey() { return isPresent() ? AxiomHotbars.switchKey() : Component.translatable("key.keyboard.left.alt"); }
+    /** The key that opens Axiom's menu of hotbars, as the player has it bound, or Left Alt, its default. */
+    public static Component hotbarKey() { return AxiomHotbars.switchKey(); }
 
     // Scripts for Axiom's Script Brush. They are only text, so these work without Axiom; the controls that offer them don't.
 

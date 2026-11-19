@@ -4,6 +4,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Optional;
+import java.util.function.Function;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -60,43 +61,31 @@ final class AxiomHotbars {
         if (!mc.player.hasInfiniteMaterials()) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.creative"));
         try {
             // Axiom is off on a server that doesn't support it, and then saves no hotbar and opens no menu to reach one.
-            if (!(boolean) INTERNALS.handles().axiomActive().invoke()) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.inactive"));
-            if (!(boolean) INTERNALS.handles().allowed().invoke()) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.denied"));
-        } catch (Throwable t) {
-            INTERNALS.failed(t);
+            if (!(boolean) call(Handles::axiomActive)) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.inactive"));
+            if (!(boolean) call(Handles::allowed)) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.denied"));
+        } catch (Throwable _) {
             return INTERNALS.reason();
         }
         return Optional.empty();
     }
 
     /** The hotbar the player holds now. Throws when Axiom's method fails, after turning the hotbars off. */
-    static int active() throws Throwable {
-        try {
-            return (int) INTERNALS.handles().active().invoke();
-        } catch (Throwable t) {
-            INTERNALS.failed(t);
-            throw t;
-        }
-    }
+    static int active() throws Throwable { return (int) call(Handles::active); }
 
     /** A copy of what one slot of a hotbar holds, the active one included. Throws as {@link #active} does. */
-    static ItemStack get(int hotbar, int slot) throws Throwable {
-        try {
-            return (ItemStack) INTERNALS.handles().get().invoke(hotbar, slot);
-        } catch (Throwable t) {
-            INTERNALS.failed(t);
-            throw t;
-        }
-    }
+    static ItemStack get(int hotbar, int slot) throws Throwable { return (ItemStack) call(Handles::get, hotbar, slot); }
 
     /**
      * Sets one slot of a hotbar that isn't the active one, to nothing for an empty stack. Throws as {@link #active}
      * does. The active one is the player's own hotbar, which Axiom writes only in creative mode and otherwise leaves
      * as it was without a word, so callers write it themselves.
      */
-    static void set(int hotbar, int slot, ItemStack stack) throws Throwable {
+    static void set(int hotbar, int slot, ItemStack stack) throws Throwable { call(Handles::set, hotbar, slot, stack.copy()); }
+
+    /** Calls one of the handles, turning the hotbars off if it throws. */
+    private static Object call(Function<Handles, MethodHandle> which, Object... args) throws Throwable {
         try {
-            INTERNALS.handles().set().invoke(hotbar, slot, stack.copy());
+            return which.apply(INTERNALS.handles()).invokeWithArguments(args);
         } catch (Throwable t) {
             INTERNALS.failed(t);
             throw t;

@@ -207,16 +207,20 @@ public final class HotbarFill {
             return Component.translatable(result.undo().isEmpty() ? "hotbar.chromastudio.axiom.failed" : "hotbar.chromastudio.axiom.failed_undo");
         }
         rememberAxiom(result.undo());
-        Component where = axiomHotbarNames(active + 1, HotbarPlan.axiomHotbars(rest));
+        Component where = axiomHotbarNames(active, rest);
         Hud.strip(stacks.subList(0, HOTBAR), Component.translatable("hotbar.chromastudio.mode.axiom", where));
         return Component.translatable("hotbar.chromastudio.filled", HOTBAR).append(" ")
                 .append(Component.translatable("hotbar.chromastudio.rest.axiom", rest, where, AxiomBridge.hotbarKey()));
     }
 
-    /** Names a run of Axiom hotbars as the player sees them, numbered from 1: the first is Axiom's number {@code first}. */
-    public static Component axiomHotbarNames(int first, int count) {
-        return count == 1 ? Component.translatable("hotbar.chromastudio.axiom.hotbar", first + 1)
-                : Component.translatable("hotbar.chromastudio.axiom.hotbars", first + 1, first + count);
+    /**
+     * Names the Axiom hotbars that {@code rest} blocks go into after hotbar {@code active}, as the player sees them,
+     * numbered from 1 where Axiom numbers from 0.
+     */
+    private static Component axiomHotbarNames(int active, int rest) {
+        int count = HotbarPlan.axiomHotbars(rest);
+        return count == 1 ? Component.translatable("hotbar.chromastudio.axiom.hotbar", active + 2)
+                : Component.translatable("hotbar.chromastudio.axiom.hotbars", active + 2, active + 1 + count);
     }
 
     /** What a fill into Axiom's hotbars would do now: the Axiom hotbars it uses, and how many of their slots hold something. */
@@ -232,7 +236,7 @@ public final class HotbarFill {
         try {
             int active = AxiomBridge.activeHotbar(), replaced = 0;
             for (HotbarPlan.Spot at : HotbarPlan.axiom(active, rest)) if (!AxiomBridge.hotbarItem(at.hotbar(), at.slot()).isEmpty()) replaced++;
-            return Optional.of(new AxiomPreview(axiomHotbarNames(active + 1, HotbarPlan.axiomHotbars(rest)), replaced));
+            return Optional.of(new AxiomPreview(axiomHotbarNames(active, rest), replaced));
         } catch (Throwable _) {
             return Optional.empty();
         }
