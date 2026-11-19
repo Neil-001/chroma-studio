@@ -680,6 +680,8 @@ final class PaletteDialogs {
         private boolean describe;
         /** What {@link #state} was when the controls were laid out. */
         private List<Object> built = List.of();
+        /** Whether the dialog has been drawn since it was laid out, so the player has seen what Fill does now. */
+        private boolean shown;
 
         Hotbar(List<PaletteEntry> entries) {
             super(tr("palettes.chromastudio.hotbar.title"), 270, 124 + Widgets.H + PanelTab.GAP);
@@ -691,6 +693,7 @@ final class PaletteDialogs {
         protected void build(Bounds in) {
             Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
             built = state();
+            shown = false;
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo"), boxes = tr("palettes.chromastudio.hotbar.boxes");
             int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo);
             // The mode is the settings' own, shown and changed here, so the dialog always says which one a fill goes by.
@@ -720,6 +723,8 @@ final class PaletteDialogs {
             int fillX = in.x() + modeW + PanelTab.GAP, fillW = in.right() - undoW - PanelTab.GAP - fillX;
             Button fillButton = widgets.button(fillX, y, fillW, fill, () -> {
                 // Fill goes the way the dialog says, or not at all: a click can come before the tick that lays it out again.
+                // A second click queued behind one that changed the dialog waits until the player has seen the change.
+                if (!shown) return;
                 result = HotbarFill.fill(entries, (Boolean) built.getFirst());
                 // When Fill refused because Axiom's hotbars came or went, the player is asked to read what it does now.
                 describe = !state().getFirst().equals(built.getFirst());
@@ -736,6 +741,7 @@ final class PaletteDialogs {
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+            shown = true;
             // Read every frame, so what it says is what a click on Fill would do, even after a fill or undo just now.
             Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
             boolean replaces = preview.filter(p -> p.replaced() > 0).isPresent();
