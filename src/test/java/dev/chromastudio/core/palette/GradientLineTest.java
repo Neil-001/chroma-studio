@@ -108,6 +108,13 @@ class GradientLineTest {
     }
 
     @Test
+    void aBlockExactlyAtTheReachCountsWhicheverWayTheLineRuns() {
+        // (-2, 3, 0) is exactly 3 from this line, which rounding puts a hair either side depending on direction.
+        assertTrue(new GradientLine(0, 0, 0, 5, 12, 0).reaches(-2, 3, 0, 3));
+        assertTrue(new GradientLine(5, 12, 0, 0, 0, 0).reaches(-2, 3, 0, 3));
+    }
+
+    @Test
     void twoEndsMustDiffer() {
         assertThrows(IllegalArgumentException.class, () -> new GradientLine(1, 2, 3, 1, 2, 3));
     }

@@ -20,7 +20,10 @@ public final class GradientLine {
      */
     private static final double MIX = 0.5;
 
-    /** How far past an end plane a block's centre may be, for rounding, and still count as on it. */
+    /**
+     * How far past an end plane, or past the reach, a block's centre may be and still count as on it, so rounding
+     * doesn't decide a block that sits exactly there, and the ends give the same answer either way round.
+     */
     private static final double EDGE = 1e-6;
 
     private final int ax, ay, az;
@@ -46,7 +49,7 @@ public final class GradientLine {
      */
     public boolean reaches(int x, int y, int z, double reach) {
         double s = along(x, y, z);
-        return s >= -EDGE && s <= length + EDGE && distance(x, y, z) <= reach;
+        return s >= -EDGE && s <= length + EDGE && distance(x, y, z) <= reach + EDGE;
     }
 
     /** How far a block's centre is from the line, square to it, in blocks. */
