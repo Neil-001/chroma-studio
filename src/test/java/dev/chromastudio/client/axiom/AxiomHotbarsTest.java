@@ -1,6 +1,8 @@
 package dev.chromastudio.client.axiom;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,6 +67,7 @@ public class AxiomHotbarsTest {
         AxiomInternals<AxiomHotbars.Handles> in = internals("ChangedManager");
         assertEquals(Optional.of(CHANGED), in.reason());
         assertEquals(Optional.of(CHANGED), in.reason(), "it stays off");
+        assertFalse(in.found());
         assertThrows(IllegalStateException.class, in::handles);
     }
 
@@ -79,6 +82,8 @@ public class AxiomHotbarsTest {
         assertEquals(Optional.empty(), in.reason());
         in.failed(new IllegalStateException("Axiom threw"));
         assertEquals(Optional.of(CHANGED), in.reason());
+        assertTrue(in.found(), "what was written can still be put back");
+        assertEquals(3, (int) assertDoesNotThrow(() -> in.handles().active().invoke()));
     }
 
     @Test

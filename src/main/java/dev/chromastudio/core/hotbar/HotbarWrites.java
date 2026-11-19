@@ -1,7 +1,9 @@
 package dev.chromastudio.core.hotbar;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Writes items into numbered hotbars all or nothing, and puts back what was there. The hotbars are another mod's, read
@@ -62,15 +64,15 @@ public final class HotbarWrites {
             List<Was<T>> touched = List.copyOf(before.subList(0, Math.min(written + 1, before.size())));
             Throwable undo = restore(hotbars, touched);
             if (undo == null) return new Result<>(List.of(), t);
-            t.addSuppressed(undo);
-            return new Result<>(touched, t);
+            return new Result<>(touched, together(t, undo));
         }
         return new Result<>(List.copyOf(before), null);
     }
 
     /**
-     * Puts back what a write replaced, last first, so a slot named twice ends as it began. Every slot is tried. Returns
-     * what went wrong, or null when all were put back.
+     * Puts back what a write replaced, last first, so a slot named twice ends as it began, and reads every slot back,
+     * since a set can return without having done anything. Every slot is tried. Returns what went wrong, or null when
+     * all were put back.
      */
     public static <T> Throwable restore(Hotbars<T> hotbars, List<Was<T>> was) {
         Throwable failed = null;
@@ -79,10 +81,27 @@ public final class HotbarWrites {
             try {
                 hotbars.set(w.hotbar(), w.slot(), w.item());
             } catch (Throwable t) {
-                if (failed == null) failed = t;
-                else failed.addSuppressed(t);
+                failed = together(failed, t);
+            }
+        }
+        // Last first means a slot named twice ends as its first entry has it.
+        Set<Slot> checked = new HashSet<>();
+        for (Was<T> w : was) {
+            if (!checked.add(new Slot(w.hotbar(), w.slot()))) continue;
+            try {
+                if (!hotbars.same(hotbars.get(w.hotbar(), w.slot()), w.item()))
+                    failed = together(failed, new IllegalStateException("hotbar " + w.hotbar() + " slot " + w.slot() + " wasn't put back"));
+            } catch (Throwable t) {
+                failed = together(failed, t);
             }
         }
         return failed;
+    }
+
+    /** One failure carrying another, which may be null or, from a mod that reuses its exceptions, the same one. */
+    private static Throwable together(Throwable first, Throwable then) {
+        if (first == null) return then;
+        if (then != null && then != first) first.addSuppressed(then);
+        return first;
     }
 }

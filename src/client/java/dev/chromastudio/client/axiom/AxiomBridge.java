@@ -75,6 +75,12 @@ public final class AxiomBridge {
         return why.isPresent() ? why : AxiomHotbars.unavailable();
     }
 
+    /** Why an Undo can't put back what a fill wrote in Axiom's hotbars now. It may try after a failed call; a fill may not. */
+    public static Optional<Component> hotbarsUnreachable() {
+        Optional<Component> why = whyNot();
+        return why.isPresent() ? why : AxiomHotbars.unreachable();
+    }
+
     /** The hotbar the player holds now. */
     public static int activeHotbar() throws Throwable { return AxiomHotbars.active(); }
 

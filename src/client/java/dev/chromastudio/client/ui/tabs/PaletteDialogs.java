@@ -672,19 +672,20 @@ final class PaletteDialogs {
     /** Fills the hotbar from a list of entries, and undoes it. */
     static final class Hotbar extends Dialog {
         private final List<PaletteEntry> entries;
+        /** How many of the entries a fill puts somewhere, which is what its counts and hotbars go by. */
+        private final int blocks;
         /** What the last fill or undo did. It takes the description's place, so it has the room to be read whole in any language. */
         private Component result;
-        /** What a fill would do in Axiom's hotbars, read again whenever the dialog is, or nothing when it wouldn't use them. */
-        private Optional<HotbarFill.AxiomPreview> preview = Optional.empty();
 
         Hotbar(List<PaletteEntry> entries) {
             super(tr("palettes.chromastudio.hotbar.title"), 270, 124 + Widgets.H + PanelTab.GAP);
             this.entries = List.copyOf(entries);
+            this.blocks = HotbarFill.holdable(entries);
         }
 
         @Override
         protected void build(Bounds in) {
-            preview = HotbarFill.axiomPreview(entries.size());
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo"), boxes = tr("palettes.chromastudio.hotbar.boxes");
             int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo);
             // The mode is the settings' own, shown and changed here, so the dialog always says which one a fill goes by.
@@ -726,21 +727,31 @@ final class PaletteDialogs {
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            int over = Math.max(0, entries.size() - 9);
-            Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
+            // Read every frame, so what it says is what a click on Fill would do, even after a fill or undo just now.
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
+            boolean replaces = preview.filter(p -> p.replaced() > 0).isPresent();
+            int over = Math.max(0, blocks - 9);
+            Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", blocks)
                     : preview.map(p -> about(over, p))
                             .orElseGet(() -> tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over));
-            // A fill that would replace what the player keeps in Axiom's hotbars says so in the warning colour.
-            int colour = result != null ? Theme.TEXT : preview.filter(p -> p.replaced() > 0).isPresent() ? Theme.FAIR : Theme.DIM;
+            // The result takes the description's place, but a warning that the next fill replaces what the player keeps
+            // in Axiom's hotbars stays under it, in the warning colour.
+            List<FormattedCharSequence> lines = new ArrayList<>();
+            List<Integer> colours = new ArrayList<>();
+            if (result != null) {
+                for (FormattedCharSequence line : PanelTab.font().split(result, in.w())) { lines.add(line); colours.add(Theme.TEXT); }
+                if (replaces) { lines.add(FormattedCharSequence.EMPTY); colours.add(Theme.TEXT); }
+            }
+            if (result == null || replaces)
+                for (FormattedCharSequence line : PanelTab.font().split(text, in.w())) { lines.add(line); colours.add(replaces ? Theme.FAIR : Theme.DIM); }
             // A long translation is cut at the rows above the buttons, and shown whole while the pointer is over it.
-            List<FormattedCharSequence> lines = PanelTab.font().split(result != null ? result : text, in.w());
             int fit = Math.max(1, (in.bottom() - 2 * Widgets.H - 2 * PanelTab.GAP - in.y()) / 9);
-            for (int i = 0; i < Math.min(fit, lines.size()); i++) g.text(PanelTab.font(), lines.get(i), in.x(), in.y() + i * 9, colour, false);
+            for (int i = 0; i < Math.min(fit, lines.size()); i++) g.text(PanelTab.font(), lines.get(i), in.x(), in.y() + i * 9, colours.get(i), false);
             if (lines.size() > fit && mouseX >= in.x() && mouseX < in.right() && mouseY >= in.y() && mouseY < in.y() + fit * 9)
                 g.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
         }
 
-        /** What a fill into Axiom's hotbars will do, and how many items it replaces there, which the player may want to keep. */
+        /** What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to keep. */
         private static Component about(int over, HotbarFill.AxiomPreview p) {
             if (p.replaced() == 0) return tr("palettes.chromastudio.hotbar.about.axiom", over, p.hotbars());
             return p.replaced() == 1 ? tr("palettes.chromastudio.hotbar.about.axiom.replaces_one", over, p.hotbars())

@@ -22,6 +22,10 @@ class HotbarWritesTest {
         final Map<Integer, String> slots = new HashMap<>();
         /** The calls to set, counted from 0, that throw. */
         Set<Integer> failSets = Set.of();
+        /** The calls to set, counted from 0, that return without doing anything. */
+        Set<Integer> ignoreSets = Set.of();
+        /** When set, every failing call throws this one exception, as a mod that reuses its exceptions would. */
+        RuntimeException reused;
         int failGetAt = -1, ignoreHotbar = -1, sets;
 
         Fake with(int hotbar, int slot, String item) {
@@ -39,8 +43,9 @@ class HotbarWritesTest {
 
         @Override
         public void set(int hotbar, int slot, String item) {
-            if (failSets.contains(sets++)) throw new IllegalStateException("set failed");
-            if (hotbar != ignoreHotbar) slots.put(hotbar * 9 + slot, item);
+            int call = sets++;
+            if (failSets.contains(call)) throw reused != null ? reused : new IllegalStateException("set failed");
+            if (hotbar != ignoreHotbar && !ignoreSets.contains(call)) slots.put(hotbar * 9 + slot, item);
         }
 
         @Override
@@ -103,6 +108,27 @@ class HotbarWritesTest {
         assertEquals(1, r.failure().getSuppressed().length, "the failed put-back is kept with the cause");
         assertEquals(List.of(new Was<>(0, 0, "torch"), new Was<>(0, 1, "")), r.undo());
         assertEquals("stone", f.at(0, 0), "the first write is still there for Undo");
+    }
+
+    @Test
+    void aPutBackThatQuietlyDoesNothingIsCaughtAndLeftForUndo() {
+        // The second write and the last put-back return without doing anything, so the first slot keeps the new item.
+        Fake f = new Fake().with(0, 0, "torch");
+        f.ignoreSets = Set.of(1, 7);
+        HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
+        assertFalse(r.worked());
+        assertEquals("stone", f.at(0, 0));
+        assertTrue(r.undo().contains(new Was<>(0, 0, "torch")), "Undo is left what to put back");
+    }
+
+    @Test
+    void theSameExceptionThrownTwiceDoesNotEscape() {
+        Fake f = new Fake().with(0, 0, "torch");
+        f.reused = new IllegalStateException("Axiom's one exception");
+        f.failSets = IntStream.range(1, 20).boxed().collect(Collectors.toSet());
+        HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
+        assertFalse(r.worked());
+        assertEquals(f.reused, r.failure());
     }
 
     @Test

@@ -53,9 +53,17 @@ final class AxiomHotbars {
     static Optional<Component> unsupported() { return INTERNALS.reason(); }
 
     /** Why a fill can't use the hotbars now, or nothing when it can. */
-    static Optional<Component> unavailable() {
-        Optional<Component> why = INTERNALS.reason();
-        if (why.isPresent()) return why;
+    static Optional<Component> unavailable() { return INTERNALS.reason().or(AxiomHotbars::situation); }
+
+    /**
+     * Why an Undo can't put back what a fill wrote in the hotbars now, or nothing when it can. Unlike a fill, it goes
+     * ahead after a call has failed, since putting back is how the player recovers, but it needs everything else a
+     * fill does: in survival mode Axiom writes no hotbar it can show the player, and off Axiom it saves none.
+     */
+    static Optional<Component> unreachable() { return INTERNALS.found() ? situation() : INTERNALS.reason(); }
+
+    /** Why the player can't use the hotbars where they are now. */
+    private static Optional<Component> situation() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return Optional.of(Component.translatable("palettes.chromastudio.no_world"));
         if (!mc.player.hasInfiniteMaterials()) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.creative"));

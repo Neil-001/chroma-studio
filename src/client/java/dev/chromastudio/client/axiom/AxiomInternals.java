@@ -9,7 +9,8 @@ import net.minecraft.network.chat.Component;
  * releases without notice, so nothing is compiled against them: the caller's lookup finds each method by its exact
  * signature, with {@code MethodHandles.publicLookup().findStatic}, the first time the feature is asked about. If any is
  * missing, or a call through them later throws, the feature is off for the rest of the session with the caller's
- * reason, and the log says why once.
+ * reason, and the log says why once. Handles that were found stay usable after a failed call, so a caller can still
+ * put back what it wrote, which is how the player recovers.
  */
 final class AxiomInternals<T> {
     /** Finds the handles. Anything it throws, a missing class or a changed signature, turns the feature off. */
@@ -47,9 +48,15 @@ final class AxiomInternals<T> {
         return broken ? Optional.of(reason) : Optional.empty();
     }
 
-    /** The handles. Call only once {@link #reason} is empty. */
+    /** Whether the handles were found, even if a call through them has failed since. */
+    synchronized boolean found() {
+        reason();
+        return handles != null;
+    }
+
+    /** The handles, once {@link #found}. New work waits for {@link #reason} to be empty; putting back may go ahead regardless. */
     synchronized T handles() {
-        if (reason().isPresent()) throw new IllegalStateException(what + " aren't available");
+        if (!found()) throw new IllegalStateException(what + " weren't found");
         return handles;
     }
 
