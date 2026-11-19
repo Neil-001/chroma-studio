@@ -26,41 +26,57 @@ import net.minecraft.world.item.ItemStack;
 final class AxiomHotbars {
     private AxiomHotbars() {}
 
-    /** {@code HotbarManager}'s methods, and two of {@code AxiomClient}'s with the permission bound in. */
-    record Handles(MethodHandle active, MethodHandle get, MethodHandle set, MethodHandle allowed, MethodHandle axiomActive) {}
+    /** {@code HotbarManager}'s slot methods, and two of {@code AxiomClient}'s with the permission bound in. */
+    record Handles(MethodHandle get, MethodHandle set, MethodHandle allowed, MethodHandle axiomActive) {}
+
+    private static final String MANAGER = "com.moulberry.axiom.HotbarManager";
 
     private static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's hotbars",
             Component.translatable("hotbar.chromastudio.axiom.changed"),
-            () -> find("com.moulberry.axiom.HotbarManager", "com.moulberry.axiom.AxiomClient", "com.moulberry.axiom.restrictions.AxiomPermission"));
+            () -> find(MANAGER, "com.moulberry.axiom.AxiomClient", "com.moulberry.axiom.restrictions.AxiomPermission"));
+
+    /**
+     * Which hotbar the player holds, looked up on its own: with it, Undo can tell that the player has switched hotbars
+     * even when the rest has changed, and refuse rather than write into the wrong one.
+     */
+    private static final AxiomInternals<MethodHandle> INDEX = new AxiomInternals<>("Axiom's hotbar number",
+            Component.translatable("hotbar.chromastudio.axiom.changed"), () -> findIndex(MANAGER));
 
     /** The context key's name in Axiom 6.1, a game key mapping like any other, so no Axiom class is needed to read it. */
     private static final String CONTEXT_KEY = "axiom.keybind.context";
 
-    /** Looks the methods up in the classes named, so a test can point it at classes of its own. */
+    /** Looks the active hotbar's method up in the class named, so a test can point it at a class of its own. */
+    static MethodHandle findIndex(String manager) throws Throwable {
+        return MethodHandles.publicLookup().findStatic(Class.forName(manager), "getActiveHotbarIndex", MethodType.methodType(int.class));
+    }
+
+    /** Looks the other methods up in the classes named, so a test can point it at classes of its own. */
     static Handles find(String manager, String client, String permission) throws Throwable {
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
         Class<?> m = Class.forName(manager), c = Class.forName(client), p = Class.forName(permission);
-        MethodHandle active = lookup.findStatic(m, "getActiveHotbarIndex", MethodType.methodType(int.class));
         MethodHandle get = lookup.findStatic(m, "getItemStack", MethodType.methodType(ItemStack.class, int.class, int.class));
         MethodHandle set = lookup.findStatic(m, "setItemStack", MethodType.methodType(void.class, int.class, int.class, ItemStack.class));
         Object hotbar = lookup.findStaticGetter(p, "PLAYER_HOTBAR", p).invoke();
         MethodHandle allowed = MethodHandles.insertArguments(lookup.findStatic(c, "hasPermission", MethodType.methodType(boolean.class, p)), 0, hotbar);
         MethodHandle axiomActive = lookup.findStatic(c, "isAxiomActive", MethodType.methodType(boolean.class));
-        return new Handles(active, get, set, allowed, axiomActive);
+        return new Handles(get, set, allowed, axiomActive);
     }
 
     /** Why the hotbars can't be used on any world: this Axiom isn't one Chroma Studio knows. Nothing when they can be. */
-    static Optional<Component> unsupported() { return INTERNALS.reason(); }
+    static Optional<Component> unsupported() { return INTERNALS.reason().or(INDEX::reason); }
+
+    /** Turns the hotbars off after they didn't take a write, which a call that returned normally can't show. */
+    static void failed(Throwable t) { INTERNALS.failed(t); }
 
     /** Why a fill can't use the hotbars now, or nothing when it can. */
-    static Optional<Component> unavailable() { return INTERNALS.reason().or(AxiomHotbars::situation); }
+    static Optional<Component> unavailable() { return unsupported().or(AxiomHotbars::situation); }
 
     /**
      * Why an Undo can't put back what a fill wrote in the hotbars now, or nothing when it can. Unlike a fill, it goes
      * ahead after a call has failed, since putting back is how the player recovers, but it needs everything else a
      * fill does: in survival mode Axiom writes no hotbar it can show the player, and off Axiom it saves none.
      */
-    static Optional<Component> unreachable() { return INTERNALS.found() ? situation() : INTERNALS.reason(); }
+    static Optional<Component> unreachable() { return INTERNALS.found() && INDEX.found() ? situation() : unsupported(); }
 
     /** Why the player can't use the hotbars where they are now. */
     private static Optional<Component> situation() {
@@ -78,7 +94,14 @@ final class AxiomHotbars {
     }
 
     /** The hotbar the player holds now. Throws when Axiom's method fails, after turning the hotbars off. */
-    static int active() throws Throwable { return (int) call(Handles::active); }
+    static int active() throws Throwable {
+        try {
+            return (int) INDEX.handles().invoke();
+        } catch (Throwable t) {
+            INDEX.failed(t);
+            throw t;
+        }
+    }
 
     /** A copy of what one slot of a hotbar holds, the active one included. Throws as {@link #active} does. */
     static ItemStack get(int hotbar, int slot) throws Throwable { return (ItemStack) call(Handles::get, hotbar, slot); }

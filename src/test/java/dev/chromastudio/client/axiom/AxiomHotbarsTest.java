@@ -57,7 +57,7 @@ public class AxiomHotbarsTest {
     void axiomsOwnSignaturesAreFoundAndWork() throws Throwable {
         AxiomInternals<AxiomHotbars.Handles> in = internals("Manager");
         assertEquals(Optional.empty(), in.reason());
-        assertEquals(3, (int) in.handles().active().invoke());
+        assertEquals(3, (int) AxiomHotbars.findIndex(HERE + "Manager").invoke());
         assertTrue((boolean) in.handles().allowed().invoke());
         assertTrue((boolean) in.handles().axiomActive().invoke());
     }
@@ -72,6 +72,12 @@ public class AxiomHotbarsTest {
     }
 
     @Test
+    void theHeldHotbarIsStillKnownWhenTheRestChanged() throws Throwable {
+        // So Undo can tell that the player switched hotbars, and refuse rather than write into the wrong one.
+        assertEquals(3, (int) AxiomHotbars.findIndex(HERE + "ChangedManager").invoke());
+    }
+
+    @Test
     void aMissingClassTurnsTheHotbarsOff() {
         assertEquals(Optional.of(CHANGED), internals("NoSuchManager").reason());
     }
@@ -83,7 +89,7 @@ public class AxiomHotbarsTest {
         in.failed(new IllegalStateException("Axiom threw"));
         assertEquals(Optional.of(CHANGED), in.reason());
         assertTrue(in.found(), "what was written can still be put back");
-        assertEquals(3, (int) assertDoesNotThrow(() -> in.handles().active().invoke()));
+        assertTrue((boolean) assertDoesNotThrow(() -> in.handles().allowed().invoke()));
     }
 
     @Test

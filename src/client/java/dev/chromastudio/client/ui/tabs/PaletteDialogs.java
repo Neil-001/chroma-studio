@@ -717,7 +717,7 @@ final class PaletteDialogs {
                 result = HotbarFill.fill(entries);
                 refresh();
             });
-            HotbarFill.unavailable().ifPresent(why -> Widgets.disable(fillButton, why));
+            HotbarFill.whyNoFill().ifPresent(why -> Widgets.disable(fillButton, why));
             Button undoButton = widgets.button(in.right() - undoW, y, undo, () -> {
                 result = HotbarFill.undo();
                 refresh();
@@ -734,21 +734,24 @@ final class PaletteDialogs {
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", blocks)
                     : preview.map(p -> about(over, p))
                             .orElseGet(() -> tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over));
-            // The result takes the description's place, but a warning that the next fill replaces what the player keeps
-            // in Axiom's hotbars stays under it, in the warning colour.
-            List<FormattedCharSequence> lines = new ArrayList<>();
-            List<Integer> colours = new ArrayList<>();
-            if (result != null) {
-                for (FormattedCharSequence line : PanelTab.font().split(result, in.w())) { lines.add(line); colours.add(Theme.TEXT); }
-                if (replaces) { lines.add(FormattedCharSequence.EMPTY); colours.add(Theme.TEXT); }
-            }
-            if (result == null || replaces)
-                for (FormattedCharSequence line : PanelTab.font().split(text, in.w())) { lines.add(line); colours.add(replaces ? Theme.FAIR : Theme.DIM); }
-            // A long translation is cut at the rows above the buttons, and shown whole while the pointer is over it.
+            // The result takes the description's place. A warning that the next fill replaces what the player keeps in
+            // Axiom's hotbars keeps rows of its own at the bottom, in the warning colour, however long the result.
             int fit = Math.max(1, (in.bottom() - 2 * Widgets.H - 2 * PanelTab.GAP - in.y()) / 9);
-            for (int i = 0; i < Math.min(fit, lines.size()); i++) g.text(PanelTab.font(), lines.get(i), in.x(), in.y() + i * 9, colours.get(i), false);
-            if (lines.size() > fit && mouseX >= in.x() && mouseX < in.right() && mouseY >= in.y() && mouseY < in.y() + fit * 9)
-                g.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
+            List<FormattedCharSequence> warning = result != null && !replaces ? List.of() : PanelTab.font().split(text, in.w());
+            List<FormattedCharSequence> said = result != null ? PanelTab.font().split(result, in.w()) : List.of();
+            int warningRows = result == null ? fit : Math.min(warning.size(), fit - 2);
+            int saidRows = result == null ? 0 : Math.min(said.size(), Math.max(1, fit - (warningRows > 0 ? warningRows + 1 : 0)));
+            for (int i = 0; i < saidRows; i++) g.text(PanelTab.font(), said.get(i), in.x(), in.y() + i * 9, Theme.TEXT, false);
+            int warningTop = in.y() + (saidRows > 0 ? (saidRows + 1) * 9 : 0);
+            int colour = replaces ? Theme.FAIR : Theme.DIM;
+            for (int i = 0; i < Math.min(warningRows, warning.size()); i++) g.text(PanelTab.font(), warning.get(i), in.x(), warningTop + i * 9, colour, false);
+            // Whatever was cut is shown whole while the pointer is over the text.
+            if ((said.size() > saidRows || warning.size() > warningRows) && mouseX >= in.x() && mouseX < in.right() && mouseY >= in.y() && mouseY < in.y() + fit * 9) {
+                List<FormattedCharSequence> all = new ArrayList<>(said);
+                if (!said.isEmpty() && !warning.isEmpty()) all.add(FormattedCharSequence.EMPTY);
+                all.addAll(warning);
+                g.setTooltipForNextFrame(PanelTab.font(), all, mouseX, mouseY);
+            }
         }
 
         /** What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to keep. */

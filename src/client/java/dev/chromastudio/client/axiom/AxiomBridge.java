@@ -81,6 +81,9 @@ public final class AxiomBridge {
         return why.isPresent() ? why : AxiomHotbars.unreachable();
     }
 
+    /** Turns Axiom's hotbars off for the session after they didn't take a write, though no call threw. */
+    public static void hotbarsFailed(Throwable t) { AxiomHotbars.failed(t); }
+
     /** The hotbar the player holds now. */
     public static int activeHotbar() throws Throwable { return AxiomHotbars.active(); }
 
