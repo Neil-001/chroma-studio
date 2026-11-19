@@ -129,6 +129,11 @@ public final class GradientTab extends PanelTab {
     private record Option(Entry entry, double deltaE) {}
 
     private List<Step> result = List.of();
+    /** The blocks of the last answer on show, kept after the window closes, for Axiom's gradient tool. Empty until there is one. */
+    private static List<PaletteEntry> onShow = List.of();
+
+    /** The blocks of the gradient last on show, step by step, or nothing before the tab has shown one. Client thread only. */
+    public static List<PaletteEntry> stepsOnShow() { return onShow; }
     /** What the answer was chosen from and by, which the swap list offers more of. */
     private List<Gradient.Candidate> pool = List.of();
     private Map<String, Entry> poolById = Map.of();
@@ -475,6 +480,7 @@ public final class GradientTab extends PanelTab {
         problem = null;
         swapStep = -1;
         result = List.copyOf(shown);
+        onShow = entries();
         meanDeltaE = mean;
         pool = chosenFrom.candidates;
         poolById = chosenFrom.byId;
@@ -597,6 +603,7 @@ public final class GradientTab extends PanelTab {
                 // A list opened while this solve was on its way offers blocks from the answer before it.
                 swapStep = -1;
                 result = List.copyOf(found);
+                onShow = entries();
                 meanDeltaE = meanOklab;
                 pool = candidates;
                 poolById = byId;
@@ -630,6 +637,7 @@ public final class GradientTab extends PanelTab {
         solving = false;
         swapStep = -1;
         result = List.of();
+        onShow = List.of();
         problem = why;
         rebuild();
     }

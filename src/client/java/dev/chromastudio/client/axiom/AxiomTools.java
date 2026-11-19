@@ -18,6 +18,8 @@ final class AxiomTools {
     static RegionProvider regions;
     static ToolPatherProvider pathers;
     static ToolService tools;
+    /** The gradient tool, once it's registered, for {@link #tick}. */
+    private static GradientTool gradient;
 
     static void register() {
         regions = service(RegionProvider.class);
@@ -26,6 +28,12 @@ final class AxiomTools {
         ToolRegistryService registry = service(ToolRegistryService.class);
         registry.register(new PaletteBrushTool());
         registry.register(new EyedropperTool());
+        registry.register(gradient = new GradientTool());
+    }
+
+    /** Called every client tick, for the tools that need to notice what Axiom doesn't tell them. */
+    static void tick() {
+        if (gradient != null) gradient.tick();
     }
 
     /** One of Axiom's services. Throws when Axiom gives none, as another version of it might not. */

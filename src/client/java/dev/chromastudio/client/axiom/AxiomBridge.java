@@ -49,6 +49,11 @@ public final class AxiomBridge {
         }
     }
 
+    /** Call at the end of every client tick, for the tools in Axiom's editor. */
+    public static void tick() {
+        if (isPresent()) AxiomTools.tick();
+    }
+
     // Axiom's active block, for the Match tab.
 
     /** What {@link #takeActiveBlock} did: whether the Match target changed, and a line saying how it went. */
