@@ -59,7 +59,8 @@ final class AxiomEditor {
         // Axiom says it's active a frame late, so a player who has just pressed Axiom's own key would be counted wrongly
         // either way. Whether it's switched on changes at once.
         if (!call(h -> (boolean) h.enabled.invoke())) return;
-        remember();
+        // Until the editor counts as active, Axiom answers stone for its block, which would replace the one last seen.
+        if (active()) remember();
         if (!call(h -> { h.disable.invoke(); return true; })) return;
         left = true;
     }

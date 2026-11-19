@@ -2,7 +2,6 @@ package dev.chromastudio.client.ui;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.action.Clipboard;
-import dev.chromastudio.core.export.ClipboardSize;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -171,11 +170,15 @@ public final class Widgets extends AbstractContainerEventHandler {
     public EditBox field(int x, int y, int w, String value, Consumer<String> onChange) {
         EditBox f = new EditBox(font(), x, y, w, H, Component.empty()) {
             // The game copies a field's selection itself, and some fields hold more than the clipboard takes without
-            // crashing, such as a palette's notes, so copies go through Clipboard, and a cut that large is refused.
+            // crashing, such as a palette's notes, so copies and cuts go through Clipboard, and one that large is refused.
+            // Only Widgets.disable makes a field uneditable, and it clears active too, so active says whether it can cut.
             @Override
             public boolean keyPressed(KeyEvent event) {
-                if (event.isCopy() || (event.isCut() && !ClipboardSize.fits(getHighlighted()))) {
-                    Clipboard.copy(getHighlighted()).ifPresent(Clipboard::toast);
+                if (event.isCopy() || event.isCut()) {
+                    String selected = getHighlighted();
+                    var refused = Clipboard.copy(selected);
+                    refused.ifPresent(Clipboard::toast);
+                    if (event.isCut() && refused.isEmpty() && active && !selected.isEmpty()) insertText("");
                     return true;
                 }
                 return super.keyPressed(event);
