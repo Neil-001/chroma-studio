@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "Tout ton",
   "tone.chromastudio.warm": "Chaud",
   "tone.chromastudio.cool": "Froid",
-  "tone.chromastudio.neutral": "Neutre"
+  "tone.chromastudio.neutral": "Neutre",
+  "axiom.chromastudio.brush": "Pinceau de palette Chroma",
+  "axiom.chromastudio.brush.palette": "Palette",
+  "axiom.chromastudio.brush.radius": "Rayon",
+  "axiom.chromastudio.brush.scatter": "Disperser",
+  "axiom.chromastudio.brush.scatter.tip": "Peint les blocs de la palette au hasard, chacun aussi souvent que son poids l'indique.",
+  "axiom.chromastudio.brush.recolour": "Recolorer",
+  "axiom.chromastudio.brush.recolour.tip": "Remplace chaque bloc par le bloc de la palette à la couleur la plus proche. L'air et les liquides restent tels quels.",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio lit encore les couleurs des blocs.",
+  "axiom.chromastudio.brush.empty": "Aucun bloc de cette palette n'existe dans ce jeu.",
+  "axiom.chromastudio.eyedropper": "Pipette Chroma",
+  "axiom.chromastudio.eyedropper.how": "Utilisez-la sur un bloc pour faire de sa couleur la cible de l'onglet Correspondance.",
+  "axiom.chromastudio.eyedropper.last": "Choisi : %s"
 }

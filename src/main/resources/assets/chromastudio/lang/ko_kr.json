@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "모든 색조",
   "tone.chromastudio.warm": "따뜻한 색",
   "tone.chromastudio.cool": "차가운 색",
-  "tone.chromastudio.neutral": "중간 색"
+  "tone.chromastudio.neutral": "중간 색",
+  "axiom.chromastudio.brush": "Chroma 팔레트 붓",
+  "axiom.chromastudio.brush.palette": "팔레트",
+  "axiom.chromastudio.brush.radius": "반경",
+  "axiom.chromastudio.brush.scatter": "흩뿌리기",
+  "axiom.chromastudio.brush.scatter.tip": "팔레트의 블록을 가중치에 따라 무작위로 칠합니다.",
+  "axiom.chromastudio.brush.recolour": "다시 칠하기",
+  "axiom.chromastudio.brush.recolour.tip": "각 블록을 팔레트에서 색이 가장 가까운 블록으로 바꿉니다. 공기와 액체는 그대로 둡니다.",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio가 아직 블록 색을 읽고 있습니다.",
+  "axiom.chromastudio.brush.empty": "이 팔레트의 블록은 이 게임에 없습니다.",
+  "axiom.chromastudio.eyedropper": "Chroma 스포이트",
+  "axiom.chromastudio.eyedropper.how": "블록에 사용하면 그 색이 매치 대상이 됩니다.",
+  "axiom.chromastudio.eyedropper.last": "선택됨: %s"
 }

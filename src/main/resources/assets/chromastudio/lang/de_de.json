@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "Beliebiger Ton",
   "tone.chromastudio.warm": "Warm",
   "tone.chromastudio.cool": "Kühl",
-  "tone.chromastudio.neutral": "Neutral"
+  "tone.chromastudio.neutral": "Neutral",
+  "axiom.chromastudio.brush": "Chroma-Palettenpinsel",
+  "axiom.chromastudio.brush.palette": "Palette",
+  "axiom.chromastudio.brush.radius": "Radius",
+  "axiom.chromastudio.brush.scatter": "Streuen",
+  "axiom.chromastudio.brush.scatter.tip": "Malt die Blöcke der Palette zufällig, jeden so oft, wie sein Gewicht sagt.",
+  "axiom.chromastudio.brush.recolour": "Umfärben",
+  "axiom.chromastudio.brush.recolour.tip": "Ersetzt jeden Block durch den Block der Palette mit der nächsten Farbe. Luft und Flüssigkeiten bleiben, wie sie sind.",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio liest noch die Farben der Blöcke.",
+  "axiom.chromastudio.brush.empty": "Keiner der Blöcke dieser Palette ist in diesem Spiel.",
+  "axiom.chromastudio.eyedropper": "Chroma-Pipette",
+  "axiom.chromastudio.eyedropper.how": "Auf einen Block anwenden, um seine Farbe zum Ziel von „Abgleich“ zu machen.",
+  "axiom.chromastudio.eyedropper.last": "Gewählt: %s"
 }

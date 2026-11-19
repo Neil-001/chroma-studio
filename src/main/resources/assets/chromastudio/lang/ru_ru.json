@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "Любой тон",
   "tone.chromastudio.warm": "Тёплый",
   "tone.chromastudio.cool": "Холодный",
-  "tone.chromastudio.neutral": "Нейтральный"
+  "tone.chromastudio.neutral": "Нейтральный",
+  "axiom.chromastudio.brush": "Палитровая кисть Chroma",
+  "axiom.chromastudio.brush.palette": "Палитра",
+  "axiom.chromastudio.brush.radius": "Радиус",
+  "axiom.chromastudio.brush.scatter": "Разбросать",
+  "axiom.chromastudio.brush.scatter.tip": "Ставит блоки палитры случайно, каждый так часто, как велит его вес.",
+  "axiom.chromastudio.brush.recolour": "Перекрасить",
+  "axiom.chromastudio.brush.recolour.tip": "Заменяет каждый блок блоком палитры с самым близким цветом. Воздух и жидкости не меняются.",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio ещё считывает цвета блоков.",
+  "axiom.chromastudio.brush.empty": "Ни одного блока этой палитры нет в этой игре.",
+  "axiom.chromastudio.eyedropper": "Пипетка Chroma",
+  "axiom.chromastudio.eyedropper.how": "Примените к блоку, чтобы его цвет стал целью вкладки «Подбор».",
+  "axiom.chromastudio.eyedropper.last": "Выбрано: %s"
 }

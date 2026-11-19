@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "任意色调",
   "tone.chromastudio.warm": "暖色",
   "tone.chromastudio.cool": "冷色",
-  "tone.chromastudio.neutral": "中性色"
+  "tone.chromastudio.neutral": "中性色",
+  "axiom.chromastudio.brush": "Chroma 调色板画笔",
+  "axiom.chromastudio.brush.palette": "调色板",
+  "axiom.chromastudio.brush.radius": "半径",
+  "axiom.chromastudio.brush.scatter": "散布",
+  "axiom.chromastudio.brush.scatter.tip": "按权重随机绘制调色板中的方块。",
+  "axiom.chromastudio.brush.recolour": "重新着色",
+  "axiom.chromastudio.brush.recolour.tip": "将每个方块换成调色板中颜色最接近的方块。空气和液体保持不变。",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio 仍在读取方块的颜色。",
+  "axiom.chromastudio.brush.empty": "此调色板中的方块在本游戏中都不存在。",
+  "axiom.chromastudio.eyedropper": "Chroma 取色器",
+  "axiom.chromastudio.eyedropper.how": "对方块使用，使其颜色成为匹配目标。",
+  "axiom.chromastudio.eyedropper.last": "已选取：%s"
 }

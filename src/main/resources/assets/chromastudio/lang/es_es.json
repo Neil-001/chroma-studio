@@ -637,5 +637,17 @@
   "tone.chromastudio.all": "Cualquier tono",
   "tone.chromastudio.warm": "Cálido",
   "tone.chromastudio.cool": "Frío",
-  "tone.chromastudio.neutral": "Neutro"
+  "tone.chromastudio.neutral": "Neutro",
+  "axiom.chromastudio.brush": "Pincel de paleta Chroma",
+  "axiom.chromastudio.brush.palette": "Paleta",
+  "axiom.chromastudio.brush.radius": "Radio",
+  "axiom.chromastudio.brush.scatter": "Esparcir",
+  "axiom.chromastudio.brush.scatter.tip": "Pinta los bloques de la paleta al azar, cada uno tan a menudo como indica su peso.",
+  "axiom.chromastudio.brush.recolour": "Recolorear",
+  "axiom.chromastudio.brush.recolour.tip": "Cambia cada bloque por el bloque de la paleta de color más parecido. El aire y los líquidos se quedan como están.",
+  "axiom.chromastudio.brush.not_ready": "Chroma Studio aún está leyendo los colores de los bloques.",
+  "axiom.chromastudio.brush.empty": "Ninguno de los bloques de esta paleta está en este juego.",
+  "axiom.chromastudio.eyedropper": "Cuentagotas Chroma",
+  "axiom.chromastudio.eyedropper.how": "Úsalo en un bloque para que su color sea el objetivo de Coincidir.",
+  "axiom.chromastudio.eyedropper.last": "Elegido: %s"
 }
