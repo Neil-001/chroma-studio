@@ -17,11 +17,11 @@ import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
 import dev.chromastudio.client.action.Dye;
-import dev.chromastudio.client.action.AxiomBlock;
 import dev.chromastudio.client.action.Eyedropper;
 import dev.chromastudio.client.action.Give;
 import dev.chromastudio.client.action.RecipeViewers;
 import dev.chromastudio.client.action.ScreenPicker;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
@@ -209,7 +209,7 @@ public final class MatchTab extends Tab {
         hexField.setMaxLength(7);
         hexField.setTooltip(Tooltip.create(tr("hex.tip")));
         AbstractWidget axiomButton = controls.button(x + w - axiomW, y, axiomW, axiom, this::takeAxiom);
-        Optional<Component> noAxiom = AxiomBlock.whyNot();
+        Optional<Component> noAxiom = AxiomBridge.whyNot();
         if (noAxiom.isPresent()) Widgets.disable(axiomButton, noAxiom.get());
         else axiomButton.setTooltip(Tooltip.create(tr("axiom.tip")));
         y += ROW;
@@ -1044,7 +1044,7 @@ public final class MatchTab extends Tab {
     }
 
     /** Makes Axiom's active block the target, saying how it went. */
-    private void takeAxiom() { status(AxiomBlock.take().message()); }
+    private void takeAxiom() { status(AxiomBridge.takeActiveBlock().message()); }
 
     private void armEyedropper() {
         Eyedropper.arm();

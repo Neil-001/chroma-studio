@@ -3,7 +3,7 @@ package dev.chromastudio.client.ui;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ThemeChoice;
-import dev.chromastudio.client.action.AxiomHotbars;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.core.color.Color;
 import java.util.ArrayList;
@@ -247,8 +247,8 @@ public final class SettingsScreen extends Screen {
             return list.cycler(x, y, CONTROL_W, null, List.of(false, true), (Boolean) value,
                     v -> Component.translatable("option.chromastudio.projection." + (v ? "perspective" : "orthographic")), v -> ModSettings.set(name, v), tip);
         // Greyed rather than hidden without Axiom, so the setting can be found and its tooltip says what it needs.
-        if (name.equals("hotbarAxiom") && !AxiomHotbars.isLoaded())
-            return Widgets.disable(list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v)), Component.translatable("hotbar.chromastudio.axiom.missing"));
+        if (name.equals("hotbarAxiom") && !AxiomBridge.isPresent())
+            return Widgets.disable(list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v)), AxiomBridge.whyNot().orElseThrow());
         if (type == boolean.class) return list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v), tip);
         if (type == int.class || type == double.class) {
             boolean whole = type == int.class;

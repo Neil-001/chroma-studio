@@ -15,6 +15,7 @@ import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Theme;
@@ -211,6 +212,7 @@ public final class PalettesTab extends PanelTab {
     private void layoutToolbar(int x0, int y, int width, Palette p) {
         Component needsBlocks = p == null ? tr("palettes.chromastudio.need_palette") : p.entries.isEmpty() ? tr("palettes.chromastudio.need_entries") : null;
         Component needsIndex = PaletteDialogs.indexReady() ? null : tr("palettes.chromastudio.index_building");
+        Component noAxiom = AxiomBridge.whyNot().orElse(null);
         List<Tool> tools = List.of(
                 new Tool("generate", new ItemStack(Items.AMETHYST_SHARD), () -> open(new PaletteDialogs.Generate(MatchState.colour(), _ -> showEntries())), needsIndex, false),
                 new Tool("capture", new ItemStack(Items.SPYGLASS), this::capture, Capture.unavailable().orElse(null), Capture.armed()),
@@ -219,7 +221,8 @@ public final class PalettesTab extends PanelTab {
                 new Tool("diorama", new ItemStack(Items.BRICKS), () -> togglePanel(Panel.DIORAMA), needsBlocks != null ? needsBlocks : needsIndex, panel == Panel.DIORAMA),
                 new Tool("export", new ItemStack(Items.PAPER), () -> open(new PaletteDialogs.Export(p, Layout.valueOf(ModSettings.defaultLayout.name()), System.nanoTime())), needsBlocks, false),
                 new Tool("worldedit", new ItemStack(Items.WOODEN_AXE), () -> open(new PaletteDialogs.WorldEdit(p)), needsBlocks, false),
-                new Tool("axiom", new ItemStack(Items.BRUSH), () -> open(new PaletteDialogs.Axiom(p)), needsBlocks != null ? needsBlocks : needsIndex, false),
+                new Tool("axiom", new ItemStack(Items.BRUSH), () -> open(new PaletteDialogs.Axiom(p)),
+                        noAxiom != null ? noAxiom : needsBlocks != null ? needsBlocks : needsIndex, false),
                 new Tool("hotbar", new ItemStack(Items.CHEST), () -> open(new PaletteDialogs.Hotbar(p.entries)),
                         needsBlocks != null ? needsBlocks : HotbarFill.unavailable().orElse(null), false));
         int labelled = (tools.size() - 1) * GAP;

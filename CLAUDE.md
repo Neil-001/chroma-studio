@@ -24,7 +24,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
 - Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them.
-- Axiom is optional, Fabric-only and closed source. Compile against its client API and ImGui binding only, never its jar, and never ship or commit either. Only `dev.chromastudio.client.axiom` may refer to Axiom, the rest of the mod enters it through `AxiomBridge`, and what isn't in the client API is reached by guarded reflection that fails with a reason the player can read. To try it, put Axiom's jar in `run/fabric/mods/`.
+- Axiom is optional, Fabric-only and closed source. Compile against its client API and ImGui binding only, which `libs/` pins under their MIT licences and the built jars never contain. Never commit, ship or compile against Axiom's own jar. Only `dev.chromastudio.client.axiom` may refer to Axiom, the rest of the mod enters it through `AxiomBridge`, and what isn't in the client API is reached by guarded reflection that fails with a reason the player can read. To try it, put Axiom's jar in `run/fabric/mods/`.
 - A new setting follows the comment on `ModSettings`, and needs a label and a `.tip` in the language file, which the settings screen's search reads.
 - `en_us.json` is written by hand, and the nine other language files are generated from it. A new English key needs its nine translations in the same change, or `LangTest` fails.
 - Read `listing/README.md` before changing anything in `listing/`.
@@ -39,7 +39,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - A tint comes from `BlockTintSource.colorInWorld(state, getter, pos)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
 - Signs and beds have block models and are matched as any block.
 - The game runs on SDL, not GLFW, and ships no tinyfd. Ask for a mouse cursor each frame with `g.requestCursor`; a frame that asks for none gets the arrow back. `CursorType.createStandardCursor` makes a shape `CursorTypes` lacks, such as the diagonal arrows, and falls back where the system has none.
-- Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number.
+- Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number. Axiom's `ToolService.isMouseDown` is the exception: it counts in ImGui's order from 0, so 1 is the right button.
 - `NativeImage.getPixel` and `setPixel` take ARGB.
 
 ## Conventions

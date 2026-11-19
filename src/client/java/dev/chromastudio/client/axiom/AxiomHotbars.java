@@ -1,4 +1,4 @@
-package dev.chromastudio.client.action;
+package dev.chromastudio.client.axiom;
 
 import dev.chromastudio.client.ChromaStudioClient;
 import java.lang.invoke.MethodHandle;
@@ -10,20 +10,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Reads and writes Axiom's extra hotbars, when Axiom is there. These are Axiom's internal classes, not an API, and
- * Axiom is closed source and Fabric-only, so nothing is compiled against it: the few methods used are looked up by
- * name the first time they're needed, and if any is missing, or a call throws, the hotbars count as unavailable and
- * nothing reaches the caller.
+ * Reads and writes Axiom's extra hotbars. Only {@link AxiomBridge} calls this, once Axiom is known to be loaded.
+ * The hotbars are Axiom's internal classes, not its API, so nothing is compiled against them: the few methods used
+ * are looked up by name the first time they're needed, and if any is missing, or a call throws, the hotbars count as
+ * unavailable and nothing reaches the caller.
  *
  * <p>Axiom numbers its hotbars from 0 and keeps nine slots in each. The active one is the player's real hotbar, so
  * its slots are written with the creative inventory packet, which Axiom sends only in creative mode; the others are
  * kept on the client and saved to Axiom's {@code hotbars} file about ten seconds after a change. Switching hotbars
  * also works only in creative mode, so this is offered only there.
  */
-public final class AxiomHotbars {
+final class AxiomHotbars {
     private AxiomHotbars() {}
-
-    private static final String MOD_ID = "axiom";
 
     /** {@code HotbarManager}'s methods, looked up once: active hotbar, get and set a slot, and the permission check. */
     private record Handles(MethodHandle active, MethodHandle get, MethodHandle set, MethodHandle allowed) {}
@@ -31,13 +29,8 @@ public final class AxiomHotbars {
     private static Handles handles;
     private static boolean looked;
 
-    public static boolean isLoaded() {
-        return ChromaStudioClient.platform != null && ChromaStudioClient.platform.isModLoaded(MOD_ID);
-    }
-
     /** Why a fill can't use Axiom's hotbars now, or nothing when it can. */
-    public static Optional<Component> unavailable() {
-        if (!isLoaded()) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.missing"));
+    static Optional<Component> unavailable() {
         Handles h = handles();
         if (h == null) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.changed"));
         if (Minecraft.getInstance().player == null) return Optional.of(Component.translatable("palettes.chromastudio.no_world"));

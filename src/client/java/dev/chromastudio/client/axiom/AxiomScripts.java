@@ -1,12 +1,8 @@
-package dev.chromastudio.client.action;
+package dev.chromastudio.client.axiom;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.context.CommandContext;
-import dev.chromastudio.client.ChromaCommand;
-import dev.chromastudio.client.GradientStore;
-import dev.chromastudio.client.PaletteStore;
+import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge.Refused;
+import dev.chromastudio.client.axiom.AxiomBridge.Script;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
@@ -19,7 +15,6 @@ import dev.chromastudio.core.color.Scale;
 import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
-import dev.chromastudio.core.palette.StoredGradient;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,7 +39,7 @@ import org.jspecify.annotations.Nullable;
  * Makes Lua scripts for Axiom's Script Brush from palettes and gradients, and copies them, through the Palettes and
  * Gradient tabs and {@code /chroma axiom}. The text comes from {@link AxiomScript}; this class picks the blocks.
  */
-public final class AxiomScripts {
+final class AxiomScripts {
     private AxiomScripts() {}
 
     /** The kinds a recolour changes. Each block is matched only among blocks of its own kind, so a stair stays a stair. */
@@ -57,16 +52,13 @@ public final class AxiomScripts {
      */
     static final int CLIPBOARD_BYTES = 40_000;
 
-    /** A script and what to tell the player about it. */
-    public record Made(String script, Component summary) {}
-
     /**
      * A recolour into a palette: every block the brush may find, or only those of {@code from}, matched to the
      * palette's blocks of the same kind, which includes the stairs, slabs and walls of the palette's materials.
      * Blocks with a block entity, such as chests and signs, and blocks whose kind the palette has none of are left
      * alone. Refused, with the reason, when nothing would change.
      */
-    public static Made recolour(Palette to, @Nullable Palette from) throws Refused {
+    static Script recolour(Palette to, @Nullable Palette from) throws Refused {
         if (!BlockIndex.get().ready()) throw new Refused(Component.translatable("palettes.chromastudio.index_building"));
         BlockIndex index = BlockIndex.get();
         Face face = PaletteBlocks.face();
@@ -127,7 +119,7 @@ public final class AxiomScripts {
     }
 
     /** A brush that paints the palette's blocks at random by weight. */
-    public static Made scatter(Palette p) throws Refused {
+    static Script scatter(Palette p) throws Refused {
         if (p.entries.isEmpty()) throw new Refused(Component.translatable("palettes.chromastudio.need_entries"));
         return made(AxiomScript.scatter(p), Component.translatable("axiom.chromastudio.scatter.done", p.entries.size()));
     }
@@ -136,7 +128,7 @@ public final class AxiomScripts {
      * A brush that paints a gradient's steps along an axis, starting where the player stands and running two blocks
      * a step, which the brush's own controls then change.
      */
-    public static Made gradient(String name, List<PaletteEntry> steps, AxiomScript.Axis axis) throws Refused {
+    static Script gradient(String name, List<PaletteEntry> steps, AxiomScript.Axis axis) throws Refused {
         if (steps.size() < 2) throw new Refused(Component.translatable("axiom.chromastudio.gradient.too_short"));
         Minecraft mc = Minecraft.getInstance();
         BlockPos at = mc.player == null ? BlockPos.ZERO : mc.player.blockPosition();
@@ -150,20 +142,7 @@ public final class AxiomScripts {
     }
 
     /** Puts a script on the clipboard. */
-    public static void copy(Made made) { Minecraft.getInstance().keyboardHandler.setClipboard(made.script()); }
-
-    /** Why a script couldn't be made, to show the player. */
-    public static final class Refused extends Exception {
-        private static final long serialVersionUID = 1L;
-        private final transient Component reason;
-
-        Refused(Component reason) {
-            super(reason.getString());
-            this.reason = reason;
-        }
-
-        public Component reason() { return reason; }
-    }
+    static void copy(Script script) { Minecraft.getInstance().keyboardHandler.setClipboard(script.text()); }
 
     /** One entry a block for every block a recolour may find: the blocks of a palette, or every block the index holds. */
     private static List<Entry> sources(@Nullable Palette from) {
@@ -200,82 +179,10 @@ public final class AxiomScripts {
      * A script with its summary, and a note when a server could refuse a script this long from a player without
      * import rights. Refused when it's too long to copy.
      */
-    private static Made made(String script, Component summary) throws Refused {
+    private static Script made(String script, Component summary) throws Refused {
         int bytes = script.getBytes(StandardCharsets.UTF_8).length;
         if (bytes > CLIPBOARD_BYTES) throw new Refused(Component.translatable("axiom.chromastudio.too_long", (bytes + 1023) / 1024, CLIPBOARD_BYTES / 1024));
-        if (AxiomScript.counted(script) <= AxiomScript.SERVER_LIMIT) return new Made(script, summary);
-        return new Made(script, Component.empty().append(summary).append(" ").append(Component.translatable("axiom.chromastudio.long", AxiomScript.SERVER_LIMIT)));
-    }
-
-    /** Adds {@code /chroma axiom}. Call once at client start. */
-    public static void install() {
-        ChromaCommand.SUBCOMMANDS.add(new ChromaCommand.Subcommand() {
-            @Override
-            public <S> void attach(LiteralArgumentBuilder<S> root) {
-                LiteralArgumentBuilder<S> axiom = LiteralArgumentBuilder.<S>literal("axiom")
-                        .executes(_ -> usage());
-                axiom.then(LiteralArgumentBuilder.<S>literal("recolour").executes(_ -> usage())
-                        .then(RequiredArgumentBuilder.<S, String>argument("palette", StringArgumentType.greedyString())
-                                .executes(ctx -> run(() -> recolour(palette(ctx, "palette"), null)))));
-                axiom.then(LiteralArgumentBuilder.<S>literal("remap").executes(_ -> usage())
-                        .then(RequiredArgumentBuilder.<S, String>argument("from", StringArgumentType.string())
-                                .then(RequiredArgumentBuilder.<S, String>argument("to", StringArgumentType.greedyString())
-                                        .executes(ctx -> run(() -> recolour(palette(ctx, "to"), palette(ctx, "from")))))));
-                axiom.then(LiteralArgumentBuilder.<S>literal("scatter").executes(_ -> usage())
-                        .then(RequiredArgumentBuilder.<S, String>argument("palette", StringArgumentType.greedyString())
-                                .executes(ctx -> run(() -> scatter(palette(ctx, "palette"))))));
-                LiteralArgumentBuilder<S> gradient = LiteralArgumentBuilder.<S>literal("gradient").executes(_ -> usage());
-                for (AxiomScript.Axis axis : AxiomScript.Axis.values()) {
-                    gradient.then(LiteralArgumentBuilder.<S>literal(axis.name().toLowerCase(Locale.ROOT)).executes(_ -> usage())
-                            .then(RequiredArgumentBuilder.<S, String>argument("gradient", StringArgumentType.greedyString())
-                                    .executes(ctx -> run(() -> {
-                                        StoredGradient g = savedGradient(ctx);
-                                        return gradient(g.name(), g.blocks().stream().map(StoredGradient.Step::block).toList(), axis);
-                                    }))));
-                }
-                root.then(axiom.then(gradient));
-            }
-        });
-    }
-
-    private interface Maker {
-        Made make() throws Refused;
-    }
-
-    private static int run(Maker maker) {
-        try {
-            Made made = maker.make();
-            copy(made);
-            ChromaCommand.say(Component.translatable("command.chromastudio.axiom.copied", made.summary()));
-            return 1;
-        } catch (Refused r) {
-            ChromaCommand.say(r.reason());
-            return 0;
-        }
-    }
-
-    private static int usage() {
-        ChromaCommand.say(Component.translatable("command.chromastudio.axiom.usage"));
-        return 0;
-    }
-
-    /** A palette by its name, as the Palettes tab shows it or as its file has it, ignoring case. */
-    private static <S> Palette palette(CommandContext<S> ctx, String argument) throws Refused {
-        String name = StringArgumentType.getString(ctx, argument).strip();
-        for (Palette p : PaletteStore.get().all()) if (name.equalsIgnoreCase(shownName(p)) || name.equalsIgnoreCase(p.name)) return p;
-        throw new Refused(Component.translatable("command.chromastudio.axiom.no_palette", name));
-    }
-
-    /** A palette's name as the Palettes tab shows it: a preset's translated, any other as the player named it. */
-    public static String shownName(Palette p) {
-        String preset = PaletteStore.get().presetId(p);
-        return preset == null ? p.name : Component.translatableWithFallback("preset.chromastudio." + preset, p.name).getString();
-    }
-
-    private static <S> StoredGradient savedGradient(CommandContext<S> ctx) throws Refused {
-        String name = StringArgumentType.getString(ctx, "gradient").strip();
-        StoredGradient g = GradientStore.get().get(name);
-        if (g == null) throw new Refused(Component.translatable("command.chromastudio.axiom.no_gradient", name));
-        return g;
+        if (AxiomScript.counted(script) <= AxiomScript.SERVER_LIMIT) return new Script(script, summary);
+        return new Script(script, Component.empty().append(summary).append(" ").append(Component.translatable("axiom.chromastudio.long", AxiomScript.SERVER_LIMIT)));
     }
 }

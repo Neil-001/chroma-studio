@@ -28,7 +28,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -143,7 +142,7 @@ final class PaletteBrushTool implements CustomTool {
             for (int i = 0; i < all.size(); i++) {
                 Palette p = all.get(i);
                 // A label is also ImGui's id for the row, and a player's palette may share a preset's name.
-                if (ImGui.selectable(name(p) + "##" + i, p == shown)) palette = p;
+                if (ImGui.selectable(PaletteStore.get().shownName(p) + "##" + i, p == shown)) palette = p;
             }
             ImGui.endListBox();
         }
@@ -186,11 +185,6 @@ final class PaletteBrushTool implements CustomTool {
         for (Palette p : all) if (p == palette) return p;
         Palette selected = PaletteStore.get().selected();
         return selected != null ? selected : all.isEmpty() ? null : all.getFirst();
-    }
-
-    private static String name(Palette p) {
-        String preset = PaletteStore.get().presetId(p);
-        return preset == null ? p.name : Component.translatableWithFallback("preset.chromastudio." + preset, p.name).getString();
     }
 
     /** The entries whose block this game has. */

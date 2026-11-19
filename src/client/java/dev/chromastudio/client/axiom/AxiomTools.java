@@ -8,8 +8,9 @@ import java.util.ServiceLoader;
 import net.minecraft.network.chat.Component;
 
 /**
- * Axiom's services, which Axiom itself supplies through {@link ServiceLoader}, and the registration of the tools.
- * Only {@link AxiomBridge} loads this class, once Axiom is known to be loaded.
+ * Axiom's services, which Axiom itself supplies through {@link ServiceLoader}, and the list of Chroma Studio's tools
+ * in Axiom's editor. A tool is one class that implements Axiom's {@code CustomTool}, and one line in {@link #register}.
+ * Only {@link AxiomBridge} and the classes it enters use this, once Axiom is known to be loaded.
  */
 final class AxiomTools {
     private AxiomTools() {}
@@ -27,8 +28,10 @@ final class AxiomTools {
         registry.register(new EyedropperTool());
     }
 
-    private static <T> T service(Class<T> type) {
-        return ServiceLoader.load(type).findFirst().orElseThrow(() -> new IllegalStateException("Axiom gives no " + type.getSimpleName()));
+    /** One of Axiom's services. Throws when Axiom gives none, as another version of it might not. */
+    static <T> T service(Class<T> type) {
+        // Axiom registers its implementations in its own jar, which the API class's loader sees.
+        return ServiceLoader.load(type, type.getClassLoader()).findFirst().orElseThrow(() -> new IllegalStateException("Axiom gives no " + type.getSimpleName()));
     }
 
     /**

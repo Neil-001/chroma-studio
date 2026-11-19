@@ -4,13 +4,12 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.OverflowMode;
 import dev.chromastudio.client.PaletteStore;
-import dev.chromastudio.client.action.AxiomHotbars;
-import dev.chromastudio.client.action.AxiomScripts;
 import dev.chromastudio.client.action.FileDialog;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.HotbarPlan;
 import dev.chromastudio.client.action.ImageImport;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.export.LitematicaBridge;
 import dev.chromastudio.client.export.SchematicExporter;
 import dev.chromastudio.client.index.BlockIndex;
@@ -578,7 +577,7 @@ final class PaletteDialogs {
         private final Palette palette;
         private final String gradientName;
         private final List<PaletteEntry> steps;
-        private AxiomScripts.Made made;
+        private AxiomBridge.Script made;
         private Component problem;
         private int labelW;
 
@@ -602,10 +601,10 @@ final class PaletteDialogs {
             made = null;
             problem = null;
             try {
-                if (palette == null) made = AxiomScripts.gradient(gradientName, steps, axis);
-                else if (script == Script.SCATTER) made = AxiomScripts.scatter(palette);
-                else made = AxiomScripts.recolour(palette, from());
-            } catch (AxiomScripts.Refused r) {
+                if (palette == null) made = AxiomBridge.gradientScript(gradientName, steps, axis);
+                else if (script == Script.SCATTER) made = AxiomBridge.scatterScript(palette);
+                else made = AxiomBridge.recolourScript(palette, from());
+            } catch (AxiomBridge.Refused r) {
                 problem = r.reason();
             }
         }
@@ -613,7 +612,7 @@ final class PaletteDialogs {
         /** The palette a recolour changes blocks from, or null for any block. */
         private Palette from() {
             // The palette itself stands for any block, so a remembered name that happens to be its own isn't a choice.
-            for (Palette p : fromChoices()) if (p != palette && AxiomScripts.shownName(p).equals(fromName)) return p;
+            for (Palette p : fromChoices()) if (p != palette && PaletteStore.get().shownName(p).equals(fromName)) return p;
             return null;
         }
 
@@ -642,13 +641,13 @@ final class PaletteDialogs {
                 y += PanelTab.ROW;
                 Palette from = from();
                 var fromButton = widgets.cycler(x, y, in.right() - x, null, fromChoices(), from == null ? palette : from,
-                        p -> p == palette ? tr("axiom.chromastudio.from.any") : Component.literal(AxiomScripts.shownName(p)),
-                        p -> { fromName = p == palette ? "" : AxiomScripts.shownName(p); refresh(); }, tr("axiom.chromastudio.from.tip"));
+                        p -> p == palette ? tr("axiom.chromastudio.from.any") : Component.literal(PaletteStore.get().shownName(p)),
+                        p -> { fromName = p == palette ? "" : PaletteStore.get().shownName(p); refresh(); }, tr("axiom.chromastudio.from.tip"));
                 if (script != Script.RECOLOUR) Widgets.disable(fromButton, tr("axiom.chromastudio.from.na"));
             }
             Component copyLabel = tr("palettes.chromastudio.copy");
             Button copy = widgets.button(in.right() - Widgets.buttonWidth(copyLabel), in.bottom() - Widgets.H - STATUS_H, copyLabel, () -> {
-                AxiomScripts.copy(made);
+                AxiomBridge.copy(made);
                 status(tr("axiom.chromastudio.copied"), Theme.GOOD);
             });
             if (made == null) Widgets.disable(copy, problem);
@@ -709,7 +708,7 @@ final class PaletteDialogs {
                 result = null;
                 refresh();
             }, tr("settings.chromastudio.hotbarAxiom.tip"));
-            AxiomHotbars.unavailable().ifPresent(why -> Widgets.disable(axiomButton, why));
+            AxiomBridge.hotbarsUnavailable().ifPresent(why -> Widgets.disable(axiomButton, why));
             int fillX = in.x() + modeW + PanelTab.GAP, fillW = in.right() - undoW - PanelTab.GAP - fillX;
             Button fillButton = widgets.button(fillX, y, fillW, fill, () -> {
                 result = HotbarFill.fill(entries);

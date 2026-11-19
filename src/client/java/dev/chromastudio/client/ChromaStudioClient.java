@@ -1,7 +1,5 @@
 package dev.chromastudio.client;
 
-import dev.chromastudio.client.action.AxiomBlock;
-import dev.chromastudio.client.action.AxiomScripts;
 import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.action.Eyedropper;
 import dev.chromastudio.client.action.HotbarFill;
@@ -34,13 +32,10 @@ public final class ChromaStudioClient {
         PaletteSink.setCurrent(PaletteStore.get());
         Keys.onEyedropper = Eyedropper::press;
         Capture.install();
-        AxiomBlock.install();
-        AxiomScripts.install();
         ChromaScreen.registerTab("match", MatchTab::new, 0);
         ChromaScreen.registerTab("gradient", GradientTab::new, 10);
         ChromaScreen.registerTab("palettes", PalettesTab::new, 20);
         ChromaScreen.registerTab("explore", ExploreTab::new, 30);
-        // Axiom's own entrypoint has run by now, so its tool list is there to add to.
         AxiomBridge.register();
     }
 

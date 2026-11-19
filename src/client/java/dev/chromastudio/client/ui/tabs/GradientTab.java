@@ -15,6 +15,7 @@ import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
@@ -301,7 +302,8 @@ public final class GradientTab extends PanelTab {
             say(tr("gradient.chromastudio.copied", result.size()), GOOD);
         }, none);
         action(2, actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
-        action(3, actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())), none);
+        action(3, actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())),
+                AxiomBridge.whyNot().orElse(none));
         action(4, actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
         action(5, actionsY, () -> {
             Palette p = asPalette();

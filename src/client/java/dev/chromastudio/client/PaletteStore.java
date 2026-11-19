@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
+import net.minecraft.network.chat.Component;
 
 /**
  * The player's palettes, one JSON file each in {@code config/chromastudio/palettes/}, and the bundled presets, which
@@ -119,6 +120,12 @@ public final class PaletteStore implements PaletteSink {
 
     /** A preset's file name, which is also the end of its translation key, or null for a palette that isn't one. */
     public String presetId(Palette p) { return presetIds.get(p); }
+
+    /** A palette's name as the Palettes tab shows it: a preset's translated, any other as the player named it. */
+    public String shownName(Palette p) {
+        String preset = presetId(p);
+        return preset == null ? p.name : Component.translatableWithFallback("preset.chromastudio." + preset, p.name).getString();
+    }
 
     /** The palette the Palettes tab shows, or null. */
     public Palette selected() {

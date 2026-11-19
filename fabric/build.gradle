@@ -37,13 +37,14 @@ repositories {
 			includeGroup 'dev.architectury'
 		}
 	}
-	// Axiom's client API and ImGui binding come from JitPack, which builds GitHub repositories as they're asked for.
-	// Axiom itself is closed source and never a dependency: put its jar in run/fabric/mods to try the bridge.
+	// Axiom's client API and ImGui binding, pinned in libs/ so the build doesn't wait on JitPack; libs/README.md says
+	// where they come from. Axiom itself is closed source and never a dependency: put its jar in run/fabric/mods to try it.
 	exclusiveContent {
 		forRepository {
 			maven {
-				name = 'JitPack'
-				url = 'https://jitpack.io'
+				name = 'Pinned'
+				url = rootProject.file('libs')
+				metadataSources { artifact() }
 			}
 		}
 		filter {
