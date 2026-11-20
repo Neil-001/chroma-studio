@@ -681,7 +681,7 @@
   "axiom.chromastudio.copied": "Script copié. Colle-le dans le Script Brush de l'éditeur d'Axiom.",
   "axiom.chromastudio.recolour.done": "Recolore %s sortes de blocs en gardant leur forme. %s autres restent tels quels, aucun bloc de la palette n'ayant leur forme ou, pour le verre, n'étant transparent.",
   "axiom.chromastudio.scatter.done": "Peint les %s blocs de la palette au hasard, aussi souvent que leurs poids l'indiquent. Comme Disperser dans le pinceau, il remplit aussi l'air, ce que la case « Paint air » désactive, et laisse entiers les portes et les grandes plantes.",
-  "axiom.chromastudio.gradient.done": "Peint les %s blocs du dégradé le long de %s, depuis là où tu te tiens. Comme l'outil de dégradé, il laisse l'air, le sol, les plantes, les escaliers, les dalles, les portes et les coffres tels quels. Contrairement à l'outil, il peint tout autre bloc solide que le pinceau atteint, pas seulement une construction.",
+  "axiom.chromastudio.gradient.done": "Peint les %s blocs du dégradé le long de %s, depuis là où tu te tiens. Comme l'outil de dégradé, il laisse l'air, le sol, les plantes et les blocs qui contiennent des objets tels quels. Contrairement à l'outil, il peint tout bloc solide que le pinceau atteint, pas seulement une construction, et laisse ce qu'il ne peut pas remodeler ni tourner : escaliers, dalles, murets, portes et blocs orientés, comme la terre cuite émaillée.",
   "axiom.chromastudio.gradient.too_short": "Un dégradé a besoin d'au moins deux blocs.",
   "axiom.chromastudio.no_blocks": "Aucun des blocs de la palette n'existe dans ce jeu.",
   "axiom.chromastudio.nothing_to_change": "Rien ne changerait : chaque bloc resterait tel quel, ou la palette n'a aucun bloc de sa forme.",

@@ -191,6 +191,20 @@ class RecolourCasesTest {
         }
     }
 
+    @Test
+    void aBuildWhoseStairsAreCountedApartMatchesItsSample() throws Exception {
+        // As the brush counts a build: as many stone brick stairs as stone bricks, and as much polished andesite. A
+        // sample counts the stairs as stone bricks, so stone bricks are its main material, and the build's must be too.
+        Palette build = new Palette("build"), sample = new Palette("sample");
+        build.entries.addAll(List.of(new PaletteEntry("minecraft:stone_bricks", "", 50), new PaletteEntry("minecraft:stone_brick_stairs", "", 50),
+                new PaletteEntry("minecraft:polished_andesite", "", 50)));
+        sample.entries.addAll(List.of(new PaletteEntry("minecraft:stone_bricks", "", 100), new PaletteEntry("minecraft:polished_andesite", "", 50)));
+        Palette to = palette("Grey", "dark_oak_planks", "stone_bricks", "andesite", "yellow_terracotta");
+        RecolourPlan a = plan(to, build), b = plan(to, sample);
+        for (String path : List.of("stone_bricks", "stone_brick_stairs", "polished_andesite")) assertEquals(after(a, path), after(b, path), path);
+        assertEquals("andesite", id(after(b, "polished_andesite")));
+    }
+
     private static Palette palette(String name, String... ids) {
         Palette p = new Palette(name);
         for (String id : ids) p.entries.add(new PaletteEntry("minecraft:" + id, ""));

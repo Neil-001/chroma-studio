@@ -38,6 +38,12 @@ public final class AxiomScript {
         public Remap(String from, PaletteEntry to, List<String> copied) { this(from, to, copied, false); }
     }
 
+    /**
+     * The properties by which a gradient script leaves a block alone: a stair, slab, wall, door, chest or any block
+     * that faces a way has one, which a full step would reshape, turn or empty.
+     */
+    public static final List<String> KEPT_BY_PROPERTY = List.of("waterlogged", "facing", "half");
+
     /** The axis a gradient runs along. */
     public enum Axis { X, Y, Z }
 
@@ -193,12 +199,14 @@ public final class AxiomScript {
      * the other way. A blend control lets neighbouring steps mix at their edges.
      *
      * <p>It changes what the gradient tool would: solid blocks, but not the ground, and not a block whose shape a full
-     * step would lose or whose contents it would empty. The script can't ask a block's shape, so it goes by its
-     * properties: a block that can hold water, faces a way or has a half, such as a stair, slab, wall, door or chest,
-     * is left alone, where the tool would give a stair the step's stair. Unlike the tool, it paints any such block the
-     * brush reaches, not only one build. Every step must be a full block, which the caller sees to.
+     * step would lose or whose contents it would empty. The script can't ask a block's shape or whether it holds
+     * anything, so it goes by its properties: a block with one of {@link #KEPT_BY_PROPERTY}, such as a stair, slab,
+     * wall, door or chest, is left alone, where the tool would give a stair the step's stair; and so is each block of
+     * {@code kept}, which holds items or data with none of those properties, such as a jukebox. Unlike the tool, it
+     * paints any other solid block the brush reaches, not only one build. Every step must be a full block, which the
+     * caller sees to.
      */
-    public static String gradient(String title, List<PaletteEntry> steps, Axis axis, int start, int length) {
+    public static String gradient(String title, List<PaletteEntry> steps, Axis axis, int start, int length, List<String> kept) {
         if (steps.size() < 2) throw new IllegalArgumentException("A gradient needs at least two steps");
         if (length == 0) throw new IllegalArgumentException("A gradient needs a length");
         StringBuilder s = header(title, "Paints the gradient's " + steps.size() + " blocks along " + axis.name() + ".");
@@ -221,6 +229,17 @@ public final class AxiomScript {
         s.append("\tchroma_steps = {\n");
         for (PaletteEntry e : steps) s.append("\t\t").append(ref(e.blockId(), e.properties())).append(" or false,\n");
         s.append("\t}\n");
+        s.append("\tchroma_kept = {}\n");
+        if (!kept.isEmpty()) {
+            s.append("\tfor id in string.gmatch(\"").append(String.join(" ", kept.stream().map(AxiomScript::shortId).toList())).append("\", \"%S+\") do\n");
+            s.append("""
+                    \t\tlocal ns, path = string.match(id, "^([^:]+):(.+)")
+                    \t\tif ns == nil then ns, path = "minecraft", id end
+                    \t\tlocal k = block(ns, path)
+                    \t\tif k then chroma_kept[k] = true end
+                    \tend
+                    """);
+        }
         s.append("end\n\n");
         // As the gradient tool does: the ground, plants and blocks a full step would reshape or empty stay. No comment
         // says so in the script, as servers count comments toward the length they allow.
@@ -228,13 +247,13 @@ public final class AxiomScript {
                 local b = getBlock(x, y, z)
                 if b == blocks.air then
                 \tif not paint_air then return nil end
-                elseif not isSolid(b) or isBlockTagged(b, "substrate_overworld") or isBlockTagged(b, "sand") or b == blocks.gravel then
+                elseif chroma_kept[b] or not isSolid(b) or isBlockTagged(b, "substrate_overworld") or isBlockTagged(b, "sand") or b == blocks.gravel then
                 \treturn nil
                 else
                 \tlocal s = getBlockState(x, y, z)
-                \tfor _, p in ipairs({"waterlogged", "facing", "half"}) do if getBlockProperty(s, p) then return nil end end
-                end
                 """);
+        s.append("\tfor _, p in ipairs({").append(String.join(", ", KEPT_BY_PROPERTY.stream().map(AxiomScript::quote).toList()))
+                .append("}) do if getBlockProperty(s, p) then return nil end end\nend\n");
         // Each step takes an equal share of the blocks from first to last, both ends included.
         s.append("local n = #chroma_steps\n");
         s.append("local span = last - first\n");

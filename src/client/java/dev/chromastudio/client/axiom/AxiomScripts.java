@@ -12,11 +12,14 @@ import dev.chromastudio.core.palette.Recolour;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
@@ -45,7 +48,16 @@ final class AxiomScripts {
     /** A brush that paints the palette's blocks at random by weight. */
     static Script scatter(Palette p) throws Refused {
         if (p.entries.isEmpty()) throw new Refused(Component.translatable("palettes.chromastudio.need_entries"));
-        return made(AxiomScript.scatter(p), Component.translatable("axiom.chromastudio.scatter.done", p.entries.size()), "axiom.chromastudio.long.brush", "axiom.chromastudio.too_long");
+        // The blocks the palette brush's Scatter places, so stairs go in as their full block, as the tool has them.
+        ScatterBlocks blocks = ScatterBlocks.of(p);
+        Component leftOut = Component.translatable("axiom.chromastudio.brush.left_out",
+                blocks.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", ")));
+        if (blocks.blocks().isEmpty()) throw new Refused(leftOut);
+        Palette placed = new Palette(p.name);
+        for (ScatterBlocks.Placed b : blocks.blocks()) placed.entries.add(PaletteBlocks.of(b.state()).withWeight(b.weight()));
+        MutableComponent summary = Component.translatable("axiom.chromastudio.scatter.done", placed.entries.size());
+        if (!blocks.leftOut().isEmpty()) summary.append(" ").append(leftOut);
+        return made(AxiomScript.scatter(placed), summary, "axiom.chromastudio.long.brush", "axiom.chromastudio.too_long");
     }
 
     /**
@@ -77,7 +89,21 @@ final class AxiomScripts {
         };
         MutableComponent summary = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name().toLowerCase(Locale.ROOT));
         if (full.size() < steps.size()) summary.append(" ").append(Component.translatable("axiom.chromastudio.gradient_tool.skipped", steps.size() - full.size()));
-        return made(AxiomScript.gradient(name, full, axis, start, full.size() * 2), summary, "axiom.chromastudio.long", "axiom.chromastudio.too_long");
+        return made(AxiomScript.gradient(name, full, axis, start, full.size() * 2, kept()), summary, "axiom.chromastudio.long", "axiom.chromastudio.too_long");
+    }
+
+    /**
+     * The full blocks that hold items or data, which the gradient tool leaves alone, and which have none of the
+     * properties by which the script leaves a block alone, such as a jukebox or a spawner, so the script names them.
+     */
+    static List<String> kept() {
+        List<String> out = new ArrayList<>();
+        for (Block b : BuiltInRegistries.BLOCK) {
+            BlockState s = b.defaultBlockState();
+            if (!(b instanceof EntityBlock) || !s.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) continue;
+            if (s.getProperties().stream().noneMatch(p -> AxiomScript.KEPT_BY_PROPERTY.contains(p.getName()))) out.add(BuiltInRegistries.BLOCK.getKey(b).toString());
+        }
+        return out;
     }
 
     /** Puts a script on the clipboard. */

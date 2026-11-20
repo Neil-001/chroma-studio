@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.core.palette.AxiomScript;
+import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -18,7 +20,10 @@ import org.junit.jupiter.api.Test;
 /** The scripts' choice of blocks, which needs the game's blocks but not Axiom. */
 class AxiomScriptsTest {
     @BeforeAll
-    static void loadGame() { TestIndex.loadGame(); }
+    static void loadGame() {
+        TestIndex.loadGame();
+        TestIndex.index(Map.of("stone", "block/stone", "oak_planks", "block/oak_planks", "oak_stairs", "block/oak_planks", "lantern", "block/lantern"));
+    }
 
     private static List<PaletteEntry> steps(String... ids) {
         List<PaletteEntry> out = new ArrayList<>();
@@ -41,6 +46,28 @@ class AxiomScriptsTest {
         keys(script.summary(), keys);
         assertTrue(keys.contains("axiom.chromastudio.gradient.done[7, y]"), keys.toString());
         assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped[2]"), keys.toString());
+    }
+
+    @Test
+    void theScatterScriptPlacesWhatTheBrushsScatterPlaces() throws Exception {
+        // Stairs go in as their full block, and a lantern, which can't stand alone, is left out, as the brush has it.
+        Palette p = new Palette("Mixed");
+        p.entries.addAll(steps("stone", "oak_stairs", "lantern"));
+        AxiomBridge.Script script = AxiomScripts.scatter(p);
+        assertTrue(script.text().contains("\"oak_planks\"") && script.text().contains("\"stone\""), script.text());
+        assertFalse(script.text().contains("oak_stairs") || script.text().contains("lantern"), script.text());
+        List<String> keys = new ArrayList<>();
+        keys(script.summary(), keys);
+        assertTrue(keys.stream().anyMatch(k -> k.startsWith("axiom.chromastudio.brush.left_out")), keys.toString());
+        assertTrue(keys.contains("axiom.chromastudio.scatter.done[2]"), keys.toString());
+    }
+
+    @Test
+    void theGradientScriptNamesTheFullBlocksThatHoldItemsWhichItsPropertiesMiss() {
+        List<String> kept = AxiomScripts.kept();
+        // A jukebox and a spawner have no way they face; a barrel, which faces a way, is left alone by that.
+        assertTrue(kept.contains("minecraft:jukebox") && kept.contains("minecraft:spawner"), kept.toString());
+        assertFalse(kept.contains("minecraft:barrel") || kept.contains("minecraft:stone"), kept.toString());
     }
 
     /** The translation keys in a message, with their arguments. */

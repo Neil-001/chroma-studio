@@ -173,7 +173,6 @@ public final class Recolour {
     private int[] table(int[] eligible, Shades build) {
         int n = eligible.length, shades = build.count();
         int main = build.main();
-        if (main < 0) return byPlace(eligible, build, main);
         // The blocks the palette has, each pinned to its shade, kept only while they stay in order.
         int[] pin = new int[shades];
         Arrays.fill(pin, -1);
@@ -190,7 +189,7 @@ public final class Recolour {
         }
         // When the palette lacks the main material, there's nothing to measure differences from that the builder
         // chose, so each shade keeps its place from darkest to lightest instead, the main one on the palette's main block.
-        if (pin[main] < 0) return byPlace(eligible, build, main);
+        if (main < 0 || pin[main] < 0) return byPlace(eligible, build, main, pin);
         Oklab m = palette[eligible[pin[main]]];
         Oklab c = build.colour(main);
         Oklab shift = new Oklab(m.l() - c.l(), m.a() - c.a(), m.b() - c.b());
@@ -239,19 +238,79 @@ public final class Recolour {
     /**
      * Which of {@code eligible}, sorted from darkest to lightest, each of a build's shades takes when the build's
      * palette lacks its main material, or its weights don't say which that is, as when every block in the game may
-     * change: each shade takes the block at its place from darkest to lightest, and, while there are no more shades
-     * than blocks, the main one, given or else the largest between the ends, one of the palette's main blocks.
+     * change: each shade takes the block at its place from darkest to lightest, and the main one, given or else the
+     * largest between the ends, one of the palette's main blocks. The shades {@code pin} gives a block the palette
+     * has keep it, and bound the others.
      */
-    private int[] byPlace(int[] eligible, Shades build, int main) {
+    private int[] byPlace(int[] eligible, Shades build, int main, int[] pin) {
         int n = eligible.length, shades = build.count();
-        if (shades <= n) return matched(eligible, build, main);
+        // A build with no shades of this class: a block of it the build lacks takes the palette's middle.
+        if (shades == 0) return new int[] {eligible[(n - 1) / 2]};
+        int[] at = new int[shades];
+        if (shades <= n) {
+            int[] picked = matched(eligible, build, main);
+            for (int k = 0; k < shades; k++) for (int j = 0; j < n; j++) if (eligible[j] == picked[k]) at[k] = j;
+        } else if (main < 0) {
+            shareOut(eligible, 0, shades, 0, n, at);
+        } else {
+            // The main shade takes the heaviest block, the nearest its place among equals, and the shades either side
+            // share out the blocks either side of it, so a build of many kinds still puts its bulk on a main block.
+            double place = (main + 0.5) / shades, total = 0;
+            for (int i : eligible) total += weights[i];
+            int heaviest = 0;
+            double upTo = 0, nearest = Double.POSITIVE_INFINITY;
+            for (int j = 0; j < n; j++) {
+                double middle = (upTo + weights[eligible[j]] / 2.0) / total, off = Math.abs(middle - place);
+                upTo += weights[eligible[j]];
+                if (weights[eligible[j]] > weights[eligible[heaviest]] || weights[eligible[j]] == weights[eligible[heaviest]] && off < nearest) {
+                    heaviest = j;
+                    nearest = off;
+                }
+            }
+            at[main] = heaviest;
+            if (heaviest > 0) shareOut(eligible, 0, main, 0, heaviest, at);
+            else Arrays.fill(at, 0, main, heaviest);
+            if (heaviest < n - 1) shareOut(eligible, main + 1, shades, heaviest + 1, n, at);
+            else Arrays.fill(at, main + 1, shades, heaviest);
+        }
+        // A block the palette has stays itself, so the shades either side keep to their side of it: the order from
+        // darkest to lightest never turns round, though a neighbour may share it.
+        for (int k = 0; k < shades; k++) {
+            if (pin[k] < 0) continue;
+            at[k] = pin[k];
+            for (int i = 0; i < k; i++) at[i] = Math.min(at[i], pin[k]);
+            for (int i = k + 1; i < shades; i++) at[i] = Math.max(at[i], pin[k]);
+        }
         int[] out = new int[shades];
-        // More shades than blocks, so some must share. Every block takes one shade, and the rest go by weight, by
-        // largest remainder. Weights count in full once the build has twice as many shades as there are blocks, and
-        // barely at all with only a few more, so one extra shade doesn't hand the bulk of the build to the heaviest.
-        double strength = Math.min(1, (shades - n) / (double) n), total = 0;
+        for (int k = 0; k < shades; k++) out[k] = eligible[at[k]];
+        return out;
+    }
+
+    /**
+     * Hands shades {@code fromShade} to {@code toShade} out, in order, among the blocks at places {@code fromBlock} to
+     * {@code toBlock} of {@code eligible}, writing each shade's place to {@code at}. With at least as many shades as
+     * blocks, every block takes one shade and the rest go by weight, by largest remainder. Weights count in full once
+     * there are twice as many shades as blocks, and barely at all with only a few more, so one extra shade doesn't
+     * hand the bulk of the build to the heaviest. With fewer, each shade takes the block at its place along the line
+     * of the blocks' weights.
+     */
+    private void shareOut(int[] eligible, int fromShade, int toShade, int fromBlock, int toBlock, int[] at) {
+        int shades = toShade - fromShade, n = toBlock - fromBlock;
+        if (shades <= 0) return;
+        double total = 0;
+        if (shades < n) {
+            for (int j = fromBlock; j < toBlock; j++) total += weights[eligible[j]];
+            for (int k = 0; k < shades; k++) {
+                double place = (k + 0.5) / shades * total, upTo = 0;
+                int j = fromBlock;
+                while (j < toBlock - 1 && upTo + weights[eligible[j]] <= place) upTo += weights[eligible[j++]];
+                at[fromShade + k] = j;
+            }
+            return;
+        }
+        double strength = Math.min(1, (shades - n) / (double) n);
         double[] share = new double[n];
-        for (int j = 0; j < n; j++) total += share[j] = Math.pow(weights[eligible[j]], strength);
+        for (int j = 0; j < n; j++) total += share[j] = Math.pow(weights[eligible[fromBlock + j]], strength);
         int[] count = new int[n];
         int left = shades - n;
         Integer[] byRemainder = new Integer[n];
@@ -266,8 +325,7 @@ public final class Recolour {
         // Largest remainders first, and the darker block among equals.
         Arrays.sort(byRemainder, Comparator.comparingDouble((Integer j) -> -remainder[j]).thenComparingInt(j -> j));
         for (int r = 0; r < left; r++) count[byRemainder[r]]++;
-        for (int j = 0, k = 0; j < n; j++) for (int c = 0; c < count[j]; c++) out[k++] = eligible[j];
-        return out;
+        for (int j = 0, k = fromShade; j < n; j++) for (int c = 0; c < count[j]; c++) at[k++] = fromBlock + j;
     }
 
     /**
@@ -283,7 +341,6 @@ public final class Recolour {
      */
     private int[] matched(int[] eligible, Shades build, int main) {
         int n = eligible.length, shades = build.count();
-        if (shades == 0) return new int[] {eligible[(n - 1) / 2]};
         double[] at = new double[shades];
         double before = 0;
         for (int k = 0; k < shades; k++) {

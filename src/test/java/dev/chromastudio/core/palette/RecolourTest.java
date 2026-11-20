@@ -421,6 +421,29 @@ class RecolourTest {
     }
 
     @Test
+    void theMainMaterialTakesAMainBlockWhenTheBuildHasMoreKindsThanThePalette() {
+        // 900 dark planks with three accents onto black, stone bricks (the palette's main block) and white.
+        List<Recolour.Look> palette = greys(new double[] {0.15, 0.55, 0.9}, new int[] {1, 5, 1});
+        List<Recolour.Look> build = greys(new double[] {0.3, 0.45, 0.6, 0.75}, new int[] {900, 5, 50, 5});
+        List<Integer> picked = picks(new Recolour(palette, build, Recolour.Mode.SHADING), build);
+        assertEquals(1, picked.getFirst(), picked.toString());
+        inOrder(palette, build, picked);
+    }
+
+    @Test
+    void aBlockThePaletteKeepsNeverTurnsTheOrderRound() {
+        // Grey concrete, most of the build, and lighter stone bricks, which the palette has: the concrete may not go
+        // lighter than the stone bricks it sat below, though the palette's main block is lighter still.
+        List<Recolour.Look> palette = List.of(new Recolour.Look(Color.of(new Oklab(0.59, 0, 0)), false, 1, "stone_brick", "stone_bricks"),
+                new Recolour.Look(Color.of(new Oklab(0.71, 0, 0)), false, 5), new Recolour.Look(Color.of(new Oklab(0.9, 0, 0)), false, 1));
+        List<Recolour.Look> build = List.of(new Recolour.Look(Color.of(new Oklab(0.35, 0, 0)), false, 90, "concrete", "gray_concrete"),
+                new Recolour.Look(Color.of(new Oklab(0.59, 0, 0)), false, 10, "stone_brick", "stone_bricks"));
+        List<Integer> picked = picks(new Recolour(palette, build, Recolour.Mode.SHADING), build);
+        assertEquals(0, picked.get(1), picked.toString());
+        inOrder(palette, build, picked);
+    }
+
+    @Test
     void countsScaledAlikeGiveTheSameBlocks() {
         // A build's counts and a palette sampled from it, whose weights are the same counts scaled down.
         for (long seed = 1; seed <= 20; seed++) {

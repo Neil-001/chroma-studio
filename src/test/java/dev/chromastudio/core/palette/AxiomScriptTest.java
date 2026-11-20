@@ -75,28 +75,31 @@ class AxiomScriptTest {
     @Test
     void aGradientAlongYHasBothEndsAsControls() {
         List<PaletteEntry> steps = List.of(new PaletteEntry("minecraft:white_wool", ""), new PaletteEntry("minecraft:black_wool", ""));
-        String script = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8);
+        String script = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8, List.of());
         assertEquals(List.of("$int(Bottom, 70, -64, 319)$", "$int(Top, 77, -64, 319)$", "$float(Blend, 0.5, 0.0, 2.0)$", "$boolean(Paint air, false)$"), controls(script));
         assertTrue(script.contains("local t = ((y - first) * (span < 0 and -1 or 1) + 0.5) / (math.abs(span) + 1)\n"), script);
         // Downwards, the ends swap so the bottom control stays the lower.
-        assertTrue(AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, -8).contains("$int(Bottom, 63, -64, 319)$"));
+        assertTrue(AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, -8, List.of()).contains("$int(Bottom, 63, -64, 319)$"));
     }
 
     @Test
     void aGradientLeavesWhatTheGradientToolLeaves() {
         List<PaletteEntry> steps = List.of(new PaletteEntry("minecraft:white_wool", ""), new PaletteEntry("minecraft:black_wool", ""));
-        String script = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8);
+        String script = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8, List.of());
         // The ground, plants and torches, and stairs, slabs, doors and chests, which a step's full block would replace.
         assertTrue(script.contains("not isSolid(b)"), script);
         for (String tag : List.of("substrate_overworld", "sand")) assertTrue(script.contains("isBlockTagged(b, \"" + tag + "\")"), script);
         for (String property : List.of("waterlogged", "facing", "half")) assertTrue(script.contains("\"" + property + "\""), script);
         assertTrue(AxiomScript.counted(script) < AxiomScript.SERVER_LIMIT, AxiomScript.counted(script) + "");
+        // Blocks that hold items or data yet have none of those properties, such as a jukebox, are named.
+        String kept = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8, List.of("minecraft:jukebox", "mod:vault"));
+        assertTrue(kept.contains("string.gmatch(\"jukebox mod:vault\", \"%S+\")") && kept.contains("chroma_kept[b] or"), kept);
     }
 
     @Test
     void aGradientAlongXStartsWhereItWasMade() {
         List<PaletteEntry> steps = List.of(new PaletteEntry("minecraft:white_wool", ""), new PaletteEntry("minecraft:black_wool", ""));
-        String script = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.X, -1200, -300);
+        String script = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.X, -1200, -300, List.of());
         assertTrue(script.contains("local first = -1200\nlocal last = first + $int(Length, -300, -300, 300)$\n"), script);
         assertTrue(script.contains("local t = ((x - first)"), script);
     }
@@ -131,8 +134,8 @@ class AxiomScriptTest {
         assertThrows(IllegalArgumentException.class, () -> AxiomScript.recolour("P", List.of()));
         assertThrows(IllegalArgumentException.class, () -> AxiomScript.scatter(palette("P")));
         List<PaletteEntry> one = List.of(new PaletteEntry("minecraft:stone", ""));
-        assertThrows(IllegalArgumentException.class, () -> AxiomScript.gradient("G", one, AxiomScript.Axis.Y, 0, 4));
+        assertThrows(IllegalArgumentException.class, () -> AxiomScript.gradient("G", one, AxiomScript.Axis.Y, 0, 4, List.of()));
         List<PaletteEntry> two = List.of(new PaletteEntry("minecraft:stone", ""), new PaletteEntry("minecraft:dirt", ""));
-        assertThrows(IllegalArgumentException.class, () -> AxiomScript.gradient("G", two, AxiomScript.Axis.Y, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> AxiomScript.gradient("G", two, AxiomScript.Axis.Y, 0, 0, List.of()));
     }
 }
