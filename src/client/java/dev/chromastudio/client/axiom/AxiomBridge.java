@@ -80,7 +80,12 @@ public final class AxiomBridge {
         told = false;
     }
 
+    /**
+     * Turns every Axiom feature off for the session after {@code t}, with a reason the controls show and the player is
+     * told once in the world, and puts every tool's stroke and preview away.
+     */
     static void fail(Throwable t) {
+        if (broken != null) return;
         ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
         broken = Component.translatable("axiom.chromastudio.incompatible");
         try {
@@ -111,11 +116,13 @@ public final class AxiomBridge {
             }
             return;
         }
+        // Anything another version of Axiom throws, a missing method included, turns the features off rather than
+        // reaching the game loop.
         try {
             AxiomTools.tick();
             AxiomEditor.tick(mc);
-        } catch (LinkageError e) {
-            fail(e);
+        } catch (Throwable t) {
+            fail(t);
         }
     }
 

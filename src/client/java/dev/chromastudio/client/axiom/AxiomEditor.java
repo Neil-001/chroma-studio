@@ -63,21 +63,29 @@ final class AxiomEditor {
     static void leaveForWindow() {
         if (!known()) {
             // The window may open squeezed into the editor's view. Said once a session, as it may not be open at all.
-            if (!warned) {
-                warned = true;
-                Hud.readout(Component.translatable("axiom.chromastudio.editor.unknown"), Component.translatable("axiom.chromastudio.editor.unknown.how"),
-                        ModSettings.readoutSeconds);
-            }
+            if (!warned) tell();
             return;
         }
         // Axiom says it's active a frame late, so a player who has just pressed Axiom's own key would be counted wrongly
         // either way. Whether it's switched on changes at once.
-        if (!call(h -> (boolean) h.enabled.invoke())) return;
+        boolean on = call(h -> (boolean) h.enabled.invoke());
         // Until the editor counts as active, Axiom answers stone for its block, which would replace the one last seen.
-        if (active()) remember();
-        if (!call(h -> { h.disable.invoke(); return true; })) return;
-        left = true;
+        if (on && active()) remember();
+        if (on && call(h -> { h.disable.invoke(); return true; })) {
+            left = true;
+            return;
+        }
+        // A call that threw has turned the editor controls off, and the window may now open squeezed: said at once.
+        if (!known()) tell();
     }
+
+    /** Tells the player that Chroma Studio can't tell whether the editor is open, and what to do about it. */
+    private static void tell() {
+        warned = true;
+        Hud.readout(Component.translatable("axiom.chromastudio.editor.unknown"), Component.translatable("axiom.chromastudio.editor.unknown.how"),
+                ModSettings.readoutSeconds);
+    }
+
 
     /**
      * Call at the end of every client tick. Remembers the active block while the editor is open, and takes the player

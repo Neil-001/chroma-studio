@@ -122,16 +122,16 @@ final class ShadeBrushTool implements CustomTool {
             BlockState next = WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
             if (next != null) put.put(x, y, z, next);
         };
+        // The shades are fixed as the stroke starts, for the index it was queued with; a rebuilt index refuses it.
         try {
-            stroke.start(level, queue, AxiomPanel.radius(radius), _ -> painter);
+            return stroke.start(level, queue, AxiomPanel.radius(radius), _ -> painter);
         } catch (Refused _) {
             return false;
         }
-        return true;
     }
 
     /** Called every client tick. */
-    void tick(boolean closed) { stroke.tick(closed); }
+    void tick() { stroke.tick(); }
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {

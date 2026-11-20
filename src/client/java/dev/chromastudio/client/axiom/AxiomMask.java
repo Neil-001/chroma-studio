@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The player's tool masks in Axiom's editor, which Axiom's own brushes and its Script Brush keep to. Axiom's API
@@ -20,9 +21,16 @@ import net.minecraft.world.level.Level;
  *
  * <p>Only an Axiom with no {@code MaskManager} at all counts as having no masks: the tools then change every block they
  * reach, and their panels say so before the player starts. When it's there but not as this version knows it, or a call
- * into it has failed, the masks can't be read, so the tools change nothing until the game restarts, and a stroke or
- * Apply during which they failed sends nothing ({@link QueuedChanges#check}). A mask that can't be read never lets
+ * into it has failed, the masks can't be read, so the tools change nothing until the game restarts. A mask whose Lua
+ * script has an error answers no from then on, and Axiom says so only in its own error message, which stays until a
+ * fresh run of the script compiles or the player closes it. While it's there the masks count as failed, so a stroke or
+ * Apply sends nothing ({@link QueuedChanges#check}), and the panels say why. A mask that can't be read never lets
  * through what it might be keeping out.
+ *
+ * <p>Axiom applies the masks only while its Tool Masks window is open, docked or minimised; closed, every block passes,
+ * or the selection's when there is one. The tools follow Axiom in that, as its own brushes do, and the panels say which
+ * it is ({@link #applied}). A window opened or closed between a stroke and its sending changes what the masks answer,
+ * so the plan worked out again isn't the same, and nothing is sent.
  */
 final class AxiomMask {
     private AxiomMask() {}
@@ -37,10 +45,7 @@ final class AxiomMask {
 
     private static final Test EVERY_BLOCK = new Fixed(true, false), FAILED = new Fixed(false, true);
 
-    /**
-     * @param luaError Axiom's last Lua mask error: a mask's script that fails makes Axiom answer "no" for that block,
-     *                 and say so only here, so an answer given just before the failure would otherwise look trusted
-     */
+    /** @param luaError Axiom's last Lua mask error, which is the only sign that a mask's script failed */
     private record Handles(MethodHandle destMask, MethodHandle context, MethodHandle setPosition, MethodHandle test, MethodHandle luaError) {}
 
     private static final String MANAGER = "com.moulberry.axiom.mask.MaskManager";
@@ -58,6 +63,34 @@ final class AxiomMask {
                         lookup.findStaticGetter(Class.forName("com.moulberry.axiom.editor.windows.global_mask.ToolMaskWindow"), "luaExecutionError", String.class));
             });
 
+    /** Axiom's Tool Masks window, and the mode that turns the masks off for a tool's changes. */
+    private record Window(Object toolMasks, MethodHandle isOpen, MethodHandle mode) {}
+
+    /** Only the panels' line needs these, so when they're missing the masks are still followed, and the line says less. */
+    static final AxiomInternals<Window> WINDOW = new AxiomInternals<>("Axiom's Tool Masks window", Component.empty(), () -> {
+        MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+        Class<?> type = Class.forName("com.moulberry.axiom.editor.EditorWindowType");
+        return new Window(lookup.findStaticGetter(type, "TOOL_MASKS", type).invoke(),
+                lookup.findVirtual(type, "isOpen", MethodType.methodType(boolean.class)),
+                lookup.findStaticGetter(Class.forName(MANAGER), "mode", int[].class));
+    });
+
+    /**
+     * Whether Axiom applies the tool masks to a tool's changes now: only while its Tool Masks window is open, docked or
+     * minimised, and its mode doesn't turn them off, as {@code MaskManager.getDestMask} has it in this version. Nothing
+     * when that can't be told.
+     */
+    static Optional<Boolean> applied() {
+        if (WINDOW.reason().isPresent()) return Optional.empty();
+        Window w = WINDOW.handles();
+        try {
+            return Optional.of(((int[]) w.mode.invoke())[0] != 1 && (boolean) w.isOpen.invoke(w.toolMasks));
+        } catch (Throwable t) {
+            WINDOW.failed(t);
+            return Optional.empty();
+        }
+    }
+
     /** Whether this Axiom has no tool masks at all, as an older one might not, rather than masks this version can't read. */
     private static boolean none() {
         if (INTERNALS.found()) return false;
@@ -73,33 +106,48 @@ final class AxiomMask {
 
     /**
      * Why the masks aren't followed, or nothing when they are: this Axiom has none, so the tools change every block
-     * they reach, or they can't be read, so the tools change nothing until the game restarts.
+     * they reach; they can't be read, so the tools change nothing until the game restarts; or a mask's script has an
+     * error, so the tools change nothing until it's fixed or closed.
      */
     static Optional<Component> unavailable() {
-        if (INTERNALS.reason().isEmpty()) return Optional.empty();
+        if (INTERNALS.reason().isEmpty()) {
+            String error = luaError();
+            return error == null ? Optional.empty() : Optional.of(Component.translatable("axiom.chromastudio.mask.lua", error));
+        }
         return Optional.of(Component.translatable(INTERNALS.found() ? "axiom.chromastudio.mask.failed"
                 : none() ? "axiom.chromastudio.mask.changed" : "axiom.chromastudio.mask.unknown"));
     }
 
+    /** Axiom's Lua mask error as it is now, or null when there's none or the masks can't be read. */
+    private static @Nullable String luaError() {
+        if (INTERNALS.reason().isPresent()) return null;
+        try {
+            return (String) INTERNALS.handles().luaError.invoke();
+        } catch (Throwable t) {
+            INTERNALS.failed(t);
+            return null;
+        }
+    }
+
     /**
-     * The masks as they're set now, for one stroke or preview, in {@code level}. Every block passes when this Axiom has
-     * no masks, which the panels say. When they can't be read, or a call into them fails, this session or during the
-     * test's use, no block passes and the test says it failed.
+     * The masks as they're set now, for one stroke, preview or check, in {@code level}. Each test has a context of its
+     * own, as each of Axiom's brushes does, so a mask's script runs afresh. Every block passes when this Axiom has no
+     * masks, which the panels say. When they can't be read, or a call into them fails, no block passes and the test
+     * says it failed, as it does while Axiom's Lua mask error is set.
      */
     static Test now(Level level) {
         if (INTERNALS.reason().isPresent()) return none() ? EVERY_BLOCK : FAILED;
         Handles h = INTERNALS.handles();
-        Object mask, context, errorBefore;
+        Object mask, context;
         try {
             mask = h.destMask.invoke();
             context = h.context.invoke(level);
-            errorBefore = h.luaError.invoke();
         } catch (Throwable t) {
             INTERNALS.failed(t);
             return FAILED;
         }
         return new Test() {
-            private boolean failed;
+            private boolean threw;
             /**
              * Each position's first answer. A mask's script can answer differently each time it's asked, at random say,
              * and one stroke or preview must give a position one answer, or a door could be let through by halves.
@@ -108,30 +156,24 @@ final class AxiomMask {
 
             @Override
             public boolean allows(int x, int y, int z) {
-                if (failed) return false;
+                if (threw) return false;
                 return asked.computeIfAbsent(BuildSearch.pack(x, y, z), _ -> ask(x, y, z));
             }
 
             private boolean ask(int x, int y, int z) {
                 try {
                     h.setPosition.invoke(context, x, y, z);
-                    boolean allows = (boolean) h.test.invoke(mask, context);
-                    // A new Lua error, a string Axiom makes afresh each time, fails the whole stroke or preview, as a throw does.
-                    Object error = h.luaError.invoke();
-                    if (error != null && error != errorBefore) {
-                        failed = true;
-                        return false;
-                    }
-                    return allows;
+                    return (boolean) h.test.invoke(mask, context);
                 } catch (Throwable t) {
                     INTERNALS.failed(t);
-                    failed = true;
+                    threw = true;
                     return false;
                 }
             }
 
+            /** Read when it's asked, once the blocks have been, as running the script is what sets its error. */
             @Override
-            public boolean failed() { return failed; }
+            public boolean failed() { return threw || INTERNALS.reason().isPresent() || luaError() != null; }
         };
     }
 }

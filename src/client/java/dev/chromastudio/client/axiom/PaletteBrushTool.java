@@ -21,6 +21,7 @@ import dev.chromastudio.core.palette.QueuedChanges;
 import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.WeightedPick;
 import imgui.moulberry92.ImGui;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -35,6 +36,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -85,7 +87,6 @@ final class PaletteBrushTool implements CustomTool {
     }
 
     private final BrushStroke stroke = new BrushStroke();
-    private BrushStroke.Painter painter;
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private final BooleanRegion one = AxiomTools.regions.createBoolean();
     private int outlineRadius = -1;
@@ -102,7 +103,10 @@ final class PaletteBrushTool implements CustomTool {
 
     /** Why the last use or preview couldn't go ahead, shown in the panel until the next. */
     private @Nullable String said;
-    /** Why the last Apply didn't go, until the next use or Apply. */
+    /**
+     * Why the last Apply didn't go. Until the tool is used again, no new preview is made, so a second Apply has
+     * nothing to send.
+     */
     private @Nullable Component refused;
     /** The last build found, to show what sets the shading, as swatches from darkest to lightest. */
     private @Nullable FoundBuild found;
@@ -178,67 +182,60 @@ final class PaletteBrushTool implements CustomTool {
             clearPreview();
             return true;
         }
+        BrushStroke.Setup setup;
         if (mode == Mode.SCATTER) {
-            List<ScatterBlocks.Placed> blocks = ScatterBlocks.of(to).blocks();
-            if (blocks.isEmpty()) return false;
-            WeightedPick<ScatterBlocks.Placed> scatter = new WeightedPick<>(blocks, ScatterBlocks.Placed::weight);
             long seed = System.nanoTime();
-            // Painting over one half of a door or a tall plant would leave the other half on its own.
-            painter = (x, y, z, now, _, put) -> {
+            setup = _ -> {
+                List<ScatterBlocks.Placed> blocks = ScatterBlocks.of(to).blocks();
+                if (blocks.isEmpty()) return null;
+                WeightedPick<ScatterBlocks.Placed> scatter = new WeightedPick<>(blocks, ScatterBlocks.Placed::weight);
                 // Painting over one half of a door or a tall plant would leave the other half on its own.
-                if (!now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
+                return (x, y, z, now, _, put) -> {
+                    if (!now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
+                };
+            };
+        } else if (fromKey.equals(FROM_BUILD)) {
+            BlockHitResult hit = AxiomTools.tools.raycastBlock();
+            if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
+                said = tr("axiom.chromastudio.not_build");
+                return false;
+            }
+            BlockPos at = hit.getBlockPos().immutable();
+            Recolour.Mode m = match;
+            setup = lvl -> {
+                FoundBuild build = FoundBuild.from(lvl, at);
+                if (build == null) throw new Refused(Component.translatable("axiom.chromastudio.not_build"));
+                showFound(build);
+                // With From set to This build, a stroke that reaches another build leaves it alone.
+                Set<Long> inBuild = new HashSet<>();
+                for (long b : build.blocks()) inBuild.add(b);
+                return recolour(lvl, RecolourPlan.of(to, build.kinds(), m), inBuild);
             };
         } else {
-            Palette from;
-            Set<Long> build = null;
-            if (fromKey.equals(FROM_BUILD)) {
-                if (!find(level, AxiomTools.tools.raycastBlock())) return false;
-                from = found.kinds();
-                // With From set to This build, a stroke that reaches another build leaves it alone.
-                build = new HashSet<>();
-                for (long b : found.blocks()) build.add(b);
-            } else {
-                from = from();
-                if (fromGone()) {
-                    said = tr("axiom.chromastudio.brush.from_gone");
-                    return false;
-                }
-            }
-            RecolourPlan plan;
-            try {
-                plan = RecolourPlan.of(to, from, match);
-            } catch (Refused r) {
-                said = r.reason().getString();
+            if (fromGone()) {
+                said = tr("axiom.chromastudio.brush.from_gone");
                 return false;
             }
-            if (plan.size() == 0) {
-                said = tr("axiom.chromastudio.nothing_to_change");
-                return false;
-            }
-            Set<Long> inBuild = build;
-            // A door changes as a whole, its other half too, unless the masks or the build keep that half out.
-            painter = (x, y, z, _, admit, put) -> plan.change(level, x, y, z,
-                    (ax, ay, az) -> admit.test(ax, ay, az) && (inBuild == null || inBuild.contains(BuildSearch.pack(ax, ay, az))), put);
+            Palette from = from();
+            Recolour.Mode m = match;
+            setup = lvl -> recolour(lvl, RecolourPlan.of(to, from, m), null);
         }
-        BrushStroke.Painter p = painter;
         try {
-            stroke.start(level, queue, AxiomPanel.radius(radius), _ -> p);
+            return stroke.start(level, queue, AxiomPanel.radius(radius), setup);
         } catch (Refused r) {
             said = r.reason().getString();
             return false;
         }
-        return true;
     }
 
-    /** Finds the build at a block for the shading range, saying why not in the panel when there's none. */
-    private boolean find(ClientLevel level, @Nullable BlockHitResult hit) {
-        FoundBuild build = hit == null || hit.getType() != HitResult.Type.BLOCK ? null : FoundBuild.from(level, hit.getBlockPos());
-        if (build == null) {
-            said = tr("axiom.chromastudio.not_build");
-            return false;
-        }
-        showFound(build);
-        return true;
+    /**
+     * Paints by recolouring, as a recolour script into the palette would. A door changes as a whole, its other half
+     * too, unless the masks or {@code inBuild}, when there is one, keep that half out.
+     */
+    private static BrushStroke.Painter recolour(Level level, RecolourPlan plan, @Nullable Set<Long> inBuild) throws Refused {
+        if (plan.size() == 0) throw new Refused(Component.translatable("axiom.chromastudio.nothing_to_change"));
+        return (x, y, z, _, admit, put) -> plan.change(level, x, y, z,
+                (ax, ay, az) -> admit.test(ax, ay, az) && (inBuild == null || inBuild.contains(BuildSearch.pack(ax, ay, az))), put);
     }
 
     private void showFound(FoundBuild build) {
@@ -259,9 +256,9 @@ final class PaletteBrushTool implements CustomTool {
     }
 
     /** Called every client tick. The block the tool was used on is kept, so the preview comes back with the tool. */
-    void tick(boolean closed) {
-        stroke.tick(closed);
-        if (preview.tick(closed)) previewFor = null;
+    void tick() {
+        stroke.tick();
+        if (preview.tick()) previewFor = null;
     }
 
     private boolean wholeBuild() { return mode == Mode.RECOLOUR && wholeBuild; }
@@ -297,7 +294,8 @@ final class PaletteBrushTool implements CustomTool {
         Palette from = from();
         Object key = picked == null || to == null ? null : Arrays.asList(picked, to, toEdits.of(to), fromKey,
                 from == null ? 0 : fromEdits.of(from), match, BlockIndex.get().version());
-        if (!Objects.equals(key, previewFor)) {
+        // After a refused Apply, nothing is shown until the tool is used again.
+        if (refused == null && !Objects.equals(key, previewFor)) {
             makePreview(level, to, from);
             previewFor = key;
         }
@@ -318,68 +316,97 @@ final class PaletteBrushTool implements CustomTool {
         if (picked == null || to == null || !ChromaStudioApi.indexReady()) return;
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
         said = null;
-        FoundBuild build = FoundBuild.from(level, picked);
-        if (build == null) {
-            said = tr("axiom.chromastudio.not_build");
-            return;
-        }
-        showFound(build);
         if (fromGone()) {
             said = tr("axiom.chromastudio.brush.from_gone");
             return;
         }
-        RecolourPlan whole;
+        BlockPos at = picked;
+        Palette shading = fromKey.equals(FROM_BUILD) ? null : from;
+        boolean fromBuild = fromKey.equals(FROM_BUILD);
+        Recolour.Mode m = match;
+        AxiomMask.Test mask = AxiomMask.now(level);
+        WholeBuild made;
         try {
-            whole = RecolourPlan.of(to, fromKey.equals(FROM_BUILD) ? build.kinds() : from, match);
+            made = wholeBuild(level, at, to, shading, fromBuild, m, mask, queue);
         } catch (Refused r) {
             said = r.reason().getString();
             return;
         }
-        preview.begin(level, queue);
-        masked = 0;
+        showFound(made.build());
+        // A preview the masks failed while making could show blocks they were keeping out.
+        if (mask.failed()) {
+            said = AxiomMask.unavailable().orElse(AxiomChanges.refusal(QueuedChanges.Refusal.MASK_FAILED)).getString();
+            return;
+        }
+        masked = made.masked();
+        kindsBefore = made.kindsBefore();
+        kindsAfter = made.kindsAfter();
+        preview.show(queue, made.outlined(), again -> {
+            QueuedChanges<BlockState> redone = new QueuedChanges<>(queue.origin());
+            try {
+                wholeBuild(level, at, to, shading, fromBuild, m, again, redone);
+            } catch (Refused _) {
+                // Nothing to recolour now, which is never what the player saw.
+            }
+            return redone;
+        });
+    }
+
+    /** What recolouring a whole build works out to: the build, the blocks outlined, and what the panel says of it. */
+    record WholeBuild(FoundBuild build, long[] outlined, int masked, int kindsBefore, int kindsAfter) {}
+
+    /**
+     * Works out what recolouring the build at {@code at} into {@code to} does, with these masks, into {@code into}:
+     * every block of the build is asked about and recorded, changed or left as it is. The same steps make the preview
+     * and check it at Apply. {@code from} sets the shading range, or with {@code fromBuild} the build's own blocks do.
+     */
+    static WholeBuild wholeBuild(Level level, BlockPos at, Palette to, @Nullable Palette from, boolean fromBuild, Recolour.Mode match,
+                                 QueuedChanges.Mask mask, QueuedChanges<BlockState> into) throws Refused {
+        FoundBuild build = FoundBuild.from(level, at);
+        if (build == null) throw new Refused(Component.translatable("axiom.chromastudio.not_build"));
+        RecolourPlan whole = RecolourPlan.of(to, fromBuild ? build.kinds() : from, match);
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         Set<Block> before = new HashSet<>(), after = new HashSet<>();
+        LongArrayList outlined = new LongArrayList();
+        int masked = 0;
         // A door changes only when both its halves may: a capped search can hold one half without the other.
         Set<Long> inBuild = new HashSet<>();
         for (long p : build.blocks()) inBuild.add(p);
-        RecolourPlan.Admit admit = (x, y, z) -> preview.allows(x, y, z) && inBuild.contains(BuildSearch.pack(x, y, z));
+        RecolourPlan.Admit admit = (x, y, z) -> mask.allows(x, y, z) && inBuild.contains(BuildSearch.pack(x, y, z));
         for (long p : build.blocks()) {
             int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
             BlockState now = level.getBlockState(pos.set(x, y, z));
             before.add(now.getBlock());
+            boolean allowed = mask.allows(x, y, z);
             BlockState plain = whole.apply(now);
             boolean changes = plain != null && plain != now;
-            if (changes && !preview.allows(x, y, z)) {
+            if (changes && !allowed) {
                 masked++;
                 changes = false;
             }
             BlockState next = changes ? whole.apply(level, x, y, z, admit) : null;
             if (next == null) {
                 after.add(now.getBlock());
-                // It still joins the build the player saw, so Apply refuses if it changes meanwhile.
-                preview.watch(x, y, z, now);
+                into.leave(x, y, z, now);
                 continue;
             }
             after.add(next.getBlock());
-            preview.outline(x, y, z);
-            preview.change(x, y, z, now, next);
+            outlined.add(p);
+            into.add(x, y, z, now, next);
         }
-        kindsBefore = before.size();
-        kindsAfter = after.size();
-        preview.made();
+        return new WholeBuild(build, outlined.toLongArray(), masked, before.size(), after.size());
     }
 
     /**
-     * Sends the whole-build change to Axiom as one entry in its history, and starts over. When anything has changed
-     * since the preview was made, nothing is sent: the preview is made again from the world as it is now, for the
-     * player to check, and the panel says why. False when nothing was sent.
+     * Sends the whole-build change to Axiom as one entry in its history, and starts over. When working it out again
+     * now doesn't give what the preview shows, nothing is sent, the preview goes, and the panel says why and to use the
+     * tool again. False when nothing was sent.
      */
     private boolean apply() {
         if (preview.isEmpty()) return false;
         Optional<Component> why = preview.apply();
         if (why.isPresent()) {
             refused = why.get();
-            previewFor = null;
             return false;
         }
         reset();
@@ -439,7 +466,7 @@ final class PaletteBrushTool implements CustomTool {
             AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
         } else if (picked == null) {
             if (said == null) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.pick"));
-        } else if (found != null && said == null) {
+        } else if (found != null && said == null && refused == null) {
             AxiomPanel.wrapped(tr("axiom.chromastudio.count", preview.count(), found.blocks().length));
             if (masked > 0) AxiomPanel.wrapped(tr("axiom.chromastudio.masked", masked));
             AxiomPanel.note(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));

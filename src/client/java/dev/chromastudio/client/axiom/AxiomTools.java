@@ -35,7 +35,12 @@ final class AxiomTools {
     private static PaletteBrushTool brush;
     private static GradientTool gradient;
     private static ShadeBrushTool shade;
-    /** Counts the times the player has left Axiom's editor, so changes queued on one visit aren't made on the next. */
+    private static SamplerTool sampler;
+    /**
+     * Counts the times the player has left Axiom's editor, so changes queued on one visit aren't made on the next. It
+     * goes up whenever the editor is seen switched off having been seen on, read on every tick, every frame a tool of
+     * ours is drawn and every time changes are queued or sent.
+     */
     private static long visit;
     private static boolean wasOpen;
 
@@ -49,7 +54,7 @@ final class AxiomTools {
         gradient = new GradientTool();
         shade = new ShadeBrushTool();
         EyedropperTool eyedropper = new EyedropperTool();
-        SamplerTool sampler = new SamplerTool();
+        sampler = new SamplerTool();
         add(registry, brush, AxiomIcons.PALETTE_BRUSH);
         add(registry, eyedropper, AxiomIcons.EYEDROPPER);
         add(registry, gradient, AxiomIcons.GRADIENT);
@@ -57,23 +62,35 @@ final class AxiomTools {
         add(registry, sampler, AxiomIcons.SAMPLER);
     }
 
+    /** Hands a tool to Axiom, caught by {@link GuardedTool}, and gives it its icon. */
     static void add(ToolRegistryService registry, CustomTool tool, char icon) {
-        registry.register(tool);
-        AxiomIcons.give(tool, icon);
+        GuardedTool guarded = new GuardedTool(tool);
+        registry.register(guarded);
+        AxiomIcons.give(guarded, icon);
     }
 
     /** Called every client tick, for the tools to notice what Axiom doesn't tell them. */
     static void tick() {
-        // Whether the editor is switched on changes at once, where Axiom says it's active a frame late. When this Axiom
-        // can't say either, the tools' own check on being drawn stands alone.
-        boolean open = !AxiomEditor.known() || AxiomEditor.enabled();
-        boolean closed = wasOpen && !open;
-        if (closed) visit++;
-        wasOpen = open;
-        brush.tick(closed);
-        gradient.tick(closed);
-        shade.tick(closed);
+        // A stroke or preview notices the editor closing by the visit it was made in.
+        editorOn();
+        brush.tick();
+        gradient.tick();
+        shade.tick();
     }
+
+    /**
+     * Whether the editor is switched on now, which changes as soon as it's opened or closed, where Axiom says it's
+     * active a frame late. False when this Axiom can't say. Counts a visit when it was on and now isn't.
+     */
+    static boolean editorOn() {
+        boolean open = AxiomEditor.known() && AxiomEditor.enabled();
+        if (wasOpen && !open) visit++;
+        wasOpen = open;
+        return open;
+    }
+
+    /** The frame Axiom is drawing, for {@link Drawn}. Read only while a tool of ours is in use. */
+    static int frame() { return frames.getAsInt(); }
 
     /** Whether Chroma Studio's Axiom features are off for the session, so a tool Axiom still holds does nothing. */
     static boolean off() { return AxiomBridge.whyNot().isPresent(); }
@@ -81,7 +98,7 @@ final class AxiomTools {
     /** Drops every preview and stroke, as Axiom's features are turned off, so none is left in the world. */
     static void shutDown() {
         // Each on its own, so one that can't be put away doesn't leave the others' previews in the world.
-        for (CustomTool tool : new CustomTool[] {brush, gradient, shade}) {
+        for (CustomTool tool : new CustomTool[] {brush, gradient, shade, sampler}) {
             try {
                 if (tool != null) tool.reset();
             } catch (Throwable _) {
@@ -90,8 +107,11 @@ final class AxiomTools {
         }
     }
 
-    /** Which visit to Axiom's editor this is. */
-    static long visit() { return visit; }
+    /** Which visit to Axiom's editor this is, as of now. */
+    static long visit() {
+        editorOn();
+        return visit;
+    }
 
     /** One of Axiom's services. Throws when Axiom gives none, as another version of it might not. */
     static <T> T service(Class<T> type) {

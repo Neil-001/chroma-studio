@@ -4,12 +4,16 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
- * The blocks a tool means to change, each with what it saw there and what goes there, and the one rule for whether
- * they may still be sent. A stroke or a preview queues its changes as it goes; when the player lets go or presses
- * Apply, {@link #check} says whether everything that allowed them still holds. If anything doesn't, nothing is sent:
- * a tool never sends part of what the player saw, nor anything that might have outlived what allowed it.
+ * What a tool worked out to do, and the one rule for whether it may still be sent. A stroke or a preview is a plan:
+ * every position it looked at, each with the block it saw there, and for those it changes, what goes there instead.
+ * When the player lets go or presses Apply, {@link #check} works the plan out again, by the same steps, from the world
+ * and the tool masks as they are at that moment, and the plan may be sent only if that gives exactly the same. So
+ * whatever could change a decision, a block built or broken, a mask set otherwise, a build grown or a door completed,
+ * refuses the lot without having to be named here. Nothing is ever sent in part.
  *
  * @param <S> what a block is, compared with {@code equals}: the game's block states, which are each one object
  */
@@ -23,34 +27,26 @@ public final class QueuedChanges<S> {
         WORLD,
         /** The colours of the blocks were read again since, which can change what the tool would pick. */
         INDEX,
-        /** The player left the editor or the tool since, so the changes may be stale. */
+        /** The editor is closed, or was left since the changes were queued, so they may be stale. */
         EDITOR,
-        /** The tool masks couldn't be read, or failed partway. */
+        /** The tool masks couldn't be read, or failed partway, as a mask's script with an error does. */
         MASK_FAILED,
-        /** The tool masks now keep out a block that's queued. */
-        MASK_DENIES,
-        /** A queued block isn't what it was when it was queued. */
-        BLOCK_CHANGED
+        /** Worked out again now, the plan isn't the same. */
+        CHANGED
     }
 
     /** Where the changes are to be made: the world, the index's version and the visit to the editor they were made in. */
     public record Origin(Object world, int index, long visit) {}
 
-    /** A block in the world as it is now. */
-    @FunctionalInterface
-    public interface World<S> {
-        S at(int x, int y, int z);
-    }
-
     /** The player's tool masks as they are now. */
     public interface Mask {
         boolean allows(int x, int y, int z);
 
-        /** Whether a call into the masks failed, in which case no answer they gave can be trusted. */
+        /** Whether the masks failed while they were asked, in which case no answer they gave can be trusted. */
         boolean failed();
     }
 
-    /** Works out a tool's changes again, from the world as it is now and these masks. */
+    /** Works out a tool's plan again, by the steps that made it, from the world as it is now and these masks. */
     @FunctionalInterface
     public interface Plan<S> {
         QueuedChanges<S> make(Mask mask);
@@ -61,26 +57,28 @@ public final class QueuedChanges<S> {
 
     private final Origin origin;
     private final Map<Long, Change<S>> changes = new LinkedHashMap<>();
-    /**
-     * Blocks that stay as they are but decided what the tool does, such as the blocks that join a build, each with
-     * what was there: when one of them changes, what the player saw no longer holds, so nothing is sent.
-     */
-    private final Map<Long, Watched<S>> watched = new LinkedHashMap<>();
-
-    private record Watched<S>(int x, int y, int z, S was) {}
+    /** The positions the plan looked at and leaves as they are, each with what it saw there. */
+    private final Map<Long, S> left = new LinkedHashMap<>();
 
     public QueuedChanges(Origin origin) { this.origin = Objects.requireNonNull(origin); }
 
+    public Origin origin() { return origin; }
+
     /**
      * Queues a change. A position already queued keeps what was first seen there, so a stroke that comes back over
-     * a block it has queued is still checked against the world as it was, and takes the newer block to put there.
+     * a block it has queued still records the world as it was, and takes the newer block to put there.
      */
     public void add(int x, int y, int z, S was, S next) {
-        changes.merge(BuildSearch.pack(x, y, z), new Change<>(x, y, z, was, next), (old, now) -> new Change<>(x, y, z, old.was(), now.next()));
+        long p = BuildSearch.pack(x, y, z);
+        left.remove(p);
+        changes.merge(p, new Change<>(x, y, z, was, next), (old, now) -> new Change<>(x, y, z, old.was(), now.next()));
     }
 
-    /** Watches a block that stays as it is, so the changes are refused if it changes. A queued change there wins. */
-    public void leave(int x, int y, int z, S was) { watched.putIfAbsent(BuildSearch.pack(x, y, z), new Watched<>(x, y, z, was)); }
+    /** Records a position the plan looked at and leaves as it is. A queued change there wins. */
+    public void leave(int x, int y, int z, S was) {
+        long p = BuildSearch.pack(x, y, z);
+        if (!changes.containsKey(p)) left.putIfAbsent(p, was);
+    }
 
     public boolean isEmpty() { return changes.isEmpty(); }
 
@@ -90,24 +88,38 @@ public final class QueuedChanges<S> {
     public Iterable<Change<S>> changes() { return Collections.unmodifiableCollection(changes.values()); }
 
     /**
-     * Whether the changes may be sent now, from {@code now}. Every queued block is tested against the masks as they
-     * are now and compared with the world, as is every watched block, so a mask that was changed, or a block that
-     * another player broke or filled with a chest, refuses the lot. The masks are asked about every block before their failure is looked at, as
-     * asking is what makes a failure show.
+     * Whether two plans are the same: the same positions changed, each from the same block to the same block, and the
+     * same positions left alone, each seen holding the same block. Where they were made doesn't count.
      */
-    public Refusal check(Origin now, World<S> world, Mask mask) {
+    public boolean sameAs(QueuedChanges<S> other) { return changes.equals(other.changes) && left.equals(other.left); }
+
+    /**
+     * Whether the changes may be sent now. Refuses when nothing is queued, when the world, the index or the visit to
+     * the editor isn't the one the plan was made in, or when the editor is closed; then works the plan out again with
+     * {@code again} and fresh masks, and refuses when the masks failed while they were asked or the plan isn't the same.
+     * Where the player is and whether the editor is on are read again once the plan is made, as making it can take a
+     * while on a big build.
+     *
+     * @param now      where the changes would be made now, read at the moment it's asked
+     * @param editorOn whether the editor is switched on now
+     * @param masks    the tool masks as they're set now, asked afresh, so no earlier answer stands in for them
+     */
+    public Refusal check(Supplier<Origin> now, BooleanSupplier editorOn, Supplier<? extends Mask> masks, Plan<S> again) {
         if (changes.isEmpty()) return Refusal.EMPTY;
+        Refusal where = where(now.get(), editorOn.getAsBoolean());
+        if (where != Refusal.NONE) return where;
+        Mask mask = masks.get();
+        QueuedChanges<S> redone = again.make(mask);
+        if (mask.failed()) return Refusal.MASK_FAILED;
+        where = where(now.get(), editorOn.getAsBoolean());
+        if (where != Refusal.NONE) return where;
+        return sameAs(redone) ? Refusal.NONE : Refusal.CHANGED;
+    }
+
+    private Refusal where(Origin now, boolean editorOn) {
         if (now.world() != origin.world()) return Refusal.WORLD;
         if (now.index() != origin.index()) return Refusal.INDEX;
-        if (now.visit() != origin.visit()) return Refusal.EDITOR;
-        boolean denied = false, changed = false;
-        for (Change<S> c : changes.values()) {
-            denied |= !mask.allows(c.x(), c.y(), c.z());
-            changed |= !Objects.equals(world.at(c.x(), c.y(), c.z()), c.was());
-        }
-        for (Watched<S> w : watched.values()) changed |= !Objects.equals(world.at(w.x(), w.y(), w.z()), w.was());
-        if (mask.failed()) return Refusal.MASK_FAILED;
-        if (denied) return Refusal.MASK_DENIES;
-        return changed ? Refusal.BLOCK_CHANGED : Refusal.NONE;
+        if (now.visit() != origin.visit() || !editorOn) return Refusal.EDITOR;
+        return Refusal.NONE;
     }
 }

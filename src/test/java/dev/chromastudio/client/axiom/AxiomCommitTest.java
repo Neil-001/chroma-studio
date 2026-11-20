@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.moulberry.axiom.editor.EditorUI;
+import com.moulberry.axiom.editor.EditorWindowType;
 import com.moulberry.axiom.mask.MaskManager;
 import com.moulberry.axiom.tools.Tool;
 import com.moulberry.axiom.tools.ToolManager;
@@ -42,7 +43,8 @@ import org.junit.jupiter.api.Test;
  * working them out again, from the world, masks and editor as they are at that moment, gives exactly the same.
  */
 class AxiomCommitTest {
-    private static final BlockState STONE = Blocks.STONE.defaultBlockState(), BRICKS = Blocks.STONE_BRICKS.defaultBlockState();
+    /** Read once the game is loaded, as the game's blocks can't be made before. */
+    private BlockState STONE, BRICKS;
 
     private FakeAxiom axiom;
 
@@ -60,6 +62,8 @@ class AxiomCommitTest {
     @BeforeEach
     void install() {
         axiom = FakeAxiom.install();
+        STONE = Blocks.STONE.defaultBlockState();
+        BRICKS = Blocks.STONE_BRICKS.defaultBlockState();
         FakeAxiom.clearReadout();
     }
 
@@ -115,7 +119,7 @@ class AxiomCommitTest {
     private BuildPreview preview(QueuedChanges.Plan<BlockState> plan) {
         BuildPreview preview = new BuildPreview("test");
         QueuedChanges<BlockState> made = plan.make(AxiomMask.now(axiom.level));
-        preview.show(axiom.level, made, new long[0], plan);
+        preview.show(made, new long[0], plan);
         return preview;
     }
 
@@ -153,7 +157,7 @@ class AxiomCommitTest {
         frame(stroke, true, at(0));
         // Three frames draw another tool, quicker than a tick notices, and Axiom doesn't reset ours.
         axiom.frame += 3;
-        stroke.tick(false);
+        stroke.tick();
         frame(stroke, false);
         assertEquals(List.of(), axiom.tools.pushed);
         assertNotNull(stroke.refused());
@@ -166,7 +170,7 @@ class AxiomCommitTest {
         frame(stroke, true, at(0));
         // The game stalls for longer than a frame should take, with the same tool and editor open, and draws nothing.
         Thread.sleep(300);
-        stroke.tick(false);
+        stroke.tick();
         frame(stroke, true);
         frame(stroke, false);
         assertEquals(List.of(Map.of(at(0), BRICKS)), axiom.tools.pushed);
@@ -202,6 +206,21 @@ class AxiomCommitTest {
     }
 
     @Test
+    void closingTheToolMasksWindowSinceRefusesApplyAndThePanelSaysNoMaskApplies() {
+        axiom.level.put(0, 0, 0, STONE);
+        axiom.level.put(1, 0, 0, STONE);
+        MaskManager.mask = c -> c.x == 0;
+        assertEquals(java.util.Optional.of(true), AxiomMask.applied());
+        BuildPreview preview = preview(row());
+        assertEquals(1, preview.count());
+        // Axiom applies the masks only while its window is open, so closed, the mask no longer keeps the second block out.
+        EditorWindowType.TOOL_MASKS.open = false;
+        assertEquals(java.util.Optional.of(false), AxiomMask.applied());
+        assertEquals(FakeAxiom.refusal("changed"), preview.apply().orElse(null));
+        assertEquals(List.of(), axiom.tools.pushed);
+    }
+
+    @Test
     void aRefusedApplyLetsGoOfThePreviewSoNothingIsSentLater() {
         axiom.level.put(0, 0, 0, STONE);
         BuildPreview preview = preview(row());
@@ -229,7 +248,7 @@ class AxiomCommitTest {
             @Override
             public boolean callConfirm() { return preview.apply().isEmpty(); }
         }, 'x');
-        preview.show(axiom.level, plan.make(AxiomMask.now(axiom.level)), new long[0], plan);
+        preview.show(plan.make(AxiomMask.now(axiom.level)), new long[0], plan);
         axiom.tools.failPush = new AbstractMethodError("pushBlockRegionChange");
         assertDoesNotThrow(registered::callConfirm);
         assertEquals(java.util.Set.of(), axiom.tools.overriding);

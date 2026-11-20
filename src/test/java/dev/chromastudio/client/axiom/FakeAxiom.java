@@ -2,6 +2,7 @@ package dev.chromastudio.client.axiom;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.moulberry.axiom.editor.EditorUI;
+import com.moulberry.axiom.editor.EditorWindowType;
 import com.moulberry.axiom.editor.windows.global_mask.ToolMaskWindow;
 import com.moulberry.axiom.mask.MaskElement;
 import com.moulberry.axiom.mask.MaskManager;
@@ -87,6 +88,7 @@ final class FakeAxiom {
         ChromaStudioClient.platform = new Platform();
         AxiomBridge.forget();
         AxiomMask.INTERNALS.forget();
+        AxiomMask.WINDOW.forget();
         AxiomEditor.INTERNALS.forget();
         AxiomIcons.INTERNALS.forget();
         AxiomTools.regions = new Regions();
@@ -98,6 +100,8 @@ final class FakeAxiom {
         EditorUI.active = true;
         EditorUI.throwOnDisable = null;
         MaskManager.mask = _ -> true;
+        MaskManager.mode = new int[] {0};
+        EditorWindowType.TOOL_MASKS.open = true;
         ToolMaskWindow.luaExecutionError = null;
         ToolManager.tools = new ArrayList<>();
         ToolManager.keybindMap = new HashMap<>();
@@ -190,7 +194,8 @@ final class FakeAxiom {
         public void pushBlockRegionChange(BlockRegion region) {
             if (failPush instanceof Error e) throw e;
             if (failPush instanceof RuntimeException e) throw e;
-            pushed.add(Map.copyOf(((Blocks3) region).blocks));
+            // Copied into a hash map: an immutable copy probes badly on the clustered hashes of a big box's positions.
+            pushed.add(new LinkedHashMap<>(((Blocks3) region).blocks));
         }
 
         @Override

@@ -76,24 +76,23 @@ class HotbarWritesTest {
         assertEquals(Map.of(10, "diamond"), f.slots);
     }
 
-    // Each write first sets the four slots to what they hold, calls 0 to 3, so its own sets are calls 4 to 7.
+    // A write's own sets are calls 0 to 3, one a slot; putting back follows, last slot first.
 
     @Test
-    void aSlotThatRefusesToBeSetIsFoundBeforeAnythingChanges() {
+    void aSlotThatRefusesToBeSetHasWhatWasWrittenBeforeItPutBack() {
         Fake f = new Fake().with(0, 0, "torch").with(1, 1, "diamond");
-        // As the reviewer's case: the first slot takes, the second throws, and so does every set after it.
-        f.failSets = IntStream.range(1, 20).boxed().collect(Collectors.toSet());
+        f.failSets = Set.of(1);
         HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
         assertFalse(r.worked());
-        assertEquals(List.of(), r.undo(), "nothing was changed, so nothing is left for Undo");
-        assertEquals(2, f.sets, "nothing past the slot that refused was set");
+        assertEquals(List.of(), r.undo(), "everything was put back, so nothing is left for Undo");
+        assertEquals(4, f.sets, "nothing past the slot that refused was set, and both it and the first were put back");
         assertEquals(Map.of(0, "torch", 10, "diamond"), withoutEmpty(f.slots));
     }
 
     @Test
     void aSetThatThrowsHalfwayPutsBackWhatWasWritten() {
         Fake f = new Fake().with(0, 0, "torch").with(1, 1, "diamond");
-        f.failSets = Set.of(6);
+        f.failSets = Set.of(2);
         HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
         assertFalse(r.worked());
         assertEquals(List.of(), r.undo(), "nothing is left for Undo");
@@ -115,7 +114,7 @@ class HotbarWritesTest {
     void whenPuttingBackFailsTooUndoKeepsOnlyTheSlotsStillChanged() {
         Fake f = new Fake().with(0, 0, "torch");
         // The sets break for good after the first write: the second write throws, and so does every set after it.
-        f.failSets = IntStream.range(5, 30).boxed().collect(Collectors.toSet());
+        f.failSets = IntStream.range(1, 30).boxed().collect(Collectors.toSet());
         HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
         assertFalse(r.worked());
         assertTrue(r.failure().getSuppressed().length >= 1, "the failed put-back is kept with the cause");
@@ -144,7 +143,7 @@ class HotbarWritesTest {
     void aPutBackThatQuietlyDoesNothingIsCaughtAndLeftForUndo() {
         // The second write and the last put-back return without doing anything, so the first slot keeps the new item.
         Fake f = new Fake().with(0, 0, "torch");
-        f.ignoreSets = Set.of(5, 11);
+        f.ignoreSets = Set.of(1, 7);
         HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
         assertFalse(r.worked());
         assertEquals("stone", f.at(0, 0));
@@ -155,7 +154,7 @@ class HotbarWritesTest {
     void theSameExceptionThrownTwiceDoesNotEscape() {
         Fake f = new Fake().with(0, 0, "torch");
         f.reused = new IllegalStateException("Axiom's one exception");
-        f.failSets = IntStream.range(5, 30).boxed().collect(Collectors.toSet());
+        f.failSets = IntStream.range(1, 30).boxed().collect(Collectors.toSet());
         HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
         assertFalse(r.worked());
         assertEquals(f.reused, r.failure());
