@@ -330,7 +330,7 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
     }
 
     /** Whether the gradient may change a block, or put one in, as a whole: a full cube with no block entity. */
-    private static boolean paintable(BlockGetter level, BlockPos pos, BlockState s) {
+    static boolean paintable(BlockGetter level, BlockPos pos, BlockState s) {
         return !(s.getBlock() instanceof EntityBlock) && s.isCollisionShapeFullBlock(level, pos);
     }
 

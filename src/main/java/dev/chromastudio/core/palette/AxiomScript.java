@@ -41,9 +41,33 @@ public final class AxiomScript {
 
     /**
      * The properties by which a gradient script leaves a block alone: a stair, slab, wall, door, chest or any block
-     * that faces a way has one, which a full step would reshape, turn or empty.
+     * that faces a way has one, which a full step would reshape, turn or empty, and so do a head, a cauldron and a
+     * composter.
      */
-    public static final List<String> KEPT_BY_PROPERTY = List.of("waterlogged", "facing", "half", "orientation", "mode");
+    public static final List<String> KEPT_BY_PROPERTY = List.of("waterlogged", "facing", "half", "orientation", "mode", "rotation", "level");
+
+    /**
+     * The block tags by which a gradient script leaves a block alone: the ground, and families of blocks a full step
+     * would wrongly fill, such as flower pots and carpets.
+     */
+    public static final List<String> GRADIENT_TAGS = List.of("substrate_overworld", "sand", "flower_pots", "wool_carpets", "candle_cakes", "cauldrons");
+
+    /** The block tags by which a scatter script leaves a block alone: families of blocks that hold items or text. */
+    public static final List<String> SCATTER_TAGS = List.of("all_signs", "banners", "shulker_boxes", "copper_chests", "copper_golem_statues",
+            "wooden_shelves", "skulls", "campfires", "beehives");
+
+    /**
+     * What a script leaves alone besides what it always checks: blocks with any of {@code properties}; blocks with
+     * any of {@code tags}, only ones the game knows, as Axiom stops a script that asks about another; and the blocks
+     * it names, each by its id.
+     */
+    public record Kept(List<String> properties, List<String> tags, List<String> blocks) {
+        public Kept {
+            properties = List.copyOf(properties);
+            tags = List.copyOf(tags);
+            blocks = List.copyOf(blocks);
+        }
+    }
 
     /** The axis a gradient runs along. */
     public enum Axis { X, Y, Z }
@@ -177,24 +201,32 @@ public final class AxiomScript {
     /**
      * A brush that paints blocks from the palette at random, each as often as its weight says. As the palette brush's
      * Scatter does, it fills air too, unless its Paint air box is cleared, and leaves either half of a door or a tall
-     * plant alone, which would otherwise be left standing on its own.
+     * plant alone, which would otherwise be left standing on its own, and every block {@code kept} covers, which
+     * holds items or text, such as a chest or a sign.
      */
-    public static String scatter(Palette p) {
+    public static String scatter(Palette p, Kept kept) {
         if (p.entries.isEmpty()) throw new IllegalArgumentException("The palette is empty");
-        StringBuilder s = header(p.name, "Paints random blocks from the palette, as often as their weights say.");
+        // Only the title, as servers count comments toward the length they allow, and the chat says what it does.
+        StringBuilder s = new StringBuilder("-- Chroma Studio: ").append(safe(p.name)).append("\n\n");
         s.append(airControl(true));
         s.append("if chroma_picks == nil then\n");
-        s.append(indent(BLOCK_FUNCTION));
+        if (p.entries.stream().anyMatch(e -> !plain(e.blockId(), e.properties())) || kept.blocks().stream().anyMatch(id -> !plain(id, ""))) {
+            s.append(indent(BLOCK_FUNCTION));
+        }
         s.append("\tlocal picks, total = {}, 0\n");
         s.append("\tlocal function put(b, weight)\n");
         s.append("\t\tif b ~= nil then total = total + weight; picks[#picks + 1] = {total, b} end\n");
         s.append("\tend\n");
-        for (PaletteEntry e : p.entries) s.append("\tput(").append(ref(e.blockId(), e.properties())).append(", ").append(e.weight()).append(")\n");
+        for (PaletteEntry e : p.entries) s.append("\tput(").append(lookup(e.blockId(), e.properties())).append(", ").append(e.weight()).append(")\n");
         s.append("\tchroma_picks, chroma_total = picks, total\n");
+        // A table of its own, so a gradient script run in the same brush can't find this one's.
+        s.append(keptTable("chroma_skipped", kept.blocks()));
         s.append("end\n\n");
-        s.append(airCheck());
+        s.append("local b = getBlock(x, y, z)\n");
+        s.append("if not paint_air and b == blocks.air then return nil end\n");
         s.append("local half = getBlockProperty(getBlockState(x, y, z), \"half\")\n");
-        s.append("if half == \"upper\" or half == \"lower\" then return nil end\n");
+        s.append("if chroma_skipped[b] or half == \"upper\" or half == \"lower\" then return nil end\n");
+        s.append(checks(kept.properties(), kept.tags(), ""));
         s.append("""
                 if chroma_total == 0 then return nil end
                 local roll = math.random() * chroma_total
@@ -214,13 +246,13 @@ public final class AxiomScript {
      *
      * <p>It changes what the gradient tool would: solid blocks, but not the ground, and not a block whose shape a full
      * step would lose or whose contents it would empty. The script can't ask a block's shape or whether it holds
-     * anything, so it goes by its properties: a block with one of {@link #KEPT_BY_PROPERTY}, such as a stair, slab,
-     * wall, door or chest, is left alone, where the tool would give a stair the step's stair; and so is each block of
-     * {@code kept}, which holds items or data with none of those properties, such as a jukebox. Unlike the tool, it
-     * paints any other solid block the brush reaches, not only one build. Every step must be a full block, which the
-     * caller sees to.
+     * anything, so it goes by what it can ask: a block with no collision, one with one of {@link #KEPT_BY_PROPERTY},
+     * such as a stair, slab, wall, door or chest, or with a property or tag of {@code kept}, such as a turtle egg or a
+     * flower pot, is left alone, where the tool would give a stair the step's stair; and so is each block
+     * {@code kept} names, which the tool leaves and those checks miss, such as a jukebox or a brewing stand. Unlike the tool, it paints any other
+     * solid block the brush reaches, not only one build. Every step must be a full block, which the caller sees to.
      */
-    public static String gradient(String title, List<PaletteEntry> steps, Axis axis, int start, int length, List<String> kept) {
+    public static String gradient(String title, List<PaletteEntry> steps, Axis axis, int start, int length, Kept kept) {
         if (steps.size() < 2) throw new IllegalArgumentException("A gradient needs at least two steps");
         if (length == 0) throw new IllegalArgumentException("A gradient needs a length");
         // Only the title, as servers count comments toward the length they allow, and the chat says what it does.
@@ -242,17 +274,13 @@ public final class AxiomScript {
         s.append("if chroma_steps == nil then\n");
         // A plain block of the game is named directly, which keeps the script short enough for a server; only another
         // mod's block, or one with properties, needs the function that finds it.
-        if (steps.stream().anyMatch(e -> !plain(e.blockId(), e.properties())) || kept.stream().anyMatch(id -> !plain(id, ""))) s.append(indent(BLOCK_FUNCTION));
+        if (steps.stream().anyMatch(e -> !plain(e.blockId(), e.properties())) || kept.blocks().stream().anyMatch(id -> !plain(id, ""))) {
+            s.append(indent(BLOCK_FUNCTION));
+        }
         s.append("\tchroma_steps = {\n");
         for (PaletteEntry e : steps) s.append("\t\t").append(lookup(e.blockId(), e.properties())).append(" or false,\n");
         s.append("\t}\n");
-        s.append("\tchroma_kept = {}\n");
-        List<String> plain = kept.stream().filter(id -> plain(id, "")).map(AxiomScript::shortId).toList();
-        if (!plain.isEmpty()) {
-            s.append("\tfor _, k in ipairs({").append(String.join(", ", plain.stream().map(AxiomScript::quote).toList()))
-                    .append("}) do chroma_kept[blocks[k] or false] = true end\n");
-        }
-        for (String id : kept) if (!plain(id, "")) s.append("\tchroma_kept[").append(ref(id, "")).append(" or false] = true\n");
+        s.append(keptTable("chroma_kept", kept.blocks()));
         s.append("end\n\n");
         // As the gradient tool does: the ground, plants and blocks a full step would reshape or empty stay. No comment
         // says so in the script, as servers count comments toward the length they allow.
@@ -260,13 +288,14 @@ public final class AxiomScript {
                 local b = getBlock(x, y, z)
                 if b == blocks.air then
                 \tif not paint_air then return nil end
-                elseif chroma_kept[b] or not isSolid(b) or isBlockTagged(b, "substrate_overworld") or isBlockTagged(b, "sand") or b == blocks.gravel then
+                elseif chroma_kept[b] or not isSolid(b) then
                 \treturn nil
                 else
-                \tlocal s = getBlockState(x, y, z)
                 """);
-        s.append("\tfor _, p in ipairs({").append(String.join(", ", KEPT_BY_PROPERTY.stream().map(AxiomScript::quote).toList()))
-                .append("}) do if getBlockProperty(s, p) then return nil end end\nend\n");
+        List<String> properties = new ArrayList<>(KEPT_BY_PROPERTY);
+        for (String name : kept.properties()) if (!properties.contains(name)) properties.add(name);
+        s.append(checks(properties, kept.tags(), "\t"));
+        s.append("end\n");
         // Each step takes an equal share of the blocks from first to last, both ends included.
         s.append("local n = #chroma_steps\n");
         s.append("local span = last - first\n");
@@ -298,9 +327,37 @@ public final class AxiomScript {
         return s;
     }
 
+    /**
+     * Fills {@code table}, inside a script's first run, with the blocks it leaves alone, by id. The game's own are one
+     * string of names, which servers count only by its letters; another mod's are each found by the function that
+     * finds a block, which the script must then have.
+     */
+    private static String keptTable(String table, List<String> ids) {
+        StringBuilder s = new StringBuilder("\t").append(table).append(" = {}\n");
+        List<String> plain = ids.stream().filter(id -> plain(id, "")).map(AxiomScript::shortId).toList();
+        if (!plain.isEmpty()) s.append("\t").append(eachWord(plain, "k")).append(" ").append(table).append("[blocks[k] or false] = true end\n");
+        for (String id : ids) if (!plain(id, "")) s.append("\t").append(table).append("[").append(ref(id, "")).append(" or false] = true\n");
+        return s.toString();
+    }
+
+    /**
+     * Leaves block {@code b} alone when it has one of {@code properties} or {@code tags}. Whether a block has a
+     * property doesn't depend on its state, so the block's own id is asked.
+     */
+    private static String checks(List<String> properties, List<String> tags, String indent) {
+        StringBuilder s = new StringBuilder();
+        if (!properties.isEmpty()) s.append(indent).append(eachWord(properties, "p")).append(" if getBlockProperty(b, p) then return nil end end\n");
+        if (!tags.isEmpty()) s.append(indent).append(eachWord(tags, "t")).append(" if isBlockTagged(b, t) then return nil end end\n");
+        return s.toString();
+    }
+
+    /** {@code for v in string.gmatch("a b c", "%S+") do}, a loop over words, which is shorter than a table of strings. */
+    private static String eachWord(List<String> words, String v) {
+        return "for " + v + " in string.gmatch(" + quote(String.join(" ", words)) + ", \"%S+\") do";
+    }
+
     private static String airControl(boolean byDefault) { return "local paint_air = $boolean(Paint air, " + byDefault + ")$\n\n"; }
 
-    private static String airCheck() { return "if not paint_air and getBlock(x, y, z) == blocks.air then return nil end\n"; }
 
     /** A call that gives a block, written so that any id, however its path is spelled, comes through. */
     static String ref(String id, String properties) {

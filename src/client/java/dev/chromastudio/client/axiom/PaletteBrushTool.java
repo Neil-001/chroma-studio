@@ -39,7 +39,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -47,9 +46,9 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * An Axiom brush that paints with one of Chroma Studio's palettes. Scatter fills the brush's ball with the palette's
- * blocks, each as often as its weight says, as {@link ScatterBlocks} has them. Recolour changes each block the ball
- * touches as a recolour script into the palette would, through the same {@link RecolourPlan}, and so leaves the
- * ground, air and liquids alone. A stroke ({@link BrushStroke}) shows while the button is held and goes to Axiom as one
+ * blocks, each as often as its weight says, as {@link ScatterBlocks} has them, but not over a block that holds items,
+ * such as a chest. Recolour changes each block the ball touches as a recolour script into the palette would, through
+ * the same {@link RecolourPlan}, and so leaves the ground, air and liquids alone. A stroke ({@link BrushStroke}) shows while the button is held and goes to Axiom as one
  * change when it's let go, so one undo takes it back.
  *
  * <p>Recolour can also take a whole build at once: used on a block, the tool finds the build joined to it
@@ -243,9 +242,9 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             List<ScatterBlocks.Placed> blocks = ScatterBlocks.of(to).blocks();
             if (blocks.isEmpty()) return null;
             WeightedPick<ScatterBlocks.Placed> scatter = new WeightedPick<>(blocks, ScatterBlocks.Placed::weight);
-            // Painting over one half of a door or a tall plant would leave the other half on its own.
+            // Not over a chest or a sign, whose contents would be lost, nor one half of a door or a tall plant.
             return (x, y, z, now, _, put) -> {
-                if (!now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
+                if (ScatterBlocks.paintsOver(now)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
             };
         }
         if (fromKey.equals(FROM_BUILD)) {

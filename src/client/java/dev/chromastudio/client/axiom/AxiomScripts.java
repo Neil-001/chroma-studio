@@ -10,18 +10,28 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Recolour;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -69,7 +79,13 @@ final class AxiomScripts {
         for (ScatterBlocks.Placed b : blocks.blocks()) placed.entries.add(PaletteBlocks.of(b.state()).withWeight(b.weight()));
         MutableComponent summary = Component.translatable("axiom.chromastudio.scatter.done", placed.entries.size());
         if (!blocks.leftOut().isEmpty()) summary.append(" ").append(leftOut);
-        return made(AxiomScript.scatter(placed), summary, "axiom.chromastudio.long.brush", "axiom.chromastudio.too_long");
+        // As the brush's Scatter does, it leaves a block that holds items, or one half of a door or a tall plant; the
+        // script tells the halves by their property.
+        AxiomScript.Kept kept = kept(AxiomScript.SCATTER_TAGS, s -> !ScatterBlocks.paintsOver(s), s -> {
+            String half = property(s, "half");
+            return "upper".equals(half) || "lower".equals(half);
+        });
+        return made(AxiomScript.scatter(placed, kept), summary, "axiom.chromastudio.long.brush", "axiom.chromastudio.too_long");
     }
 
     /**
@@ -100,24 +116,92 @@ final class AxiomScripts {
             case Z -> at.getZ();
         };
         MutableComponent summary = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name().toLowerCase(Locale.ROOT));
-        if (full.size() < steps.size()) summary.append(" ").append(Component.translatable("axiom.chromastudio.gradient_tool.skipped", steps.size() - full.size()));
-        return made(AxiomScript.gradient(name, full, axis, start, full.size() * 2, kept()), summary, "axiom.chromastudio.long", "axiom.chromastudio.too_long");
+        int skipped = steps.size() - full.size();
+        if (skipped > 0) {
+            summary.append(" ").append(Component.translatable(skipped == 1 ? "axiom.chromastudio.gradient_tool.skipped.one" : "axiom.chromastudio.gradient_tool.skipped", skipped));
+        }
+        return made(AxiomScript.gradient(name, full, axis, start, full.size() * 2, gradientKept()), summary, "axiom.chromastudio.long", "axiom.chromastudio.too_long");
     }
 
     /**
-     * The full blocks that hold items or data, which the gradient tool leaves alone, and which have none of the
-     * properties by which the script leaves a block alone, such as a jukebox or a spawner, so the script names them.
+     * What a gradient script leaves alone: as the gradient tool does, each block but a full cube with nothing inside
+     * that a build is made of, as the tool would reshape it, empty it or not count it part of the build; but for air,
+     * which the script fills when its Paint air box is ticked. Most it tells by having no collision, a property such
+     * as {@code facing}, or a tag; the rest, such as a jukebox or a brewing stand, it names.
      */
-    static List<String> kept() {
-        List<String> out = new ArrayList<>();
-        for (Block b : BuiltInRegistries.BLOCK) {
-            BlockState s = b.defaultBlockState();
-            // The ground, such as suspicious sand, the script leaves alone already.
-            if (!(b instanceof EntityBlock) || RecolourPlan.ground(s) || !s.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) continue;
-            if (s.getProperties().stream().noneMatch(p -> AxiomScript.KEPT_BY_PROPERTY.contains(p.getName()))) out.add(BuiltInRegistries.BLOCK.getKey(b).toString());
-        }
-        return out;
+    static AxiomScript.Kept gradientKept() {
+        return kept(AxiomScript.GRADIENT_TAGS, s -> !s.isAir() && !(FoundBuild.member(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)
+                && GradientTool.paintable(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)), s -> {
+            // Axiom's isSolid asks about the block's default state, whatever state stands there.
+            return s.getBlock().defaultBlockState().getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty()
+                    || AxiomScript.KEPT_BY_PROPERTY.stream().anyMatch(p -> property(s, p) != null);
+        });
     }
+
+    /**
+     * What a script leaves alone: those of {@code tags} the game knows, and each block with a state that its tool
+     * {@code refuses} but which neither those tags nor the script's other checks, {@code caught}, would leave. Blocks
+     * are left whole, as a script can only ask which block stands somewhere. Where a property belongs only to blocks
+     * the tool leaves in every state, such as a turtle egg's {@code hatch}, the script asks for it in place of the
+     * blocks' names, when that's shorter, as servers limit how long a script may be.
+     */
+    private static AxiomScript.Kept kept(List<String> tags, Predicate<BlockState> refuses, Predicate<BlockState> caught) {
+        List<TagKey<Block>> known = new ArrayList<>();
+        List<String> tagNames = new ArrayList<>();
+        for (String t : tags) {
+            TagKey<Block> key = TagKey.create(Registries.BLOCK, Identifier.withDefaultNamespace(t));
+            if (BuiltInRegistries.BLOCK.get(key).isPresent()) {
+                known.add(key);
+                tagNames.add(t);
+            }
+        }
+        Set<Block> named = new LinkedHashSet<>();
+        // Each property, by name, and the blocks that have it; and the properties of a block the tool may change.
+        Map<String, List<Block>> holders = new TreeMap<>();
+        Set<String> changed = new HashSet<>();
+        for (Block b : BuiltInRegistries.BLOCK) {
+            List<BlockState> states = b.getStateDefinition().getPossibleStates();
+            boolean tagged = known.stream().anyMatch(b.defaultBlockState()::is);
+            if (!tagged && states.stream().anyMatch(s -> refuses.test(s) && !caught.test(s))) named.add(b);
+            boolean left = states.stream().allMatch(refuses);
+            for (Property<?> p : b.getStateDefinition().getProperties()) {
+                holders.computeIfAbsent(p.getName(), _ -> new ArrayList<>()).add(b);
+                if (!left) changed.add(p.getName());
+            }
+        }
+        // The property that saves the most letters, each time, of those only blocks the tool leaves alone have.
+        List<String> properties = new ArrayList<>();
+        while (true) {
+            String best = null;
+            int most = 0;
+            for (Map.Entry<String, List<Block>> h : holders.entrySet()) {
+                if (changed.contains(h.getKey())) continue;
+                int saved = h.getValue().stream().filter(named::contains).mapToInt(b -> name(b).length()).sum() - h.getKey().length();
+                if (saved > most) {
+                    best = h.getKey();
+                    most = saved;
+                }
+            }
+            if (best == null) break;
+            properties.add(best);
+            holders.get(best).forEach(named::remove);
+        }
+        return new AxiomScript.Kept(properties, tagNames, named.stream().map(b -> BuiltInRegistries.BLOCK.getKey(b).toString()).toList());
+    }
+
+    /** A block's id as a script names it: its path alone for one of the game's own. */
+    private static String name(Block b) {
+        Identifier id = BuiltInRegistries.BLOCK.getKey(b);
+        return id.getNamespace().equals("minecraft") ? id.getPath() : id.toString();
+    }
+
+    /** A property's value by name, as Axiom's {@code getBlockProperty} gives it, or null when the block hasn't it. */
+    private static @Nullable String property(BlockState s, String name) {
+        Property<?> p = s.getBlock().getStateDefinition().getProperty(name);
+        return p == null ? null : value(s, p);
+    }
+
+    private static <T extends Comparable<T>> String value(BlockState s, Property<T> p) { return p.getName(s.getValue(p)); }
 
     /** Puts a script on the clipboard. */
     static void copy(Script script) { Clipboard.copy(script.text()); }
