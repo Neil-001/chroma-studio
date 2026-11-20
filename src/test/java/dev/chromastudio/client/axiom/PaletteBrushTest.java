@@ -202,17 +202,20 @@ class PaletteBrushTest {
         assertNotNull(found);
         List<String> full = List.of("deepslate_bricks", "cobblestone", "andesite", "polished_andesite", "cracked_stone_bricks", "stone_bricks", "smooth_stone");
         for (String id : List.of("desert", "nether", "medieval")) {
-            RecolourPlan plan = RecolourPlan.of(preset(id), found.kinds(), Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
+            Palette to = preset(id);
+            RecolourPlan plan = RecolourPlan.of(to, found.kinds(), Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
             Map<String, String> out = new LinkedHashMap<>();
             for (String b : full) {
                 BlockState next = plan.apply(block(b).defaultBlockState());
                 out.put(b, next == null ? b : BuiltInRegistries.BLOCK.getKey(next.getBlock()).getPath());
             }
-            // With the build's own range and counts, the walls take the palette's main block, cracked stone bricks
+            // With the build's own range and counts, the walls take a main block of the palette, cracked stone bricks
             // with them, and cobblestone, andesite and polished andesite never collapse into one.
             String walls = out.get("stone_bricks");
             assertEquals(walls, out.get("cracked_stone_bricks"), id + " " + out);
-            assertEquals(Map.of("desert", "sandstone", "nether", "red_nether_bricks", "medieval", "stone_bricks").get(id), walls, id + " " + out);
+            // One of the blocks the preset means for the bulk of a build, weighted 2 or more, and never an accent.
+            int weight = to.entries.stream().filter(e -> e.blockId().equals("minecraft:" + walls)).mapToInt(PaletteEntry::weight).max().orElse(0);
+            assertTrue(weight >= 2, id + " " + out);
             assertTrue(new HashSet<>(List.of(out.get("cobblestone"), out.get("andesite"), out.get("polished_andesite"))).size() >= 2, id + " " + out);
             assertTrue(new HashSet<>(out.values()).size() >= 5, id + " " + out);
         }

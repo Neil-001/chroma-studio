@@ -44,7 +44,7 @@ record ScatterBlocks(List<Placed> blocks, List<PaletteEntry> leftOut) {
             if (state == null) continue;
             BlockState placed = placed(index, state);
             if (placed == null) leftOut.add(pe);
-            else weights.merge(placed, pe.weight(), Integer::sum);
+            else weights.merge(placed, pe.weight(), (a, b) -> (int) Math.min(Integer.MAX_VALUE, (long) a + b));
         }
         List<Placed> blocks = new ArrayList<>();
         weights.forEach((state, weight) -> blocks.add(new Placed(state, weight)));

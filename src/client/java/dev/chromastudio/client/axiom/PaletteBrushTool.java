@@ -26,9 +26,11 @@ import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -99,6 +101,8 @@ final class PaletteBrushTool implements CustomTool {
 
     // Set for the length of one stroke.
     private ToolPatherUnique pather;
+    /** With From set to This build, the build's blocks, so a stroke that reaches another build leaves it alone. */
+    private @Nullable Set<Long> strokeBuild;
     private WeightedPick<ScatterBlocks.Placed> scatter;
     private RecolourPlan plan;
     private AxiomMask.Test mask;
@@ -108,8 +112,9 @@ final class PaletteBrushTool implements CustomTool {
     private final BlockRegion change = AxiomTools.regions.createBlock();
     private final BooleanRegion touched = AxiomTools.regions.createBoolean();
     private final List<Planned> planned = new ArrayList<>();
-    /** The block the tool was used on, whose build is shown recoloured, or null. */
+    /** The block the tool was used on, whose build is shown recoloured, or null, and the world it's in. */
     private @Nullable BlockPos picked;
+    private @Nullable ClientLevel pickedIn;
     /** What the preview on show was made for, so it's made again only when something changes. */
     private @Nullable Object previewFor;
     private boolean overriding;
@@ -120,7 +125,7 @@ final class PaletteBrushTool implements CustomTool {
 
     // The panel's view of the palettes, made again only when they change.
     private List<Palette> listed = List.of();
-    private List<String> listedNames = List.of(), labels = List.of(), fromLabels = List.of();
+    private List<String> listedNames = List.of(), labels = List.of(), fromLabels = List.of(), keys = List.of();
     private String listedLanguage = "";
     private @Nullable Palette swatched;
     private List<PaletteEntry> swatchedEntries = List.of();
@@ -140,6 +145,7 @@ final class PaletteBrushTool implements CustomTool {
     public void reset() {
         endStroke();
         picked = null;
+        pickedIn = null;
         clearPreview();
     }
 
@@ -149,6 +155,7 @@ final class PaletteBrushTool implements CustomTool {
         scatter = null;
         plan = null;
         mask = null;
+        strokeBuild = null;
     }
 
     @Override
@@ -168,6 +175,9 @@ final class PaletteBrushTool implements CustomTool {
                 return false;
             }
             picked = at;
+            pickedIn = level;
+            // The old preview goes at once, so Apply can't send it before the new one has been made.
+            clearPreview();
             return true;
         }
         if (mode == Mode.SCATTER) {
@@ -180,6 +190,8 @@ final class PaletteBrushTool implements CustomTool {
             if (fromKey.equals(FROM_BUILD)) {
                 if (!find(level, AxiomTools.tools.raycastBlock())) return false;
                 from = found.kinds();
+                strokeBuild = new HashSet<>();
+                for (long b : found.blocks()) strokeBuild.add(b);
             } else {
                 from = from();
             }
@@ -270,7 +282,7 @@ final class PaletteBrushTool implements CustomTool {
         }
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         pather.update((x, y, z) -> {
-            if (!mask.allows(x, y, z)) return;
+            if (!mask.allows(x, y, z) || strokeBuild != null && !strokeBuild.contains(BuildSearch.pack(x, y, z))) return;
             BlockState now = level.getBlockState(pos.set(x, y, z));
             BlockState next = scatter != null ? scatter.at(seed, x, y, z).state() : plan.apply(now);
             if (next != null && next != now) stroke.addBlock(x, y, z, next);
@@ -281,10 +293,13 @@ final class PaletteBrushTool implements CustomTool {
     }
 
     private void renderBuild(IAxiomWorldRenderContext rc, ClientLevel level) {
+        // A preview belongs to the world it was made in, so a trip to another dimension or server doesn't carry it over.
+        if (picked != null && pickedIn != level) reset();
         Palette to = current();
         Palette from = from();
-        Object key = picked == null || to == null ? null : Arrays.asList(picked, to, List.copyOf(to.entries), fromKey,
-                from == null ? null : List.copyOf(from.entries), match, BlockIndex.get().version());
+        // The palettes' blocks by their hash, which changes with any edit, rather than a copy of them every frame.
+        Object key = picked == null || to == null ? null : Arrays.asList(picked, to, to.entries.hashCode(), fromKey,
+                from == null ? 0 : from.entries.hashCode(), match, BlockIndex.get().version());
         if (!Objects.equals(key, previewFor)) {
             preview(level, to, from);
             previewFor = key;
@@ -356,23 +371,26 @@ final class PaletteBrushTool implements CustomTool {
     }
 
     /**
-     * Sends the whole-build change to Axiom as one entry in its history, and starts over. A block that has changed
-     * since the preview was made, or that the tool masks now keep out, is left as it now is. False when there's
-     * nothing to change.
+     * Sends the whole-build change to Axiom as one entry in its history, and starts over. The preview is made again
+     * first, against the world and the tool masks as they are now: when that changes anything, as when a block was
+     * broken, the masks or selection changed, or the tool was just used on another build, the new preview stays on show
+     * for the player to check and nothing is sent. False when nothing was sent.
      */
     private boolean apply() {
         ClientLevel level = Minecraft.getInstance().level;
-        if (planned.isEmpty() || level == null) return false;
-        change.clear();
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        AxiomMask.Test allowed = AxiomMask.now(level);
-        for (Planned p : planned) {
-            if (level.getBlockState(pos.set(p.x(), p.y(), p.z())) == p.was() && allowed.allows(p.x(), p.y(), p.z())) change.addBlock(p.x(), p.y(), p.z(), p.next());
+        if (planned.isEmpty() || level == null || level != pickedIn) return false;
+        List<Planned> shown = List.copyOf(planned);
+        Object key = previewFor;
+        preview(level, current(), from());
+        previewFor = key;
+        drawn = System.nanoTime();
+        if (!planned.equals(shown)) {
+            refused = tr("axiom.chromastudio.brush.changed");
+            return false;
         }
-        boolean any = !change.isEmpty();
-        if (any) AxiomTools.tools.pushBlockRegionChange(change);
+        AxiomTools.tools.pushBlockRegionChange(change);
         reset();
-        return any;
+        return true;
     }
 
     @Override
@@ -386,7 +404,7 @@ final class PaletteBrushTool implements CustomTool {
             for (int i = 0; i < all.size(); i++) {
                 // A label is also ImGui's id for the row, and a player's palette may share a preset's name.
                 if (ImGui.selectable(labels.get(i) + "##" + i, all.get(i) == shown)) {
-                    paletteKey = key(all.get(i));
+                    paletteKey = keys.get(i);
                     remember();
                 }
             }
@@ -462,7 +480,7 @@ final class PaletteBrushTool implements CustomTool {
             if (ImGui.selectable(tr("axiom.chromastudio.from.any") + "##any", fromKey.equals(FROM_ANY))) setFrom(FROM_ANY);
             for (int i = 0; i < all.size(); i++) {
                 Palette p = all.get(i);
-                if (ImGui.selectable(fromLabels.get(i) + "##from" + i, p == chosen)) setFrom(key(p));
+                if (ImGui.selectable(fromLabels.get(i) + "##from" + i, p == chosen)) setFrom(keys.get(i));
             }
             ImGui.endCombo();
         }
@@ -498,8 +516,9 @@ final class PaletteBrushTool implements CustomTool {
         ImGui.endDisabled();
         ImGui.setItemTooltip(tr(picked == null ? "axiom.chromastudio.gradient_tool.cancel.none" : "axiom.chromastudio.brush.cancel.tip"));
         if (refused != null) ImGui.textWrapped(refused);
-        else if (picked == null) ImGui.textWrapped(tr("axiom.chromastudio.brush.pick"));
-        else if (found != null) {
+        if (picked == null) {
+            if (refused == null) ImGui.textWrapped(tr("axiom.chromastudio.brush.pick"));
+        } else if (found != null) {
             ImGui.textWrapped(tr("axiom.chromastudio.brush.count", change.count(), found.blocks().length));
             ImGui.textWrapped(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
             if (found.capped()) ImGui.textWrapped(tr("axiom.chromastudio.brush.capped", FoundBuild.CAP));
@@ -542,6 +561,7 @@ final class PaletteBrushTool implements CustomTool {
             listedNames = names;
             listedLanguage = language;
             labels = all.stream().map(PaletteStore.get()::shownName).toList();
+            keys = keys(all);
             fromLabels = all.stream().map(AxiomBridge::fromName).toList();
             swatched = null;
         }
@@ -577,21 +597,35 @@ final class PaletteBrushTool implements CustomTool {
     private @Nullable Palette current() {
         List<Palette> all = palettes();
         // The panel's choice, while it's still in the list: the player may have deleted it in Chroma Studio's window.
-        for (Palette p : all) if (key(p).equals(paletteKey)) return p;
+        for (int i = 0; i < all.size(); i++) if (keys.get(i).equals(paletteKey)) return all.get(i);
         Palette selected = PaletteStore.get().selected();
         return selected != null ? selected : all.isEmpty() ? null : all.getFirst();
     }
 
     /** The From palette, while it's still in the list, or null for the build or every block but the ground. */
     private @Nullable Palette from() {
-        for (Palette p : palettes()) if (key(p).equals(fromKey)) return p;
+        List<Palette> all = palettes();
+        for (int i = 0; i < all.size(); i++) if (keys.get(i).equals(fromKey)) return all.get(i);
         return null;
     }
 
-    /** How the panel's choices name a palette in the settings file: a preset by its id, the player's own by its name. */
-    static String key(Palette p) {
-        String preset = PaletteStore.get().presetId(p);
-        return preset != null ? "preset:" + preset : "own:" + p.name;
+    /**
+     * How the panel's choices name each palette in the settings file: a preset by its id, the player's own by its
+     * name, and a second palette of the player's with the same name by its name and how many came before it.
+     */
+    private static List<String> keys(List<Palette> all) {
+        List<String> out = new ArrayList<>();
+        Map<String, Integer> seen = new HashMap<>();
+        for (Palette p : all) {
+            String preset = PaletteStore.get().presetId(p);
+            if (preset != null) {
+                out.add("preset:" + preset);
+                continue;
+            }
+            int before = seen.merge(p.name, 1, Integer::sum) - 1;
+            out.add("own:" + p.name + (before == 0 ? "" : "#" + before));
+        }
+        return out;
     }
 
     /** Keeps the panel's choices for next session. */

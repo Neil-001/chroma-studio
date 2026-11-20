@@ -733,6 +733,7 @@
   "axiom.chromastudio.brush.count": "%s der %s Blöcke des Bauwerks ändern sich. Sie sind umrandet und so gezeigt, wie sie aussehen werden.",
   "axiom.chromastudio.brush.kinds": "Es hat jetzt %s Blockarten und wird %s haben.",
   "axiom.chromastudio.brush.capped": "Das Bauwerk ist zu groß, daher werden nur die %s Blöcke gezeigt, die der Stelle am nächsten liegen, an der du das Werkzeug benutzt hast.",
+  "axiom.chromastudio.brush.changed": "Das Bauwerk oder Axioms Werkzeugmasken haben sich seit der Vorschau geändert, daher wurde nichts geändert. Prüfe die Vorschau und drücke dann erneut Anwenden.",
   "axiom.chromastudio.brush.apply.none": "Noch nichts zu ändern. Benutze das Werkzeug zuerst an einem Bauwerk.",
   "axiom.chromastudio.brush.cancel.tip": "Löscht die Vorschau, ohne etwas zu ändern.",
   "axiom.chromastudio.brush.found": "Die Blöcke des Bauwerks, die die Schattierung bestimmen, vom dunkelsten zum hellsten:",

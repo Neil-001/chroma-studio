@@ -24,7 +24,7 @@ final class AxiomMask {
         boolean allows(int x, int y, int z);
     }
 
-    private static final Test EVERY_BLOCK = (_, _, _) -> true;
+    private static final Test EVERY_BLOCK = (_, _, _) -> true, NO_BLOCK = (_, _, _) -> false;
 
     private record Handles(MethodHandle destMask, MethodHandle context, MethodHandle setPosition, MethodHandle test) {}
 
@@ -44,8 +44,10 @@ final class AxiomMask {
     static Optional<Component> unavailable() { return INTERNALS.reason(); }
 
     /**
-     * The masks as they're set now, for one stroke or preview, in {@code level}. Every block passes when they can't
-     * be read. Ask it on the client thread, as Axiom does.
+     * The masks as they're set now, for one stroke or preview, in {@code level}. Every block passes when this version
+     * of Axiom doesn't share them, which the panel says. When a call into them fails partway, no block passes for the
+     * rest of that stroke or preview, so a mask that stopped working never lets through what it was keeping out.
+     * Ask it on the client thread, as Axiom does.
      */
     static Test now(Level level) {
         if (INTERNALS.reason().isPresent()) return EVERY_BLOCK;
@@ -53,18 +55,21 @@ final class AxiomMask {
         try {
             Object mask = h.destMask.invoke();
             Object context = h.context.invoke(level);
+            boolean[] broken = {false};
             return (x, y, z) -> {
+                if (broken[0]) return false;
                 try {
                     h.setPosition.invoke(context, x, y, z);
                     return (boolean) h.test.invoke(mask, context);
                 } catch (Throwable t) {
                     INTERNALS.failed(t);
-                    return true;
+                    broken[0] = true;
+                    return false;
                 }
             };
         } catch (Throwable t) {
             INTERNALS.failed(t);
-            return EVERY_BLOCK;
+            return NO_BLOCK;
         }
     }
 }

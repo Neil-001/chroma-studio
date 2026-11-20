@@ -732,6 +732,7 @@
   "axiom.chromastudio.brush.count": "%s of the build's %s blocks will change. They're outlined, and shown as they'll look.",
   "axiom.chromastudio.brush.kinds": "It has %s kinds of block now, and will have %s.",
   "axiom.chromastudio.brush.capped": "The build is too big, so only the %s blocks nearest where you used the tool are shown.",
+  "axiom.chromastudio.brush.changed": "The build or Axiom's tool masks changed since the preview, so nothing was changed. Check the preview, then press Apply again.",
   "axiom.chromastudio.brush.apply.none": "Nothing to change yet. Use the tool on a build first.",
   "axiom.chromastudio.brush.cancel.tip": "Clears the preview, changing nothing.",
   "axiom.chromastudio.brush.found": "The build's blocks, which set the shading, from darkest to lightest:",

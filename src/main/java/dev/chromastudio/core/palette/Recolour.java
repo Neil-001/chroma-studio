@@ -194,16 +194,12 @@ public final class Recolour {
         int main = -1, heaviest = -1;
         if (shades >= 3 && n >= 3) {
             for (int k = 1; k < shades - 1; k++) if (main < 0 || build.amount(k) > build.amount(main)) main = k;
-            // Only a block that leaves room for the shades on either side of it, all but one at most, so pinning the
-            // main shade doesn't crowd the rest onto a few blocks.
-            for (int j = 1; j < n - 1; j++) {
-                int crowded = Math.max(0, main - j) + Math.max(0, shades - 1 - main - (n - 1 - j));
-                if (crowded > 1) continue;
-                if (heaviest < 0 || weights[eligible[j]] > weights[eligible[heaviest]]
-                        || weights[eligible[j]] == weights[eligible[heaviest]] && away(at[main], from[j], to[j]) < away(at[main], from[heaviest], to[heaviest])) {
-                    heaviest = j;
-                }
-            }
+            // A block that leaves room for every shade on either side of it, so no two shades share. Only when the
+            // palette has blocks to spare and a block at least twice as heavy lies one place beyond that room may two
+            // neighbouring shades share to put the walls on it, as a builder would rather than on an accent.
+            int roomy = heaviest(eligible, at[main], from, to, main, shades, 0);
+            int crowded = n > shades ? heaviest(eligible, at[main], from, to, main, shades, 1) : -1;
+            heaviest = crowded >= 0 && (roomy < 0 || weights[eligible[crowded]] >= 2 * weights[eligible[roomy]]) ? crowded : roomy;
             if (heaviest < 0) main = -1;
         }
         // best[k][j]: the least cost for shades 0..k with shade k on block j; back[k][j] the block shade k-1 took.
@@ -238,6 +234,22 @@ public final class Recolour {
         return out;
     }
 
+    /**
+     * The heaviest of {@code eligible} between the ends that the main shade may take, leaving all but {@code crowded}
+     * of the other shades a block of their own, and the nearest its place among equals; -1 when there's none.
+     */
+    private int heaviest(int[] eligible, double at, double[] from, double[] to, int main, int shades, int crowded) {
+        int n = eligible.length, best = -1;
+        for (int j = 1; j < n - 1; j++) {
+            if (Math.max(0, main - j) + Math.max(0, shades - 1 - main - (n - 1 - j)) > crowded) continue;
+            if (best < 0 || weights[eligible[j]] > weights[eligible[best]]
+                    || weights[eligible[j]] == weights[eligible[best]] && away(at, from[j], to[j]) < away(at, from[best], to[best])) {
+                best = j;
+            }
+        }
+        return best;
+    }
+
     /** How far a place on a line is from a stretch of it, or 0 inside it. */
     private static double away(double at, double from, double to) { return Math.max(0, Math.max(from - at, at - to)); }
 
@@ -253,7 +265,7 @@ public final class Recolour {
      * A build's colours sorted into shades, from darkest to lightest. A colour joins the latest shade when it can't be
      * told from where that shade starts, unless both families are known and differ, or when it is of that shade's
      * family and only a little further off; otherwise it starts a shade of its own. Each shade also knows how much of
-     * the build it is: the sum of the square roots of its looks' weights.
+     * the build it is: the square root of its looks' weights together.
      */
     static final class Shades {
         /** How many times further than it can be told apart a block of the same family may be and still share a shade. */
@@ -293,11 +305,13 @@ public final class Recolour {
                     amounts.add(0.0);
                 }
                 shadeOf.putIfAbsent(key, shade);
-                // Counted as its square root, so a build's bulk material pulls its shade toward the palette's main
-                // block without squeezing the rest of the build's shades into a sliver of the palette.
-                double weight = Math.sqrt(Math.max(1, l.weight()));
-                amounts.set(shade, amounts.get(shade) + weight);
-                total += weight;
+                amounts.set(shade, amounts.get(shade) + Math.max(1, l.weight()));
+            }
+            // Counted as square roots, so a build's bulk material pulls its shade toward the palette's main block
+            // without squeezing the rest of the build's shades into a sliver of the palette.
+            for (int s = 0; s < amounts.size(); s++) {
+                amounts.set(s, Math.sqrt(amounts.get(s)));
+                total += amounts.get(s);
             }
         }
 

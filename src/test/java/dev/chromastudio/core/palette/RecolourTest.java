@@ -257,6 +257,33 @@ class RecolourTest {
         assertEquals("sandstone", recolourHouse(DESERT).get("stone_bricks"));
     }
 
+    @Test
+    void pinningTheMainShadeNeverMakesShadesShareWhenThereIsRoom() {
+        // Five plainly different shades, the middle one the bulk of the build, onto five blocks, the heaviest second.
+        List<Recolour.Look> palette = new ArrayList<>();
+        int[] paletteWeights = {1, 100, 1, 1, 1};
+        for (int i = 0; i < 5; i++) palette.add(new Recolour.Look(Color.of(new Oklab(0.15 + 0.18 * i, 0, 0)), false, paletteWeights[i]));
+        List<Recolour.Look> build = new ArrayList<>();
+        int[] counts = {1, 1, 100, 1, 1};
+        for (int i = 0; i < 5; i++) build.add(new Recolour.Look(Color.of(new Oklab(0.2 + 0.17 * i, 0, 0)), false, counts[i], "m" + i));
+        Recolour r = new Recolour(palette, build, Recolour.Mode.SHADING);
+        assertEquals(List.of(0, 1, 2, 3, 4), build.stream().map(r::pick).toList());
+    }
+
+    @Test
+    void variantsSharingAShadeCountAsOneMaterial() {
+        // A main wall of 90 blocks, and three variants of a trim at 20 each that share one shade: the wall is the bulk.
+        Recolour.Shades shades = new Recolour.Shades(List.of(
+                new Recolour.Look(Color.of(new Oklab(0.3, 0, 0)), false, 1, "dark"),
+                new Recolour.Look(Color.of(new Oklab(0.5, 0, 0)), false, 90, "wall"),
+                new Recolour.Look(Color.of(new Oklab(0.7, 0, 0)), false, 20, "trim"),
+                new Recolour.Look(Color.of(new Oklab(0.705, 0, 0)), false, 20, "trim"),
+                new Recolour.Look(Color.of(new Oklab(0.71, 0, 0)), false, 20, "trim"),
+                new Recolour.Look(Color.of(new Oklab(0.9, 0, 0)), false, 1, "light")));
+        assertEquals(4, shades.count());
+        assertTrue(shades.amount(1) > shades.amount(2), shades.amount(1) + " against " + shades.amount(2));
+    }
+
     private static Oklab[] grey(double... lightness) { return Arrays.stream(lightness).mapToObj(l -> new Oklab(l, 0, 0)).toArray(Oklab[]::new); }
 
     /** Looks of no family with these OKLab colours. */

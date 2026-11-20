@@ -733,6 +733,7 @@
   "axiom.chromastudio.brush.count": "建筑的 %2$s 个方块中有 %1$s 个将改变。它们已被框出，并显示为改变后的样子。",
   "axiom.chromastudio.brush.kinds": "它现在有 %1$s 种方块，改变后将有 %2$s 种。",
   "axiom.chromastudio.brush.capped": "建筑太大，因此只显示离你使用工具处最近的 %s 个方块。",
+  "axiom.chromastudio.brush.changed": "自预览后建筑或 Axiom 的工具遮罩已改变，因此未做任何更改。请检查预览，然后再次按“应用”。",
   "axiom.chromastudio.brush.apply.none": "还没有要改变的内容。请先对建筑使用此工具。",
   "axiom.chromastudio.brush.cancel.tip": "清除预览，不更改任何内容。",
   "axiom.chromastudio.brush.found": "决定明暗的建筑方块，从最暗到最亮：",
