@@ -129,7 +129,7 @@ public final class AxiomScript {
                 end
                 """);
         if (rows.stream().anyMatch(Remap::twoHigh)) s.append("""
-                -- A door changes as a whole: its other half takes the same block, even past the edge of the stroke.
+                -- A door changes as a whole: its other half takes the same block, even past the edge of the stroke or a mask.
                 local half = getBlockProperty(getBlockState(x, y, z), "half")
                 if half == "lower" or half == "upper" then
                 \tlocal oy = y + 1

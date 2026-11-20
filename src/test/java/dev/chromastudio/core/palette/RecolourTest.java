@@ -315,6 +315,19 @@ class RecolourTest {
         assertEquals(0, new Recolour.Shades(List.of()).count());
     }
 
+    @Test
+    void costsThatRoundToATieKeepTheEarlierBlock() {
+        // Two ways to hand out these shades cost the same once rounded; the earlier blocks win, as they always have.
+        int[] buildWeights = {9, 1, 1, 1, 16, 64}, paletteWeights = {4, 1, 1, 3, 3, 6, 4, 5, 5, 2, 7, 6, 5};
+        List<Recolour.Look> build = new ArrayList<>(), palette = new ArrayList<>();
+        for (int i = 0; i < buildWeights.length; i++)
+            build.add(new Recolour.Look(Color.of(new Oklab(0.1 + 0.5 * i / buildWeights.length, 0, 0)), false, buildWeights[i], "build " + i));
+        for (int i = 0; i < paletteWeights.length; i++)
+            palette.add(new Recolour.Look(Color.of(new Oklab(0.1 + 0.5 * i / paletteWeights.length, 0, 0)), false, paletteWeights[i], "palette " + i));
+        Recolour recolour = new Recolour(palette, build, Recolour.Mode.SHADING);
+        assertEquals(List.of(0, 3, 4, 5, 10, 12), build.stream().map(recolour::pick).toList());
+    }
+
     /** {@code count} looks of random colours, each of a family of its own so that none share a shade. */
     private static List<Recolour.Look> randomLooks(int count, long seed) {
         Random r = new Random(seed);
