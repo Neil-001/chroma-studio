@@ -7,11 +7,14 @@ import java.util.Set;
 
 /**
  * Writes items into numbered hotbars all or nothing, as far as that can be promised, and puts back what was there. The
- * hotbars are another mod's, read and written through calls that may throw or quietly not take, so every slot is
- * tried before anything changes and read back after the writes, and on any failure what was written is put back
- * before the caller hears of it. Calls that stop working partway, and stay broken, can't be put right at once, so
- * the caller is told exactly which slots were left changed. It is generic over the item so it can be tested without
- * the game.
+ * hotbars are another mod's, read and written through calls that may throw or quietly not take, so every slot is read
+ * before anything changes and read back after the writes, and on any failure what was written is put back before the
+ * caller hears of it. Calls that stop working partway, and stay broken, can't be put right at once, so the caller is
+ * told exactly which slots were left changed. It is generic over the item so it can be tested without the game.
+ *
+ * <p>Nothing is written to a slot before its new item: writing each slot's own item back first, to see that it can be
+ * set, would send the server a change for every slot and save the other mod's hotbars for nothing, and still couldn't
+ * tell a slot that quietly ignores writes. Reading back after the writes is what catches that.
  */
 public final class HotbarWrites {
     private HotbarWrites() {}
@@ -54,17 +57,15 @@ public final class HotbarWrites {
     }
 
     /**
-     * Puts each item in its slot, the two lists in step. Every slot is read before anything is written, and then set
-     * to what it already holds, so a failed read, or a slot that refuses to be set, changes nothing. A set that stops
-     * working only after that can still leave slots changed, which the result names for Undo.
+     * Puts each item in its slot, the two lists in step. Every slot is read before anything is written, so a failed
+     * read changes nothing. A set that throws or quietly doesn't take has what was written put back; one that stops
+     * working too can leave slots changed, which the result names for Undo.
      */
     public static <T> Result<T> write(Hotbars<T> hotbars, List<Slot> slots, List<T> items) {
         if (slots.size() != items.size()) throw new IllegalArgumentException(slots.size() + " slots for " + items.size() + " items");
         List<Was<T>> before = new ArrayList<>();
         try {
             for (Slot s : slots) before.add(new Was<>(s.hotbar(), s.slot(), hotbars.get(s.hotbar(), s.slot())));
-            Set<Slot> tried = new HashSet<>();
-            for (Was<T> w : before) if (tried.add(new Slot(w.hotbar(), w.slot()))) hotbars.set(w.hotbar(), w.slot(), w.item());
         } catch (Throwable t) {
             return new Result<>(List.of(), t);
         }

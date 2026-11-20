@@ -55,8 +55,12 @@ final class AxiomPanel {
             wrapped(off.get());
             return;
         }
-        if (ImGui.beginChild("##chromastudio", 0, 0, false)) panel.run();
-        ImGui.endChild();
+        // Closed whatever the panel throws, as ImGui left with an open child would fail on Axiom's next call into it.
+        try {
+            if (ImGui.beginChild("##chromastudio", 0, 0, false)) panel.run();
+        } finally {
+            ImGui.endChild();
+        }
     }
 
     /** Text as it is, on one line. */
@@ -185,6 +189,11 @@ final class AxiomPanel {
         // Said before the player starts, as these tools then change nothing.
         if (!AxiomEditor.known()) wrapped(tr("axiom.chromastudio.editor.unknown.tools"));
         AxiomMask.unavailable().ifPresentOrElse(why -> wrapped(why), () -> {
+            // Read each frame, so the line changes as the Tool Masks window is opened or closed.
+            if (AxiomMask.windowClosed().orElse(false)) {
+                wrapped(tr("axiom.chromastudio.masks.off"));
+                return;
+            }
             note(tr("axiom.chromastudio.masks"));
             tip(tr("axiom.chromastudio.masks.tip"));
         });
