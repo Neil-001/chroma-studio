@@ -15,6 +15,7 @@ Chroma Studio now works with Axiom, the building editor, on Fabric. In Axiom's e
 - Sample a build into a weighted palette with the Chroma build sampler, by brushing over it or taking the whole build (#60)
 - A recolour changes a door as a whole, so a door never ends up in two materials. A fill into Axiom's hotbars that fails partway names the slots it left changed, and Undo puts them back (#62)
 - The Chroma tools in Axiom's editor each have their own icon, and the palette brush, gradient tool and shade brush all follow Axiom's tool masks. A stroke or Apply changes everything you saw, or nothing if something changed meanwhile. The gradient tool straightens ends that are nearly in line, and a `%` in a palette or block name shows as written (#63)
+- Axiom's tool masks always fail safe: when the tools can't read them, or a mask fails during a stroke, nothing changes and the panel says why (#64)
 
 ## Fixes
 
