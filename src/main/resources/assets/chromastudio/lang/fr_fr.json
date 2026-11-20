@@ -739,6 +739,7 @@
   "axiom.chromastudio.masks": "Suit les masques d'outil d'Axiom",
   "axiom.chromastudio.masks.tip": "Pour limiter ce que l'outil change, par exemple seulement l'air ou seulement les blocs existants, définis un masque sous Tool Masks dans la barre de menus d'Axiom. Avec une sélection, il ne change que les blocs à l'intérieur. Axiom n'applique les masques que tant que sa fenêtre Tool Masks est ouverte, ancrée ou réduite.",
   "axiom.chromastudio.masks.off": "Aucun masque d'outil ne s'applique : la fenêtre Masques d'outil d'Axiom est fermée. Ouvre-la pour que cet outil respecte son masque.",
+  "axiom.chromastudio.preview.busy": "L'aperçu d'un autre outil est affiché dans le monde, comme celui de l'outil Texte d'Axiom peut l'être. Range cet outil, puis utilise à nouveau celui-ci.",
   "axiom.chromastudio.refused.world": "Rien n'a changé : tu es maintenant dans un autre monde ou une autre dimension.",
   "axiom.chromastudio.refused.index": "Rien n'a changé : Chroma Studio a relu les couleurs des blocs entre-temps. Réessaie.",
   "axiom.chromastudio.refused.editor": "Rien n'a changé : tu as quitté l'éditeur ou l'outil en cours de route. Réessaie.",

@@ -50,7 +50,7 @@ import org.jspecify.annotations.Nullable;
  * and Apply sends the whole change to Axiom as one entry in its history. Every change keeps to the player's tool
  * masks in Axiom ({@link AxiomMask}).
  */
-final class GradientTool implements CustomTool {
+final class GradientTool implements CustomTool, GuardedTool.PutAway {
     private static final int MAX_REACH = 64;
     /** The key for the gradient on the Gradient tab, which no saved gradient's name can be, as names are never blank. */
     private static final String ON_TAB = "";
@@ -124,6 +124,13 @@ final class GradientTool implements CustomTool {
         clearPreview();
     }
 
+    /** The ends are kept, so the preview comes back with the tool. */
+    @Override
+    public void putAway() {
+        preview.clear();
+        previewFor = null;
+    }
+
     private void clearPreview() {
         preview.clear();
         ends.clear();
@@ -142,6 +149,8 @@ final class GradientTool implements CustomTool {
         if (endsIn != level) reset();
         endsIn = level;
         refused = null;
+        // Using the tool again finds the build afresh, so a retry after a refused Apply sees what was built meanwhile.
+        searched = null;
         // The preview for the old ends goes at once, so Apply can't send it before the new one has been made.
         clearPreview();
         BlockPos at = hit.getBlockPos().immutable();
@@ -287,11 +296,12 @@ final class GradientTool implements CustomTool {
         covered = laid.covered();
         leftAlone = laid.leftAlone();
         masked = laid.masked();
-        preview.show(queue, laid.outlined(), again -> {
+        boolean shown = preview.show(queue, laid.outlined(), again -> {
             QueuedChanges<BlockState> redone = new QueuedChanges<>(queue.origin());
             lay(level, search(level, a, b, from, like, r), steps, back, mix, again, redone);
             return redone;
         });
+        if (!shown) refused = Component.translatable("axiom.chromastudio.preview.busy");
     }
 
     /** Whether the gradient may change a block, or put one in, as a whole: a full cube with no block entity. */

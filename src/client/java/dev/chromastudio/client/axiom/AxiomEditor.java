@@ -4,6 +4,7 @@ import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.client.ui.SettingsScreen;
+import imgui.moulberry92.ImGui;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -29,7 +30,9 @@ import org.jspecify.annotations.Nullable;
 final class AxiomEditor {
     private AxiomEditor() {}
 
-    private record Handles(MethodHandle active, MethodHandle enabled, MethodHandle enable, MethodHandle disable) {}
+    /** @param push {@code pushImGuiContext}, which makes the editor's ImGui context current and returns the one it replaced, for {@code pop} */
+    private record Handles(MethodHandle active, MethodHandle enabled, MethodHandle enable, MethodHandle disable, MethodHandle push, MethodHandle pop,
+                           MethodHandle contextActive) {}
 
     static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's editor controls",
             Component.translatable("axiom.chromastudio.editor.changed"), () -> {
@@ -37,7 +40,10 @@ final class AxiomEditor {
                 Class<?> ui = Class.forName("com.moulberry.axiom.editor.EditorUI");
                 MethodType bool = MethodType.methodType(boolean.class), none = MethodType.methodType(void.class);
                 return new Handles(lookup.findStatic(ui, "isActive", bool), lookup.findStatic(ui, "isEnabled", bool),
-                        lookup.findStatic(ui, "enable", none), lookup.findStatic(ui, "disable", none));
+                        lookup.findStatic(ui, "enable", none), lookup.findStatic(ui, "disable", none),
+                        lookup.findStatic(ui, "pushImGuiContext", MethodType.methodType(long.class)),
+                        lookup.findStatic(ui, "popImGuiContext", MethodType.methodType(void.class, long.class)),
+                        lookup.findStatic(ui, "isImGuiContextActive", bool));
             });
 
     /** Set when the window took the player out of the editor, until they're back in it or have gone elsewhere. */
@@ -55,6 +61,36 @@ final class AxiomEditor {
 
     /** Whether the editor is open. False when that can't be told. */
     static boolean active() { return call(h -> (boolean) h.active.invoke()); }
+
+    /**
+     * How many frames the editor's ImGui context has drawn, or -1 when that can't be told. Outside Axiom's own drawing
+     * the current ImGui context may be none at all, and asking it then crashes the game in native code, past any catch;
+     * so the editor's context is made current around the one question, as Axiom itself does, and only once Axiom says
+     * it has one.
+     */
+    static int frame() {
+        if (!known()) return -1;
+        Handles h = INTERNALS.handles();
+        long before;
+        try {
+            before = (long) h.push.invoke();
+        } catch (Throwable t) {
+            INTERNALS.failed(t);
+            return -1;
+        }
+        try {
+            return (boolean) h.contextActive.invoke() ? ImGui.getFrameCount() : -1;
+        } catch (Throwable t) {
+            INTERNALS.failed(t);
+            return -1;
+        } finally {
+            try {
+                h.pop.invoke(before);
+            } catch (Throwable t) {
+                INTERNALS.failed(t);
+            }
+        }
+    }
 
     /** The active block as Axiom last gave it while its editor was open, or null when it hasn't been open. */
     static @Nullable BlockState lastActiveBlock() { return lastActiveBlock; }

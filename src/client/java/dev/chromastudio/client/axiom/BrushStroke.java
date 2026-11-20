@@ -96,6 +96,11 @@ final class BrushStroke {
     /** Forgets why the last stroke wasn't made, as when the tool is used again. */
     void forget() { refused = null; }
 
+    /** Drops a stroke on now as left partway, as when Axiom picks another tool, saying so. */
+    void away() {
+        if (queued != null) refuse(QueuedChanges.Refusal.EDITOR);
+    }
+
     /** Drops the stroke without changing anything. */
     void cancel() {
         shown.clear();

@@ -17,6 +17,12 @@ public final class EditorUI {
 
     public static void enable() { enabled = true; }
 
+    public static long pushImGuiContext() { return 0; }
+
+    public static void popImGuiContext(long previous) {}
+
+    public static boolean isImGuiContextActive() { return false; }
+
     public static void disable() {
         if (throwOnDisable != null) throw throwOnDisable;
         enabled = false;

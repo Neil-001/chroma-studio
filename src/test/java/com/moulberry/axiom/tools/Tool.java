@@ -8,4 +8,7 @@ public interface Tool {
     char iconChar();
 
     String name();
+
+    /** Called on the tool being left when Axiom picks another, whatever its "Clear tool when swapping" says. */
+    default void toolDeselected() {}
 }

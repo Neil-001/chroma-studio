@@ -48,6 +48,8 @@ final class AxiomChanges {
         if (why != QueuedChanges.Refusal.NONE) return Optional.of(refusal(why));
         BlockRegion region = AxiomTools.regions.createBlock();
         for (QueuedChanges.Change<BlockState> c : changes.changes()) region.addBlock(c.x(), c.y(), c.z(), c.next());
+        // The index is rebuilt on its own thread; one published since the check counts, as near the send as can be.
+        if (BlockIndex.get().version() != changes.origin().index()) return Optional.of(refusal(QueuedChanges.Refusal.INDEX));
         AxiomTools.tools.pushBlockRegionChange(region);
         return Optional.empty();
     }

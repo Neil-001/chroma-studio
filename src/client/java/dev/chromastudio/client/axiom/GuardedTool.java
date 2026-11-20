@@ -12,6 +12,21 @@ import java.util.function.BooleanSupplier;
  * no preview is left in the world. Once the features are off, the tool does nothing.
  */
 record GuardedTool(CustomTool tool) implements CustomTool {
+    /** A tool with a stroke or preview to put away the moment Axiom picks another tool. */
+    interface PutAway {
+        /**
+         * Drops the stroke on now, as left partway, and lets go of the preview's hold on the world's look, which
+         * Axiom gives one tool at a time: the next tool may take it at once. What the tool was used on is kept, so
+         * a preview comes back with the tool.
+         */
+        void putAway();
+    }
+
+    /** Called when Axiom picks another tool, which it always says, unlike {@link #reset}. */
+    void deselected() {
+        if (tool instanceof PutAway away) run(away::putAway);
+    }
+
     @Override
     public String name() {
         try {

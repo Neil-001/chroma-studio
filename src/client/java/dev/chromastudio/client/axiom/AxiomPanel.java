@@ -190,7 +190,7 @@ final class AxiomPanel {
         if (!AxiomEditor.known()) wrapped(tr("axiom.chromastudio.editor.unknown.tools"));
         AxiomMask.unavailable().ifPresentOrElse(why -> wrapped(why), () -> {
             // Read each frame, so the line changes as the Tool Masks window is opened or closed.
-            if (!AxiomMask.applied().orElse(true)) {
+            if (AxiomMask.windowClosed().orElse(false)) {
                 wrapped(tr("axiom.chromastudio.masks.off"));
                 return;
             }

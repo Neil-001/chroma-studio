@@ -59,7 +59,7 @@ import org.jspecify.annotations.Nullable;
  * shades. Every change keeps to the player's tool masks in Axiom ({@link AxiomMask}). The panel's choices are kept in
  * {@link ModSettings}.
  */
-final class PaletteBrushTool implements CustomTool {
+final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     /** From choices that aren't palettes: the build the tool is used on, and every block but the ground. */
     private static final String FROM_BUILD = "build", FROM_ANY = "any";
     /** The most of a build's kinds the panel shows. */
@@ -148,6 +148,12 @@ final class PaletteBrushTool implements CustomTool {
         picked = null;
         pickedIn = null;
         refused = null;
+        clearPreview();
+    }
+
+    @Override
+    public void putAway() {
+        stroke.away();
         clearPreview();
     }
 
@@ -341,7 +347,7 @@ final class PaletteBrushTool implements CustomTool {
         masked = made.masked();
         kindsBefore = made.kindsBefore();
         kindsAfter = made.kindsAfter();
-        preview.show(queue, made.outlined(), again -> {
+        boolean shown = preview.show(queue, made.outlined(), again -> {
             QueuedChanges<BlockState> redone = new QueuedChanges<>(queue.origin());
             try {
                 wholeBuild(level, at, to, shading, fromBuild, m, again, redone);
@@ -350,6 +356,7 @@ final class PaletteBrushTool implements CustomTool {
             }
             return redone;
         });
+        if (!shown) said = tr("axiom.chromastudio.preview.busy");
     }
 
     /** What recolouring a whole build works out to: the build, the blocks outlined, and what the panel says of it. */

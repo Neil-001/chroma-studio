@@ -5,7 +5,6 @@ import com.moulberry.axiomclientapi.service.RegionProvider;
 import com.moulberry.axiomclientapi.service.ToolPatherProvider;
 import com.moulberry.axiomclientapi.service.ToolRegistryService;
 import com.moulberry.axiomclientapi.service.ToolService;
-import imgui.moulberry92.ImGui;
 import java.util.ServiceLoader;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
@@ -26,11 +25,8 @@ final class AxiomTools {
     static ToolService tools;
     /** The world the player is in, or null. Tests stand in their own. */
     static Supplier<ClientLevel> level = () -> Minecraft.getInstance().level;
-    /**
-     * How many frames Axiom's editor has drawn, which goes up by one each frame it draws. Read only while a tool of
-     * ours is in use, as there's no count before Axiom's editor has first drawn. Tests stand in their own.
-     */
-    static IntSupplier frames = () -> ImGui.getFrameCount();
+    /** How many frames Axiom's editor has drawn, or -1 when that can't be told ({@link AxiomEditor#frame}). Tests stand in their own. */
+    static IntSupplier frames = AxiomEditor::frame;
     /** The tools that need to notice what Axiom doesn't tell them, for {@link #tick}. */
     private static PaletteBrushTool brush;
     private static GradientTool gradient;
@@ -89,7 +85,7 @@ final class AxiomTools {
         return open;
     }
 
-    /** The frame Axiom is drawing, for {@link Drawn}. Read only while a tool of ours is in use. */
+    /** The frame Axiom is drawing, for {@link Drawn}, or -1 when that can't be told. */
     static int frame() { return frames.getAsInt(); }
 
     /** Whether Chroma Studio's Axiom features are off for the session, so a tool Axiom still holds does nothing. */

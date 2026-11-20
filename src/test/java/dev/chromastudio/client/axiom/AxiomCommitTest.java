@@ -210,12 +210,12 @@ class AxiomCommitTest {
         axiom.level.put(0, 0, 0, STONE);
         axiom.level.put(1, 0, 0, STONE);
         MaskManager.mask = c -> c.x == 0;
-        assertEquals(java.util.Optional.of(true), AxiomMask.applied());
+        assertEquals(java.util.Optional.of(false), AxiomMask.windowClosed());
         BuildPreview preview = preview(row());
         assertEquals(1, preview.count());
         // Axiom applies the masks only while its window is open, so closed, the mask no longer keeps the second block out.
         EditorWindowType.TOOL_MASKS.open = false;
-        assertEquals(java.util.Optional.of(false), AxiomMask.applied());
+        assertEquals(java.util.Optional.of(true), AxiomMask.windowClosed());
         assertEquals(FakeAxiom.refusal("changed"), preview.apply().orElse(null));
         assertEquals(List.of(), axiom.tools.pushed);
     }
@@ -282,6 +282,53 @@ class AxiomCommitTest {
         assertEquals(FakeAxiom.refusal("changed"), stroke.refused());
     }
 
+    /** A tool with a preview, as the whole-build tools have, which it puts away when Axiom picks another tool. */
+    private static final class PreviewTool implements CustomTool, GuardedTool.PutAway {
+        final BuildPreview preview = new BuildPreview("test");
+
+        @Override
+        public String name() { return "Test tool"; }
+
+        @Override
+        public void putAway() { preview.clear(); }
+    }
+
+    @Test
+    void pickingAnotherToolLetsGoOfThePreviewAtOnceThoughAxiomDoesntResetIt() {
+        axiom.level.put(0, 0, 0, STONE);
+        // Axiom's own entry for the tool, which its tool grid holds and tells when another tool is picked.
+        ToolManager.tools.add(new Tool() {
+            @Override
+            public char iconChar() { return 'o'; }
+
+            @Override
+            public String name() { return "Test tool"; }
+        });
+        PreviewTool tool = new PreviewTool();
+        axiom.register(tool, 'x');
+        QueuedChanges.Plan<BlockState> plan = row();
+        assertTrue(tool.preview.show(plan.make(AxiomMask.now(axiom.level)), new long[0], plan));
+        // With "Clear tool when swapping" off, Axiom calls only this as another tool is picked, which may take the
+        // world's look straight away, as its Text tool does.
+        ToolManager.tools.getFirst().toolDeselected();
+        assertEquals(java.util.Set.of(), axiom.tools.overriding);
+        assertTrue(tool.preview.isEmpty());
+        assertDoesNotThrow(() -> axiom.tools.acquireChunkRenderOverrider("axiom_text"));
+    }
+
+    @Test
+    void aPreviewWhileAnotherToolHoldsTheWorldsLookShowsNothingAndKeepsTheFeaturesOn() {
+        axiom.level.put(0, 0, 0, STONE);
+        axiom.tools.acquireChunkRenderOverrider("axiom_text");
+        QueuedChanges.Plan<BlockState> plan = row();
+        BuildPreview preview = new BuildPreview("test");
+        assertFalse(preview.show(plan.make(AxiomMask.now(axiom.level)), new long[0], plan));
+        assertTrue(preview.isEmpty());
+        assertTrue(preview.apply().isEmpty());
+        assertEquals(List.of(), axiom.tools.pushed);
+        assertTrue(AxiomBridge.whyNot().isEmpty());
+    }
+
     @Test
     void anIconIsLeftAsThePencilWhenAxiomKeysTheToolsEntry() {
         Tool entry = new Tool() {
@@ -293,7 +340,7 @@ class AxiomCommitTest {
         };
         ToolManager.tools.add(entry);
         ToolManager.keybindMap.put(entry, "bound");
-        AxiomIcons.give(() -> "Test tool", 'x');
+        AxiomIcons.give(new GuardedTool(() -> "Test tool"), 'x');
         assertTrue(ToolManager.tools.getFirst() == entry);
     }
 
@@ -307,7 +354,7 @@ class AxiomCommitTest {
             public String name() { return "Test tool"; }
         };
         ToolManager.tools.add(entry);
-        AxiomIcons.give(() -> "Test tool", 'x');
+        AxiomIcons.give(new GuardedTool(() -> "Test tool"), 'x');
         assertEquals('x', ToolManager.tools.getFirst().iconChar());
         assertEquals("Test tool", ToolManager.tools.getFirst().name());
     }

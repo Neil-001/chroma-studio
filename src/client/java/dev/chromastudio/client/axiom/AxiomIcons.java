@@ -51,7 +51,7 @@ final class AxiomIcons {
      * Gives {@code added}, just registered through Axiom's API, the icon {@code icon}. Leaves it with the pencil when
      * Axiom's list isn't as this version of Chroma Studio knows it.
      */
-    static void give(CustomTool added, char icon) {
+    static void give(GuardedTool added, char icon) {
         if (INTERNALS.reason().isPresent()) return;
         Handles h = INTERNALS.handles();
         try {
@@ -63,7 +63,7 @@ final class AxiomIcons {
                 Object entry = tools.get(i);
                 if (!h.tool.isInstance(entry) || !name.equals(h.name.invoke(entry))) continue;
                 if (((Map<?, ?>) h.keybinds.invoke()).containsKey(entry)) throw new IllegalStateException("Axiom keys the entry for " + name);
-                Object swapped = Proxy.newProxyInstance(h.tool.getClassLoader(), new Class<?>[] {h.tool}, new WithIcon(entry, icon, h.iconChar));
+                Object swapped = Proxy.newProxyInstance(h.tool.getClassLoader(), new Class<?>[] {h.tool}, new WithIcon(entry, icon, h.iconChar, added));
                 tools.set(i, swapped);
                 try {
                     if (tools.get(i) != swapped || !name.equals(h.name.invoke(swapped))) throw new IllegalStateException("Axiom's tool list didn't take the entry for " + name);
@@ -79,11 +79,20 @@ final class AxiomIcons {
         }
     }
 
-    /** Axiom's own entry for a tool, answering {@code icon} for its icon. Equal only to itself, as Axiom keys maps by it. */
-    private record WithIcon(Object entry, char icon, Method iconChar) implements InvocationHandler {
+    /**
+     * Axiom's own entry for a tool, answering {@code icon} for its icon. Equal only to itself, as Axiom keys maps by it.
+     * It also tells the tool when Axiom picks another, which Axiom says only to its own tools' entries, through
+     * {@code toolDeselected}: with "Clear tool when swapping" off it calls nothing else.
+     */
+    private record WithIcon(Object entry, char icon, Method iconChar, GuardedTool tool) implements InvocationHandler {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             if (method.equals(iconChar)) return icon;
+            if (method.getName().equals("toolDeselected") && method.getParameterCount() == 0) {
+                Object out = pass(method, args);
+                tool.deselected();
+                return out;
+            }
             switch (method.getName()) {
                 case "equals" -> {
                     if (method.getParameterCount() == 1) return proxy == args[0];
@@ -93,6 +102,10 @@ final class AxiomIcons {
                 }
                 default -> {}
             }
+            return pass(method, args);
+        }
+
+        private Object pass(Method method, Object[] args) throws Throwable {
             try {
                 return method.invoke(entry, args);
             } catch (InvocationTargetException e) {

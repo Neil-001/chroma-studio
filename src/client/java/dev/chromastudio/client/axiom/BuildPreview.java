@@ -30,17 +30,27 @@ final class BuildPreview {
 
     /**
      * Shows {@code plan} in the world, with the blocks in {@code outlined} outlined. Apply sends it only when
-     * {@code again}, the steps that made it, makes the same again from the world and masks as they are then.
+     * {@code again}, the steps that made it, makes the same again from the world and masks as they are then. False,
+     * showing nothing, when another tool holds the world's look, which Axiom gives one tool at a time: its Text tool
+     * keeps it while it's put away with "Clear tool when swapping" off.
      */
-    void show(QueuedChanges<BlockState> plan, long[] outlined, QueuedChanges.Plan<BlockState> again) {
+    boolean show(QueuedChanges<BlockState> plan, long[] outlined, QueuedChanges.Plan<BlockState> again) {
         clear();
+        try {
+            AxiomTools.tools.acquireChunkRenderOverrider(id);
+        } catch (LinkageError | VirtualMachineError e) {
+            // Not a hold by another tool, but this Axiom or the game failing: GuardedTool turns the features off.
+            throw e;
+        } catch (Error | RuntimeException _) {
+            return false;
+        }
         queued = plan;
         this.again = again;
-        AxiomTools.tools.acquireChunkRenderOverrider(id);
         overriding = true;
         for (QueuedChanges.Change<BlockState> c : plan.changes()) AxiomTools.tools.setBlockRenderOverride(c.x(), c.y(), c.z(), c.next());
         for (long p : outlined) outline.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
         drawn.start(AxiomTools.frame());
+        return true;
     }
 
     /** How many blocks will change. */

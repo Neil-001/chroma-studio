@@ -69,7 +69,7 @@ import org.jspecify.annotations.Nullable;
  * A stroke ({@link BrushStroke}) shows while the button is held and goes to Axiom as one change when it's let go, so
  * one undo takes it back. Every change keeps to the player's tool masks in Axiom ({@link AxiomMask}).
  */
-final class ShadeBrushTool implements CustomTool {
+final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     /** The lightness of a step at each size the slider offers, in OKLab. Small is about one shade a builder can see. */
     private static final double[] STEPS = {0.03, 0.045, 0.06, 0.08, 0.1};
     /**
@@ -102,6 +102,9 @@ final class ShadeBrushTool implements CustomTool {
 
     @Override
     public void reset() { stroke.cancel(); }
+
+    @Override
+    public void putAway() { stroke.away(); }
 
     @Override
     public boolean callUseTool() {

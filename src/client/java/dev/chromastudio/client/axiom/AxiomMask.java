@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Axiom applies the masks only while its Tool Masks window is open, docked or minimised; closed, every block passes,
  * or the selection's when there is one. The tools follow Axiom in that, as its own brushes do, and the panels say which
- * it is ({@link #applied}). A window opened or closed between a stroke and its sending changes what the masks answer,
+ * it is ({@link #windowClosed}). A window opened or closed between a stroke and its sending changes what the masks answer,
  * so the plan worked out again isn't the same, and nothing is sent.
  */
 final class AxiomMask {
@@ -63,28 +63,26 @@ final class AxiomMask {
                         lookup.findStaticGetter(Class.forName("com.moulberry.axiom.editor.windows.global_mask.ToolMaskWindow"), "luaExecutionError", String.class));
             });
 
-    /** Axiom's Tool Masks window, and the mode that turns the masks off for a tool's changes. */
-    private record Window(Object toolMasks, MethodHandle isOpen, MethodHandle mode) {}
+    /** Axiom's Tool Masks window. */
+    private record Window(Object toolMasks, MethodHandle isOpen) {}
 
     /** Only the panels' line needs these, so when they're missing the masks are still followed, and the line says less. */
     static final AxiomInternals<Window> WINDOW = new AxiomInternals<>("Axiom's Tool Masks window", Component.empty(), () -> {
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
         Class<?> type = Class.forName("com.moulberry.axiom.editor.EditorWindowType");
         return new Window(lookup.findStaticGetter(type, "TOOL_MASKS", type).invoke(),
-                lookup.findVirtual(type, "isOpen", MethodType.methodType(boolean.class)),
-                lookup.findStaticGetter(Class.forName(MANAGER), "mode", int[].class));
+                lookup.findVirtual(type, "isOpen", MethodType.methodType(boolean.class)));
     });
 
     /**
-     * Whether Axiom applies the tool masks to a tool's changes now: only while its Tool Masks window is open, docked or
-     * minimised, and its mode doesn't turn them off, as {@code MaskManager.getDestMask} has it in this version. Nothing
-     * when that can't be told.
+     * Whether Axiom's Tool Masks window is closed now, so no mask applies, as {@code MaskManager.getDestMask} has it in
+     * this version: masks apply only while it's open, docked or minimised. Nothing when that can't be told.
      */
-    static Optional<Boolean> applied() {
+    static Optional<Boolean> windowClosed() {
         if (WINDOW.reason().isPresent()) return Optional.empty();
         Window w = WINDOW.handles();
         try {
-            return Optional.of(((int[]) w.mode.invoke())[0] != 1 && (boolean) w.isOpen.invoke(w.toolMasks));
+            return Optional.of(!(boolean) w.isOpen.invoke(w.toolMasks));
         } catch (Throwable t) {
             WINDOW.failed(t);
             return Optional.empty();

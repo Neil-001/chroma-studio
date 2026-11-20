@@ -738,6 +738,7 @@
   "axiom.chromastudio.masks": "Follows Axiom's tool masks",
   "axiom.chromastudio.masks.tip": "To limit what the tool changes, such as only air or only existing blocks, set a mask under Tool Masks in Axiom's menu bar. With a selection, it changes only blocks inside it. Axiom applies masks only while its Tool Masks window is open, docked or minimised.",
   "axiom.chromastudio.masks.off": "No tool mask applies: Axiom's Tool Masks window is closed. Open it to keep this tool to its mask.",
+  "axiom.chromastudio.preview.busy": "Another tool's preview is showing in the world, as Axiom's Text tool's can be. Put that tool away, then use this tool again.",
   "axiom.chromastudio.refused.world": "Nothing changed: you're in another world or dimension now.",
   "axiom.chromastudio.refused.index": "Nothing changed: Chroma Studio read the blocks' colours again meanwhile. Try again.",
   "axiom.chromastudio.refused.editor": "Nothing changed: you left the editor or the tool partway. Try again.",

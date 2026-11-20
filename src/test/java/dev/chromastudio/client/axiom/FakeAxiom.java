@@ -216,13 +216,16 @@ final class FakeAxiom {
         @Override
         public ExecutorService getSharedSingleThreadExecutor() { throw new UnsupportedOperationException(); }
 
+        /** As Axiom's: one holder at a time, and an {@code Error} for anyone else who asks. */
         @Override
         public void acquireChunkRenderOverrider(String id) {
-            if (!overriding.add(id)) throw new IllegalStateException(id + " is already held");
+            if (!overriding.isEmpty()) throw new Error("Chunk render overrider is already locked by " + overriding.iterator().next());
+            overriding.add(id);
         }
 
         @Override
         public void releaseChunkRenderOverrider(String id) {
+            if (!overriding.contains(id)) throw new Error("Chunk render overrider isn't locked by " + id);
             overriding.remove(id);
             overrides.clear();
         }
