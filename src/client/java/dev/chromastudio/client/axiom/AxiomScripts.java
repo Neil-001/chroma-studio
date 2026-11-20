@@ -1,6 +1,7 @@
 package dev.chromastudio.client.axiom;
 
 import dev.chromastudio.client.action.Clipboard;
+import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.axiom.AxiomBridge.Refused;
 import dev.chromastudio.client.axiom.AxiomBridge.Script;
 import dev.chromastudio.core.export.ClipboardSize;
@@ -8,12 +9,16 @@ import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Recolour;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -48,17 +53,31 @@ final class AxiomScripts {
      * a step, which the brush's own controls then change.
      */
     static Script gradient(String name, List<PaletteEntry> steps, AxiomScript.Axis axis) throws Refused {
-        if (steps.size() < 2) throw new Refused(Component.translatable("axiom.chromastudio.gradient.too_short"));
         Minecraft mc = Minecraft.getInstance();
-        BlockPos at = mc.player == null ? BlockPos.ZERO : mc.player.blockPosition();
+        return gradient(name, steps, axis, mc.player == null ? BlockPos.ZERO : mc.player.blockPosition());
+    }
+
+    /**
+     * {@link #gradient(String, List, AxiomScript.Axis)} from {@code at}. As the gradient tool does, it paints only the
+     * steps that are full blocks with nothing inside, which this game has, and says how many it left out: a chain
+     * or a slab would leave holes in a wall, and a chest would come empty.
+     */
+    static Script gradient(String name, List<PaletteEntry> steps, AxiomScript.Axis axis, BlockPos at) throws Refused {
+        if (steps.size() < 2) throw new Refused(Component.translatable("axiom.chromastudio.gradient.too_short"));
+        List<PaletteEntry> full = new ArrayList<>();
+        for (PaletteEntry e : steps) {
+            BlockState s = PaletteBlocks.state(e);
+            if (s != null && !(s.getBlock() instanceof EntityBlock) && s.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) full.add(e);
+        }
+        if (full.size() < 2) throw new Refused(Component.translatable("axiom.chromastudio.gradient_tool.missing"));
         int start = switch (axis) {
             case X -> at.getX();
             case Y -> at.getY();
             case Z -> at.getZ();
         };
-        return made(AxiomScript.gradient(name, steps, axis, start, steps.size() * 2),
-                Component.translatable("axiom.chromastudio.gradient.done", steps.size(), axis.name().toLowerCase(Locale.ROOT)), "axiom.chromastudio.long",
-                "axiom.chromastudio.too_long");
+        MutableComponent summary = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name().toLowerCase(Locale.ROOT));
+        if (full.size() < steps.size()) summary.append(" ").append(Component.translatable("axiom.chromastudio.gradient_tool.skipped", steps.size() - full.size()));
+        return made(AxiomScript.gradient(name, full, axis, start, full.size() * 2), summary, "axiom.chromastudio.long", "axiom.chromastudio.too_long");
     }
 
     /** Puts a script on the clipboard. */

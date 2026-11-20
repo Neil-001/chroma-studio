@@ -69,7 +69,7 @@ class AxiomScriptTest {
         assertTrue(script.contains("local roll = math.random() * chroma_total\n"), script);
         // As the palette brush's Scatter does: it fills air too, and leaves either half of a door or tall plant.
         assertEquals(List.of("$boolean(Paint air, true)$"), controls(script));
-        assertTrue(script.contains("if getBlockProperty(getBlockState(x, y, z), \"half\") ~= nil then return nil end\n"), script);
+        assertTrue(script.contains("if half == \"upper\" or half == \"lower\" then return nil end\n"), script);
     }
 
     @Test
