@@ -827,6 +827,7 @@
   "axiom.chromastudio.shade.point": "Zeige auf einen Block, um zu sehen, was der Pinsel daraus macht.",
   "axiom.chromastudio.shade.becomes": "Wird zu",
   "axiom.chromastudio.shade.left.never": "Bleibt unverändert. Der Pinsel ändert den Farbton von festen Blöcken, Stufen, Treppen, Mauern und Zäunen. Durchsichtige Blöcke und Blöcke mit Inhalt lässt er aus.",
+  "axiom.chromastudio.shade.left.turns": "Bleibt, wie er ist. Der Pinsel lässt Blöcke, die in eine Richtung zeigen, wie Stämme und glasierte Keramik, unverändert, weil jede Seite anders aussieht.",
   "axiom.chromastudio.shade.left.ground": "Bleibt unverändert. Der Pinsel lässt Grasblock, Erde, Sand und Kies in Ruhe.",
   "axiom.chromastudio.shade.left.kind": "Bleibt unverändert. Diese Art von Block ist unter „Ändert“ abgeschaltet.",
   "axiom.chromastudio.shade.left.darker": "Bleibt unverändert. Kein Block ist einen Schritt dunkler und zugleich in Farbe und Textur ähnlich genug.",

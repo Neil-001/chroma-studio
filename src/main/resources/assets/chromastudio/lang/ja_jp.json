@@ -827,6 +827,7 @@
   "axiom.chromastudio.shade.point": "ブロックに照準を合わせると、ブラシでどう変わるかが分かります。",
   "axiom.chromastudio.shade.becomes": "変わる先",
   "axiom.chromastudio.shade.left.never": "そのままです。ブラシが濃淡を付けるのは、固体のブロック、ハーフブロック、階段、塀、フェンスです。透けるブロックや中身のあるブロックは変えません。",
+  "axiom.chromastudio.shade.left.turns": "そのままです。原木や彩釉テラコッタのように向きのあるブロックは、面ごとに見た目が違うため、ブラシは変えません。",
   "axiom.chromastudio.shade.left.ground": "そのままです。ブラシは草ブロック、土、砂、砂利には触れません。",
   "axiom.chromastudio.shade.left.kind": "そのままです。この種類のブロックは「変える種類」でオフになっています。",
   "axiom.chromastudio.shade.left.darker": "そのままです。一段階暗く、元のブロックに色とテクスチャが十分近いブロックがありません。",

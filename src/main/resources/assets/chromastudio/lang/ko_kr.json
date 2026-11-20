@@ -827,6 +827,7 @@
   "axiom.chromastudio.shade.point": "블록을 가리키면 브러시가 그 블록을 어떻게 바꾸는지 볼 수 있습니다.",
   "axiom.chromastudio.shade.becomes": "바뀌는 블록",
   "axiom.chromastudio.shade.left.never": "바뀌지 않습니다. 브러시는 단단한 블록, 반 블록, 계단, 담장, 울타리의 명암을 바꿉니다. 투명한 블록이나 내용물이 있는 블록은 바꾸지 않습니다.",
+  "axiom.chromastudio.shade.left.turns": "그대로 둡니다. 원목이나 유약 바른 테라코타처럼 방향이 있는 블록은 면마다 모양이 달라 브러시가 바꾸지 않습니다.",
   "axiom.chromastudio.shade.left.ground": "바뀌지 않습니다. 브러시는 잔디 블록, 흙, 모래, 자갈에는 손대지 않습니다.",
   "axiom.chromastudio.shade.left.kind": "바뀌지 않습니다. 이 종류의 블록은 ‘바꿀 종류’에서 꺼져 있습니다.",
   "axiom.chromastudio.shade.left.darker": "바뀌지 않습니다. 한 단계 더 어두우면서 색과 텍스처가 충분히 비슷한 블록이 없습니다.",

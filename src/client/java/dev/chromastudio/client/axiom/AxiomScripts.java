@@ -40,7 +40,8 @@ final class AxiomScripts {
         RecolourPlan plan = RecolourPlan.of(to, from, mode);
         if (plan.size() == 0) {
             // When it's because the palette already has the blocks, the player is told so.
-            throw new Refused(plan.kept() == 0 ? Component.translatable("axiom.chromastudio.nothing_to_change") : kept(plan));
+            MutableComponent why = Component.translatable("axiom.chromastudio.nothing_to_change");
+            throw new Refused(plan.kept() == 0 ? why : why.append(" ").append(kept(plan)));
         }
         String title = from == null ? to.name : from.name + " to " + to.name;
         MutableComponent summary = Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped());

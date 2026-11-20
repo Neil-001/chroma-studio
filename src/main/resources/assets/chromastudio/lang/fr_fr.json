@@ -827,6 +827,7 @@
   "axiom.chromastudio.shade.point": "Pointe un bloc pour voir ce que le pinceau en fait.",
   "axiom.chromastudio.shade.becomes": "Devient",
   "axiom.chromastudio.shade.left.never": "Reste tel quel. Le pinceau change la nuance des blocs solides, dalles, escaliers, murets et barrières. Il laisse intacts les blocs transparents et ceux qui contiennent quelque chose.",
+  "axiom.chromastudio.shade.left.turns": "Reste tel quel. Le pinceau ne touche pas aux blocs orientés, comme les bûches et la terre cuite émaillée, car chaque face est différente.",
   "axiom.chromastudio.shade.left.ground": "Reste tel quel. Le pinceau ne touche pas au bloc d'herbe, à la terre, au sable ni au gravier.",
   "axiom.chromastudio.shade.left.kind": "Reste tel quel. Ce type de bloc est désactivé dans « Modifie ».",
   "axiom.chromastudio.shade.left.darker": "Reste tel quel. Aucun bloc plus foncé d’un pas n’est assez proche par sa couleur et sa texture.",

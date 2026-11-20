@@ -827,6 +827,7 @@
   "axiom.chromastudio.shade.point": "指向一个方块，看看画笔会把它变成什么。",
   "axiom.chromastudio.shade.becomes": "变为",
   "axiom.chromastudio.shade.left.never": "保持不变。画笔只会调整实心方块、台阶、楼梯、墙和栅栏的明暗，透明方块或有内容物的方块不会更改。",
+  "axiom.chromastudio.shade.left.turns": "保持不变。笔刷不会改动有朝向的方块，如原木和带釉陶瓦，因为它们每一面都不同。",
   "axiom.chromastudio.shade.left.ground": "保持不变。画笔不会改动草方块、泥土、沙子和沙砾。",
   "axiom.chromastudio.shade.left.kind": "保持不变。此类方块已在“更改范围”中关闭。",
   "axiom.chromastudio.shade.left.darker": "保持不变。没有颜色和纹理足够接近、但更暗一步的方块。",
