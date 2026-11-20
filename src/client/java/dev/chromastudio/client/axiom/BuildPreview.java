@@ -3,6 +3,7 @@ package dev.chromastudio.client.axiom;
 import com.moulberry.axiomclientapi.Effects;
 import com.moulberry.axiomclientapi.IAxiomWorldRenderContext;
 import com.moulberry.axiomclientapi.regions.BooleanRegion;
+import dev.chromastudio.core.palette.BuildSearch;
 import dev.chromastudio.core.palette.QueuedChanges;
 import java.util.Optional;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -53,7 +54,7 @@ final class BuildPreview {
 
     /** Watches a block of the build that stays as it is, so Apply refuses if it changes, as when a joining block is broken. */
     void watch(int x, int y, int z, BlockState was) {
-        if (queued != null) queued.watch(x, y, z, was);
+        if (queued != null) queued.leave(x, y, z, was);
     }
 
     /** How many blocks will change. */
@@ -69,6 +70,21 @@ final class BuildPreview {
             AxiomTools.tools.releaseChunkRenderOverrider(id);
             overriding = false;
         }
+    }
+
+    /**
+     * Shows {@code plan}, worked out with the tool masks as they're set now, with the blocks in {@code outlined}
+     * outlined. Apply sends it only when {@code again} still works out the same from the world as it is then.
+     */
+    void show(ClientLevel level, QueuedChanges<BlockState> plan, long[] outlined, QueuedChanges.Plan<BlockState> again) {
+        clear();
+        queued = plan;
+        mask = AxiomMask.now(level);
+        AxiomTools.tools.acquireChunkRenderOverrider(id);
+        overriding = true;
+        for (QueuedChanges.Change<BlockState> c : plan.changes()) AxiomTools.tools.setBlockRenderOverride(c.x(), c.y(), c.z(), c.next());
+        for (long p : outlined) outline.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
+        drawn = System.nanoTime();
     }
 
     /** Called each frame Axiom draws the tool. */

@@ -31,7 +31,7 @@ final class AxiomEditor {
 
     private record Handles(MethodHandle active, MethodHandle enabled, MethodHandle enable, MethodHandle disable) {}
 
-    private static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's editor controls",
+    static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's editor controls",
             Component.translatable("axiom.chromastudio.editor.changed"), () -> {
                 MethodHandles.Lookup lookup = MethodHandles.publicLookup();
                 Class<?> ui = Class.forName("com.moulberry.axiom.editor.EditorUI");

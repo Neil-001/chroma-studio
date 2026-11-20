@@ -50,6 +50,12 @@ public final class QueuedChanges<S> {
         boolean failed();
     }
 
+    /** Works out a tool's changes again, from the world as it is now and these masks. */
+    @FunctionalInterface
+    public interface Plan<S> {
+        QueuedChanges<S> make(Mask mask);
+    }
+
     /** One queued change: what was there when it was queued, and what goes there. */
     public record Change<S>(int x, int y, int z, S was, S next) {}
 
@@ -74,7 +80,7 @@ public final class QueuedChanges<S> {
     }
 
     /** Watches a block that stays as it is, so the changes are refused if it changes. A queued change there wins. */
-    public void watch(int x, int y, int z, S was) { watched.putIfAbsent(BuildSearch.pack(x, y, z), new Watched<>(x, y, z, was)); }
+    public void leave(int x, int y, int z, S was) { watched.putIfAbsent(BuildSearch.pack(x, y, z), new Watched<>(x, y, z, was)); }
 
     public boolean isEmpty() { return changes.isEmpty(); }
 

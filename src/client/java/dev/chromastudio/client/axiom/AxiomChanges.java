@@ -5,7 +5,6 @@ import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.core.palette.QueuedChanges;
 import java.util.Locale;
 import java.util.Optional;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -36,7 +35,7 @@ final class AxiomChanges {
      * nothing to send.
      */
     static Optional<Component> send(QueuedChanges<BlockState> changes) {
-        ClientLevel level = Minecraft.getInstance().level;
+        ClientLevel level = AxiomTools.level.get();
         if (changes.isEmpty()) return Optional.empty();
         // Once Axiom's features are off for the session, as when a tool couldn't be added, nothing reaches the world.
         Optional<Component> off = AxiomBridge.whyNot();

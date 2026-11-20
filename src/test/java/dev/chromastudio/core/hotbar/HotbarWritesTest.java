@@ -188,4 +188,36 @@ class HotbarWritesTest {
         m.values().removeIf(String::isEmpty);
         return m;
     }
+
+    @Test
+    void aFillWritesOnlyTheNewItemsAndNamesTheSlotsAQuietRefusalLeavesChanged() {
+        // The review's case: slot 1 quietly ignores every write, and slot 0 stops taking writes once it has its new item.
+        String[] held = {"old0", "old1"};
+        List<String> writes = new java.util.ArrayList<>();
+        boolean[] broken = {false};
+        HotbarWrites.Hotbars<String> hotbars = new HotbarWrites.Hotbars<>() {
+            @Override
+            public String get(int hotbar, int slot) { return held[slot]; }
+
+            @Override
+            public void set(int hotbar, int slot, String item) {
+                writes.add(slot + "=" + item);
+                if (slot == 1) return;
+                if (broken[0]) throw new IllegalStateException("writes lost");
+                held[slot] = item;
+                if (item.equals("new0")) broken[0] = true;
+            }
+
+            @Override
+            public boolean same(String a, String b) { return a.equals(b); }
+        };
+        HotbarWrites.Result<String> r = HotbarWrites.write(hotbars, List.of(new Slot(0, 0), new Slot(0, 1)), List.of("new0", "new1"));
+        // No slot is written with what it already holds, which would send the server packets and save Axiom's hotbars for nothing.
+        assertEquals(List.of("0=new0", "1=new1", "1=old1", "0=old0"), writes);
+        assertFalse(r.worked());
+        assertEquals(List.of(new Was<>(0, 0, "old0")), r.undo(), "the slot left changed is named for Undo");
+        broken[0] = false;
+        assertTrue(HotbarWrites.restore(hotbars, r.undo()).done());
+        assertEquals(List.of("old0", "old1"), List.of(held));
+    }
 }

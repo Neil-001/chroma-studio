@@ -74,7 +74,13 @@ public final class AxiomBridge {
         }
     }
 
-    private static void fail(Throwable t) {
+    /** Forgets that the features were turned off, as if the game had restarted. Only tests call this. */
+    static void forget() {
+        broken = null;
+        told = false;
+    }
+
+    static void fail(Throwable t) {
         ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
         broken = Component.translatable("axiom.chromastudio.incompatible");
         try {

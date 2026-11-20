@@ -45,7 +45,7 @@ final class AxiomMask {
 
     private static final String MANAGER = "com.moulberry.axiom.mask.MaskManager";
 
-    private static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's tool masks",
+    static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's tool masks",
             Component.translatable("axiom.chromastudio.mask.changed"), () -> {
                 MethodHandles.Lookup lookup = MethodHandles.publicLookup();
                 Class<?> manager = Class.forName(MANAGER);

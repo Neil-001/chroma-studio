@@ -220,7 +220,13 @@ final class PaletteBrushTool implements CustomTool {
             painter = (x, y, z, _, admit, put) -> plan.change(level, x, y, z,
                     (ax, ay, az) -> admit.test(ax, ay, az) && (inBuild == null || inBuild.contains(BuildSearch.pack(ax, ay, az))), put);
         }
-        stroke.start(level, queue, AxiomPanel.radius(radius));
+        BrushStroke.Painter p = painter;
+        try {
+            stroke.start(level, queue, AxiomPanel.radius(radius), _ -> p);
+        } catch (Refused r) {
+            said = r.reason().getString();
+            return false;
+        }
         return true;
     }
 
@@ -270,7 +276,7 @@ final class PaletteBrushTool implements CustomTool {
             return;
         }
         if (stroke.active()) {
-            stroke.render(rc, painter);
+            stroke.render(rc);
             return;
         }
         BlockHitResult hit = AxiomTools.tools.raycastBlock();

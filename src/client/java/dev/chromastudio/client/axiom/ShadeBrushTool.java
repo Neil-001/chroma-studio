@@ -97,9 +97,6 @@ final class ShadeBrushTool implements CustomTool {
     private @Nullable BlockState hovered;
     private @Nullable Plan plan;
 
-    /** What the stroke on now does to each block, fixed as it started, so a choice changed mid-stroke doesn't split it. */
-    private BrushStroke.Painter painter;
-
     @Override
     public String name() { return tr("axiom.chromastudio.shade"); }
 
@@ -121,11 +118,15 @@ final class ShadeBrushTool implements CustomTool {
         double share = AxiomPanel.held(strength, 10, 100) / 100.0;
         // Which blocks a stroke at less than full strength changes, a new choice each stroke.
         long seed = System.nanoTime();
-        painter = (x, y, z, now, _, put) -> {
+        BrushStroke.Painter painter = (x, y, z, now, _, put) -> {
             BlockState next = WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
             if (next != null) put.put(x, y, z, next);
         };
-        stroke.start(level, queue, AxiomPanel.radius(radius));
+        try {
+            stroke.start(level, queue, AxiomPanel.radius(radius), _ -> painter);
+        } catch (Refused _) {
+            return false;
+        }
         return true;
     }
 
@@ -138,7 +139,7 @@ final class ShadeBrushTool implements CustomTool {
         ClientLevel level = Minecraft.getInstance().level;
         if (stroke.active()) {
             hovered = null;
-            stroke.render(rc, painter);
+            stroke.render(rc);
             return;
         }
         BlockHitResult hit = AxiomTools.tools.raycastBlock();

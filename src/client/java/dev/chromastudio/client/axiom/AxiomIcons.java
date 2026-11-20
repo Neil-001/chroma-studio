@@ -31,7 +31,7 @@ final class AxiomIcons {
 
     private record Handles(Class<?> tool, MethodHandle tools, Method iconChar, Method name) {}
 
-    private static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's tool icons", Component.empty(), () -> {
+    static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's tool icons", Component.empty(), () -> {
         Class<?> tool = Class.forName("com.moulberry.axiom.tools.Tool");
         Class<?> manager = Class.forName("com.moulberry.axiom.tools.ToolManager");
         MethodHandle tools = MethodHandles.publicLookup().findStatic(manager, "getTools", MethodType.methodType(List.class));

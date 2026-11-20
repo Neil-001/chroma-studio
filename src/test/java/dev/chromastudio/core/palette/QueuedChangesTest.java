@@ -115,7 +115,7 @@ class QueuedChangesTest {
         // part of the build the player saw.
         QueuedChanges<String> q = twoBricks();
         set(5, 0, 0, "stone");
-        q.watch(5, 0, 0, "stone");
+        q.leave(5, 0, 0, "stone");
         assertEquals(2, q.size());
         assertEquals(Refusal.NONE, q.check(HERE, world, new Mask()));
         set(5, 0, 0, "air");

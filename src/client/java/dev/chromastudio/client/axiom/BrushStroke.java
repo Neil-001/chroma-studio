@@ -4,11 +4,12 @@ import com.moulberry.axiomclientapi.IAxiomWorldRenderContext;
 import com.moulberry.axiomclientapi.pathers.BallShape;
 import com.moulberry.axiomclientapi.pathers.ToolPatherUnique;
 import com.moulberry.axiomclientapi.regions.BlockRegion;
+import dev.chromastudio.client.axiom.AxiomBridge.Refused;
 import dev.chromastudio.core.palette.QueuedChanges;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -40,19 +41,27 @@ final class BrushStroke {
         void paint(int x, int y, int z, BlockState now, RecolourPlan.Admit admit, RecolourPlan.Put put);
     }
 
+    /** Makes a stroke's painter from the world, as the stroke starts. */
+    @FunctionalInterface
+    interface Setup {
+        Painter make(Level level) throws Refused;
+    }
+
     private final BlockRegion shown = AxiomTools.regions.createBlock();
     private @Nullable ToolPatherUnique pather;
     private @Nullable QueuedChanges<BlockState> queued;
+    private Painter painter;
     private AxiomMask.Test mask;
     private @Nullable ClientLevel level;
     private long drawn;
     /** Why the last stroke wasn't made, until the next starts. */
     private @Nullable Component refused;
 
-    /** Starts a stroke with a ball of {@code radius}. */
-    void start(ClientLevel level, QueuedChanges<BlockState> queue, int radius) {
+    /** Starts a stroke with a ball of {@code radius}, painting as {@code setup} says. Throws when it says why not. */
+    void start(ClientLevel level, QueuedChanges<BlockState> queue, int radius, Setup setup) throws Refused {
         cancel();
         refused = null;
+        painter = setup.make(level);
         this.level = level;
         pather = AxiomTools.pathers.createUnique(radius, BallShape.SPHERE);
         queued = queue;
@@ -80,10 +89,10 @@ final class BrushStroke {
      * Called each frame Axiom draws the tool while a stroke is on: extends it while the button is held, and makes it
      * once the button is let go.
      */
-    void render(IAxiomWorldRenderContext rc, Painter painter) {
+    void render(IAxiomWorldRenderContext rc) {
         if (pather == null || queued == null) return;
         drawn = System.nanoTime();
-        ClientLevel now = Minecraft.getInstance().level;
+        ClientLevel now = AxiomTools.level.get();
         if (now != level) {
             refused = AxiomChanges.refusal(QueuedChanges.Refusal.WORLD);
             cancel();
