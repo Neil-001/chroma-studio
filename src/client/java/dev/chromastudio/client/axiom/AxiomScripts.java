@@ -1,39 +1,19 @@
 package dev.chromastudio.client.axiom;
 
 import dev.chromastudio.client.action.Clipboard;
-import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.axiom.AxiomBridge.Refused;
 import dev.chromastudio.client.axiom.AxiomBridge.Script;
-import dev.chromastudio.client.index.BlockIndex;
-import dev.chromastudio.client.index.Entry;
-import dev.chromastudio.client.index.Kind;
-import dev.chromastudio.client.index.TintContext;
-import dev.chromastudio.core.color.Color;
-import dev.chromastudio.core.color.Distribution;
-import dev.chromastudio.core.color.Face;
-import dev.chromastudio.core.color.FlatNearest;
-import dev.chromastudio.core.color.Scale;
+import dev.chromastudio.core.export.ClipboardSize;
 import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
+import dev.chromastudio.core.palette.Recolour;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.EntityBlock;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.network.chat.MutableComponent;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -43,86 +23,24 @@ import org.jspecify.annotations.Nullable;
 final class AxiomScripts {
     private AxiomScripts() {}
 
-    /** The kinds a recolour changes. Each block is matched only among blocks of its own kind, so a stair stays a stair. */
-    private static final Set<Kind> RECOLOURED = Set.of(Kind.FULL, Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE,
-            Kind.TRAPDOOR, Kind.DOOR, Kind.PANE, Kind.CARPET, Kind.GLASS, Kind.LIGHT);
-
     /**
-     * The longest script, in bytes of UTF-8, that is copied. The game hands the clipboard its text through LWJGL's
-     * stack of 64 KiB, and text longer than what's left of it crashes the game, so a longer script is refused.
+     * A recolour into a palette of every block but the ground, or only those of {@code from}, as {@link RecolourPlan}
+     * works it out, so the palette brush would change the same blocks the same way. Refused, with the reason, when
+     * nothing would change.
      */
-    private static final int CLIPBOARD_BYTES = 40_000;
-
-    /**
-     * A recolour into a palette: every block the brush may find, or only those of {@code from}, matched to the
-     * palette's blocks of the same kind, which includes the stairs, slabs and walls of the palette's materials.
-     * Blocks with a block entity, such as chests and signs, and blocks whose kind the palette has none of are left
-     * alone. Refused, with the reason, when nothing would change.
-     */
-    static Script recolour(Palette to, @Nullable Palette from) throws Refused {
-        if (!BlockIndex.get().ready()) throw new Refused(Component.translatable("palettes.chromastudio.index_building"));
-        BlockIndex index = BlockIndex.get();
-        Face face = PaletteBlocks.face();
-        TintContext tint = PaletteBlocks.tint();
-
-        Map<Kind, Map<BlockState, PaletteEntry>> targets = new EnumMap<>(Kind.class);
-        List<Entry> own = new ArrayList<>();
-        for (PaletteEntry pe : to.entries) {
-            BlockState state = PaletteBlocks.state(pe);
-            Entry e = state == null ? null : PaletteBlocks.entry(state);
-            if (e == null) continue;
-            own.add(e);
-            targets.computeIfAbsent(e.kind(), _ -> new LinkedHashMap<>()).putIfAbsent(state, pe);
-        }
-        if (own.isEmpty()) throw new Refused(Component.translatable("axiom.chromastudio.no_blocks"));
-        // The palette's materials lend it their other shapes: a palette of stone bricks recolours stairs into stone
-        // brick stairs. Full blocks come from the palette alone where it has any, so planks don't turn into logs.
-        for (Entry e : own) {
-            List<Entry> set = index.materialSet(e);
-            for (Entry m : set) {
-                if (m.kind() == Kind.FULL) continue;
-                targets.computeIfAbsent(m.kind(), _ -> new LinkedHashMap<>()).putIfAbsent(m.state(), PaletteBlocks.of(m));
-            }
-            if (!targets.containsKey(Kind.FULL) && !set.isEmpty() && set.getFirst().kind() == Kind.FULL) {
-                targets.computeIfAbsent(Kind.FULL, _ -> new LinkedHashMap<>()).putIfAbsent(set.getFirst().state(), PaletteBlocks.of(set.getFirst()));
-            }
-        }
-        Map<Kind, FlatNearest> nearest = new EnumMap<>(Kind.class);
-        Map<Kind, List<BlockState>> order = new EnumMap<>(Kind.class);
-        targets.forEach((kind, blocks) -> {
-            List<Distribution> looks = new ArrayList<>();
-            for (BlockState s : blocks.keySet()) looks.add(PaletteBlocks.entry(s).face(face, s, tint).distribution(Scale.T8));
-            nearest.put(kind, new FlatNearest(looks));
-            order.put(kind, List.copyOf(blocks.keySet()));
-        });
-
-        List<AxiomScript.Remap> rows = new ArrayList<>();
-        int unshaped = 0;
-        for (Entry source : sources(from)) {
-            Block block = source.block();
-            if (block instanceof EntityBlock || source.technical() || !RECOLOURED.contains(source.kind())) continue;
-            Map<BlockState, PaletteEntry> same = targets.get(source.kind());
-            if (same == null) {
-                unshaped++;
-                continue;
-            }
-            Optional<Color> colour = index.colourOf(source.state(), face, tint);
-            if (colour.isEmpty()) continue;
-            BlockState target = order.get(source.kind()).get(nearest.get(source.kind()).nearest(colour.get()));
-            PaletteEntry chosen = same.get(target);
-            if (target.getBlock() == block && chosen.properties().isEmpty()) continue;
-            rows.add(new AxiomScript.Remap(source.id(), chosen, shared(block, target.getBlock())));
-        }
-        if (rows.isEmpty()) throw new Refused(Component.translatable("axiom.chromastudio.nothing_to_change"));
-        rows.sort(Comparator.comparing(AxiomScript.Remap::from));
+    static Script recolour(Palette to, @Nullable Palette from, Recolour.Mode mode) throws Refused {
+        RecolourPlan plan = RecolourPlan.of(to, from, mode);
+        if (plan.size() == 0) throw new Refused(Component.translatable("axiom.chromastudio.nothing_to_change"));
         String title = from == null ? to.name : from.name + " to " + to.name;
-        return made(AxiomScript.recolour(title, rows), Component.translatable("axiom.chromastudio.recolour.done", rows.size(), unshaped));
+        return made(AxiomScript.recolour(title, plan.rows()), Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped()),
+                from == null ? "axiom.chromastudio.long.from" : "axiom.chromastudio.long.brush",
+                from == null ? "axiom.chromastudio.too_long.from" : "axiom.chromastudio.too_long");
     }
 
     /** A brush that paints the palette's blocks at random by weight. */
     static Script scatter(Palette p) throws Refused {
         if (p.entries.isEmpty()) throw new Refused(Component.translatable("palettes.chromastudio.need_entries"));
-        return made(AxiomScript.scatter(p), Component.translatable("axiom.chromastudio.scatter.done", p.entries.size()));
+        return made(AxiomScript.scatter(p), Component.translatable("axiom.chromastudio.scatter.done", p.entries.size()), "axiom.chromastudio.long.brush", "axiom.chromastudio.too_long");
     }
 
     /**
@@ -139,51 +57,28 @@ final class AxiomScripts {
             case Z -> at.getZ();
         };
         return made(AxiomScript.gradient(name, steps, axis, start, steps.size() * 2),
-                Component.translatable("axiom.chromastudio.gradient.done", steps.size(), axis.name().toLowerCase(Locale.ROOT)));
+                Component.translatable("axiom.chromastudio.gradient.done", steps.size(), axis.name().toLowerCase(Locale.ROOT)), "axiom.chromastudio.long",
+                "axiom.chromastudio.too_long");
     }
 
     /** Puts a script on the clipboard. */
     static void copy(Script script) { Clipboard.copy(script.text()); }
 
-    /** One entry a block for every block a recolour may find: the blocks of a palette, or every block the index holds. */
-    private static List<Entry> sources(@Nullable Palette from) {
-        List<Entry> all = new ArrayList<>();
-        if (from == null) all.addAll(BlockIndex.get().entries());
-        else for (PaletteEntry pe : from.entries) all.add(PaletteBlocks.entry(pe));
-        // The table is keyed by block, so one state a block stands for all of them.
-        Set<Block> seen = new LinkedHashSet<>();
-        List<Entry> out = new ArrayList<>();
-        for (Entry e : all) if (e != null && seen.add(e.block())) out.add(e);
-        return out;
-    }
-
     /**
-     * The properties a recolour carries from one block to the other: those both have by the same name, where the
-     * new block takes every value the old one can have, such as a stair's facing, half and shape.
+     * A script with its summary and its size, and a note when a server could refuse a script this long from a
+     * player without import rights, {@code tooLong}, which says what the player can do instead. Refused when it's too
+     * long to copy, saying what to do in {@code tooBig}, as what helps depends on the script.
      */
-    private static List<String> shared(Block from, Block to) {
-        List<String> out = new ArrayList<>();
-        for (Property<?> p : from.getStateDefinition().getProperties()) {
-            Property<?> q = to.getStateDefinition().getProperty(p.getName());
-            if (q != null && names(q).containsAll(names(p))) out.add(p.getName());
+    private static Script made(String script, Component summary, String tooLong, String tooBig) throws Refused {
+        int bytes = ClipboardSize.bytes(script), counted = AxiomScript.counted(script);
+        if (bytes > ClipboardSize.MAX_BYTES) {
+            throw new Refused(Component.translatable(tooBig, ClipboardSize.kilobytes(bytes), ClipboardSize.kilobytes(ClipboardSize.MAX_BYTES)));
         }
-        return out;
-    }
-
-    private static <T extends Comparable<T>> Set<String> names(Property<T> p) {
-        Set<String> out = new LinkedHashSet<>();
-        for (T value : p.getPossibleValues()) out.add(p.getName(value));
-        return out;
-    }
-
-    /**
-     * A script with its summary, and a note when a server could refuse a script this long from a player without
-     * import rights. Refused when it's too long to copy.
-     */
-    private static Script made(String script, Component summary) throws Refused {
-        int bytes = script.getBytes(StandardCharsets.UTF_8).length;
-        if (bytes > CLIPBOARD_BYTES) throw new Refused(Component.translatable("axiom.chromastudio.too_long", (bytes + 1023) / 1024, CLIPBOARD_BYTES / 1024));
-        if (AxiomScript.counted(script) <= AxiomScript.SERVER_LIMIT) return new Script(script, summary);
-        return new Script(script, Component.empty().append(summary).append(" ").append(Component.translatable("axiom.chromastudio.long", AxiomScript.SERVER_LIMIT)));
+        MutableComponent out = Component.empty().append(summary).append(" ")
+                .append(Component.translatable("axiom.chromastudio.size", ClipboardSize.kilobytes(bytes), counted));
+        if (counted > AxiomScript.SERVER_LIMIT) {
+            out.append(" ").append(Component.translatable(tooLong, AxiomScript.SERVER_LIMIT));
+        }
+        return new Script(script, out);
     }
 }
