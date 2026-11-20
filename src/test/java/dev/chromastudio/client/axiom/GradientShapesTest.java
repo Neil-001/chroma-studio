@@ -12,11 +12,14 @@ import java.util.List;
 import java.util.Map;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.FenceBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.level.block.state.properties.WallSide;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +35,12 @@ class GradientShapesTest {
             blocks.put(stone + "_slab", "block/" + full);
         }
         blocks.put("stone_brick_wall", "block/stone_bricks");
+        blocks.put("cobblestone", "block/cobblestone");
+        blocks.put("cobblestone_wall", "block/cobblestone");
+        for (String wood : List.of("oak", "spruce")) {
+            blocks.put(wood + "_planks", "block/" + wood + "_planks");
+            blocks.put(wood + "_fence", "block/" + wood + "_planks");
+        }
         blocks.put("glass_pane", "block/glass");
         blocks.put("oak_door", "block/oak_planks");
         blocks.put("white_concrete", "block/white_concrete");
@@ -74,13 +83,28 @@ class GradientShapesTest {
     }
 
     @Test
-    void blocksAlreadyRightAndShapesNoneCanTakeStayAsTheyAre() {
+    void wallsAndFencesKeepTheirConnections() {
+        BlockState wall = block("stone_brick_wall").defaultBlockState().setValue(WallBlock.NORTH, WallSide.TALL).setValue(WallBlock.UP, false);
+        BlockState newWall = shapes().apply(block("cobblestone").defaultBlockState(), wall);
+        assertNotNull(newWall);
+        assertEquals(block("cobblestone_wall"), newWall.getBlock());
+        assertEquals(WallSide.TALL, newWall.getValue(WallBlock.NORTH));
+        assertEquals(false, newWall.getValue(WallBlock.UP));
+        BlockState fence = block("oak_fence").defaultBlockState().setValue(FenceBlock.EAST, true).setValue(FenceBlock.SOUTH, true);
+        BlockState newFence = shapes().apply(block("spruce_planks").defaultBlockState(), fence);
+        assertNotNull(newFence);
+        assertEquals(block("spruce_fence"), newFence.getBlock());
+        assertEquals(true, newFence.getValue(FenceBlock.EAST));
+        assertEquals(true, newFence.getValue(FenceBlock.SOUTH));
+        assertEquals(false, newFence.getValue(FenceBlock.WEST));
+    }
+
+    @Test
+    void blocksAlreadyRightStayAndShapesNoneCanTakeAreLeftAlone() {
         GradientShapes shapes = shapes();
-        BlockState bricks = block("stone_bricks").defaultBlockState();
-        // Already the step's material in this shape.
-        assertNull(shapes.apply(bricks, block("stone_brick_stairs").defaultBlockState()));
-        // The only wall there is is this one.
-        assertNull(shapes.apply(block("sandstone").defaultBlockState(), block("stone_brick_wall").defaultBlockState()));
+        // Already the step's material in this shape, so it's part of the gradient as it is.
+        BlockState stair = block("stone_brick_stairs").defaultBlockState().setValue(StairBlock.FACING, Direction.SOUTH);
+        assertEquals(stair, shapes.apply(block("stone_bricks").defaultBlockState(), stair));
         // A door's halves could fall in different steps, and a pane has no shape a step's material lends.
         assertNull(shapes.apply(block("sandstone").defaultBlockState(), block("oak_door").defaultBlockState()));
         assertNull(shapes.apply(block("sandstone").defaultBlockState(), block("glass_pane").defaultBlockState()));

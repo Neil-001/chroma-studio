@@ -203,7 +203,7 @@ final class GradientTool implements CustomTool {
             int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
             BlockState now = level.getBlockState(pos.set(x, y, z));
             BlockState step = steps.get(line.step(x, y, z, steps.size(), blend[0] / 100.0));
-            BlockState next = paintable(level, pos, now) ? step : now.getBlock() instanceof EntityBlock ? null : shapes.apply(step, now);
+            BlockState next = paintable(level, pos, now) ? step : shapes.apply(step, now);
             if (next == null) {
                 leftAlone++;
                 continue;

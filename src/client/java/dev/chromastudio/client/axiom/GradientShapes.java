@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Fallable;
@@ -40,8 +41,8 @@ final class GradientShapes {
     private final BlockIndex index = BlockIndex.get();
     private final Face face;
     private final TintContext tint;
-    /** Each step block's change for each shaped block, empty where it's left alone. */
-    private final Map<List<Block>, Optional<RecolourPlan>> plans = new HashMap<>();
+    /** What each step block does to each shaped block, as {@link #apply} answers. */
+    private final Map<List<Block>, UnaryOperator<BlockState>> changes = new HashMap<>();
     /** The blocks of each shape that a step may borrow it from, with how they look. */
     private final Map<Kind, Candidates> candidates = new EnumMap<>(Kind.class);
 
@@ -55,37 +56,38 @@ final class GradientShapes {
 
     /**
      * The block that a shaped block becomes in a step whose full block is {@code step}, with its facing, half and the
-     * like kept, or null to leave it as it is.
+     * like kept: itself when it's already the shape the step gives, or null when it's left alone as no step can take
+     * its shape.
      */
     @Nullable BlockState apply(BlockState step, BlockState here) {
         Entry e = index.entryOf(here);
         if (e == null || !SHAPES.contains(e.kind()) || here.getBlock() instanceof EntityBlock) return null;
-        Optional<RecolourPlan> plan = plans.computeIfAbsent(List.of(step.getBlock(), here.getBlock()), _ -> plan(step, here, e.kind()));
-        return plan.map(p -> p.apply(here)).orElse(null);
+        return changes.computeIfAbsent(List.of(step.getBlock(), here.getBlock()), _ -> change(step, here, e.kind())).apply(here);
     }
 
-    /** The change for one step and one shaped block: into the step's own material where it has the shape, or else the closest-coloured block that has it. */
-    private Optional<RecolourPlan> plan(BlockState step, BlockState here, Kind kind) {
-        Palette from = palette(here);
+    /** What a step does to one shaped block: gives it the step's own material where that has the shape, or else the closest-coloured block that has it. */
+    private UnaryOperator<BlockState> change(BlockState step, BlockState here, Kind kind) {
         Entry stepEntry = index.entryOf(step);
-        if (stepEntry == null) return Optional.empty();
+        if (stepEntry == null) return _ -> null;
+        BlockState to = null;
         for (Entry m : index.materialSet(stepEntry)) {
-            if (m.kind() != kind) continue;
-            // The block already has its step's material in this shape.
-            if (m.block() == here.getBlock()) return Optional.empty();
-            return recolour(palette(step), from);
+            if (m.kind() == kind) {
+                to = step;
+                if (m.block() == here.getBlock()) return UnaryOperator.identity();
+                break;
+            }
         }
-        BlockState borrowed = borrowed(kind, step);
-        return borrowed == null || borrowed.getBlock() == here.getBlock() ? Optional.empty() : recolour(palette(borrowed), from);
-    }
-
-    /** A recolour into a palette of one block, which gives each block of {@code from} that block's shape of it. */
-    private Optional<RecolourPlan> recolour(Palette to, Palette from) {
+        if (to == null) {
+            to = borrowed(kind, step);
+            if (to == null) return _ -> null;
+            if (to.getBlock() == here.getBlock()) return UnaryOperator.identity();
+        }
+        // A recolour into a palette of that one block gives the shaped block that block's shape of it.
         try {
-            RecolourPlan plan = RecolourPlan.of(to, from, Recolour.Mode.CLOSEST, face, tint);
-            return plan.size() == 0 ? Optional.empty() : Optional.of(plan);
+            RecolourPlan plan = RecolourPlan.of(palette(to), palette(here), Recolour.Mode.CLOSEST, face, tint);
+            return plan::apply;
         } catch (Refused _) {
-            return Optional.empty();
+            return _ -> null;
         }
     }
 
