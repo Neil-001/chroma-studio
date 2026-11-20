@@ -188,11 +188,11 @@ public final class Recolour {
         if (shades >= 3 && n >= 3) {
             for (int k = 1; k < shades - 1; k++) if (main < 0 || build.amount(k) > build.amount(main)) main = k;
             // A block that leaves room for every shade on either side of it, so no two shades share. Only when the
-            // palette has blocks to spare and a block at least twice as heavy lies one place beyond that room may two
-            // neighbouring shades share to put the walls on it, as a builder would rather than on an accent.
+            // palette has blocks to spare and a heavier block lies one place beyond that room may two neighbouring
+            // shades share to put the walls on it, as a builder would: stone walls on stone bricks, not on planks.
             int roomy = heaviest(eligible, at[main], from, to, main, shades, 0);
             int crowded = n > shades ? heaviest(eligible, at[main], from, to, main, shades, 1) : -1;
-            if (crowded >= 0 && crowded != roomy && (roomy < 0 || weights[eligible[crowded]] >= 2L * weights[eligible[roomy]])) {
+            if (crowded >= 0 && crowded != roomy && (roomy < 0 || weights[eligible[crowded]] > weights[eligible[roomy]])) {
                 heaviest = crowded;
                 shares = 1;
             } else {
