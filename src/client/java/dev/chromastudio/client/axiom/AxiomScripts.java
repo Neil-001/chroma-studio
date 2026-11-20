@@ -80,8 +80,9 @@ final class AxiomScripts {
         MutableComponent summary = Component.translatable("axiom.chromastudio.scatter.done", placed.entries.size());
         if (!blocks.leftOut().isEmpty()) summary.append(" ").append(leftOut);
         // As the brush's Scatter does, it leaves a block that holds items, or one half of a door or a tall plant; the
-        // script tells the halves by their property.
-        AxiomScript.Kept kept = kept(AxiomScript.SCATTER_TAGS, s -> !ScatterBlocks.paintsOver(s), s -> {
+        // script tells the halves by their property. It asks no block tags: a world's data packs may change what they
+        // hold, and a script may be run in another world than the one it was made in.
+        AxiomScript.Kept kept = kept(List.of(), s -> !ScatterBlocks.paintsOver(s), s -> {
             String half = property(s, "half");
             return "upper".equals(half) || "lower".equals(half);
         });

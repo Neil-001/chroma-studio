@@ -52,10 +52,6 @@ public final class AxiomScript {
      */
     public static final List<String> GRADIENT_TAGS = List.of("substrate_overworld", "sand", "flower_pots", "wool_carpets", "candle_cakes", "cauldrons");
 
-    /** The block tags by which a scatter script leaves a block alone: families of blocks that hold items or text. */
-    public static final List<String> SCATTER_TAGS = List.of("all_signs", "banners", "shulker_boxes", "copper_chests", "copper_golem_statues",
-            "wooden_shelves", "skulls", "campfires", "beehives");
-
     /**
      * What a script leaves alone besides what it always checks: blocks with any of {@code properties}; blocks with
      * any of {@code tags}, only ones the game knows, as Axiom stops a script that asks about another; and the blocks
@@ -223,7 +219,8 @@ public final class AxiomScript {
         s.append(keptTable("chroma_skipped", kept.blocks()));
         s.append("end\n\n");
         s.append("local b = getBlock(x, y, z)\n");
-        s.append("if not paint_air and b == blocks.air then return nil end\n");
+        // Caves are filled with cave air, which Paint air means too.
+        s.append("if not paint_air and (b == blocks.air or b == blocks.cave_air or b == blocks.void_air) then return nil end\n");
         s.append("local half = getBlockProperty(getBlockState(x, y, z), \"half\")\n");
         s.append("if chroma_skipped[b] or half == \"upper\" or half == \"lower\" then return nil end\n");
         s.append(checks(kept.properties(), kept.tags(), ""));

@@ -30,6 +30,7 @@ import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
@@ -145,6 +146,8 @@ class ScriptSafetyTest {
             if (put[0] && holdsSomething(s)) wrong.add(s);
         }
         String script = AxiomScripts.scatter(p).text();
+        // Nor does it lean on block tags, which another world's data packs may change after the script is made.
+        assertFalse(script.contains("isBlockTagged"), script);
         assertAll(() -> assertTrue(wrong.isEmpty(), "Scatter paints over " + wrong.size() + " states that hold something, of " + blocks(wrong)),
                 () -> check("scatter", script, s -> brush.get(s) && !holdsSomething(s)));
     }
@@ -162,8 +165,10 @@ class ScriptSafetyTest {
         }
     }
 
-    /** Whether a block keeps items or other data of its own, which a replacement would lose. */
-    private static boolean holdsSomething(BlockState s) { return s.getBlock() instanceof EntityBlock; }
+    /** Whether a block keeps items or other data of its own, such as a chest or a potted plant, which a replacement would lose. */
+    private static boolean holdsSomething(BlockState s) {
+        return s.getBlock() instanceof EntityBlock || s.getBlock() instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR;
+    }
 
     /** The blocks of the states listed, each once, so a failure names every block it's about. */
     private static String blocks(List<BlockState> wrong) {
@@ -184,7 +189,8 @@ class ScriptSafetyTest {
                 replaced += writes.size();
                 for (Map.Entry<BlockPos, BlockState> w : writes.entrySet()) {
                     BlockState there = brush.world.get(w.getKey());
-                    if (!allowed.test(there)) wrong.add(there);
+                    // With Paint air off, no air of any kind is filled, cave air included.
+                    if (!allowed.test(there) || !air && there.isAir()) wrong.add(there);
                 }
             }
             assertTrue(replaced > 0, name + " replaced nothing, so it proves nothing");
