@@ -40,6 +40,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
@@ -83,6 +84,9 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private static final Set<Block> STORAGE = Set.of(Blocks.COAL_BLOCK, Blocks.LAPIS_BLOCK, Blocks.RAW_IRON_BLOCK, Blocks.RAW_COPPER_BLOCK, Blocks.RAW_GOLD_BLOCK);
 
     private final BrushStroke stroke = new BrushStroke();
+    /** Whether a stroke was dropped partway, as when the player picked another tool, for the panel to say so. */
+    private boolean dropped;
+    private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private final int[] radius = {3};
     private int outlineRadius = -1;
@@ -101,7 +105,11 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     public String name() { return tr("axiom.chromastudio.shade"); }
 
     @Override
-    public void reset() { stroke.cancel(); }
+    public void reset() {
+        // Axiom resets a tool before it says another was picked, so a stroke dropped here is the one left partway.
+        if (stroke.active()) dropped = true;
+        stroke.cancel();
+    }
 
     @Override
     public void putAway() { stroke.away(); }
@@ -154,6 +162,8 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         if (AxiomTools.off()) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (stroke.active()) {
+            // Cleared here, as Axiom draws the tool every frame but its panel only while Tool Options is open.
+            dropped = false;
             hovered = null;
             stroke.render(rc);
             return;
@@ -172,9 +182,9 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     }
 
     @Override
-    public void displayImguiOptions() { AxiomPanel.draw(this::panel); }
+    public void displayImguiOptions() { layout.draw(this::options, this::bottom); }
 
-    private void panel() {
+    private void options() {
         List<Palette> all = PaletteStore.get().all();
         Palette chosen = from();
         String any = tr("axiom.chromastudio.shade.any");
@@ -212,11 +222,16 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
                 if (!kinds.remove(k)) kinds.add(k);
             }
         }
-        AxiomPanel.masks();
-
-        AxiomPanel.separator();
-        if (stroke.refused() != null) AxiomPanel.wrapped(stroke.refused());
         AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
+    }
+
+    /** Why the last stroke wasn't made, and what the brush would do to the block under the cursor, held to the panel's bottom. */
+    private void bottom() {
+        // Whether the masks bind the change is read before it's made, so it's never scrolled out of sight.
+        AxiomPanel.masks();
+        Component why = stroke.refused();
+        if (why == null && dropped) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
+        if (why != null) AxiomPanel.wrapped(why);
         preview();
     }
 
