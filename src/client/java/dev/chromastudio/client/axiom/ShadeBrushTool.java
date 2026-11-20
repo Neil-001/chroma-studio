@@ -36,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntPredicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -157,9 +158,10 @@ final class ShadeBrushTool implements CustomTool {
     @Override
     public void displayImguiOptions() {
         for (Direction d : List.of(Direction.DARKER, Direction.LIGHTER)) {
+            String key = "axiom.chromastudio.shade." + d.name().toLowerCase(Locale.ROOT);
             if (d == Direction.LIGHTER) ImGui.sameLine();
-            if (ImGui.radioButton(tr("axiom.chromastudio.shade." + d.name().toLowerCase(Locale.ROOT)), direction == d)) direction = d;
-            ImGui.setItemTooltip(tr("axiom.chromastudio.shade." + d.name().toLowerCase(Locale.ROOT) + ".tip"));
+            if (ImGui.radioButton(tr(key), direction == d)) direction = d;
+            ImGui.setItemTooltip(tr(key + ".tip"));
         }
         ImGui.sliderInt(tr("axiom.chromastudio.shade.step"), stepSize, 1, STEPS.length);
         ImGui.setItemTooltip(tr("axiom.chromastudio.shade.step.tip"));
@@ -359,11 +361,10 @@ final class ShadeBrushTool implements CustomTool {
             Entry base = base(index, e);
             ShadeSteps.Look look = base == null ? null : look(base);
             if (look == null || steps == null) return Optional.empty();
-            boolean[] allowed = e.kind() == Kind.FULL ? null : hasShape.computeIfAbsent(e.kind(), this::hasShape);
+            boolean[] shaped = e.kind() == Kind.FULL ? null : hasShape.computeIfAbsent(e.kind(), this::hasShape);
+            IntPredicate allowed = i -> shaped == null || shaped[i];
             Integer at = place.get(base.block());
-            int picked = at != null
-                    ? steps.next(at, d, i -> allowed == null || allowed[i])
-                    : steps.next(look, d, i -> allowed == null || allowed[i]);
+            int picked = at != null ? steps.next(at, d, allowed) : steps.next(look, d, allowed);
             if (picked < 0) return Optional.empty();
             Palette to = new Palette(""), source = new Palette("");
             to.entries.add(PaletteBlocks.of(shades.get(picked)));
