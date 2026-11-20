@@ -13,8 +13,10 @@ import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
+import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Kind;
@@ -128,6 +130,11 @@ public final class GradientTab extends PanelTab {
     private record Option(Entry entry, double deltaE) {}
 
     private List<Step> result = List.of();
+    /** The blocks of the last answer on show, kept after the window closes, for Axiom's gradient tool. Empty until there is one. */
+    private static List<PaletteEntry> onShow = List.of();
+
+    /** The blocks of the gradient last on show, step by step, or nothing before the tab has shown one. Client thread only. */
+    public static List<PaletteEntry> stepsOnShow() { return onShow; }
     /** What the answer was chosen from and by, which the swap list offers more of. */
     private List<Gradient.Candidate> pool = List.of();
     private Map<String, Entry> poolById = Map.of();
@@ -154,7 +161,7 @@ public final class GradientTab extends PanelTab {
     private int dropGap;
     private int badgeY;
     /** The actions along the bottom, in order, and where the last layout placed them. */
-    private static final String[] ACTIONS = {"hotbar", "copy", "export", "saved", "save", "swap"};
+    private static final String[] ACTIONS = {"hotbar", "copy", "export", "axiom", "saved", "save", "swap"};
     private Flow.Spot[] actionSpots;
     /** The filters behind "More…", which lie over the strip while they are open. */
     private boolean filtersOpen;
@@ -297,18 +304,20 @@ public final class GradientTab extends PanelTab {
         Component none = result.isEmpty() ? (problem != null ? problem : tr("gradient.chromastudio.working")) : null;
         action(0, actionsY, () -> open(new PaletteDialogs.Hotbar(entries())), none != null ? none : HotbarFill.unavailable().orElse(null));
         action(1, actionsY, () -> {
-            Minecraft.getInstance().keyboardHandler.setClipboard(entries().stream().map(PaletteEntry::idWithProperties).collect(Collectors.joining("\n")));
-            say(tr("gradient.chromastudio.copied", result.size()), GOOD);
+            Clipboard.copy(entries().stream().map(PaletteEntry::idWithProperties).collect(Collectors.joining("\n")))
+                    .ifPresentOrElse(why -> say(why, BAD), () -> say(tr("gradient.chromastudio.copied", result.size()), GOOD));
         }, none);
         action(2, actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
-        action(3, actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
-        action(4, actionsY, () -> {
+        action(3, actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())),
+                AxiomBridge.whyNot().orElse(none));
+        action(4, actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
+        action(5, actionsY, () -> {
             Palette p = asPalette();
             PaletteSink sink = PaletteSink.current();
             if (sink != null && sink.createPalette(p.name, p.entries)) say(tr("gradient.chromastudio.saved", p.name), GOOD);
             else say(tr("capture.chromastudio.failed"), BAD);
         }, none);
-        action(5, actionsY, () -> {
+        action(6, actionsY, () -> {
             Collections.reverse(STOPS);
             selectedStop = STOPS.size() - 1 - selectedStop;
             changed();
@@ -472,6 +481,7 @@ public final class GradientTab extends PanelTab {
         problem = null;
         swapStep = -1;
         result = List.copyOf(shown);
+        onShow = entries();
         meanDeltaE = mean;
         pool = chosenFrom.candidates;
         poolById = chosenFrom.byId;
@@ -594,6 +604,7 @@ public final class GradientTab extends PanelTab {
                 // A list opened while this solve was on its way offers blocks from the answer before it.
                 swapStep = -1;
                 result = List.copyOf(found);
+                onShow = entries();
                 meanDeltaE = meanOklab;
                 pool = candidates;
                 poolById = byId;
@@ -627,6 +638,7 @@ public final class GradientTab extends PanelTab {
         solving = false;
         swapStep = -1;
         result = List.of();
+        onShow = List.of();
         problem = why;
         rebuild();
     }

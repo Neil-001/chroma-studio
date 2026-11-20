@@ -4,10 +4,12 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.OverflowMode;
 import dev.chromastudio.client.PaletteStore;
+import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.FileDialog;
 import dev.chromastudio.client.action.HotbarFill;
 import dev.chromastudio.client.action.ImageImport;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.export.LitematicaBridge;
 import dev.chromastudio.client.export.SchematicExporter;
 import dev.chromastudio.client.index.BlockIndex;
@@ -20,9 +22,11 @@ import dev.chromastudio.core.color.Harmony;
 import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.export.LayoutOptions;
+import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Generator;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.ShareString;
 import dev.chromastudio.core.palette.WorldEditPattern;
 import java.io.IOException;
@@ -41,6 +45,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.core.BlockPos;
@@ -366,11 +371,13 @@ final class PaletteDialogs {
         private boolean gap = ModSettings.exportGap;
         private final long seed;
         private Component skipped;
+        /** Where else the file can go, shown under the dialog's controls once it's written: Axiom's editor loads it. */
+        private Component hint;
         private int labelW;
 
         /** {@code seed} places the diorama layouts, so an export from the Diorama panel comes out as it shows. */
         Export(Palette palette, Layout layout, long seed) {
-            super(tr("palettes.chromastudio.export.title"), 290, 140);
+            super(tr("palettes.chromastudio.export.title"), 290, 150);
             this.palette = palette;
             this.layout = layout;
             this.seed = seed;
@@ -432,7 +439,9 @@ final class PaletteDialogs {
             label(g, "palettes.chromastudio.export.width", half, y);
             y += PanelTab.ROW;
             label(g, "palettes.chromastudio.export.patch", half, y);
+            // The hint sits over the warning when there are both, in the room the dialog keeps for it.
             if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.FAIR, false);
+            if (hint != null) g.text(PanelTab.font(), PanelTab.fit(hint.getString(), in.w()), in.x(), in.bottom() - STATUS_H - (skipped != null ? 18 : 9), Theme.DIM, false);
         }
 
         @Override
@@ -458,6 +467,7 @@ final class PaletteDialogs {
 
         private void run(boolean place) {
             skipped = null;
+            hint = null;
             LayoutOptions options = new LayoutOptions(layout, height, patch, width, gap, seed);
             SchematicExporter.Result result;
             try {
@@ -470,6 +480,8 @@ final class PaletteDialogs {
                 return;
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
+            // Axiom's File > Import Schematic reads .litematic files, but not .nbt ones.
+            if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty()) hint = tr("palettes.chromastudio.export.axiom");
             // A path has no spaces to wrap at. The name is what tells two exports apart, and its end holds the layout and the number.
             status(tr("command.chromastudio.export.done", middle(shortPath(result.file()), box.w() - 10)), Theme.GOOD);
             if (!place) return;
@@ -517,8 +529,8 @@ final class PaletteDialogs {
                 status(tr("palettes.chromastudio.worldedit.sent"), Theme.GOOD);
             });
             copy = widgets.button(in.right() - sendW - PanelTab.GAP - copyW, in.bottom() - Widgets.H - STATUS_H, copyLabel, () -> {
-                Minecraft.getInstance().keyboardHandler.setClipboard(command());
-                status(tr("palettes.chromastudio.worldedit.copied"), Theme.GOOD);
+                Clipboard.copy(command()).ifPresentOrElse(why -> status(why, Theme.BAD),
+                        () -> status(tr("palettes.chromastudio.worldedit.copied"), Theme.GOOD));
             });
             // The field comes last: giving it its text tells its responder, which greys the buttons.
             EditBox field = widgets.search(x, y, in.right() - x, tr("palettes.chromastudio.worldedit.from.hint"), s -> { from = s; enable(); });
@@ -557,19 +569,156 @@ final class PaletteDialogs {
         }
     }
 
-    /** Fills the hotbar from a list of entries, and undoes it. */
-    static final class Hotbar extends Dialog {
-        private final List<PaletteEntry> entries;
-        /** What the last fill or undo did. It takes the description's place, so it has the room to be read whole in any language. */
-        private Component result;
+    /**
+     * Builds a script for Axiom's Script Brush, to copy: from a palette, a recolour into it or a scatter of it, and
+     * from a gradient, a brush that paints it along an axis. The script is made afresh whenever a choice changes, so
+     * the summary under the controls always says what Copy would give, and how long the script is.
+     */
+    static final class Axiom extends Dialog {
+        private enum Script { RECOLOUR, SCATTER }
 
-        Hotbar(List<PaletteEntry> entries) {
-            super(tr("palettes.chromastudio.hotbar.title"), 270, 124);
-            this.entries = List.copyOf(entries);
+        private static Script script = Script.RECOLOUR;
+        private static AxiomScript.Axis axis = AxiomScript.Axis.Y;
+        private static Recolour.Mode match = Recolour.Mode.SHADING;
+        // The palette a recolour changes blocks from, so a choice outlives the dialog: a preset by its id and the
+        // player's own by name, as a palette of their own may share a preset's shown name. Empty for any block.
+        private static String fromKey = "";
+
+        private final Palette palette;
+        private final String gradientName;
+        private final List<PaletteEntry> steps;
+        private AxiomBridge.Script made;
+        private Component problem;
+        private int labelW;
+
+        /** A recolour or scatter of a palette. */
+        Axiom(Palette palette) {
+            // Room for the summary, the script's size and the note on servers' limit, which is the part a player most needs,
+            // and a line for the blocks the palette already has.
+            super(tr("axiom.chromastudio.title"), 300, 140 + PanelTab.ROW + 27);
+            this.palette = palette;
+            this.gradientName = null;
+            this.steps = null;
+        }
+
+        /** A gradient along an axis. */
+        Axiom(String gradientName, List<PaletteEntry> steps) {
+            super(tr("axiom.chromastudio.title"), 300, 100);
+            this.palette = null;
+            this.gradientName = gradientName;
+            this.steps = List.copyOf(steps);
+        }
+
+        private void make() {
+            made = null;
+            problem = null;
+            try {
+                if (palette == null) made = AxiomBridge.gradientScript(gradientName, steps, axis);
+                else if (script == Script.SCATTER) made = AxiomBridge.scatterScript(palette);
+                else made = AxiomBridge.recolourScript(palette, from(), match);
+            } catch (AxiomBridge.Refused r) {
+                problem = r.reason();
+            }
+        }
+
+        /** The palette a recolour changes blocks from, or null for any block. */
+        private Palette from() {
+            // The palette itself stands for any block, so a remembered name that happens to be its own isn't a choice.
+            for (Palette p : fromChoices()) if (p != palette && key(p).equals(fromKey)) return p;
+            return null;
+        }
+
+        private static String key(Palette p) {
+            String preset = PaletteStore.get().presetId(p);
+            return preset != null ? "preset:" + preset : "own:" + p.name;
+        }
+
+        /** Any block, then every other palette. A list can't hold null, so the palette itself stands for any block. */
+        private List<Palette> fromChoices() {
+            List<Palette> out = new ArrayList<>();
+            out.add(palette);
+            for (Palette p : PaletteStore.get().all()) if (p != palette) out.add(p);
+            return out;
         }
 
         @Override
         protected void build(Bounds in) {
+            make();
+            int x, y = in.y();
+            if (palette == null) {
+                labelW = labelWidth("axiom.chromastudio.axis");
+                x = in.x() + labelW;
+                widgets.cycler(x, y, 40, null, List.of(AxiomScript.Axis.values()), axis, a -> Component.literal(a.name().toLowerCase(Locale.ROOT)),
+                        a -> { axis = a; refresh(); }, tr("axiom.chromastudio.axis.tip"));
+            } else {
+                labelW = labelWidth("axiom.chromastudio.script", "axiom.chromastudio.from", "axiom.chromastudio.match");
+                x = in.x() + labelW;
+                widgets.cycler(x, y, in.right() - x, null, List.of(Script.values()), script, s -> tr("axiom.chromastudio.script." + s.name().toLowerCase(Locale.ROOT)),
+                        s -> { script = s; refresh(); }, tr("axiom.chromastudio.script.tip"));
+                y += PanelTab.ROW;
+                Palette from = from();
+                var fromButton = widgets.cycler(x, y, in.right() - x, null, fromChoices(), from == null ? palette : from,
+                        p -> p == palette ? tr("axiom.chromastudio.from.any") : Component.literal(AxiomBridge.fromName(p)),
+                        p -> { fromKey = p == palette ? "" : key(p); refresh(); }, tr("axiom.chromastudio.from.tip"));
+                y += PanelTab.ROW;
+                var matchButton = widgets.cycler(x, y, in.right() - x, null, List.of(Recolour.Mode.values()), match,
+                        m -> tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT)), m -> { match = m; refresh(); }, tr("axiom.chromastudio.match.tip"));
+                if (script != Script.RECOLOUR) {
+                    Widgets.disable(fromButton, tr("axiom.chromastudio.from.na"));
+                    Widgets.disable(matchButton, tr("axiom.chromastudio.from.na"));
+                }
+            }
+            Component copyLabel = tr("palettes.chromastudio.copy");
+            Button copy = widgets.button(in.right() - Widgets.buttonWidth(copyLabel), in.bottom() - Widgets.H - STATUS_H, copyLabel, () -> {
+                AxiomBridge.copy(made);
+                status(tr("axiom.chromastudio.copied"), Theme.GOOD);
+            });
+            if (made == null) Widgets.disable(copy, problem);
+        }
+
+        @Override
+        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+            if (palette == null) label(g, "axiom.chromastudio.axis", in.x(), in.y());
+            else {
+                label(g, "axiom.chromastudio.script", in.x(), in.y());
+                label(g, "axiom.chromastudio.from", in.x(), in.y() + PanelTab.ROW);
+                label(g, "axiom.chromastudio.match", in.x(), in.y() + 2 * PanelTab.ROW);
+            }
+            int top = in.y() + (palette == null ? 1 : 3) * PanelTab.ROW;
+            Component said = made != null ? made.summary() : problem;
+            List<FormattedCharSequence> lines = PanelTab.font().split(said, in.w());
+            int fit = Math.max(1, (in.bottom() - Widgets.H - STATUS_H - PanelTab.GAP - top) / 9);
+            for (int i = 0; i < Math.min(fit, lines.size()); i++) g.text(PanelTab.font(), lines.get(i), in.x(), top + i * 9, made != null ? Theme.TEXT : Theme.FAIR, false);
+            if (lines.size() > fit && mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < top + fit * 9)
+                g.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
+        }
+    }
+
+    /** Fills the hotbar from a list of entries, and undoes it. */
+    static final class Hotbar extends Dialog {
+        private final List<PaletteEntry> entries;
+        /** How many of the entries a fill puts somewhere, which is what its counts and hotbars go by. */
+        private final int blocks;
+        /** What the last fill or undo did. It takes the description's place, so it has the room to be read whole in any language. */
+        private Component result;
+        /** Whether the description stays under the result, as after a fill refused because where it goes had just changed. */
+        private boolean describe;
+        /** What {@link #state} was when the controls were laid out. */
+        private List<Object> built = List.of();
+        /** Whether the dialog has been drawn since it was laid out, so the player has seen what Fill does now. */
+        private boolean shown;
+
+        Hotbar(List<PaletteEntry> entries) {
+            super(tr("palettes.chromastudio.hotbar.title"), 270, 124 + Widgets.H + PanelTab.GAP);
+            this.entries = List.copyOf(entries);
+            this.blocks = HotbarFill.holdable(entries);
+        }
+
+        @Override
+        protected void build(Bounds in) {
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
+            built = state();
+            shown = false;
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo"), boxes = tr("palettes.chromastudio.hotbar.boxes");
             int y = in.bottom() - Widgets.H, undoW = Widgets.buttonWidth(undo);
             // The mode is the settings' own, shown and changed here, so the dialog always says which one a fill goes by.
@@ -578,30 +727,109 @@ final class PaletteDialogs {
             Function<OverflowMode, Component> names = m -> tr("option.chromastudio.overflowmode." + m.name().toLowerCase(Locale.ROOT));
             int modeW = modes.stream().mapToInt(m -> Widgets.buttonWidth(CommonComponents.optionNameValue(boxes, names.apply(m)))).max().orElse(0);
             modeW = Math.min(modeW, in.w() - undoW - Widgets.buttonWidth(fill) - 2 * PanelTab.GAP);   // a long translation never squeezes Fill below its text
-            widgets.cycler(in.x(), y, modeW, boxes, modes, ModSettings.hotbarOverflowMode, names, m -> {
+            CycleButton<OverflowMode> modeButton = widgets.cycler(in.x(), y, modeW, boxes, modes, ModSettings.hotbarOverflowMode, names, m -> {
                         ModSettings.hotbarOverflowMode = m;
                         ModSettings.save();
                         result = null;
                     }, tr("settings.chromastudio.hotbarOverflowMode.tip"));
+            // Axiom's hotbars take the blocks past the ninth instead of boxes, so while they do the boxes' mode has no say.
+            if (preview.isPresent()) Widgets.disable(modeButton, tr("hotbar.chromastudio.axiom.instead"));
+            // A row of its own over the others, greyed with the reason when Axiom is missing or can't take them now.
+            Component axiom = tr("palettes.chromastudio.hotbar.axiom");
+            int axiomW = Math.min(in.w(), Math.max(Widgets.buttonWidth(CommonComponents.optionNameValue(axiom, CommonComponents.OPTION_ON)),
+                    Widgets.buttonWidth(CommonComponents.optionNameValue(axiom, CommonComponents.OPTION_OFF))));
+            // It reads what the fill does now: greyed out, Axiom's hotbars take nothing, whatever the setting says.
+            CycleButton<Boolean> axiomButton = widgets.toggle(in.x(), y - Widgets.H - PanelTab.GAP, axiomW, axiom, HotbarFill.usesAxiom(), v -> {
+                ModSettings.hotbarAxiom = v;
+                ModSettings.save();
+                result = null;
+                refresh();
+            }, tr("settings.chromastudio.hotbarAxiom.tip"));
+            AxiomBridge.hotbarsUnavailable().ifPresent(why -> Widgets.disable(axiomButton, why));
             int fillX = in.x() + modeW + PanelTab.GAP, fillW = in.right() - undoW - PanelTab.GAP - fillX;
             Button fillButton = widgets.button(fillX, y, fillW, fill, () -> {
-                result = HotbarFill.fill(entries);
+                // Fill goes the way the dialog says, or not at all: a click can come before the tick that lays it out again.
+                // A second click queued behind one that changed the dialog waits until the player has seen the change.
+                if (!shown) return;
+                result = HotbarFill.fill(entries, (Boolean) built.getFirst());
+                // When Fill refused because Axiom's hotbars came or went, the player is asked to read what it does now.
+                describe = !state().getFirst().equals(built.getFirst());
                 refresh();
             });
-            HotbarFill.unavailable().ifPresent(why -> Widgets.disable(fillButton, why));
+            HotbarFill.whyNoFill().ifPresent(why -> Widgets.disable(fillButton, why));
             Button undoButton = widgets.button(in.right() - undoW, y, undo, () -> {
                 result = HotbarFill.undo();
+                describe = false;
                 refresh();
             });
-            if (!HotbarFill.canUndo()) Widgets.disable(undoButton, HotbarFill.unavailable().orElse(tr("hotbar.chromastudio.nothing_to_undo")));
+            HotbarFill.whyNoUndo().ifPresent(why -> Widgets.disable(undoButton, why));
         }
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            int over = Math.max(0, entries.size() - 9);
-            Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", entries.size())
-                    : tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over);
-            g.textWithWordWrap(PanelTab.font(), result != null ? result : text, in.x(), in.y(), in.w(), result != null ? Theme.TEXT : Theme.DIM, false);
+            shown = true;
+            // Read every frame, so what it says is what a click on Fill would do, even after a fill or undo just now.
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
+            boolean replaces = preview.filter(p -> p.replaced() > 0).isPresent();
+            int over = Math.max(0, blocks - 9);
+            Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", blocks)
+                    : preview.map(p -> about(over, p, result != null))
+                            .orElseGet(() -> tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over));
+            // The result takes the description's place. A warning that the next fill replaces what the player keeps in
+            // Axiom's hotbars keeps rows of its own at the bottom, in the warning colour, however long the result.
+            int fit = Math.max(1, (in.bottom() - 2 * Widgets.H - 2 * PanelTab.GAP - in.y()) / 9);
+            List<FormattedCharSequence> warning = result != null && !replaces && !describe ? List.of() : PanelTab.font().split(text, in.w());
+            List<FormattedCharSequence> said = result != null ? PanelTab.font().split(result, in.w()) : List.of();
+            int warningRows = result == null ? fit : Math.min(warning.size(), fit - 2);
+            int saidRows = result == null ? 0 : Math.min(said.size(), Math.max(1, fit - (warningRows > 0 ? warningRows + 1 : 0)));
+            for (int i = 0; i < saidRows; i++) g.text(PanelTab.font(), said.get(i), in.x(), in.y() + i * 9, Theme.TEXT, false);
+            int warningTop = in.y() + (saidRows > 0 ? (saidRows + 1) * 9 : 0);
+            // Under a result, the warning is about filling again, not about what just happened, so it isn't coloured as one.
+            int colour = replaces && result == null ? Theme.FAIR : Theme.DIM;
+            for (int i = 0; i < Math.min(warningRows, warning.size()); i++) g.text(PanelTab.font(), warning.get(i), in.x(), warningTop + i * 9, colour, false);
+            // Whatever was cut is shown whole while the pointer is over the text.
+            if ((said.size() > saidRows || warning.size() > warningRows) && mouseX >= in.x() && mouseX < in.right() && mouseY >= in.y() && mouseY < in.y() + fit * 9) {
+                List<FormattedCharSequence> all = new ArrayList<>(said);
+                if (!said.isEmpty() && !warning.isEmpty()) all.add(FormattedCharSequence.EMPTY);
+                all.addAll(warning);
+                g.setTooltipForNextFrame(PanelTab.font(), all, mouseX, mouseY);
+            }
+        }
+
+        /**
+         * Lays the controls out again when Axiom's hotbars come or go while the dialog is open, as when a call into
+         * them fails, so the controls and the description say what Fill will do before it is clicked.
+         */
+        @Override
+        void tick() {
+            if (state().equals(built)) return;
+            result = null;
+            describe = false;
+            refresh();
+        }
+
+        /**
+         * What the controls show that can change while the dialog is open, as when a call into Axiom fails or the
+         * player's game mode changes: whether a fill would use Axiom's hotbars, and why the toggle, Fill and Undo can't
+         * be used, if they can't. The first is what Fill goes by.
+         */
+        private static List<Object> state() {
+            return List.of(HotbarFill.usesAxiom(), reason(AxiomBridge.hotbarsUnavailable()), reason(HotbarFill.whyNoFill()), reason(HotbarFill.whyNoUndo()));
+        }
+
+        private static String reason(Optional<Component> why) { return why.map(Component::getString).orElse(""); }
+
+        /**
+         * What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to
+         * keep. Straight after a fill or undo, {@code again} says it of the next fill, as the slots it counts may hold
+         * what the fill just put there.
+         */
+        private static Component about(int over, HotbarFill.AxiomPreview p, boolean again) {
+            if (again && p.replaced() > 0) return p.replaced() == 1 ? tr("palettes.chromastudio.hotbar.about.axiom.again_one", p.hotbars())
+                    : tr("palettes.chromastudio.hotbar.about.axiom.again", p.hotbars(), p.replaced());
+            if (p.replaced() == 0) return tr("palettes.chromastudio.hotbar.about.axiom", over, p.hotbars());
+            return p.replaced() == 1 ? tr("palettes.chromastudio.hotbar.about.axiom.replaces_one", over, p.hotbars())
+                    : tr("palettes.chromastudio.hotbar.about.axiom.replaces", over, p.hotbars(), p.replaced());
         }
     }
 

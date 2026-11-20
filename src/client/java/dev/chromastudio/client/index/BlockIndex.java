@@ -56,9 +56,12 @@ public final class BlockIndex {
 
     public static BlockIndex get() { return INSTANCE; }
 
-    /** A finished build. The client thread reads it while the next one is made. */
+    /**
+     * A finished build. The client thread reads it while the next one is made. It carries its own {@link #version}, so
+     * a caller never sees the number of one build with the blocks of another.
+     */
     private record Built(List<List<Entry>> blocks, Map<Block, List<Entry>> byBlock, Map<BlockState, Entry> byState,
-                         Set<String> namespaces, Map<String, List<Entry>> materials) {}
+                         Set<String> namespaces, Map<String, List<Entry>> materials, int version) {}
 
     public record Match(Entry entry, Face face, double distance) {}
 
@@ -70,7 +73,6 @@ public final class BlockIndex {
     // Each build takes the next number, and gives up when it sees a later one has been asked for.
     private final AtomicInteger asked = new AtomicInteger();
     private volatile Built built;
-    private volatile int version;
     // The build and the world's registries the creative tabs were last read for. Client thread only.
     private Built listedBuild;
     private HolderLookup.Provider listedFor;
@@ -98,7 +100,10 @@ public final class BlockIndex {
     }
 
     /** A number that changes with every finished build, so a caller knows when what it worked out is out of date. */
-    public int version() { return version; }
+    public int version() {
+        Built b = built;
+        return b == null ? 0 : b.version();
+    }
 
     /** False until the first build finishes. It stays true while a later build runs, and the earlier one answers. */
     public boolean ready() { return built != null; }
@@ -184,8 +189,8 @@ public final class BlockIndex {
         }
         Comparator<Entry> inSet = Comparator.comparingInt(e -> MaterialSets.order(e.id()));
         for (List<Entry> set : materials.values()) set.sort(inSet.thenComparing(Entry::id));
-        built = new Built(List.copyOf(blocks), byBlock, byState, Collections.unmodifiableSet(namespaces), materials);
-        version++;
+        Built was = built;
+        built = new Built(List.copyOf(blocks), byBlock, byState, Collections.unmodifiableSet(namespaces), materials, was == null ? 1 : was.version() + 1);
     }
 
     /**
@@ -349,6 +354,9 @@ public final class BlockIndex {
         boolean technical = IndexOptions.current().technical();
         return b.materials.getOrDefault(MaterialSets.base(e.id()), List.of()).stream().filter(m -> technical || !m.technical()).toList();
     }
+
+    /** An entry's material with worn and overgrown variants folded in, as {@link MaterialSets#family} says. */
+    public String family(Entry e) { return MaterialSets.family(e.id()); }
 
     /** What to call an entry's material set, such as "Cherry" for the set cherry planks are in. */
     public String materialName(Entry e) {

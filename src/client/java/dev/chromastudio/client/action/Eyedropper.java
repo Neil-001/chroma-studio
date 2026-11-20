@@ -2,6 +2,7 @@ package dev.chromastudio.client.action;
 
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.TintContext;
@@ -20,8 +21,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
 /**
- * The in-world eyedropper: reads the face of the block the player looks at, as it is placed and in the biome it is
- * in, and makes it the Match target. {@code Keys.onEyedropper} runs {@link #press}.
+ * The in-world eyedropper: reads the face of the block the player looks at, or in Axiom's editor the block under the
+ * mouse, as it is placed and in the biome it is in, and makes it the Match target. {@code Keys.onEyedropper} runs
+ * {@link #press}.
  */
 public final class Eyedropper {
     private Eyedropper() {}
@@ -40,17 +42,28 @@ public final class Eyedropper {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         boolean open = armed || mc.hasShiftDown();
-        BlockHitResult hit = hit(mc);
+        // Axiom's editor hides the crosshair and points with the mouse instead, so there it reads what the mouse is over.
+        BlockHitResult hit = AxiomBridge.editorOpen() ? AxiomBridge.blockUnderMouse() : hit(mc);
         if (hit == null) {
             say("eyedropper.chromastudio.no_block", "eyedropper.chromastudio.no_block.how");
             return;
         }
+        read(hit, open);
+    }
+
+    /**
+     * Makes the face that {@code hit} names the Match target, as a press of the key does once it has found a block,
+     * and opens the window on it when {@code open} is set. Returns whether there was a colour to take.
+     */
+    public static boolean read(BlockHitResult hit, boolean open) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) return false;
         BlockPos pos = hit.getBlockPos();
         BlockState state = mc.level.getBlockState(pos);
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) {
             say("eyedropper.chromastudio.not_ready", "eyedropper.chromastudio.not_ready.how");
-            return;
+            return false;
         }
         Entry entry = index.entryOf(state);
         // Water and lava are indexed as their blocks; a waterlogged block that isn't indexed still shows its water.
@@ -62,7 +75,7 @@ public final class Eyedropper {
         if (entry == null) {
             Hud.readout(Component.translatable("eyedropper.chromastudio.not_indexed", state.getBlock().getName()),
                     Component.translatable("eyedropper.chromastudio.not_indexed.how"), ModSettings.readoutSeconds);
-            return;
+            return false;
         }
         armed = false;
         // Minecraft's directions and the core's faces are in the same order.
@@ -71,13 +84,14 @@ public final class Eyedropper {
         Color colour = index.colourOf(state, face, tint).orElseThrow();
         MatchState.setEntry(entry, state, face, tint);
         MatchState.remember();
-        mc.keyboardHandler.setClipboard(colour.hex());
+        Clipboard.copy(colour.hex());
 
         // The state as placed, which may be one the index folded into another's entry.
         String properties = Entry.properties(state);
         Component name = properties.isEmpty() ? entry.name() : Component.translatable("match.chromastudio.name_with_state", entry.name(), properties);
         Hud.readout(name, Component.translatable("eyedropper.chromastudio.readout", faceName(face), colour.hex()), ModSettings.readoutSeconds);
         if (open) ChromaScreen.open("match");
+        return true;
     }
 
     public static Component faceName(Face face) {

@@ -37,6 +37,21 @@ repositories {
 			includeGroup 'dev.architectury'
 		}
 	}
+	// Axiom's client API and ImGui binding, pinned in libs/ so the build doesn't wait on JitPack; libs/README.md says
+	// where they come from. Axiom itself is closed source and never a dependency: put its jar in run/fabric/mods to try it.
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Pinned'
+				url = rootProject.file('libs')
+				metadataSources { artifact() }
+			}
+		}
+		filter {
+			includeGroup 'com.github.Moulberry'
+			includeGroup 'com.github.moulberry.imgui-java'
+		}
+	}
 }
 
 loom {
@@ -96,7 +111,15 @@ dependencies {
 		localRuntime("me.shedaniel:RoughlyEnoughItems-fabric:${project.rei_version}")
 	}
 
+	// Axiom is optional: only dev.chromastudio.client.axiom refers to its API, and only once the mod is known to be loaded.
+	compileOnly("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
+	compileOnly("com.github.moulberry.imgui-java:imgui-java-binding:${project.axiom_imgui_version}") { transitive = false }
+
 	// Tests cover the pure-Java core (dev.chromastudio.core), the settings file, and the block index against the game's own assets.
+	// The Axiom tools' commit rules are tested against Axiom's client API, with Axiom's own internals stubbed.
+	testImplementation("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
+	// Runs the Lua scripts made for Axiom's Script Brush, as Axiom does, with a Lua of the same kind.
+	testImplementation "org.luaj:luaj-jse:3.0.1"
 	testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }

@@ -3,6 +3,7 @@ package dev.chromastudio.client;
 import dev.chromastudio.client.action.Capture;
 import dev.chromastudio.client.action.Eyedropper;
 import dev.chromastudio.client.action.HotbarFill;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.export.ExportCommand;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.tabs.ExploreTab;
@@ -35,6 +36,7 @@ public final class ChromaStudioClient {
         ChromaScreen.registerTab("gradient", GradientTab::new, 10);
         ChromaScreen.registerTab("palettes", PalettesTab::new, 20);
         ChromaScreen.registerTab("explore", ExploreTab::new, 30);
+        AxiomBridge.register();
     }
 
     /** The tab to open the window on at the next tick, or null. */
@@ -56,6 +58,7 @@ public final class ChromaStudioClient {
         while (Keys.CAPTURE.consumeClick()) if (mc.gui.screen() == null) Keys.onCapture.run();
         Capture.tick(mc);
         HotbarFill.tick();
+        AxiomBridge.tick(mc);
     }
 
     /** Opens the window on the tab it last showed, or brings a pinned one back. */

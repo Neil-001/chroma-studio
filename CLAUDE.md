@@ -1,6 +1,6 @@
 # Chroma Studio
 
-A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. It places nothing in the world and has no server side.
+A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. On its own it places nothing in the world, and it has no server side. With Axiom installed it adds tools to Axiom's editor.
 
 ## Commands
 
@@ -24,6 +24,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
 - Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them.
+- Axiom is optional, Fabric-only and closed source. Compile against its client API and ImGui binding only, which `libs/` pins under their MIT licences and the built jars never contain. Never commit, ship or compile against Axiom's own jar. Only `dev.chromastudio.client.axiom` may refer to Axiom, the rest of the mod enters it through `AxiomBridge`, and what isn't in the client API is reached by guarded reflection that fails with a reason the player can read. To try it, put Axiom's jar in `run/fabric/mods/`.
 - A new setting follows the comment on `ModSettings`, and needs a label and a `.tip` in the language file, which the settings screen's search reads.
 - `en_us.json` is written by hand, and the nine other language files are generated from it. A new English key needs its nine translations in the same change, or `LangTest` fails.
 - Read `listing/README.md` before changing anything in `listing/`.
@@ -38,7 +39,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - A tint comes from `BlockTintSource.colorInWorld(state, getter, pos)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
 - Signs and beds have block models and are matched as any block.
 - The game runs on SDL, not GLFW, and ships no tinyfd. Ask for a mouse cursor each frame with `g.requestCursor`; a frame that asks for none gets the arrow back. `CursorType.createStandardCursor` makes a shape `CursorTypes` lacks, such as the diagonal arrows, and falls back where the system has none.
-- Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number.
+- Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number. Axiom's `ToolService.isMouseDown` is the exception: it counts in ImGui's order from 0, so 1 is the right button.
 - `NativeImage.getPixel` and `setPixel` take ARGB.
 
 ## Conventions
@@ -47,6 +48,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - Use cyclers for options, so right-click steps backwards, and spinners for numbers. Make them through `Widgets`, which lets the mouse wheel step them. In a scrolling list, such as the settings or the Palettes tab's entries, use `Widgets.wheelNeedsClick`, so scrolling past a control doesn't change it.
 - Size buttons with the text's width. Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
 - Take colours from `Theme`, never a hex literal, apart from a colour that is data, such as a swatch, and the black and white marks drawn over one. The game's own tooltips and text fields stay dark on every theme, so text in them uses `Theme.TIP_*` and `Theme.FIELD_BAD`. Centre text with `Widgets.centred`.
+- A tool's panel in Axiom's editor is drawn by ImGui, not with `Widgets`. Draw it through `AxiomPanel`, which keeps these conventions there.
 - Use plain, sentence case UI copy without jargon.
 - Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
 - Visual fixes must preserve other behaviour. Prove it, for example by comparing pixels.
@@ -57,16 +59,18 @@ Most classes say what they do in a comment at the top, and their fields and meth
 
 ## Giving blocks and sending commands
 
-The mod never places or changes blocks in the world. It acts only through the player's own inventory or chat:
+The mod never places or changes blocks in the world itself. It acts only through the player's own inventory or chat:
 
 - Giving a block, filling the hotbar and dyeing need creative mode or operator rights, and are greyed out with the reason otherwise. A block's item reaches the player through `Give.stack`.
 - Commands go through `ClientPlatform.sendChatCommand`, as if the player had typed them.
 - Exported files are never silently overwritten.
 
+The one exception is a tool the player is using in Axiom's editor. It hands its blocks to Axiom's `pushBlockRegionChange`, so Axiom's permissions, server checks and undo apply, and each stroke is one entry in Axiom's history. Nothing else changes the world, and nothing does so without the player's own click.
+
 ## Limits
 
 - Spread, which `Badge` goes by, can't order every texture as the eye does: wool, gravel and granite come out grainy.
-- Left out on purpose: placement, world editing, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.
+- Left out on purpose: placement and world editing outside Axiom's editor, structure import to a CAD, online accounts, server components, in-world previews other than the capture outline and the previews of the tools in Axiom's editor, and Cloth Config.
 
 ## Releasing
 

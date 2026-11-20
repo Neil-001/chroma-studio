@@ -59,6 +59,7 @@ public class ChromaStudioFabricClient implements ClientModInitializer, ClientPla
     @Override public Path configDir() { return FabricLoader.getInstance().getConfigDir(); }
     @Override public Path gameDir() { return FabricLoader.getInstance().getGameDir(); }
     @Override public boolean isModLoaded(String id) { return FabricLoader.getInstance().isModLoaded(id); }
+    @Override public boolean isFabric() { return true; }
     @Override public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockStateModelPart> out) {
         model.collectParts(random, out);
     }

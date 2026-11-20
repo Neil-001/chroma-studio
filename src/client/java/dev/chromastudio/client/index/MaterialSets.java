@@ -61,6 +61,24 @@ final class MaterialSets {
         return namespace + base;
     }
 
+    /** Prefixes that make a variant a builder takes for the same stone: worn, overgrown, carved or infested. */
+    private static final List<String> VARIANTS = List.of("cracked_", "mossy_", "chiseled_", "infested_");
+
+    /**
+     * A block's family: its {@link #base material} with a {@link #VARIANTS variant} folded into the material it varies,
+     * so {@code minecraft:mossy_stone_brick_stairs} and {@code minecraft:cracked_stone_bricks} both give
+     * {@code minecraft:stone_brick}, while cobblestone, andesite and polished andesite stay three families.
+     */
+    static String family(String id) {
+        String base = base(id);
+        int colon = base.indexOf(':');
+        String namespace = base.substring(0, colon + 1), path = base.substring(colon + 1);
+        for (String variant : VARIANTS) {
+            if (path.startsWith(variant) && path.length() > variant.length()) return base(namespace + path.substring(variant.length()));
+        }
+        return base;
+    }
+
     /**
      * A material's name from a block id, for the palette made of its set: the path of {@link #base} with spaces
      * for its underscores and a capital first, so {@code minecraft:cherry_planks} gives "Cherry" and

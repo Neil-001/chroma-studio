@@ -11,6 +11,9 @@ import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.core.color.Harmony;
 import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.palette.Analyzer;
+import dev.chromastudio.core.palette.QueuedChanges;
+import dev.chromastudio.core.palette.Recolour;
+import dev.chromastudio.core.palette.ShadeSteps;
 import dev.chromastudio.core.palette.WorldEditPattern;
 import java.io.IOException;
 import java.io.InputStream;
@@ -81,6 +84,22 @@ class LangTest {
         for (Layout l : Layout.values()) keys.add("option.chromastudio.layoutchoice." + l.name().toLowerCase(Locale.ROOT));
         keys.add("kind.chromastudio.all");
         for (Kind k : Kind.values()) keys.add("kind.chromastudio." + k.name().toLowerCase(Locale.ROOT));
+        for (Recolour.Mode m : Recolour.Mode.values()) keys.add("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT));
+        for (ShadeSteps.Direction d : ShadeSteps.Direction.values()) {
+            String way = d.name().toLowerCase(Locale.ROOT);
+            keys.add("axiom.chromastudio.shade." + way);
+            keys.add("axiom.chromastudio.shade." + way + ".tip");
+            keys.add("axiom.chromastudio.shade.left." + way);
+        }
+        for (QueuedChanges.Refusal r : QueuedChanges.Refusal.values()) {
+            // Nothing to send, or nothing wrong, is never said.
+            if (r != QueuedChanges.Refusal.NONE && r != QueuedChanges.Refusal.EMPTY) keys.add("axiom.chromastudio.refused." + r.name().toLowerCase(Locale.ROOT));
+        }
+        // The Axiom panels' sentences about a number of blocks, which have their own words for one.
+        for (String counted : List.of("count", "masked", "gradient_tool.skipped", "gradient_tool.left_alone")) {
+            keys.add("axiom.chromastudio." + counted);
+            keys.add("axiom.chromastudio." + counted + ".one");
+        }
         for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) {
             keys.add("palettes.chromastudio.tool." + tool);
             keys.add("palettes.chromastudio.tool." + tool + ".tip");

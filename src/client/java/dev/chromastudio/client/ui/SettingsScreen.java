@@ -3,6 +3,7 @@ package dev.chromastudio.client.ui;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ThemeChoice;
+import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.core.color.Color;
 import java.util.ArrayList;
@@ -115,7 +116,7 @@ public final class SettingsScreen extends Screen {
         list.clear();
         undos.keySet().removeIf(group -> !group.isEmpty());
         Map<String, List<String>> rows = new LinkedHashMap<>();
-        ModSettings.GROUPS.forEach((group, names) -> rows.put(group, names.stream().filter(name -> !ModSettings.WINDOW_MEMORY.contains(name)).toList()));
+        ModSettings.GROUPS.forEach((group, names) -> rows.put(group, names.stream().filter(name -> !ModSettings.MEMORY.contains(name)).toList()));
         rows.computeIfPresent("integrations", (_, names) -> Stream.concat(Stream.of(MOD_KEYS), names.stream()).toList());
         Map<String, List<String>> shown = SettingsFilter.filter(rows, search, SettingsScreen::text);
         noRows = shown.isEmpty();
@@ -245,6 +246,12 @@ public final class SettingsScreen extends Screen {
         if (name.equals("dioramaPerspective"))
             return list.cycler(x, y, CONTROL_W, null, List.of(false, true), (Boolean) value,
                     v -> Component.translatable("option.chromastudio.projection." + (v ? "perspective" : "orthographic")), v -> ModSettings.set(name, v), tip);
+        // Greyed rather than hidden without Axiom, or with an Axiom whose hotbars this version can't use, so the setting
+        // can be found and its tooltip says what it needs. Greyed, it reads OFF, as the fill dialog does, since no fill
+        // can use Axiom's hotbars then; the saved choice is kept for when one can. Only the fill dialog greys it for
+        // the moment's reasons, such as survival mode, since the choice still stands for later.
+        if (name.equals("hotbarAxiom") && AxiomBridge.hotbarsUnsupported().isPresent())
+            return Widgets.disable(list.toggle(x, y, CONTROL_W, null, false, v -> ModSettings.set(name, v)), AxiomBridge.hotbarsUnsupported().orElseThrow());
         if (type == boolean.class) return list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v), tip);
         if (type == int.class || type == double.class) {
             boolean whole = type == int.class;

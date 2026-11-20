@@ -38,6 +38,8 @@ public final class ModSettings {
     public static final int VIEW_FAR = 192;
     /** The longest text a setting holds. */
     public static final int TEXT_MAX = 256;
+    /** The largest radius the palette brush in Axiom's editor takes. */
+    public static final int BRUSH_MAX_RADIUS = 16;
 
     // Keys and window
     /** The window's top-left corner, or {@link #CENTRED} for either. */
@@ -121,11 +123,24 @@ public final class ModSettings {
 
     // Integrations
     public static PlacementChoice litematicaPlacement = PlacementChoice.LOOKING_AT;
+    /** Whether a hotbar fill puts the blocks past the ninth in Axiom's next hotbars, when Axiom is there and can. */
+    public static boolean hotbarAxiom = false;
+    /**
+     * The Chroma palette brush's last choices in Axiom's editor, so they're as the player left them next session. A
+     * palette is named as {@code PaletteBrushTool} keys it; {@code brushFrom} is also "build" or "any".
+     */
+    public static String brushPalette = "", brushMode = "SCATTER", brushFrom = "build", brushMatch = "SHADING";
+    public static int brushRadius = 4;
+    public static boolean brushWholeBuild = false;
 
     /** Every setting by the group the settings screen lists it under, in the order shown and saved. */
     public static final Map<String, List<String>> GROUPS = new LinkedHashMap<>();
-    /** The settings in the first group that the window keeps itself, so the settings screen has no row for them. */
-    public static final List<String> WINDOW_MEMORY = List.of("windowX", "windowY", "windowW", "windowH", "fullscreen");
+    /**
+     * The settings the mod keeps itself, rather than the player setting them on the settings screen, which has no row
+     * for them: where the window was left, and the palette brush's last choices.
+     */
+    public static final List<String> MEMORY = List.of("windowX", "windowY", "windowW", "windowH", "fullscreen",
+            "brushPalette", "brushMode", "brushFrom", "brushMatch", "brushRadius", "brushWholeBuild");
 
     private static final Map<String, Field> FIELDS = new LinkedHashMap<>();
     private static final Map<String, Object> DEFAULTS = new HashMap<>();
@@ -145,7 +160,8 @@ public final class ModSettings {
         GROUPS.put("gradient", List.of("gradientSteps", "easing", "hueArc", "spreadMatching"));
         GROUPS.put("palettes", List.of("generateCount", "captureCount", "hotbarOverflowMode", "dioramaPerspective", "exportFolder", "defaultLayout", "patchSize", "exportGap"));
         GROUPS.put("tooltips", List.of("tooltipMode", "tooltipSwatch", "tooltipHex", "tooltipKind", "tooltipBadge", "tooltipDeltaE", "readoutSeconds"));
-        GROUPS.put("integrations", List.of("litematicaPlacement"));
+        GROUPS.put("integrations", List.of("litematicaPlacement", "hotbarAxiom", "brushPalette", "brushMode", "brushFrom", "brushMatch",
+                "brushRadius", "brushWholeBuild"));
 
         limit("windowX", CENTRED, WINDOW_MAX);
         limit("windowY", CENTRED, WINDOW_MAX);
@@ -160,10 +176,13 @@ public final class ModSettings {
         limit("captureCount", 1, 64);
         limit("patchSize", 1, 16);
         limit("readoutSeconds", 1, 30);
+        limit("brushRadius", 0, BRUSH_MAX_RADIUS);
 
         NAMES.put("metric", List.of("OKLAB", "CIEDE2000", "CIE76", "SRGB", "MAP_COLOR"));
         NAMES.put("easing", List.of("LINEAR", "SMOOTH", "EASE_IN", "EASE_OUT"));
         NAMES.put("hueArc", List.of("SHORTEST", "LONGEST"));
+        NAMES.put("brushMode", List.of("SCATTER", "RECOLOUR"));
+        NAMES.put("brushMatch", List.of("SHADING", "CLOSEST"));
         SHAPES.put("startTab", Pattern.compile("[a-z0-9_]{1,64}"));
         SHAPES.put("customColour", Pattern.compile("#[0-9A-Fa-f]{6}"));
         SHAPES.put("biome", Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+"));
