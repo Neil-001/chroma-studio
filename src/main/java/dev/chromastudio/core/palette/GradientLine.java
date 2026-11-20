@@ -55,11 +55,13 @@ public final class GradientLine {
      * block's position alone, so the same block always gets the same step.
      *
      * <p>When the line is shorter than the gradient has steps, sharing would skip both ends' steps, so instead each
-     * block takes the step nearest its place along the line, and the two ends get the first and last steps.
+     * block takes the step nearest its place along the line, mixed with the next nearest as the blend allows, and the
+     * two ends get the first and last steps.
      */
     public int step(int x, int y, int z, int steps, double blend) {
-        if (length + 1 < steps) return Math.clamp(Math.round(along(x, y, z) / length * (steps - 1)), 0, steps - 1);
-        double u = (along(x, y, z) + 0.5) / (length + 1) * steps;
+        boolean shortLine = length + 1 < steps;
+        // On a short line the steps sit at the blocks rather than between them, so rounding is flooring half a step on.
+        double u = shortLine ? along(x, y, z) / length * (steps - 1) + 0.5 : (along(x, y, z) + 0.5) / (length + 1) * steps;
         if (blend > 0) u += (dither(x, y, z) - 0.5) * Math.min(blend, 1);
         return Math.clamp((long) Math.floor(u), 0, steps - 1);
     }

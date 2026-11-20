@@ -1,8 +1,10 @@
 package dev.chromastudio.client.axiom;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.client.index.TintContext;
@@ -13,6 +15,7 @@ import java.util.Map;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.FenceBlock;
+import net.minecraft.world.level.block.IronBarsBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.WallBlock;
@@ -42,6 +45,11 @@ class GradientShapesTest {
             blocks.put(wood + "_fence", "block/" + wood + "_planks");
         }
         blocks.put("glass_pane", "block/glass");
+        blocks.put("iron_bars", "block/iron_bars");
+        for (String colour : List.of("white", "black")) {
+            blocks.put(colour + "_stained_glass", "block/" + colour + "_stained_glass");
+            blocks.put(colour + "_stained_glass_pane", "block/" + colour + "_stained_glass");
+        }
         blocks.put("oak_door", "block/oak_planks");
         blocks.put("white_concrete", "block/white_concrete");
         blocks.put("black_concrete", "block/black_concrete");
@@ -83,6 +91,31 @@ class GradientShapesTest {
     }
 
     @Test
+    void aDoubleSlabStaysASlab() {
+        BlockState slab = block("stone_brick_slab").defaultBlockState().setValue(SlabBlock.TYPE, SlabType.DOUBLE);
+        GradientShapes shapes = shapes();
+        assertTrue(shapes.shaped(slab));
+        BlockState out = shapes.apply(block("sandstone").defaultBlockState(), slab);
+        assertNotNull(out);
+        assertEquals(block("sandstone_slab"), out.getBlock());
+        assertEquals(SlabType.DOUBLE, out.getValue(SlabBlock.TYPE));
+        assertFalse(shapes.shaped(block("sandstone").defaultBlockState()));
+    }
+
+    @Test
+    void panesFollowGlassStepsOnly() {
+        GradientShapes shapes = shapes();
+        BlockState pane = block("glass_pane").defaultBlockState().setValue(IronBarsBlock.EAST, true);
+        BlockState out = shapes.apply(block("black_stained_glass").defaultBlockState(), pane);
+        assertNotNull(out);
+        assertEquals(block("black_stained_glass_pane"), out.getBlock());
+        assertEquals(true, out.getValue(IronBarsBlock.EAST));
+        // A window in a stone gradient keeps its glass, and no pane ever becomes iron bars.
+        assertNull(shapes.apply(block("black_concrete").defaultBlockState(), pane));
+        assertNull(shapes.apply(block("stone_bricks").defaultBlockState(), pane));
+    }
+
+    @Test
     void wallsAndFencesKeepTheirConnections() {
         BlockState wall = block("stone_brick_wall").defaultBlockState().setValue(WallBlock.NORTH, WallSide.TALL).setValue(WallBlock.UP, false);
         BlockState newWall = shapes().apply(block("cobblestone").defaultBlockState(), wall);
@@ -105,8 +138,7 @@ class GradientShapesTest {
         // Already the step's material in this shape, so it's part of the gradient as it is.
         BlockState stair = block("stone_brick_stairs").defaultBlockState().setValue(StairBlock.FACING, Direction.SOUTH);
         assertEquals(stair, shapes.apply(block("stone_bricks").defaultBlockState(), stair));
-        // A door's halves could fall in different steps, and a pane has no shape a step's material lends.
+        // A door's halves could fall in different steps.
         assertNull(shapes.apply(block("sandstone").defaultBlockState(), block("oak_door").defaultBlockState()));
-        assertNull(shapes.apply(block("sandstone").defaultBlockState(), block("glass_pane").defaultBlockState()));
     }
 }

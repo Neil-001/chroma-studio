@@ -31,18 +31,22 @@ import org.jspecify.annotations.Nullable;
  * keeping a stripe of its old material. {@link RecolourPlan} makes the change, so the two tools shape blocks alike.
  *
  * <p>When the step's material has no block of that shape, as concrete has no stairs, the shape is taken from the block
- * of that shape closest in colour to the step, so the trim still fades with the gradient. Doors are left alone, as
- * their two halves could fall in different steps, and so are shapes no block has, such as a pane.
+ * of that shape closest in colour to the step, so the trim still fades with the gradient. A glass pane follows a
+ * gradient of glass, taking the pane closest in colour to its step's glass, and is left alone in any other step, so a
+ * window in a stone gradient keeps its glass. Doors are left alone, as their two halves could fall in different steps.
  */
 final class GradientShapes {
     /** The shapes that follow the gradient. */
-    private static final Set<Kind> SHAPES = Set.of(Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE, Kind.TRAPDOOR);
+    private static final Set<Kind> SHAPES = Set.of(Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE, Kind.TRAPDOOR, Kind.PANE);
 
     private final BlockIndex index = BlockIndex.get();
     private final Face face;
     private final TintContext tint;
-    /** What each step block does to each shaped block, as {@link #apply} answers. */
-    private final Map<List<Block>, UnaryOperator<BlockState>> changes = new HashMap<>();
+    /**
+     * What each step does to each shaped block, as {@link #apply} answers. A step is keyed by its state, as two states
+     * of one block, such as a lit and an unlit lamp, differ in colour and so may borrow different shapes.
+     */
+    private final Map<List<Object>, UnaryOperator<BlockState>> changes = new HashMap<>();
     /** The blocks of each shape that a step may borrow it from, with how they look. */
     private final Map<Kind, Candidates> candidates = new EnumMap<>(Kind.class);
 
@@ -55,6 +59,15 @@ final class GradientShapes {
     }
 
     /**
+     * Whether a block is one of the shapes that keep their shape in a step, such as a stair or a slab, a double slab
+     * included, rather than a block the step replaces whole.
+     */
+    boolean shaped(BlockState here) {
+        Entry e = index.entryOf(here);
+        return e != null && SHAPES.contains(e.kind());
+    }
+
+    /**
      * The block that a shaped block becomes in a step whose full block is {@code step}, with its facing, half and the
      * like kept: itself when it's already the shape the step gives, or null when it's left alone as no step can take
      * its shape.
@@ -62,13 +75,15 @@ final class GradientShapes {
     @Nullable BlockState apply(BlockState step, BlockState here) {
         Entry e = index.entryOf(here);
         if (e == null || !SHAPES.contains(e.kind()) || here.getBlock() instanceof EntityBlock) return null;
-        return changes.computeIfAbsent(List.of(step.getBlock(), here.getBlock()), _ -> change(step, here, e.kind())).apply(here);
+        return changes.computeIfAbsent(List.of(step, here.getBlock()), _ -> change(step, here, e.kind())).apply(here);
     }
 
     /** What a step does to one shaped block: gives it the step's own material where that has the shape, or else the closest-coloured block that has it. */
     private UnaryOperator<BlockState> change(BlockState step, BlockState here, Kind kind) {
         Entry stepEntry = index.entryOf(step);
         if (stepEntry == null) return _ -> null;
+        // Panes come only from glass, as no other block has them as its shape.
+        if (kind == Kind.PANE && stepEntry.kind() != Kind.GLASS) return _ -> null;
         Optional<Entry> own = index.materialSet(stepEntry).stream().filter(m -> m.kind() == kind).findFirst();
         BlockState to = own.isPresent() ? step : borrowed(kind, step);
         if (to == null) return _ -> null;
@@ -89,8 +104,8 @@ final class GradientShapes {
     }
 
     /**
-     * The blocks of a shape a step may borrow it from: not ones with a block entity, not ones that fall, and not copper
-     * that hasn't been waxed, which would weather to another colour after it was placed.
+     * The blocks of a shape a step may borrow it from: not ones with a block entity, not ones that fall, not copper
+     * that hasn't been waxed, which would weather to another colour after it was placed, and of panes only glass ones.
      */
     private Candidates candidates(Kind kind) {
         List<BlockState> states = new ArrayList<>();
@@ -98,6 +113,8 @@ final class GradientShapes {
         for (Entry e : index.entries()) {
             Block b = e.block();
             if (e.kind() != kind || b instanceof EntityBlock || b instanceof Fallable || b instanceof WeatheringCopper) continue;
+            // Iron bars are panes to the index, but not glass.
+            if (kind == Kind.PANE && !e.id().endsWith("glass_pane")) continue;
             Optional<Color> colour = index.colourOf(b.defaultBlockState(), face, tint);
             if (colour.isEmpty()) continue;
             states.add(b.defaultBlockState());

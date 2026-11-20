@@ -163,12 +163,31 @@ class GradientLineTest {
     @Test
     void aLineShorterThanTheGradientStillEndsOnItsFirstAndLastSteps() {
         GradientLine line = new GradientLine(0, 0, 0, 0, 3, 0);
-        for (double blend : new double[] {0, 1}) {
-            assertEquals(0, line.step(0, 0, 0, 32, blend));
-            assertEquals(10, line.step(0, 1, 0, 32, blend));
-            assertEquals(21, line.step(0, 2, 0, 32, blend));
-            assertEquals(31, line.step(0, 3, 0, 32, blend));
+        assertEquals(0, line.step(0, 0, 0, 32, 0));
+        assertEquals(10, line.step(0, 1, 0, 32, 0));
+        assertEquals(21, line.step(0, 2, 0, 32, 0));
+        assertEquals(31, line.step(0, 3, 0, 32, 0));
+        for (int x = -20; x < 20; x++) {
+            for (int z = -20; z < 20; z++) {
+                assertEquals(0, line.step(x, 0, z, 32, 1));
+                assertEquals(31, line.step(x, 3, z, 32, 1));
+            }
         }
+    }
+
+    @Test
+    void aLineShorterThanTheGradientStillBlends() {
+        // Seven blocks high and eight steps: the blend mixes each block with its neighbouring steps there too.
+        GradientLine line = new GradientLine(0, 0, 0, 0, 6, 0);
+        int changed = 0;
+        for (int y = 0; y <= 6; y++) {
+            for (int x = 0; x < 33; x++) {
+                int hard = line.step(x, y, 0, 8, 0), mixed = line.step(x, y, 0, 8, 1);
+                assertTrue(Math.abs(hard - mixed) <= 1);
+                if (hard != mixed) changed++;
+            }
+        }
+        assertTrue(changed > 33, "changed " + changed);
     }
 
     @Test

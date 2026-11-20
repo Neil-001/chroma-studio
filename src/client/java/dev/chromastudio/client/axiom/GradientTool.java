@@ -157,7 +157,7 @@ final class GradientTool implements CustomTool {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
         Choice choice = current(choices());
-        Object key = choice == null ? null : Arrays.asList(choice.steps(), first, second, blend[0], likeFirst, reach[0]);
+        Object key = choice == null ? null : Arrays.asList(choice.steps(), first, second, blend[0], likeFirst, reach[0], BlockIndex.get().version());
         if (!Objects.equals(key, previewFor)) {
             preview(level, choice);
             previewFor = key;
@@ -203,7 +203,7 @@ final class GradientTool implements CustomTool {
             int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
             BlockState now = level.getBlockState(pos.set(x, y, z));
             BlockState step = steps.get(line.step(x, y, z, steps.size(), blend[0] / 100.0));
-            BlockState next = paintable(level, pos, now) ? step : shapes.apply(step, now);
+            BlockState next = shapes.shaped(now) ? shapes.apply(step, now) : paintable(level, pos, now) ? step : null;
             if (next == null) {
                 leftAlone++;
                 continue;
