@@ -46,9 +46,10 @@ final class BrushStroke {
     }
 
     /**
-     * Makes a stroke's painter from the world: once as the stroke starts, and again when it's let go, to paint it again
-     * from the world as it is then. It takes what it depends on but the world, such as the panel's choices and a
-     * random seed, as they were when the stroke started.
+     * Makes a stroke's painter: once as the stroke starts, and again when it's let go, to paint it again from the world
+     * as it is then. Each time, it reads everything the painter depends on afresh, the panel's choices and the
+     * palette's blocks included, so nothing from the start stands in for them. Only what the stroke is stays the same:
+     * the positions the ball reached, the block it started on and a random seed for its choices.
      */
     @FunctionalInterface
     interface Setup {
@@ -140,6 +141,12 @@ final class BrushStroke {
             reached.add(BuildSearch.pack(x, y, z));
             paint(in, p, m, q, x, y, z, shown);
         });
+        // A mask that failed at any point in the stroke ends it, whatever it answers later: Axiom forgets a Lua
+        // script's error as soon as another context compiles the script, as the check before sending does.
+        if (m.failed()) {
+            refuse(QueuedChanges.Refusal.MASK_FAILED);
+            return;
+        }
         // A slow pulse, as Axiom's own brushes show a stroke that hasn't been made yet.
         float pulse = (float) Math.sin(rc.nanos() / 400_000_000.0);
         shown.render(rc, Vec3.ZERO, 0.75f + pulse * 0.25f, 0.3f - pulse * 0.2f);
@@ -150,10 +157,11 @@ final class BrushStroke {
         QueuedChanges<BlockState> q = queued;
         Setup s = setup;
         ClientLevel in = level;
+        AxiomMask.Test m = mask;
         long[] at = reached.toLongArray();
         cancel();
-        if (q == null || s == null || in == null) return;
-        refused = AxiomChanges.send(q, mask -> again(in, s, at, mask, q.origin())).orElse(null);
+        if (q == null || s == null || in == null || m == null) return;
+        refused = AxiomChanges.send(q, m, again -> again(in, s, at, again, q.origin())).orElse(null);
     }
 
     private void refuse(QueuedChanges.Refusal why) {

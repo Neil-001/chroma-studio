@@ -22,6 +22,8 @@ final class BuildPreview {
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private @Nullable QueuedChanges<BlockState> queued;
     private QueuedChanges.@Nullable Plan<BlockState> again;
+    /** The masks the preview was made with, to tell the player when they answer otherwise at Apply. */
+    private AxiomMask.@Nullable Test mask;
     private boolean overriding;
     private final Drawn drawn = new Drawn();
 
@@ -29,12 +31,13 @@ final class BuildPreview {
     BuildPreview(String id) { this.id = id; }
 
     /**
-     * Shows {@code plan} in the world, with the blocks in {@code outlined} outlined. Apply sends it only when
-     * {@code again}, the steps that made it, makes the same again from the world and masks as they are then. False,
+     * Shows {@code plan}, made with {@code mask}, in the world, with the blocks in {@code outlined} outlined. Apply
+     * sends it only when {@code again}, the steps that made it, makes the same again from the world, masks and the
+     * tool's choices as they are then. False,
      * showing nothing, when another tool holds the world's look, which Axiom gives one tool at a time: its Text tool
      * keeps it while it's put away with "Clear tool when swapping" off.
      */
-    boolean show(QueuedChanges<BlockState> plan, long[] outlined, QueuedChanges.Plan<BlockState> again) {
+    boolean show(QueuedChanges<BlockState> plan, AxiomMask.Test mask, long[] outlined, QueuedChanges.Plan<BlockState> again) {
         clear();
         try {
             AxiomTools.tools.acquireChunkRenderOverrider(id);
@@ -46,6 +49,7 @@ final class BuildPreview {
         }
         queued = plan;
         this.again = again;
+        this.mask = mask;
         overriding = true;
         for (QueuedChanges.Change<BlockState> c : plan.changes()) AxiomTools.tools.setBlockRenderOverride(c.x(), c.y(), c.z(), c.next());
         for (long p : outlined) outline.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
@@ -58,15 +62,20 @@ final class BuildPreview {
 
     boolean isEmpty() { return count() == 0; }
 
-    /** Drops the preview, and lets the world show its own blocks again. */
+    /**
+     * Drops the preview, and lets the world show its own blocks again. The preview is dropped first, so nothing is left
+     * to send whatever Axiom does; the hold on the world's look counts as let go only once Axiom has taken it back, so
+     * when Axiom throws, the tool's clean-up ({@link GuardedTool}) tries again.
+     */
     void clear() {
         outline.clear();
         queued = null;
         again = null;
+        mask = null;
         drawn.stop();
         if (overriding) {
-            overriding = false;
             AxiomTools.tools.releaseChunkRenderOverrider(id);
+            overriding = false;
         }
     }
 
@@ -93,8 +102,9 @@ final class BuildPreview {
     Optional<Component> apply() {
         QueuedChanges<BlockState> q = queued;
         QueuedChanges.Plan<BlockState> a = again;
+        AxiomMask.Test m = mask;
         clear();
-        if (q == null || a == null) return Optional.empty();
-        return AxiomChanges.send(q, a);
+        if (q == null || a == null || m == null) return Optional.empty();
+        return AxiomChanges.send(q, m, a);
     }
 }

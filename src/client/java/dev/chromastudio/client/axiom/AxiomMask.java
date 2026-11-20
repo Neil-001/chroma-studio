@@ -5,6 +5,7 @@ import dev.chromastudio.core.palette.QueuedChanges;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -24,7 +25,8 @@ import org.jspecify.annotations.Nullable;
  * starts; no version of Axiom counts as having none. A mask whose Lua
  * script has an error answers no from then on, and Axiom says so only in its own error message, which stays until a
  * fresh run of the script compiles or the player closes it. While it's there the masks count as failed, so a stroke or
- * Apply sends nothing ({@link QueuedChanges#check}), and the panels say why. A mask that can't be read never lets
+ * Apply sends nothing ({@link QueuedChanges#check}), and the panels say why. A test that saw the error once stays
+ * failed, so a stroke or preview whose masks failed partway is never sent, though the check's fresh context clears it. A mask that can't be read never lets
  * through what it might be keeping out.
  *
  * <p>Axiom applies the masks only while its Tool Masks window is open, docked or minimised; closed, every block passes,
@@ -36,11 +38,32 @@ final class AxiomMask {
     private AxiomMask() {}
 
     /** Whether a block may change, and whether the answers can be trusted. Ask it on the client thread, as Axiom does. */
-    interface Test extends QueuedChanges.Mask {}
+    interface Test extends QueuedChanges.Mask {
+        /** The answer given for each position asked so far, by {@link BuildSearch#pack}. */
+        Map<Long, Boolean> answers();
+    }
 
     private record Fixed(boolean allows, boolean failed) implements Test {
         @Override
         public boolean allows(int x, int y, int z) { return allows; }
+
+        @Override
+        public Map<Long, Boolean> answers() { return Map.of(); }
+    }
+
+    /**
+     * Whether two tests answered differently for a position both were asked about. Each test has a context of its own,
+     * and Axiom gives each context a random seed for a Lua script's {@code getSimplexNoise} and
+     * {@code getVoronoiEdgeNoise}, so a script that gives its noise no seed of its own answers differently each time.
+     * Reusing a context instead would run a script edited since as it was, so the tools tell the player to seed it.
+     */
+    static boolean differ(Test a, Test b) {
+        Map<Long, Boolean> theirs = b.answers();
+        for (Map.Entry<Long, Boolean> e : a.answers().entrySet()) {
+            Boolean other = theirs.get(e.getKey());
+            if (other != null && !other.equals(e.getValue())) return true;
+        }
+        return false;
     }
 
     private static final Test FAILED = new Fixed(false, true);
@@ -132,6 +155,11 @@ final class AxiomMask {
         return new Test() {
             private boolean threw;
             /**
+             * Whether Axiom's Lua mask error was set straight after any answer. It's kept, as Axiom clears the error
+             * the moment another context compiles the script, which the check before sending does.
+             */
+            private boolean errored;
+            /**
              * Each position's first answer. A mask's script can answer differently each time it's asked, at random say,
              * and one stroke or preview must give a position one answer, or a door could be let through by halves.
              */
@@ -146,7 +174,9 @@ final class AxiomMask {
             private boolean ask(int x, int y, int z) {
                 try {
                     h.setPosition.invoke(context, x, y, z);
-                    return (boolean) h.test.invoke(mask, context);
+                    boolean allows = (boolean) h.test.invoke(mask, context);
+                    if (h.luaError.invoke() != null) errored = true;
+                    return allows;
                 } catch (Throwable t) {
                     INTERNALS.failed(t);
                     threw = true;
@@ -154,9 +184,15 @@ final class AxiomMask {
                 }
             }
 
-            /** Read when it's asked, once the blocks have been, as running the script is what sets its error. */
+            /**
+             * True once any answer came with Axiom's Lua mask error set, for good, and while the error is set now, as
+             * running the script is what sets it.
+             */
             @Override
-            public boolean failed() { return threw || INTERNALS.reason().isPresent() || luaError() != null; }
+            public boolean failed() { return threw || errored || INTERNALS.reason().isPresent() || luaError() != null; }
+
+            @Override
+            public Map<Long, Boolean> answers() { return Collections.unmodifiableMap(asked); }
         };
     }
 }

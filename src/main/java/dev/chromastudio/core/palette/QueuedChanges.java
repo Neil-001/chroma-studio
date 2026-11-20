@@ -9,11 +9,16 @@ import java.util.function.Supplier;
 
 /**
  * What a tool worked out to do, and the one rule for whether it may still be sent. A stroke or a preview is a plan:
- * every position it looked at, each with the block it saw there, and for those it changes, what goes there instead.
- * When the player lets go or presses Apply, {@link #check} works the plan out again, by the same steps, from the world
- * and the tool masks as they are at that moment, and the plan may be sent only if that gives exactly the same. So
- * whatever could change a decision, a block built or broken, a mask set otherwise, a build grown or a door completed,
- * refuses the lot without having to be named here. Nothing is ever sent in part.
+ * the positions it decided about, the brush's positions or the build's blocks, the ones the masks kept out included,
+ * each with the block it saw there, and for those it changes, what goes there instead. When the player lets go or
+ * presses Apply, {@link #check} works the plan out again, by the same steps, from the world, the tool masks and the
+ * tool's own choices as they are at that moment, and the plan may be sent only if that gives exactly the same. So
+ * whatever could change a decision, a block built or broken, a mask set otherwise, an option changed, a build grown
+ * or a door completed, refuses the lot without having to be named here. Nothing is ever sent in part.
+ *
+ * <p>Positions a tool only looked at on the way, such as the edge of a build's search or a door's other half that it
+ * didn't change, aren't in the plan. One that would change the result, a new member of the build or a door's half
+ * that now goes too, changes the plan, and so is caught that way.
  *
  * @param <S> what a block is, compared with {@code equals}: the game's block states, which are each one object
  */
@@ -31,7 +36,7 @@ public final class QueuedChanges<S> {
         EDITOR,
         /** The tool masks couldn't be read, or failed partway, as a mask's script with an error does. */
         MASK_FAILED,
-        /** Worked out again now, the plan isn't the same. */
+        /** Worked out again now, with the world, masks and the tool's choices as they are, the plan isn't the same. */
         CHANGED
     }
 
@@ -57,7 +62,7 @@ public final class QueuedChanges<S> {
 
     private final Origin origin;
     private final Map<Long, Change<S>> changes = new LinkedHashMap<>();
-    /** The positions the plan looked at and leaves as they are, each with what it saw there. */
+    /** The positions the plan decided to leave as they are, each with what it saw there. */
     private final Map<Long, S> left = new LinkedHashMap<>();
 
     public QueuedChanges(Origin origin) { this.origin = Objects.requireNonNull(origin); }
@@ -74,7 +79,7 @@ public final class QueuedChanges<S> {
         changes.merge(p, new Change<>(x, y, z, was, next), (old, now) -> new Change<>(x, y, z, old.was(), now.next()));
     }
 
-    /** Records a position the plan looked at and leaves as it is. A queued change there wins. */
+    /** Records a position the plan decided to leave as it is. A queued change there wins. */
     public void leave(int x, int y, int z, S was) {
         long p = BuildSearch.pack(x, y, z);
         if (!changes.containsKey(p)) left.putIfAbsent(p, was);
