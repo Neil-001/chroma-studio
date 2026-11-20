@@ -768,7 +768,7 @@
   "axiom.chromastudio.shade.no_shades": "Ninguno de los bloques de esta paleta puede ser un tono. Un tono debe ser un bloque sólido completo, o la escalera o la losa de uno, siempre que no caiga.",
   "axiom.chromastudio.shade.point": "Apunta a un bloque para ver qué hace el pincel con él.",
   "axiom.chromastudio.shade.becomes": "Se convierte en",
-  "axiom.chromastudio.shade.left.never": "Se queda como está. El pincel cambia el tono de bloques sólidos, losas, escaleras, muros, vallas y trampillas, nunca de bloques transparentes ni de bloques con contenido.",
+  "axiom.chromastudio.shade.left.never": "Se queda como está. El pincel cambia el tono de bloques sólidos, losas, escaleras, muros y vallas, nunca de bloques transparentes ni de bloques con contenido.",
   "axiom.chromastudio.shade.left.ground": "Se queda como está. El pincel no toca el césped, la tierra, la arena ni la grava.",
   "axiom.chromastudio.shade.left.kind": "Se queda como está. Este tipo de bloque está desactivado en “Cambia”.",
   "axiom.chromastudio.shade.left.darker": "Se queda como está. Ningún bloque se parece lo bastante en color y textura a un tono más oscuro.",

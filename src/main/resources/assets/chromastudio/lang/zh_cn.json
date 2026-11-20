@@ -768,7 +768,7 @@
   "axiom.chromastudio.shade.no_shades": "此调色板中的方块都不能作为色阶。色阶必须是固体完整方块，或其楼梯、台阶，并且不会下落。",
   "axiom.chromastudio.shade.point": "指向一个方块，看看画笔会把它变成什么。",
   "axiom.chromastudio.shade.becomes": "变为",
-  "axiom.chromastudio.shade.left.never": "保持不变。画笔只会调整固体方块、台阶、楼梯、墙、栅栏和活板门的色阶，从不改变透明方块或带有内容的方块。",
+  "axiom.chromastudio.shade.left.never": "保持不变。画笔只会调整固体方块、台阶、楼梯、墙和栅栏的色阶，从不改变透明方块或带有内容的方块。",
   "axiom.chromastudio.shade.left.ground": "保持不变。画笔不会改动草方块、泥土、沙子和沙砾。",
   "axiom.chromastudio.shade.left.kind": "保持不变。此种方块已在“改变”中关闭。",
   "axiom.chromastudio.shade.left.darker": "保持不变。没有颜色和纹理足够接近、且色阶低一档的方块。",

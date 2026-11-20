@@ -767,7 +767,7 @@
   "axiom.chromastudio.shade.no_shades": "None of this palette's blocks can be a shade. A shade must be a solid full block, or the stairs or slab of one, that doesn't fall.",
   "axiom.chromastudio.shade.point": "Point at a block to see what the brush makes of it.",
   "axiom.chromastudio.shade.becomes": "Becomes",
-  "axiom.chromastudio.shade.left.never": "Stays as it is. The brush shades solid blocks, slabs, stairs, walls, fences and trapdoors, never see-through blocks or blocks with contents.",
+  "axiom.chromastudio.shade.left.never": "Stays as it is. The brush shades solid blocks, slabs, stairs, walls and fences, never see-through blocks or blocks with contents.",
   "axiom.chromastudio.shade.left.ground": "Stays as it is. The brush leaves grass, dirt, sand and gravel alone.",
   "axiom.chromastudio.shade.left.kind": "Stays as it is. This kind of block is turned off under Changes.",
   "axiom.chromastudio.shade.left.darker": "Stays as it is. No block is close enough to it in colour and texture a step darker.",

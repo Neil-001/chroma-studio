@@ -768,7 +768,7 @@
   "axiom.chromastudio.shade.no_shades": "Żaden blok z tej palety nie może być odcieniem. Odcieniem musi być pełny, lity blok albo schody lub płyta z takiego bloku, pod warunkiem że nie spada.",
   "axiom.chromastudio.shade.point": "Wskaż blok, aby zobaczyć, co pędzel z nim zrobi.",
   "axiom.chromastudio.shade.becomes": "Staje się",
-  "axiom.chromastudio.shade.left.never": "Zostaje bez zmian. Pędzel zmienia odcienie stałych bloków, płyt, schodów, murów, płotów i zapadni, nigdy zaś przezroczystych bloków ani bloków z zawartością.",
+  "axiom.chromastudio.shade.left.never": "Zostaje bez zmian. Pędzel zmienia odcienie stałych bloków, płyt, schodów, murów i płotów, nigdy zaś przezroczystych bloków ani bloków z zawartością.",
   "axiom.chromastudio.shade.left.ground": "Zostaje bez zmian. Pędzel nie rusza bloku trawy, ziemi, piasku ani żwiru.",
   "axiom.chromastudio.shade.left.kind": "Zostaje bez zmian. Ten rodzaj bloku jest wyłączony w ustawieniu „Zmienia”.",
   "axiom.chromastudio.shade.left.darker": "Zostaje bez zmian. Żaden blok, o jeden odcień ciemniejszy, nie jest dość podobny kolorem i teksturą.",

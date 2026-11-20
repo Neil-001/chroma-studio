@@ -768,7 +768,7 @@
   "axiom.chromastudio.shade.no_shades": "이 팔레트의 블록 중에는 명암이 될 수 있는 것이 없습니다. 명암은 고체인 완전한 블록, 또는 그런 블록의 계단이나 반 블록이어야 하며, 떨어지지 않아야 합니다.",
   "axiom.chromastudio.shade.point": "블록을 가리키면 브러시가 그 블록을 어떻게 바꾸는지 볼 수 있습니다.",
   "axiom.chromastudio.shade.becomes": "바뀌는 블록",
-  "axiom.chromastudio.shade.left.never": "그대로 둡니다. 브러시는 고체 블록, 반 블록, 계단, 담장, 울타리, 다락문의 명암을 바꾸며, 투명한 블록이나 내용물이 있는 블록은 바꾸지 않습니다.",
+  "axiom.chromastudio.shade.left.never": "그대로 둡니다. 브러시는 고체 블록, 반 블록, 계단, 담장, 울타리의 명암을 바꾸며, 투명한 블록이나 내용물이 있는 블록은 바꾸지 않습니다.",
   "axiom.chromastudio.shade.left.ground": "그대로 둡니다. 브러시는 잔디 블록, 흙, 모래, 자갈에는 손대지 않습니다.",
   "axiom.chromastudio.shade.left.kind": "그대로 둡니다. 이 종류의 블록은 ‘바꿀 종류’에서 꺼져 있습니다.",
   "axiom.chromastudio.shade.left.darker": "그대로 둡니다. 색과 텍스처가 이 블록과 충분히 가까운, 한 단계 더 어두운 명암의 블록이 없습니다.",

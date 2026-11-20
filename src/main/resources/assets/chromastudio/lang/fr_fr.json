@@ -768,7 +768,7 @@
   "axiom.chromastudio.shade.no_shades": "Aucun bloc de cette palette ne peut servir de nuance. Une nuance doit être un bloc plein et entier, ou l'escalier ou la dalle d'un tel bloc, à condition qu'il ne tombe pas.",
   "axiom.chromastudio.shade.point": "Pointez un bloc pour voir ce que le pinceau en fait.",
   "axiom.chromastudio.shade.becomes": "Devient",
-  "axiom.chromastudio.shade.left.never": "Reste tel quel. Le pinceau change la nuance des blocs solides, dalles, escaliers, murs, barrières et trappes, jamais celle des blocs transparents ni des blocs avec contenu.",
+  "axiom.chromastudio.shade.left.never": "Reste tel quel. Le pinceau change la nuance des blocs solides, dalles, escaliers, murs et barrières, jamais celle des blocs transparents ni des blocs avec contenu.",
   "axiom.chromastudio.shade.left.ground": "Reste tel quel. Le pinceau ne touche pas au bloc d'herbe, à la terre, au sable ni au gravier.",
   "axiom.chromastudio.shade.left.kind": "Reste tel quel. Ce type de bloc est désactivé dans « Modifie ».",
   "axiom.chromastudio.shade.left.darker": "Reste tel quel. Aucun bloc n'est assez proche, en couleur et en texture, d'une nuance plus foncée.",

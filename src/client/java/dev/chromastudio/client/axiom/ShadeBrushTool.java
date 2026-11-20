@@ -9,6 +9,7 @@ import com.moulberry.axiomclientapi.pathers.BallShape;
 import com.moulberry.axiomclientapi.pathers.ToolPatherUnique;
 import com.moulberry.axiomclientapi.regions.BlockRegion;
 import com.moulberry.axiomclientapi.regions.BooleanRegion;
+import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.axiom.AxiomBridge.Refused;
@@ -75,8 +76,11 @@ final class ShadeBrushTool implements CustomTool {
     private static final int MAX_RADIUS = 16;
     /** The lightness of a step at each size the slider offers, in OKLab. Small is about one shade a builder can see. */
     private static final double[] STEPS = {0.03, 0.045, 0.06, 0.08, 0.1};
-    /** The kinds of block the brush can change, which the panel turns on and off. Doors are two blocks, so a ball's edge could part their halves. */
-    private static final List<Kind> CHANGEABLE = List.of(Kind.FULL, Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE, Kind.TRAPDOOR);
+    /**
+     * The kinds of block the brush can change, which the panel turns on and off. Doors are two blocks, so a ball's edge
+     * could part their halves, and trapdoors have see-through textures of their own, unlike their planks.
+     */
+    private static final List<Kind> CHANGEABLE = List.of(Kind.FULL, Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE);
     private static final Set<Kind> SHAPES = EnumSet.of(Kind.SLAB, Kind.STAIRS, Kind.WALL);
 
     /** Blocks of coal, lapis and raw ore, which the Building blocks tab lists but no builder takes for a shade of stone. */
@@ -88,7 +92,7 @@ final class ShadeBrushTool implements CustomTool {
     private int outlineRadius = -1;
     private final int[] stepSize = {3};
     /** The share of the blocks under the brush a stroke changes, in percent. Less than all mixes a shade in. */
-    private final int[] strength = {60};
+    private final int[] strength = {100};
     private Direction direction = Direction.DARKER;
     /** The palette whose blocks are the shades, or null for any building block. */
     private Palette from;
@@ -99,6 +103,8 @@ final class ShadeBrushTool implements CustomTool {
 
     // Set for the length of one stroke.
     private ToolPatherUnique pather;
+    /** The shades as the stroke started, so a choice changed or an index rebuilt mid-stroke doesn't split it. */
+    private @Nullable Plan strokePlan;
     /** Which blocks a stroke at less than full strength changes, a new choice each stroke. */
     private long seed;
 
@@ -109,12 +115,14 @@ final class ShadeBrushTool implements CustomTool {
     public void reset() {
         stroke.clear();
         pather = null;
+        strokePlan = null;
     }
 
     @Override
     public boolean callUseTool() {
         reset();
-        if (plan() == null) return false;
+        strokePlan = plan();
+        if (strokePlan == null) return false;
         pather = AxiomTools.pathers.createUnique(radius[0], BallShape.SPHERE);
         seed = System.nanoTime();
         return true;
@@ -141,8 +149,8 @@ final class ShadeBrushTool implements CustomTool {
             reset();
             return;
         }
-        Plan p = plan();
-        if (level == null || p == null) return;
+        Plan p = strokePlan;
+        if (level == null) return;
         double share = strength[0] / 100.0;
         pather.update((x, y, z) -> {
             if (WeightedPick.unit(seed, x, y, z) >= share) return;
@@ -263,15 +271,19 @@ final class ShadeBrushTool implements CustomTool {
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) return null;
         Palette shades = from();
-        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[stepSize[0] - 1], PaletteBlocks.queryFace());
+        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[stepSize[0] - 1], PaletteBlocks.queryFace(),
+                ModSettings.biomeMode + " " + ModSettings.biome);
         if (plan == null || !plan.key.equals(key)) plan = Plan.of(key, index, PaletteBlocks.tint());
         return plan.steps == null ? null : plan;
     }
 
     /** The blocks that may be shades, and what each block becomes, for one set of choices. */
     private static final class Plan {
-        /** The choices a plan is made for. A palette is told apart by which one it is, and by its blocks, as it can be edited. */
-        record Key(int version, @Nullable Palette palette, int entries, double step, Face face) {}
+        /**
+         * The choices a plan is made for. A palette is told apart by which one it is, and by its blocks, as it can be
+         * edited; the biome setting, as it tints some blocks.
+         */
+        record Key(int version, @Nullable Palette palette, int entries, double step, Face face, String biome) {}
 
         final Key key;
         private final BlockIndex index;
@@ -279,14 +291,20 @@ final class ShadeBrushTool implements CustomTool {
         /** The full blocks that may be shades, each standing for its material's shapes. */
         private final List<Entry> shades;
         private final Map<Block, Integer> place = new IdentityHashMap<>();
+        /**
+         * For a palette, the kinds it lists of each shade's material: a full block lends every shape, while stairs
+         * alone allow only stairs. Null when any block may be a shade.
+         */
+        private final @Nullable Map<Block, Set<Kind>> listed;
         private final @Nullable ShadeSteps steps;
         /** For each shape, which shades' materials come in it. */
         private final Map<Kind, boolean[]> hasShape = new EnumMap<>(Kind.class);
         /** What each block becomes each way, worked out on first use. An empty one leaves it alone. */
         private final Map<Direction, Map<Block, Optional<RecolourPlan>>> changes = new EnumMap<>(Direction.class);
 
-        private Plan(Key key, BlockIndex index, TintContext tint, List<Entry> candidates) {
+        private Plan(Key key, BlockIndex index, TintContext tint, List<Entry> candidates, @Nullable Map<Block, Set<Kind>> listed) {
             this.key = key;
+            this.listed = listed;
             this.index = index;
             this.tint = tint;
             // A block whose colour the index can't read sits out.
@@ -306,20 +324,24 @@ final class ShadeBrushTool implements CustomTool {
         static Plan of(Key key, BlockIndex index, TintContext tint) {
             List<Entry> shades = new ArrayList<>();
             Set<Block> seen = new HashSet<>();
+            Map<Block, Set<Kind>> listed = null;
             if (key.palette == null) {
                 Set<Block> building = buildingTabs();
                 for (Entry e : index.entries()) {
                     if (e.kind() == Kind.FULL && e.isDefaultState() && anyShade(e) && (building.isEmpty() || building.contains(e.block())) && seen.add(e.block())) shades.add(e);
                 }
             } else {
+                listed = new IdentityHashMap<>();
                 for (PaletteEntry pe : key.palette.entries) {
                     BlockState state = PaletteBlocks.state(pe);
                     Entry e = state == null ? null : index.entryOf(state);
                     Entry base = e == null ? null : base(index, e);
-                    if (base != null && paletteShade(base) && seen.add(base.block())) shades.add(base);
+                    if (base == null || !paletteShade(base)) continue;
+                    if (seen.add(base.block())) shades.add(base);
+                    listed.computeIfAbsent(base.block(), _ -> EnumSet.noneOf(Kind.class)).add(e.kind());
                 }
             }
-            return new Plan(key, index, tint, shades);
+            return new Plan(key, index, tint, shades, listed);
         }
 
         /**
@@ -361,8 +383,9 @@ final class ShadeBrushTool implements CustomTool {
             Entry base = base(index, e);
             ShadeSteps.Look look = base == null ? null : look(base);
             if (look == null || steps == null) return Optional.empty();
-            boolean[] shaped = e.kind() == Kind.FULL ? null : hasShape.computeIfAbsent(e.kind(), this::hasShape);
-            IntPredicate allowed = i -> shaped == null || shaped[i];
+            Kind kind = e.kind();
+            boolean[] shaped = kind == Kind.FULL ? null : hasShape.computeIfAbsent(kind, this::hasShape);
+            IntPredicate allowed = i -> (shaped == null || shaped[i]) && lends(i, kind);
             Integer at = place.get(base.block());
             int picked = at != null ? steps.next(at, d, allowed) : steps.next(look, d, allowed);
             if (picked < 0) return Optional.empty();
@@ -375,6 +398,13 @@ final class ShadeBrushTool implements CustomTool {
             } catch (Refused _) {
                 return Optional.empty();
             }
+        }
+
+        /** Whether a shade may be given in a kind: always for any block, and for a palette when it lists that kind or the full block. */
+        private boolean lends(int shade, Kind kind) {
+            if (listed == null) return true;
+            Set<Kind> kinds = listed.get(shades.get(shade).block());
+            return kinds.contains(Kind.FULL) || kinds.contains(kind);
         }
 
         private boolean[] hasShape(Kind kind) {

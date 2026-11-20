@@ -768,7 +768,7 @@
   "axiom.chromastudio.shade.no_shades": "このパレットのブロックは、どれも濃淡にできません。濃淡になれるのは、固体の普通のブロック、またはその階段かハーフブロックで、落下しないものだけです。",
   "axiom.chromastudio.shade.point": "ブロックに照準を合わせると、ブラシでどう変わるかが分かります。",
   "axiom.chromastudio.shade.becomes": "変わる先",
-  "axiom.chromastudio.shade.left.never": "そのままです。ブラシが濃淡を付けるのは、固体のブロック、ハーフブロック、階段、壁、フェンス、トラップドアです。透けるブロックや中身のあるブロックは変えません。",
+  "axiom.chromastudio.shade.left.never": "そのままです。ブラシが濃淡を付けるのは、固体のブロック、ハーフブロック、階段、壁、フェンスです。透けるブロックや中身のあるブロックは変えません。",
   "axiom.chromastudio.shade.left.ground": "そのままです。ブラシは草ブロック、土、砂、砂利には触れません。",
   "axiom.chromastudio.shade.left.kind": "そのままです。この種類のブロックは「変える種類」でオフになっています。",
   "axiom.chromastudio.shade.left.darker": "そのままです。色とテクスチャがこれに十分近い、一段階暗い濃淡のブロックはありません。",

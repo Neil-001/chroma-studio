@@ -768,7 +768,7 @@
   "axiom.chromastudio.shade.no_shades": "Nenhum bloco desta paleta pode ser um tom. Um tom precisa ser um bloco sólido inteiro, ou a escada ou a laje de um, desde que não caia.",
   "axiom.chromastudio.shade.point": "Aponte para um bloco para ver o que o pincel faz com ele.",
   "axiom.chromastudio.shade.becomes": "Vira",
-  "axiom.chromastudio.shade.left.never": "Fica como está. O pincel muda o tom de blocos sólidos, lajes, escadas, muros, cercas e alçapões, nunca de blocos transparentes nem de blocos com conteúdo.",
+  "axiom.chromastudio.shade.left.never": "Fica como está. O pincel muda o tom de blocos sólidos, lajes, escadas, muros e cercas, nunca de blocos transparentes nem de blocos com conteúdo.",
   "axiom.chromastudio.shade.left.ground": "Fica como está. O pincel não mexe no bloco de grama, na terra, na areia nem no cascalho.",
   "axiom.chromastudio.shade.left.kind": "Fica como está. Este tipo de bloco está desligado em “Muda”.",
   "axiom.chromastudio.shade.left.darker": "Fica como está. Nenhum bloco tem cor e textura parecidas o bastante com um tom mais escuro.",

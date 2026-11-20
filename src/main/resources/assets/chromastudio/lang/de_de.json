@@ -768,7 +768,7 @@
   "axiom.chromastudio.shade.no_shades": "Keiner der Blöcke dieser Palette kann eine Abstufung sein. Eine Abstufung muss ein fester, voller Block sein oder die Treppe oder Stufe eines solchen Blocks, der nicht herunterfällt.",
   "axiom.chromastudio.shade.point": "Zeige auf einen Block, um zu sehen, was der Pinsel daraus macht.",
   "axiom.chromastudio.shade.becomes": "Wird zu",
-  "axiom.chromastudio.shade.left.never": "Bleibt unverändert. Der Pinsel stuft feste Blöcke, Stufen, Treppen, Mauern, Zäune und Falltüren ab, nie durchsichtige Blöcke oder Blöcke mit Inhalt.",
+  "axiom.chromastudio.shade.left.never": "Bleibt unverändert. Der Pinsel stuft feste Blöcke, Stufen, Treppen, Mauern und Zäune ab, nie durchsichtige Blöcke oder Blöcke mit Inhalt.",
   "axiom.chromastudio.shade.left.ground": "Bleibt unverändert. Der Pinsel lässt Grasblock, Erde, Sand und Kies in Ruhe.",
   "axiom.chromastudio.shade.left.kind": "Bleibt unverändert. Diese Art von Block ist unter „Ändert“ abgeschaltet.",
   "axiom.chromastudio.shade.left.darker": "Bleibt unverändert. Kein Block kommt in Farbe und Textur nah genug an eine dunklere Abstufung heran.",
