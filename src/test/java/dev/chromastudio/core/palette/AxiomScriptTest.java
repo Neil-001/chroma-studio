@@ -93,7 +93,11 @@ class AxiomScriptTest {
         assertTrue(AxiomScript.counted(script) < AxiomScript.SERVER_LIMIT, AxiomScript.counted(script) + "");
         // Blocks that hold items or data yet have none of those properties, such as a jukebox, are named.
         String kept = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8, List.of("minecraft:jukebox", "mod:vault"));
-        assertTrue(kept.contains("string.gmatch(\"jukebox mod:vault\", \"%S+\")") && kept.contains("chroma_kept[b] or"), kept);
+        assertTrue(kept.contains("for _, k in ipairs({\"jukebox\"}) do chroma_kept[blocks[k] or false] = true end\n") && kept.contains("chroma_kept[block(\"mod\", \"vault\") or false] = true\n")
+                && kept.contains("chroma_kept[b] or"), kept);
+        // The game's own blocks are named directly, and the function that finds another mod's only comes when needed.
+        assertTrue(script.contains("blocks.white_wool or false,") && !script.contains("local function block"), script);
+        assertTrue(kept.contains("local function block"), kept);
     }
 
     @Test

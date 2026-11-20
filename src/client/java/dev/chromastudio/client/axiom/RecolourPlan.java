@@ -305,20 +305,24 @@ final class RecolourPlan {
                 for (Entry m : index.materialSet(e)) if (m.kind() != Kind.FULL && SHAPED.contains(m.kind())) weights.putIfAbsent(m.block().defaultBlockState(), 0);
             }
         }
-        // To keep the shading, a From palette's shape counts toward its full block, as a palette sampled from the
-        // build counts it, so the build and its sample find the same main material. A shape whose full block isn't
-        // there keeps its own. Every block in the game counts once as it is, so none of them is a main material.
+        // To keep the shading, a From palette's shape counts toward its full block, which joins the blocks that change
+        // if the palette lacks it, as a palette sampled from the build counts it: the build and its sample then find
+        // the same main material. Every block in the game counts once as it is, so none of them is a main material.
         if (mode == Recolour.Mode.SHADING && from != null) {
             Map<Block, BlockState> full = new HashMap<>();
             for (BlockState state : weights.keySet()) full.putIfAbsent(state.getBlock(), state);
+            Map<BlockState, Integer> folded = new LinkedHashMap<>();
             for (Map.Entry<BlockState, Integer> w : weights.entrySet()) {
                 Entry e = index.entryOf(w.getKey());
                 Entry base = e == null || e.kind() == Kind.FULL || e.kind() == Kind.GLASS ? null : base(index, e);
-                BlockState into = base == null ? null : full.get(base.block());
-                if (into == null || w.getValue() == 0) continue;
-                weights.merge(into, w.getValue(), Integer::sum);
-                w.setValue(0);
+                if (base == null) {
+                    folded.merge(w.getKey(), w.getValue(), Integer::sum);
+                    continue;
+                }
+                folded.merge(full.getOrDefault(base.block(), base.state()), w.getValue(), Integer::sum);
+                folded.putIfAbsent(w.getKey(), 0);
             }
+            weights = folded;
         }
         List<Source> out = new ArrayList<>();
         Set<Block> seen = new HashSet<>();

@@ -52,7 +52,7 @@ final class AxiomScripts {
         ScatterBlocks blocks = ScatterBlocks.of(p);
         Component leftOut = Component.translatable("axiom.chromastudio.brush.left_out",
                 blocks.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", ")));
-        if (blocks.blocks().isEmpty()) throw new Refused(leftOut);
+        if (blocks.blocks().isEmpty()) throw new Refused(blocks.leftOut().isEmpty() ? Component.translatable("axiom.chromastudio.no_blocks") : leftOut);
         Palette placed = new Palette(p.name);
         for (ScatterBlocks.Placed b : blocks.blocks()) placed.entries.add(PaletteBlocks.of(b.state()).withWeight(b.weight()));
         MutableComponent summary = Component.translatable("axiom.chromastudio.scatter.done", placed.entries.size());
@@ -100,7 +100,8 @@ final class AxiomScripts {
         List<String> out = new ArrayList<>();
         for (Block b : BuiltInRegistries.BLOCK) {
             BlockState s = b.defaultBlockState();
-            if (!(b instanceof EntityBlock) || !s.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) continue;
+            // The ground, such as suspicious sand, the script leaves alone already.
+            if (!(b instanceof EntityBlock) || RecolourPlan.ground(s) || !s.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) continue;
             if (s.getProperties().stream().noneMatch(p -> AxiomScript.KEPT_BY_PROPERTY.contains(p.getName()))) out.add(BuiltInRegistries.BLOCK.getKey(b).toString());
         }
         return out;

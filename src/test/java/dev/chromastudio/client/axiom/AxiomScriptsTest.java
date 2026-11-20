@@ -38,14 +38,17 @@ class AxiomScriptsTest {
                 "sandstone", "smooth_sandstone", "chest");
         AxiomBridge.Script script = AxiomScripts.gradient("Tower", tower, AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
         assertFalse(script.text().contains("copper_chain"), script.text());
-        assertFalse(script.text().contains("\"chest\""), script.text());
-        assertTrue(script.text().contains("\"terracotta\""), script.text());
+        assertFalse(script.text().contains("blocks.chest"), script.text());
+        assertTrue(script.text().contains("blocks.terracotta or false"), script.text());
         // Seven steps, two blocks each, from where the player stands.
         assertTrue(script.text().contains("$int(Bottom, -53, -64, 319)$") && script.text().contains("$int(Top, -40, -64, 319)$"), script.text());
         List<String> keys = new ArrayList<>();
         keys(script.summary(), keys);
         assertTrue(keys.contains("axiom.chromastudio.gradient.done[7, y]"), keys.toString());
         assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped[2]"), keys.toString());
+        // Without the chest, as the saved gradient has it, the script fits what a server lets a player run.
+        AxiomBridge.Script seven = AxiomScripts.gradient("Tower", tower.subList(0, 8), AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
+        assertTrue(AxiomScript.counted(seven.text()) < AxiomScript.SERVER_LIMIT, AxiomScript.counted(seven.text()) + " " + AxiomScripts.kept());
     }
 
     @Test

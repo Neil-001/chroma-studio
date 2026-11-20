@@ -443,6 +443,35 @@ class RecolourTest {
         inOrder(palette, build, picked);
     }
 
+    private static Recolour.Look grey(double l, int weight, String block) {
+        return new Recolour.Look(Color.of(new Oklab(l, 0, 0)), false, weight, block, block);
+    }
+
+    @Test
+    void theMainBlockIsChosenBetweenTheBlocksThePaletteKeeps() {
+        // Dark grey walls, a patch of andesite the palette has, and three light accents, onto black, stone bricks (the
+        // heaviest that leaves the andesite lighter), andesite and a heavier white: the walls take stone bricks.
+        List<Recolour.Look> palette = List.of(grey(0.15, 1, "black"), grey(0.55, 5, "stone_bricks"), grey(0.65, 1, "andesite"), grey(0.9, 9, "white"));
+        List<Recolour.Look> build = List.of(grey(0.35, 900, "dark"), grey(0.65, 10, "andesite"), grey(0.75, 5, "a"), grey(0.8, 5, "b"), grey(0.85, 5, "c"));
+        List<Integer> picked = picks(new Recolour(palette, build, Recolour.Mode.SHADING), build);
+        assertEquals(1, picked.getFirst(), picked.toString());
+        assertEquals(2, picked.get(1), picked.toString());
+        inOrder(palette, build, picked);
+    }
+
+    @Test
+    void everyBlockThePaletteKeepsInOneShadeBoundsTheOthers() {
+        // Two bricks of one family the palette has, which share a shade, and a lighter material: it may not go darker
+        // than the lighter brick, though it stays itself.
+        List<Recolour.Look> palette = List.of(new Recolour.Look(Color.of(new Oklab(0.5, 0, 0)), false, 5, "brick", "brick"), grey(0.52, 1, "between"),
+                new Recolour.Look(Color.of(new Oklab(0.55, 0, 0)), false, 1, "brick", "cracked_brick"), grey(0.8, 1, "light"));
+        List<Recolour.Look> build = List.of(new Recolour.Look(Color.of(new Oklab(0.5, 0, 0)), false, 900, "brick", "brick"),
+                new Recolour.Look(Color.of(new Oklab(0.55, 0, 0)), false, 50, "brick", "cracked_brick"), grey(0.7, 50, "trim"));
+        List<Integer> picked = picks(new Recolour(palette, build, Recolour.Mode.SHADING), build);
+        assertEquals(List.of(0, 2), picked.subList(0, 2), picked.toString());
+        inOrder(palette, build, picked);
+    }
+
     @Test
     void countsScaledAlikeGiveTheSameBlocks() {
         // A build's counts and a palette sampled from it, whose weights are the same counts scaled down.

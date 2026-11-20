@@ -203,6 +203,12 @@ class RecolourCasesTest {
         RecolourPlan a = plan(to, build), b = plan(to, sample);
         for (String path : List.of("stone_bricks", "stone_brick_stairs", "polished_andesite")) assertEquals(after(a, path), after(b, path), path);
         assertEquals("andesite", id(after(b, "polished_andesite")));
+        // Nor does it matter when the build has no full stone bricks at all, only stairs and slabs.
+        Palette shapes = new Palette("shapes");
+        shapes.entries.addAll(List.of(new PaletteEntry("minecraft:stone_brick_stairs", "", 50), new PaletteEntry("minecraft:stone_brick_slab", "", 50),
+                new PaletteEntry("minecraft:polished_andesite", "", 50)));
+        RecolourPlan c = plan(to, shapes);
+        for (String path : List.of("stone_brick_stairs", "stone_brick_slab", "polished_andesite")) assertEquals(after(c, path), after(b, path), path);
     }
 
     private static Palette palette(String name, String... ids) {

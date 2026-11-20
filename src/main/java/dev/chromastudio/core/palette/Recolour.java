@@ -187,9 +187,23 @@ public final class Recolour {
             }
             if (pin[k] >= 0) last = pin[k];
         }
+        // Every block of each shade that the palette has, from the darkest to the lightest of them: a shade may hold
+        // two, such as stone bricks and their cracked kind, and each stays itself.
+        int[] lo = new int[shades], hi = new int[shades];
+        Arrays.fill(lo, -1);
+        Arrays.fill(hi, -1);
+        for (int k = 0; k < shades; k++) {
+            for (String id : build.blocks(k)) {
+                for (int j = 0; j < n; j++) {
+                    if (!id.equals(blocks[eligible[j]])) continue;
+                    lo[k] = lo[k] < 0 ? j : Math.min(lo[k], j);
+                    hi[k] = Math.max(hi[k], j);
+                }
+            }
+        }
         // When the palette lacks the main material, there's nothing to measure differences from that the builder
         // chose, so each shade keeps its place from darkest to lightest instead, the main one on the palette's main block.
-        if (main < 0 || pin[main] < 0) return byPlace(eligible, build, main, pin);
+        if (main < 0 || pin[main] < 0) return kept(eligible, byPlace(eligible, build, main, lo, hi), lo, hi);
         Oklab m = palette[eligible[pin[main]]];
         Oklab c = build.colour(main);
         Oklab shift = new Oklab(m.l() - c.l(), m.a() - c.a(), m.b() - c.b());
@@ -227,28 +241,61 @@ public final class Recolour {
         }
         int last = 0;
         for (int j = 1; j < n; j++) if (best[shades - 1][j] < best[shades - 1][last]) last = j;
-        int[] out = new int[shades];
+        int[] at = new int[shades];
         for (int k = shades - 1, j = last; k >= 0; k--) {
-            out[k] = eligible[j];
+            at[k] = j;
             j = back[k][j];
         }
+        return kept(eligible, at, lo, hi);
+    }
+
+    /**
+     * The blocks of {@code eligible} at places {@code at}, after each shade the palette has blocks of keeps the first
+     * of them, and the shades either side keep to their side of all of them: the order from darkest to lightest never
+     * turns round, though a neighbour may share one.
+     */
+    private static int[] kept(int[] eligible, int[] at, int[] lo, int[] hi) {
+        int shades = lo.length;
+        for (int k = 0; k < shades; k++) {
+            if (lo[k] < 0) continue;
+            if (at[k] < lo[k] || at[k] > hi[k]) at[k] = lo[k];
+            for (int i = 0; i < k; i++) at[i] = Math.min(at[i], lo[k]);
+            for (int i = k + 1; i < shades; i++) at[i] = Math.max(at[i], hi[k]);
+        }
+        int[] out = new int[at.length];
+        for (int k = 0; k < at.length; k++) out[k] = eligible[at[k]];
         return out;
+    }
+
+    /**
+     * The places between which the main shade's block may lie, both outside: past the blocks the palette has of the
+     * shades darker than it, and short of those of the shades lighter.
+     */
+    private static int[] room(int main, int n, int[] lo, int[] hi) {
+        int from = -1, to = n;
+        for (int k = 0; k < lo.length; k++) {
+            if (lo[k] < 0) continue;
+            if (k < main) from = Math.max(from, hi[k]);
+            if (k > main) to = Math.min(to, lo[k]);
+        }
+        // Blocks the palette has out of order leave no room between them; then the main shade may take any.
+        return from + 1 < to ? new int[] {from, to} : new int[] {-1, n};
     }
 
     /**
      * Which of {@code eligible}, sorted from darkest to lightest, each of a build's shades takes when the build's
      * palette lacks its main material, or its weights don't say which that is, as when every block in the game may
      * change: each shade takes the block at its place from darkest to lightest, and the main one, given or else the
-     * largest between the ends, one of the palette's main blocks. The shades {@code pin} gives a block the palette
-     * has keep it, and bound the others.
+     * largest between the ends, one of the palette's main blocks, chosen between the blocks the palette has of the
+     * shades either side, {@code lo} to {@code hi} for each. Gives each shade's place in {@code eligible}.
      */
-    private int[] byPlace(int[] eligible, Shades build, int main, int[] pin) {
+    private int[] byPlace(int[] eligible, Shades build, int main, int[] lo, int[] hi) {
         int n = eligible.length, shades = build.count();
-        // A build with no shades of this class: a block of it the build lacks takes the palette's middle.
-        if (shades == 0) return new int[] {eligible[(n - 1) / 2]};
         int[] at = new int[shades];
+        // A build with no shades of this class: a block of it the build lacks takes the palette's middle.
+        if (shades == 0) return new int[] {(n - 1) / 2};
         if (shades <= n) {
-            int[] picked = matched(eligible, build, main);
+            int[] picked = matched(eligible, build, main, lo, hi);
             for (int k = 0; k < shades; k++) for (int j = 0; j < n; j++) if (eligible[j] == picked[k]) at[k] = j;
         } else if (main < 0) {
             shareOut(eligible, 0, shades, 0, n, at);
@@ -257,11 +304,13 @@ public final class Recolour {
             // share out the blocks either side of it, so a build of many kinds still puts its bulk on a main block.
             double place = (main + 0.5) / shades, total = 0;
             for (int i : eligible) total += weights[i];
-            int heaviest = 0;
+            int[] room = room(main, n, lo, hi);
+            int heaviest = room[0] + 1;
             double upTo = 0, nearest = Double.POSITIVE_INFINITY;
             for (int j = 0; j < n; j++) {
                 double middle = (upTo + weights[eligible[j]] / 2.0) / total, off = Math.abs(middle - place);
                 upTo += weights[eligible[j]];
+                if (j <= room[0] || j >= room[1]) continue;
                 if (weights[eligible[j]] > weights[eligible[heaviest]] || weights[eligible[j]] == weights[eligible[heaviest]] && off < nearest) {
                     heaviest = j;
                     nearest = off;
@@ -273,17 +322,7 @@ public final class Recolour {
             if (heaviest < n - 1) shareOut(eligible, main + 1, shades, heaviest + 1, n, at);
             else Arrays.fill(at, main + 1, shades, heaviest);
         }
-        // A block the palette has stays itself, so the shades either side keep to their side of it: the order from
-        // darkest to lightest never turns round, though a neighbour may share it.
-        for (int k = 0; k < shades; k++) {
-            if (pin[k] < 0) continue;
-            at[k] = pin[k];
-            for (int i = 0; i < k; i++) at[i] = Math.min(at[i], pin[k]);
-            for (int i = k + 1; i < shades; i++) at[i] = Math.max(at[i], pin[k]);
-        }
-        int[] out = new int[shades];
-        for (int k = 0; k < shades; k++) out[k] = eligible[at[k]];
-        return out;
+        return at;
     }
 
     /**
@@ -339,7 +378,7 @@ public final class Recolour {
      * build the shade is. Of all the ways to hand out blocks in order, each shade its own, this takes the best fit.
      * Two neighbouring shades share a block only where the main shade's pin, below, makes room for it.
      */
-    private int[] matched(int[] eligible, Shades build, int main) {
+    private int[] matched(int[] eligible, Shades build, int main, int[] keptFrom, int[] keptTo) {
         int n = eligible.length, shades = build.count();
         double[] at = new double[shades];
         double before = 0;
@@ -365,8 +404,9 @@ public final class Recolour {
             // A block that leaves room for every shade on either side of it, so no two shades share. Only when the
             // palette has blocks to spare and a heavier block lies one place beyond that room may two neighbouring
             // shades share to put the walls on it, as a builder would: stone walls on stone bricks, not on planks.
-            int roomy = heaviest(eligible, at[main], from, to, main, shades, 0);
-            int crowded = n > shades ? heaviest(eligible, at[main], from, to, main, shades, 1) : -1;
+            int[] room = room(main, n, keptFrom, keptTo);
+            int roomy = heaviest(eligible, at[main], from, to, main, shades, 0, room);
+            int crowded = n > shades ? heaviest(eligible, at[main], from, to, main, shades, 1, room) : -1;
             if (crowded >= 0 && crowded != roomy && (roomy < 0 || weights[eligible[crowded]] > weights[eligible[roomy]])) {
                 heaviest = crowded;
                 shares = 1;
@@ -441,10 +481,10 @@ public final class Recolour {
      * itself, leaving all but {@code crowded} of the other shades a block of their own, and the nearest its place
      * among equals; -1 when there's none.
      */
-    private int heaviest(int[] eligible, double at, double[] from, double[] to, int main, int shades, int crowded) {
+    private int heaviest(int[] eligible, double at, double[] from, double[] to, int main, int shades, int crowded, int[] room) {
         int n = eligible.length, best = -1;
         boolean end = main == 0 || main == shades - 1;
-        for (int j = end ? 0 : 1; j < (end ? n : n - 1); j++) {
+        for (int j = Math.max(end ? 0 : 1, room[0] + 1); j < Math.min(end ? n : n - 1, room[1]); j++) {
             if (Math.max(0, main - j) + Math.max(0, shades - 1 - main - (n - 1 - j)) > crowded) continue;
             if (best < 0 || weights[eligible[j]] > weights[eligible[best]]
                     || weights[eligible[j]] == weights[eligible[best]] && away(at, from[j], to[j]) < away(at, from[best], to[best])) {
