@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 class AxiomScriptTest {
-    private static final AxiomScript.Kept NONE = new AxiomScript.Kept(List.of(), List.of(), List.of());
+    private static final AxiomScript.Kept NONE = new AxiomScript.Kept(List.of(), List.of());
 
     // The pattern Axiom 6.1 finds its controls with: anything between two dollar signs on one line.
     private static final Pattern CONTROL = Pattern.compile("\\$([^$()\\n]+)(?:\\(([^$\\n]*)\\))?\\$");
@@ -74,12 +74,11 @@ class AxiomScriptTest {
         // As the palette brush's Scatter does: it fills air too, and leaves either half of a door or tall plant.
         assertEquals(List.of("$boolean(Paint air, true)$"), controls(script));
         assertTrue(script.contains("if chroma_skipped[b] or half == \"upper\" or half == \"lower\" then return nil end\n"), script);
-        // And the blocks that hold items: by tag, and by name those no tag has.
+        // And the blocks that hold items: by a property only they have, and by name.
         String kept = AxiomScript.scatter(palette("Mix", new PaletteEntry("minecraft:stone", "", 1)),
-                new AxiomScript.Kept(List.of("conditional"), List.of("all_signs", "banners"), List.of("minecraft:chest", "minecraft:barrel")));
+                new AxiomScript.Kept(List.of("conditional"), List.of("minecraft:chest", "minecraft:barrel")));
         assertTrue(kept.contains("for k in string.gmatch(\"chest barrel\", \"%S+\") do chroma_skipped[blocks[k] or false] = true end\n"), kept);
         assertTrue(kept.contains("for p in string.gmatch(\"conditional\", \"%S+\") do if getBlockProperty(b, p) then return nil end end\n"), kept);
-        assertTrue(kept.contains("for t in string.gmatch(\"all_signs banners\", \"%S+\") do if isBlockTagged(b, t) then return nil end end\n"), kept);
     }
 
     @Test
@@ -100,12 +99,11 @@ class AxiomScriptTest {
         assertTrue(script.contains("not isSolid(b)"), script);
         assertTrue(script.contains("for p in string.gmatch(\"waterlogged facing half orientation mode rotation level\", \"%S+\") do if getBlockProperty(b, p)"), script);
         assertTrue(AxiomScript.counted(script) < AxiomScript.SERVER_LIMIT, AxiomScript.counted(script) + "");
-        // The ground and flower pots by their tags, and blocks that hold items or data yet have none of those
-        // properties, such as a jukebox, by name.
+        // Blocks that hold items or data yet have none of those properties, such as a jukebox, are named; a
+        // property only such blocks have, such as hatch, is asked too.
         String kept = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8,
-                new AxiomScript.Kept(List.of("hatch"), List.of("substrate_overworld", "flower_pots"), List.of("minecraft:jukebox", "mod:vault")));
+                new AxiomScript.Kept(List.of("hatch"), List.of("minecraft:jukebox", "mod:vault")));
         assertTrue(kept.contains("\"waterlogged facing half orientation mode rotation level hatch\""), kept);
-        assertTrue(kept.contains("for t in string.gmatch(\"substrate_overworld flower_pots\", \"%S+\") do if isBlockTagged(b, t) then return nil end end\n"), kept);
         assertTrue(kept.contains("for k in string.gmatch(\"jukebox\", \"%S+\") do chroma_kept[blocks[k] or false] = true end\n")
                 && kept.contains("chroma_kept[block(\"mod\", \"vault\") or false] = true\n") && kept.contains("chroma_kept[b] or"), kept);
         // The game's own blocks are named directly, and the function that finds another mod's only comes when needed.

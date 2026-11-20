@@ -22,16 +22,12 @@ import java.util.stream.Collectors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
-import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import org.jspecify.annotations.Nullable;
@@ -82,9 +78,8 @@ final class AxiomScripts {
         MutableComponent summary = Component.translatable("axiom.chromastudio.scatter.done", placed.entries.size());
         if (!blocks.leftOut().isEmpty()) summary.append(" ").append(leftOut);
         // As the brush's Scatter does, it leaves a block that holds items, or one half of a door or a tall plant; the
-        // script tells the halves by their property. It asks no block tags: a world's data packs may change what they
-        // hold, and a script may be run in another world than the one it was made in.
-        AxiomScript.Kept kept = kept(List.of(), s -> !ScatterBlocks.paintsOver(s), s -> {
+        // script tells the halves by their property.
+        AxiomScript.Kept kept = kept(s -> !ScatterBlocks.paintsOver(s), s -> {
             String half = property(s, "half");
             return "upper".equals(half) || "lower".equals(half);
         });
@@ -129,11 +124,11 @@ final class AxiomScripts {
     /**
      * What a gradient script leaves alone: as the gradient tool does, each block but a full cube with nothing inside
      * that a build is made of, as the tool would reshape it, empty it or not count it part of the build; but for air,
-     * which the script fills when its Paint air box is ticked. Most it tells by having no collision, a property such
-     * as {@code facing}, or a tag; the rest, such as a jukebox or a brewing stand, it names.
+     * which the script fills when its Paint air box is ticked. Most it tells by having no collision or a property
+     * such as {@code facing}; the rest, such as the ground, a jukebox or a brewing stand, it names.
      */
     static AxiomScript.Kept gradientKept() {
-        return kept(AxiomScript.GRADIENT_TAGS, s -> !s.isAir() && !(FoundBuild.member(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)
+        return kept(s -> !s.isAir() && !(FoundBuild.member(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)
                 && GradientTool.paintable(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)), s -> {
             // Axiom's isSolid asks about the block's default state, whatever state stands there.
             return s.getBlock().defaultBlockState().getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty()
@@ -142,31 +137,19 @@ final class AxiomScripts {
     }
 
     /**
-     * What a script leaves alone: those of {@code tags} the game knows, and each block with a state that its tool
-     * {@code refuses} but which neither those tags nor the script's other checks, {@code caught}, would leave. Blocks
-     * are left whole, as a script can only ask which block stands somewhere. Where a property belongs only to blocks
-     * the tool leaves in every state, such as a turtle egg's {@code hatch}, the script asks for it in place of the
-     * blocks' names, when that's shorter, as servers limit how long a script may be.
+     * What a script leaves alone: each block with a state that its tool {@code refuses} but the script's own checks,
+     * {@code caught}, would change. Blocks are left whole, as a script can only ask which block stands somewhere. Where
+     * a property belongs only to blocks the tool leaves in every state, such as a turtle egg's {@code hatch}, the
+     * script asks for it in place of the blocks' names, when that's shorter, as servers limit how long a script may be.
      */
-    private static AxiomScript.Kept kept(List<String> tags, Predicate<BlockState> refuses, Predicate<BlockState> caught) {
-        List<TagKey<Block>> known = new ArrayList<>();
-        List<String> tagNames = new ArrayList<>();
-        for (String t : tags) {
-            TagKey<Block> key = TagKey.create(Registries.BLOCK, Identifier.withDefaultNamespace(t));
-            if (BuiltInRegistries.BLOCK.get(key).isPresent()) {
-                known.add(key);
-                tagNames.add(t);
-            }
-        }
+    private static AxiomScript.Kept kept(Predicate<BlockState> refuses, Predicate<BlockState> caught) {
         Set<Block> named = new LinkedHashSet<>();
         // Each property, by name, and the blocks that have it; and the properties of a block the tool may change.
         Map<String, List<Block>> holders = new TreeMap<>();
         Set<String> changed = new HashSet<>();
         for (Block b : BuiltInRegistries.BLOCK) {
             List<BlockState> states = b.getStateDefinition().getPossibleStates();
-            // A tag never stands in for a block that holds something: the world a script runs in may tag it otherwise.
-            boolean tagged = !holdsSomething(b) && known.stream().anyMatch(b.defaultBlockState()::is);
-            if (!tagged && states.stream().anyMatch(s -> refuses.test(s) && !caught.test(s))) named.add(b);
+            if (states.stream().anyMatch(s -> refuses.test(s) && !caught.test(s))) named.add(b);
             boolean left = states.stream().allMatch(refuses);
             for (Property<?> p : b.getStateDefinition().getProperties()) {
                 holders.computeIfAbsent(p.getName(), _ -> new ArrayList<>()).add(b);
@@ -190,11 +173,8 @@ final class AxiomScripts {
             properties.add(best);
             holders.get(best).forEach(named::remove);
         }
-        return new AxiomScript.Kept(properties, tagNames, named.stream().map(b -> BuiltInRegistries.BLOCK.getKey(b).toString()).toList());
+        return new AxiomScript.Kept(properties, named.stream().map(b -> BuiltInRegistries.BLOCK.getKey(b).toString()).toList());
     }
-
-    /** Whether a block holds items or other data, such as a chest or a potted plant, which a replacement would lose. */
-    static boolean holdsSomething(Block b) { return b instanceof EntityBlock || b instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR; }
 
     /** A block's id as a script names it: its path alone for one of the game's own. */
     private static String name(Block b) {

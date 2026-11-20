@@ -146,8 +146,6 @@ class ScriptSafetyTest {
             if (put[0] && holdsSomething(s)) wrong.add(s);
         }
         String script = AxiomScripts.scatter(p).text();
-        // Nor does it lean on block tags, which another world's data packs may change after the script is made.
-        assertFalse(script.contains("isBlockTagged"), script);
         assertAll(() -> assertTrue(wrong.isEmpty(), "Scatter paints over " + wrong.size() + " states that hold something, of " + blocks(wrong)),
                 () -> check("scatter", script, s -> brush.get(s) && !holdsSomething(s)));
     }
@@ -170,28 +168,19 @@ class ScriptSafetyTest {
         return s.getBlock() instanceof EntityBlock || s.getBlock() instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR;
     }
 
-    @Test
-    void noScriptLeavesABlockThatHoldsSomethingToATag() throws Exception {
-        // A tag is the world's data, and a script may be run in another world than it was made in, whose data packs tag
-        // blocks otherwise. So each block that holds something is named, or caught by a property, which is the game's code.
-        Palette p = palette("Script safety tags", "stone_bricks");
-        AxiomScript.Kept gradient = AxiomScripts.gradientKept();
-        String scatter = AxiomScripts.scatter(p).text();
-        List<String> wrong = new ArrayList<>();
-        for (Block b : BuiltInRegistries.BLOCK) {
-            BlockState s = b.defaultBlockState();
-            if (!holdsSomething(s) || s.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty()) continue;
-            String id = BuiltInRegistries.BLOCK.getKey(b).toString();
-            boolean byProperty = s.getProperties().stream().anyMatch(q -> AxiomScript.KEPT_BY_PROPERTY.contains(q.getName()) || gradient.properties().contains(q.getName()));
-            if (!byProperty && !gradient.blocks().contains(id)) wrong.add("gradient " + id);
-        }
-        assertTrue(wrong.isEmpty(), wrong.toString());
-        assertFalse(scatter.contains("isBlockTagged"), scatter);
-    }
-
     /** The blocks of the states listed, each once, so a failure names every block it's about. */
     private static String blocks(List<BlockState> wrong) {
         return wrong.stream().map(s -> BuiltInRegistries.BLOCK.getKey(s.getBlock()).getPath()).distinct().toList().toString();
+    }
+
+    @Test
+    void noScriptAsksABlockTag() throws Exception {
+        // A tag is a world's data, which its data packs may change, and a script may be run in another world than the
+        // one it was made in; so what a script leaves alone rests only on block names and properties, the game's own.
+        Palette p = palette("Script safety tags", "stone_bricks", "oak_planks");
+        List<String> scripts = List.of(AxiomScripts.scatter(p).text(), AxiomScripts.gradient("Walls", List.of(new PaletteEntry("minecraft:stone", ""),
+                new PaletteEntry("minecraft:deepslate", "")), AxiomScript.Axis.Y, BlockPos.ZERO).text(), AxiomScripts.recolour(p, null, Recolour.Mode.SHADING).text());
+        for (String script : scripts) assertFalse(script.contains("isBlockTagged"), script);
     }
 
     /**

@@ -47,21 +47,13 @@ public final class AxiomScript {
     public static final List<String> KEPT_BY_PROPERTY = List.of("waterlogged", "facing", "half", "orientation", "mode", "rotation", "level");
 
     /**
-     * The block tags by which a gradient script leaves a block alone: the ground, and families of blocks a full step
-     * would wrongly fill, such as carpets. A block that holds something is never left to a tag, as the world a script
-     * runs in may tag it otherwise; the script names it.
+     * What a script leaves alone besides what it always checks: blocks with any of {@code properties}, and the blocks
+     * it names, each by its id. Scripts ask no block tags: a tag is a world's data, which its data packs may change, and
+     * a script may be run in another world than the one it was made in. Names and properties are the game's own.
      */
-    public static final List<String> GRADIENT_TAGS = List.of("substrate_overworld", "sand", "wool_carpets", "candle_cakes", "cauldrons");
-
-    /**
-     * What a script leaves alone besides what it always checks: blocks with any of {@code properties}; blocks with
-     * any of {@code tags}, only ones the game knows, as Axiom stops a script that asks about another; and the blocks
-     * it names, each by its id.
-     */
-    public record Kept(List<String> properties, List<String> tags, List<String> blocks) {
+    public record Kept(List<String> properties, List<String> blocks) {
         public Kept {
             properties = List.copyOf(properties);
-            tags = List.copyOf(tags);
             blocks = List.copyOf(blocks);
         }
     }
@@ -224,7 +216,7 @@ public final class AxiomScript {
         s.append("if not paint_air and (b == blocks.air or b == blocks.cave_air or b == blocks.void_air) then return nil end\n");
         s.append("local half = getBlockProperty(getBlockState(x, y, z), \"half\")\n");
         s.append("if chroma_skipped[b] or half == \"upper\" or half == \"lower\" then return nil end\n");
-        s.append(checks(kept.properties(), kept.tags(), ""));
+        s.append(checks(kept.properties(), ""));
         s.append("""
                 if chroma_total == 0 then return nil end
                 local roll = math.random() * chroma_total
@@ -245,9 +237,9 @@ public final class AxiomScript {
      * <p>It changes what the gradient tool would: solid blocks, but not the ground, and not a block whose shape a full
      * step would lose or whose contents it would empty. The script can't ask a block's shape or whether it holds
      * anything, so it goes by what it can ask: a block with no collision, one with one of {@link #KEPT_BY_PROPERTY},
-     * such as a stair, slab, wall, door or chest, or with a property or tag of {@code kept}, such as a turtle egg or a
-     * flower pot, is left alone, where the tool would give a stair the step's stair; and so is each block
-     * {@code kept} names, which the tool leaves and those checks miss, such as a jukebox. Unlike the tool, it paints
+     * such as a stair, slab, wall, door or chest, or with a property of {@code kept}, such as a turtle egg's, is left
+     * alone, where the tool would give a stair the step's stair; and so is each block {@code kept} names, which the
+     * tool leaves and those checks miss, such as a jukebox, a flower pot or grass. Unlike the tool, it paints
      * any other solid block the brush reaches, not only one build. Every step must be a full block, which the caller
      * sees to.
      */
@@ -293,7 +285,7 @@ public final class AxiomScript {
                 """);
         List<String> properties = new ArrayList<>(KEPT_BY_PROPERTY);
         for (String name : kept.properties()) if (!properties.contains(name)) properties.add(name);
-        s.append(checks(properties, kept.tags(), "\t"));
+        s.append(checks(properties, "\t"));
         s.append("end\n");
         // Each step takes an equal share of the blocks from first to last, both ends included.
         s.append("local n = #chroma_steps\n");
@@ -340,14 +332,12 @@ public final class AxiomScript {
     }
 
     /**
-     * Leaves block {@code b} alone when it has one of {@code properties} or {@code tags}. Whether a block has a
-     * property doesn't depend on its state, so the block's own id is asked.
+     * Leaves block {@code b} alone when it has one of {@code properties}. Whether a block has a property doesn't depend
+     * on its state, so the block's own id is asked.
      */
-    private static String checks(List<String> properties, List<String> tags, String indent) {
-        StringBuilder s = new StringBuilder();
-        if (!properties.isEmpty()) s.append(indent).append(eachWord(properties, "p")).append(" if getBlockProperty(b, p) then return nil end end\n");
-        if (!tags.isEmpty()) s.append(indent).append(eachWord(tags, "t")).append(" if isBlockTagged(b, t) then return nil end end\n");
-        return s.toString();
+    private static String checks(List<String> properties, String indent) {
+        if (properties.isEmpty()) return "";
+        return indent + eachWord(properties, "p") + " if getBlockProperty(b, p) then return nil end end\n";
     }
 
     /** {@code for v in string.gmatch("a b c", "%S+") do}, a loop over words, which is shorter than a table of strings. */
