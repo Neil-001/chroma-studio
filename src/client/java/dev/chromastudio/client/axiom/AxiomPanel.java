@@ -29,8 +29,8 @@ import org.jspecify.annotations.Nullable;
  * Axiom's panel shows no scrollbar and a panel taller than the space left would hide its last lines without a sign.
  * Under them, held to the bottom of the panel, is what the player must read before acting and the buttons to act
  * with, so neither is ever scrolled out of sight. The order is the same in every tool: what it paints with, how, its
- * options and the masks line, scrolling; then a separator, what it has to say, and its buttons at the very bottom.
- * A line that comes and goes with a mode or a result belongs in the bottom part, so the options never move.
+ * options, the masks line and its notes, scrolling; then a separator, what it has to say, and its buttons at the very
+ * bottom. A line that comes and goes with a mode or a result sits below every control, so no control moves.
  *
  * <p>ImGui wraps text only at spaces. Chinese and Japanese have none between words, and their translations space only
  * around numbers, so ImGui would leave a number on one line and its counter on the next, or a full stop alone; their
@@ -81,7 +81,7 @@ final class AxiomPanel {
             float fixed = Math.max(0, Math.min(this.bottom, room));
             child("##options", -(fixed + gap), options);
             child("##bottom", 0, () -> {
-                separator();
+                ImGui.separator();
                 bottom.run();
                 this.bottom = ImGui.getCursorPosY();
             });
@@ -272,9 +272,6 @@ final class AxiomPanel {
         besideButton(cancelLabel);
         if (button(cancelLabel, canCancel, tr(canCancel ? "axiom.chromastudio.cancel.tip" : "axiom.chromastudio.cancel.none"))) cancel.run();
     }
-
-    /** A separator between a panel's choices and its buttons. */
-    static void separator() { ImGui.separator(); }
 
     static void sameLine() { ImGui.sameLine(); }
 

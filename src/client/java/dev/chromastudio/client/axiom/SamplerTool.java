@@ -223,7 +223,8 @@ final class SamplerTool implements CustomTool {
         if (saved) AxiomPanel.wrapped(askedName == null ? tr("axiom.chromastudio.sampler.saved", savedAs.name)
                 : tr("axiom.chromastudio.sampler.saved.renamed", savedAs.name, askedName));
         if (!BlockIndex.get().ready()) AxiomPanel.wrapped(tr("axiom.chromastudio.not_ready"));
-        if (!empty) {
+        // Shown while every kind is left out too, as Clear is the one way to drop them all at once.
+        if (!sample.isEmpty()) {
             int total = sample.total(), kinds = rows.size();
             ImGui.alignTextToFramePadding();
             AxiomPanel.text(total == 1 ? tr("axiom.chromastudio.sampler.total.one")
