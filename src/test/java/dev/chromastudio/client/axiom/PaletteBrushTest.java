@@ -157,13 +157,14 @@ class PaletteBrushTest {
         p.entries.add(new PaletteEntry("minecraft:oak_leaves", ""));
         p.entries.add(new PaletteEntry("minecraft:lantern", ""));
         p.entries.add(new PaletteEntry("minecraft:white_carpet", ""));
+        p.entries.add(new PaletteEntry("minecraft:sand", ""));
         ScatterBlocks s = ScatterBlocks.of(p);
         assertEquals(2, s.blocks().size(), s.toString());
         assertEquals(new ScatterBlocks.Placed(block("stone_bricks").defaultBlockState(), 5), s.blocks().get(0), "stairs scatter as their full block");
         BlockState leaves = s.blocks().get(1).state();
         assertEquals(block("oak_leaves"), leaves.getBlock());
         assertTrue(leaves.getValue(BlockStateProperties.PERSISTENT), "leaves placed by the brush don't decay");
-        assertEquals(List.of("minecraft:lantern", "minecraft:white_carpet"), s.leftOut().stream().map(PaletteEntry::blockId).toList());
+        assertEquals(List.of("minecraft:lantern", "minecraft:white_carpet", "minecraft:sand"), s.leftOut().stream().map(PaletteEntry::blockId).toList());
         assertEquals(PaletteBlocks.of(block("stone_bricks").defaultBlockState()), new PaletteEntry("minecraft:stone_bricks", ""));
     }
 }

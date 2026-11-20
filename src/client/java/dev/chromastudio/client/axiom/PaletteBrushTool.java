@@ -26,13 +26,16 @@ import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -113,6 +116,8 @@ final class PaletteBrushTool implements CustomTool {
     private boolean overriding;
     /** When Axiom last drew this tool, as {@link System#nanoTime}. */
     private long drawn;
+    /** How many kinds of block the previewed build has now, and will have once recoloured. */
+    private int kindsBefore, kindsAfter;
 
     // The panel's view of the palettes, made again only when they change.
     private List<Palette> listed = List.of();
@@ -320,16 +325,25 @@ final class PaletteBrushTool implements CustomTool {
         AxiomTools.tools.acquireChunkRenderOverrider(PREVIEW);
         overriding = true;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        Set<Block> before = new HashSet<>(), after = new HashSet<>();
         for (long p : build.blocks()) {
             int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
             BlockState now = level.getBlockState(pos.set(x, y, z));
             BlockState next = whole.apply(now);
-            if (next == null || next == now || !allowed.allows(x, y, z)) continue;
+            before.add(now.getBlock());
+            if (next == null || next == now || !allowed.allows(x, y, z)) {
+                after.add(now.getBlock());
+                continue;
+            }
+            after.add(next.getBlock());
             touched.add(x, y, z);
             planned.add(new Planned(x, y, z, now, next));
             change.addBlock(x, y, z, next);
             AxiomTools.tools.setBlockRenderOverride(x, y, z, next);
         }
+        kindsBefore = before.size();
+        kindsAfter = after.size();
+        dev.chromastudio.client.ChromaStudioClient.LOGGER.info("EVIDENCE from={} to={} before={} after={} rows={}", fromKey, PaletteStore.get().shownName(to), before, after, whole.rows()); // TEMP
     }
 
     private void clearPreview() {
@@ -481,13 +495,14 @@ final class PaletteBrushTool implements CustomTool {
         else if (picked == null) ImGui.textWrapped(tr("axiom.chromastudio.brush.pick"));
         else if (found != null) {
             ImGui.textWrapped(tr("axiom.chromastudio.brush.count", change.count(), found.blocks().length));
+            ImGui.textWrapped(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
             if (found.capped()) ImGui.textWrapped(tr("axiom.chromastudio.brush.capped", FoundBuild.CAP));
         }
     }
 
     /** What the build the tool found holds, darkest first, as that sets the shading. */
     private void foundBuild() {
-        ImGui.textWrapped(tr("axiom.chromastudio.brush.found", found.kinds().entries.size()));
+        ImGui.textWrapped(tr("axiom.chromastudio.brush.found"));
         swatches(foundSwatches, "##found");
     }
 

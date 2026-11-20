@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.Fallable;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
@@ -19,8 +20,9 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
  * The blocks the palette brush's Scatter places for a palette. Scatter fills a ball, so it places whole blocks: a
  * stair or slab placed at random, always facing the same way, reads as noise rather than shape. A palette's stairs,
  * slabs, walls and the like scatter as their material's full block, adding their weight to it, and a block that has
- * none, such as a lantern, a carpet or a flower, is left out. So are blocks that hold items, such as chests. Leaves
- * are placed persistent, as a player's own are, so they don't decay and drop saplings where the brush put them.
+ * none, such as a lantern, a carpet or a flower, is left out: a flower or petals in the air break and drop as items.
+ * So are blocks that hold items, such as chests, and blocks that fall, such as sand and concrete powder, which would
+ * pour out of the ball. Leaves are placed persistent, as a player's own are, so they don't decay and drop saplings.
  */
 record ScatterBlocks(List<Placed> blocks, List<PaletteEntry> leftOut) {
     /** A block Scatter places, and how often. */
@@ -51,7 +53,7 @@ record ScatterBlocks(List<Placed> blocks, List<PaletteEntry> leftOut) {
     /** The block Scatter places for a palette block, or null to leave it out. */
     private static BlockState placed(BlockIndex index, BlockState state) {
         Entry e = PaletteBlocks.entry(state);
-        if (e == null || state.getBlock() instanceof EntityBlock) return null;
+        if (e == null || state.getBlock() instanceof EntityBlock || state.getBlock() instanceof Fallable) return null;
         if (WHOLE.contains(e.kind()) && (e.kind() != Kind.LIGHT || e.fullCube())) return persistent(state);
         if (!SHAPES.contains(e.kind())) return null;
         for (Entry m : index.materialSet(e)) if (m.kind() == Kind.FULL) return m.state();
