@@ -758,6 +758,8 @@
   "axiom.chromastudio.shade.lighter.tip": "画笔经过的每个方块都会变为下一档更亮的色阶，例如石砖变为磨制安山岩。",
   "axiom.chromastudio.shade.step": "步长",
   "axiom.chromastudio.shade.step.tip": "每一笔让方块变亮或变暗多少。小步长更接近方块本身的颜色和纹理。",
+  "axiom.chromastudio.shade.strength": "强度",
+  "axiom.chromastudio.shade.strength.tip": "每一笔改变笔刷下多少方块。不是全部时，新色阶会掺杂进去，笔画相互融合，再刷一次会填得更满。",
   "axiom.chromastudio.shade.from": "色阶",
   "axiom.chromastudio.shade.any": "任何建筑方块",
   "axiom.chromastudio.shade.from.tip": "画笔可用的方块：“建筑方块”和“染色方块”标签页中的任何普通方块，或仅限调色板中的方块，使色阶保持在建筑所用的材料之内。楼梯、台阶和墙只会变为材料有相同形状的方块。",

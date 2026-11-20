@@ -23,6 +23,7 @@ import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.ShadeSteps;
 import dev.chromastudio.core.palette.ShadeSteps.Direction;
+import dev.chromastudio.core.palette.WeightedPick;
 import imgui.moulberry92.ImGui;
 import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Fallable;
 import net.minecraft.world.level.block.WeatheringCopper;
@@ -76,11 +78,16 @@ final class ShadeBrushTool implements CustomTool {
     private static final List<Kind> CHANGEABLE = List.of(Kind.FULL, Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE, Kind.TRAPDOOR);
     private static final Set<Kind> SHAPES = EnumSet.of(Kind.SLAB, Kind.STAIRS, Kind.WALL);
 
+    /** Blocks of ore, which the Building blocks tab lists but which read as a block of coal, not as stone. */
+    private static final Set<Block> STORAGE = Set.of(Blocks.COAL_BLOCK, Blocks.LAPIS_BLOCK, Blocks.RAW_IRON_BLOCK, Blocks.RAW_COPPER_BLOCK, Blocks.RAW_GOLD_BLOCK);
+
     private final BlockRegion stroke = AxiomTools.regions.createBlock();
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private final int[] radius = {3};
     private int outlineRadius = -1;
     private final int[] stepSize = {3};
+    /** The share of the blocks under the brush a stroke changes, in percent. Less than all mixes a shade in. */
+    private final int[] strength = {60};
     private Direction direction = Direction.DARKER;
     /** The palette whose blocks are the shades, or null for any building block. */
     private Palette from;
@@ -91,6 +98,8 @@ final class ShadeBrushTool implements CustomTool {
 
     // Set for the length of one stroke.
     private ToolPatherUnique pather;
+    /** Which blocks a stroke at less than full strength changes, a new choice each stroke. */
+    private long seed;
 
     @Override
     public String name() { return tr("axiom.chromastudio.shade"); }
@@ -106,6 +115,7 @@ final class ShadeBrushTool implements CustomTool {
         reset();
         if (plan() == null) return false;
         pather = AxiomTools.pathers.createUnique(radius[0], BallShape.SPHERE);
+        seed = System.nanoTime();
         return true;
     }
 
@@ -132,7 +142,9 @@ final class ShadeBrushTool implements CustomTool {
         }
         Plan p = plan();
         if (level == null || p == null) return;
+        double share = strength[0] / 100.0;
         pather.update((x, y, z) -> {
+            if (WeightedPick.unit(seed, x, y, z) >= share) return;
             BlockState now = level.getBlockState(new BlockPos(x, y, z));
             BlockState next = p.apply(now, direction, kinds);
             if (next != null && next != now) stroke.addBlock(x, y, z, next);
@@ -151,6 +163,8 @@ final class ShadeBrushTool implements CustomTool {
         }
         ImGui.sliderInt(tr("axiom.chromastudio.shade.step"), stepSize, 1, STEPS.length);
         ImGui.setItemTooltip(tr("axiom.chromastudio.shade.step.tip"));
+        ImGui.sliderInt(tr("axiom.chromastudio.shade.strength"), strength, 10, 100, "%d%%");
+        ImGui.setItemTooltip(tr("axiom.chromastudio.shade.strength.tip"));
         ImGui.sliderInt(tr("axiom.chromastudio.brush.radius"), radius, 0, MAX_RADIUS);
 
         List<Palette> all = PaletteStore.get().all();
@@ -409,7 +423,7 @@ final class ShadeBrushTool implements CustomTool {
 
         /**
          * Whether a block may be a shade when any block may: a plain building block that looks the same whichever
-         * way it's placed and stays as it's left. Lights, ores, the ground, blocks that fall, weather or power
+         * way it's placed and stays as it's left. Lights, ores and blocks of them, the ground, blocks that fall, weather or power
          * redstone, blocks with contents, blocks a survival player can't get, and blocks that turn, such as logs and
          * glazed terracotta, are left out.
          */
@@ -417,7 +431,7 @@ final class ShadeBrushTool implements CustomTool {
             Block b = e.block();
             BlockState s = e.state();
             return paletteShade(e) && !e.technical() && !e.creativeOnly() && !e.lightSource() && !RecolourPlan.ground(s)
-                    && !(b instanceof WeatheringCopper) && !s.isSignalSource() && !s.is(BlockTags.BEACON_BASE_BLOCKS)
+                    && !(b instanceof WeatheringCopper) && !s.isSignalSource() && !s.is(BlockTags.BEACON_BASE_BLOCKS) && !STORAGE.contains(b)
                     && s.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) >= 0
                     && !s.hasProperty(BlockStateProperties.AXIS) && !s.hasProperty(BlockStateProperties.HORIZONTAL_FACING)
                     && !s.hasProperty(BlockStateProperties.FACING);

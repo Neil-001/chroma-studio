@@ -758,6 +758,8 @@
   "axiom.chromastudio.shade.lighter.tip": "Chaque bloc touché par le pinceau passe à la nuance plus claire suivante, par exemple de pierre taillée à andésite polie.",
   "axiom.chromastudio.shade.step": "Pas",
   "axiom.chromastudio.shade.step.tip": "De combien plus clair ou plus foncé chaque coup de pinceau rend un bloc. Un petit pas reste au plus près de la couleur et de la texture propres au bloc.",
+  "axiom.chromastudio.shade.strength": "Intensité",
+  "axiom.chromastudio.shade.strength.tip": "La part des blocs sous le pinceau que change chaque trait. Si ce n'est pas la totalité, la nouvelle teinte est mêlée, les traits se fondent les uns dans les autres et repasser en remplit davantage.",
   "axiom.chromastudio.shade.from": "Nuances",
   "axiom.chromastudio.shade.any": "Tout bloc de construction",
   "axiom.chromastudio.shade.from.tip": "Les blocs que le pinceau peut utiliser : n'importe quel bloc normal des onglets Blocs de construction et Blocs colorés, ou seulement ceux d'une palette, pour que les nuances restent dans les matériaux de votre construction. Les escaliers, dalles et murs ne deviennent qu'un bloc dont le matériau existe sous la même forme.",

@@ -758,6 +758,8 @@
   "axiom.chromastudio.shade.lighter.tip": "ブラシが触れた各ブロックは、次のより明るい濃淡に変わります。例えば石レンガは磨かれた安山岩になります。",
   "axiom.chromastudio.shade.step": "段階",
   "axiom.chromastudio.shade.step.tip": "ひと塗りで各ブロックをどれだけ明るくまたは暗くするかです。小さな段階ほど、ブロック本来の色とテクスチャに近いままになります。",
+  "axiom.chromastudio.shade.strength": "強さ",
+  "axiom.chromastudio.shade.strength.tip": "1回のストロークでブラシの下のブロックをどれだけ変えるか。すべてでなければ新しい色合いが混ざり、ストローク同士がなじみ、重ねて塗るとさらに埋まります。",
   "axiom.chromastudio.shade.from": "濃淡",
   "axiom.chromastudio.shade.any": "建築ブロックならどれでも",
   "axiom.chromastudio.shade.from.tip": "ブラシが使ってよいブロックです。「建築ブロック」と「色付きブロック」のタブにある普通のブロックすべて、またはパレットのブロックだけを選べます。建築物の素材の中で濃淡を付けられるようにするためです。階段、ハーフブロック、壁は、その形が作れる素材のブロックにしか変わりません。",

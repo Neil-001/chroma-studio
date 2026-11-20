@@ -758,6 +758,8 @@
   "axiom.chromastudio.shade.lighter.tip": "Cada bloque que toca el pincel pasa a su siguiente tono más claro, por ejemplo de ladrillos de piedra a andesita pulida.",
   "axiom.chromastudio.shade.step": "Paso",
   "axiom.chromastudio.shade.step.tip": "Cuánto más claro u oscuro hace cada trazo a un bloque. Un paso pequeño se queda más cerca del color y la textura propios del bloque.",
+  "axiom.chromastudio.shade.strength": "Intensidad",
+  "axiom.chromastudio.shade.strength.tip": "Cuántos de los bloques bajo el pincel cambia cada trazo. Si no son todos, el nuevo tono se mezcla, así que los trazos se funden entre sí y pintar de nuevo rellena más.",
   "axiom.chromastudio.shade.from": "Tonos",
   "axiom.chromastudio.shade.any": "Cualquier bloque de construcción",
   "axiom.chromastudio.shade.from.tip": "Los bloques que el pincel puede usar: cualquier bloque normal de las pestañas Bloques de construcción y Bloques de colores, o solo los de una paleta, para que los tonos se mantengan dentro de los materiales de tu construcción. Las escaleras, losas y muros solo se convierten en un bloque cuyo material tenga esa misma forma.",

@@ -758,6 +758,8 @@
   "axiom.chromastudio.shade.lighter.tip": "Jeder Block, den der Pinsel berührt, wird zur nächsten helleren Abstufung, zum Beispiel von Steinziegel zu Polierter Andesit.",
   "axiom.chromastudio.shade.step": "Schritt",
   "axiom.chromastudio.shade.step.tip": "Wie viel heller oder dunkler jeder Pinselstrich einen Block macht. Ein kleiner Schritt bleibt der Farbe und Textur des Blocks am nächsten.",
+  "axiom.chromastudio.shade.strength": "Stärke",
+  "axiom.chromastudio.shade.strength.tip": "Wie viele der Blöcke unter dem Pinsel ein Strich ändert. Sind es nicht alle, wird die neue Abstufung eingestreut, sodass Striche ineinander übergehen, und erneutes Malen füllt mehr auf.",
   "axiom.chromastudio.shade.from": "Abstufungen",
   "axiom.chromastudio.shade.any": "Beliebiger Baublock",
   "axiom.chromastudio.shade.from.tip": "Die Blöcke, die der Pinsel benutzen darf: jeder normale Block aus den Tabs „Baublöcke“ und „Farbige Blöcke“ oder nur die einer Palette, damit die Abstufungen bei den Materialien deines Baus bleiben. Treppen, Stufen und Mauern werden nur zu einem Block, dessen Material es auch in dieser Form gibt.",

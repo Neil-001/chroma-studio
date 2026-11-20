@@ -757,6 +757,8 @@
   "axiom.chromastudio.shade.lighter.tip": "Each block the brush touches becomes its next shade lighter, such as stone bricks to polished andesite.",
   "axiom.chromastudio.shade.step": "Step",
   "axiom.chromastudio.shade.step.tip": "How much lighter or darker each stroke makes a block. A small step stays closest to the block's own colour and texture.",
+  "axiom.chromastudio.shade.strength": "Strength",
+  "axiom.chromastudio.shade.strength.tip": "How many of the blocks under the brush a stroke changes. Short of all of them, the new shade is mixed in, so strokes blend into each other, and brushing again fills in more.",
   "axiom.chromastudio.shade.from": "Shades",
   "axiom.chromastudio.shade.any": "Any building block",
   "axiom.chromastudio.shade.from.tip": "The blocks the brush may use: any plain block from the Building blocks and Coloured blocks tabs, or only a palette's, so the shading keeps to your build's materials. Stairs, slabs and walls only become a block whose material comes in their shape.",

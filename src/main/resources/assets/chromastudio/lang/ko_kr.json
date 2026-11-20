@@ -758,6 +758,8 @@
   "axiom.chromastudio.shade.lighter.tip": "브러시가 닿은 블록은 한 단계 더 밝은 명암으로 바뀝니다. 예를 들어 석재 벽돌은 윤나는 안산암이 됩니다.",
   "axiom.chromastudio.shade.step": "단계",
   "axiom.chromastudio.shade.step.tip": "한 번 칠할 때마다 블록이 얼마나 밝아지거나 어두워지는지 정합니다. 작은 단계는 블록 본래의 색과 텍스처에 가장 가깝게 남습니다.",
+  "axiom.chromastudio.shade.strength": "강도",
+  "axiom.chromastudio.shade.strength.tip": "한 번의 획이 브러시 아래 블록 중 얼마나 바꾸는지입니다. 전부가 아니면 새 음영이 섞여 들어가 획끼리 자연스럽게 어우러지고, 다시 칠하면 더 채워집니다.",
   "axiom.chromastudio.shade.from": "명암",
   "axiom.chromastudio.shade.any": "아무 건축 블록",
   "axiom.chromastudio.shade.from.tip": "브러시가 쓸 수 있는 블록입니다. 건축 블록과 색깔 블록 탭의 일반 블록 전부, 또는 팔레트의 블록만 고를 수 있어 명암이 건물의 재료 안에서 유지됩니다. 계단, 반 블록, 담장은 같은 모양을 가진 재료의 블록으로만 바뀝니다.",

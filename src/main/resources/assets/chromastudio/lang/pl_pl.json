@@ -758,6 +758,8 @@
   "axiom.chromastudio.shade.lighter.tip": "Każdy blok dotknięty pędzlem zmienia się w następny jaśniejszy odcień, na przykład z kamiennych cegieł na wypolerowany andezyt.",
   "axiom.chromastudio.shade.step": "Krok",
   "axiom.chromastudio.shade.step.tip": "Jak bardzo każde pociągnięcie pędzlem rozjaśnia lub przyciemnia blok. Mały krok najbardziej zachowuje kolor i teksturę samego bloku.",
+  "axiom.chromastudio.shade.strength": "Siła",
+  "axiom.chromastudio.shade.strength.tip": "Ile bloków pod pędzlem zmienia jedno pociągnięcie. Gdy nie wszystkie, nowy odcień jest wmieszany, więc pociągnięcia przenikają się, a ponowne malowanie wypełnia więcej.",
   "axiom.chromastudio.shade.from": "Odcienie",
   "axiom.chromastudio.shade.any": "Dowolny blok budowlany",
   "axiom.chromastudio.shade.from.tip": "Bloki, których pędzel może użyć: dowolny zwykły blok z kart Bloki budowlane i Bloki kolorowe albo tylko bloki palety, tak by odcienie trzymały się materiałów twojej budowli. Schody, płyty i mury zmieniają się tylko w blok, którego materiał występuje w tym samym kształcie.",
