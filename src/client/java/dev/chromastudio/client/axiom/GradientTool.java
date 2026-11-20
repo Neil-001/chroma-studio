@@ -297,7 +297,8 @@ final class GradientTool implements CustomTool {
         ImGui.beginDisabled(change.isEmpty());
         if (ImGui.button(tr("axiom.chromastudio.gradient_tool.apply"))) apply();
         ImGui.endDisabled();
-        ImGui.setItemTooltip(tr(change.isEmpty() ? "axiom.chromastudio.gradient_tool.apply.none" : "axiom.chromastudio.gradient_tool.apply.tip"));
+        ImGui.setItemTooltip(tr(!change.isEmpty() ? "axiom.chromastudio.gradient_tool.apply.tip"
+                : second != null && !BlockIndex.get().ready() ? "palettes.chromastudio.index_building" : "axiom.chromastudio.gradient_tool.apply.none"));
         ImGui.sameLine();
         ImGui.beginDisabled(second == null);
         if (ImGui.button(tr("axiom.chromastudio.gradient_tool.swap"))) {
