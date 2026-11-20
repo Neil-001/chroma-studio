@@ -23,13 +23,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Fallable;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Property;
 import org.jspecify.annotations.Nullable;
 
@@ -42,6 +46,11 @@ import org.jspecify.annotations.Nullable;
  * block stands somewhere. The block it becomes keeps the properties both share, such as a stair's facing. Without a
  * From palette the ground, grass, dirt, sand and gravel, is left alone, so a brush that reaches past a build doesn't
  * repaint the lawn.
+ *
+ * <p>A door changes as a whole, so a recoloured house never has a door of two woods: where the brush reaches one half,
+ * the other half changes with it, even past the edge of the stroke, and where a tool mask or the build keeps the other
+ * half out, neither changes ({@link #change}, {@link #apply(BlockGetter, int, int, int, Admit)}). The script does the
+ * same, except that it can't see Axiom's tool masks, so with a mask that cuts a door in two it changes both halves.
  */
 final class RecolourPlan {
     /** What one block becomes: the palette's block with its fixed properties, and the properties it copies from the block it replaces. */
@@ -189,10 +198,66 @@ final class RecolourPlan {
         return out;
     }
 
+    /** Whether a position may change, as the tool masks and the build say. */
+    @FunctionalInterface
+    interface Admit {
+        boolean test(int x, int y, int z);
+    }
+
+    /** Takes a block the recolour puts down. */
+    @FunctionalInterface
+    interface Put {
+        void put(int x, int y, int z, BlockState state);
+    }
+
+    /**
+     * What the block at a position becomes, or null to leave it: null too where {@code admit} keeps the position out,
+     * or keeps out the other half of a door there, so a door is never left in two materials. For a whole build, which
+     * holds both halves of a door and so asks this of each.
+     */
+    @Nullable BlockState apply(BlockGetter level, int x, int y, int z, Admit admit) {
+        if (!admit.test(x, y, z)) return null;
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
+        BlockState here = level.getBlockState(pos);
+        BlockState out = apply(here);
+        if (out == null || out == here) return null;
+        int dy = otherHalf(level, pos, here);
+        return dy == 0 || admit.test(x, y + dy, z) ? out : null;
+    }
+
+    /**
+     * Puts what the block at a position becomes, as {@link #apply(BlockGetter, int, int, int, Admit)} says, and with
+     * a door's half its other half too, wherever the brush reaches. For a brush's stroke, whose edge can cut a door
+     * in two. Puts nothing when the block stays as it is.
+     */
+    void change(BlockGetter level, int x, int y, int z, Admit admit, Put put) {
+        BlockState out = apply(level, x, y, z, admit);
+        if (out == null) return;
+        put.put(x, y, z, out);
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
+        int dy = otherHalf(level, pos, level.getBlockState(pos));
+        if (dy == 0) return;
+        BlockState other = level.getBlockState(pos.setY(y + dy)), otherOut = apply(other);
+        if (otherOut != null && otherOut != other) put.put(x, y + dy, z, otherOut);
+    }
+
+    /**
+     * Which way the other half of a two-high block, such as a door, lies from {@code here}: 1 up, -1 down, or 0 when
+     * it isn't one, or its other half is missing, as the script also checks.
+     */
+    static int otherHalf(BlockGetter level, BlockPos pos, BlockState here) {
+        if (!here.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) return 0;
+        DoubleBlockHalf half = here.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF);
+        int dy = half == DoubleBlockHalf.LOWER ? 1 : -1;
+        BlockState other = level.getBlockState(pos.above(dy));
+        return other.is(here.getBlock()) && other.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) != half ? dy : 0;
+    }
+
     /** The plan as rows for a script, in the order of the blocks' ids. */
     List<AxiomScript.Remap> rows() {
         List<AxiomScript.Remap> rows = new ArrayList<>();
-        changes.forEach((block, c) -> rows.add(new AxiomScript.Remap(PaletteBlocks.of(block.defaultBlockState()).blockId(), c.to(), c.copied())));
+        changes.forEach((block, c) -> rows.add(new AxiomScript.Remap(PaletteBlocks.of(block.defaultBlockState()).blockId(), c.to(), c.copied(),
+                block.defaultBlockState().hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF))));
         rows.sort(Comparator.comparing(AxiomScript.Remap::from));
         return rows;
     }
