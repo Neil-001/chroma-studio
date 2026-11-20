@@ -293,6 +293,8 @@ public final class Recolour {
                     amounts.add(0.0);
                 }
                 shadeOf.putIfAbsent(key, shade);
+                // Counted as its square root, so a build's bulk material pulls its shade toward the palette's main
+                // block without squeezing the rest of the build's shades into a sliver of the palette.
                 double weight = Math.sqrt(Math.max(1, l.weight()));
                 amounts.set(shade, amounts.get(shade) + weight);
                 total += weight;
