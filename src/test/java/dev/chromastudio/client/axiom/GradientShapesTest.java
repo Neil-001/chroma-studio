@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.client.index.TintContext;
 import dev.chromastudio.core.color.Face;
@@ -110,6 +111,9 @@ class GradientShapesTest {
         assertNotNull(out);
         assertEquals(block("black_stained_glass_pane"), out.getBlock());
         assertEquals(true, out.getValue(IronBarsBlock.EAST));
+        // A glass step gives its own pane, and a pane finds its own glass.
+        assertEquals(block("white_stained_glass_pane"), shapes.apply(block("white_stained_glass").defaultBlockState(), pane).getBlock());
+        assertEquals(block("white_stained_glass"), GradientShapes.glassPair(BlockIndex.get().entryOf(block("white_stained_glass_pane").defaultBlockState())).block());
         // A window in a stone gradient keeps its glass, and no pane ever becomes iron bars.
         assertNull(shapes.apply(block("black_concrete").defaultBlockState(), pane));
         assertNull(shapes.apply(block("stone_bricks").defaultBlockState(), pane));

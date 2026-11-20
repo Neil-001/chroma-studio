@@ -184,7 +184,8 @@ final class GradientTool implements CustomTool {
         if (first != null) ends.add(first.getX(), first.getY(), first.getZ());
         if (second != null) ends.add(second.getX(), second.getY(), second.getZ());
         List<BlockState> steps = choice == null ? List.of() : states(choice);
-        if (first == null || second == null || steps.size() < 2) return;
+        // Until the index is built, stairs and slabs can't be told from full blocks, and a double slab would be flattened.
+        if (first == null || second == null || steps.size() < 2 || !BlockIndex.get().ready()) return;
 
         GradientLine line = new GradientLine(first.getX(), first.getY(), first.getZ(), second.getX(), second.getY(), second.getZ());
         Set<Block> like = like(level.getBlockState(seed));
@@ -313,6 +314,7 @@ final class GradientTool implements CustomTool {
         ImGui.setItemTooltip(tr(first == null ? "axiom.chromastudio.gradient_tool.cancel.none" : "axiom.chromastudio.gradient_tool.cancel.tip"));
         if (first == null) ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.start"));
         else if (second == null) ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.end"));
+        else if (!BlockIndex.get().ready()) ImGui.textWrapped(tr("palettes.chromastudio.index_building"));
         else {
             int steps = shown == null ? 0 : states(shown).size();
             double length = Math.sqrt(first.distSqr(second)) + 1;
@@ -360,7 +362,7 @@ final class GradientTool implements CustomTool {
 
     /**
      * The blocks that count as like the first block: those of its material, such as stone bricks with their stairs,
-     * slabs and walls, so a build's trim takes the gradient along with its walls.
+     * slabs and walls, so a build's trim takes the gradient along with its walls, and a glass's own pane.
      */
     private static Set<Block> like(BlockState start) {
         Set<Block> out = new HashSet<>();
@@ -368,6 +370,8 @@ final class GradientTool implements CustomTool {
         BlockIndex index = BlockIndex.get();
         Entry e = index.entryOf(start);
         if (e != null) for (Entry m : index.materialSet(e)) out.add(m.block());
+        Entry pair = e == null ? null : GradientShapes.glassPair(e);
+        if (pair != null) out.add(pair.block());
         return out;
     }
 

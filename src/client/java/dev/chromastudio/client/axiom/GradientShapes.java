@@ -84,8 +84,10 @@ final class GradientShapes {
         if (stepEntry == null) return _ -> null;
         // Panes come only from glass, as no other block has them as its shape.
         if (kind == Kind.PANE && stepEntry.kind() != Kind.GLASS) return _ -> null;
-        Optional<Entry> own = index.materialSet(stepEntry).stream().filter(m -> m.kind() == kind).findFirst();
-        BlockState to = own.isPresent() ? step : borrowed(kind, step);
+        Optional<Entry> own = kind == Kind.PANE ? Optional.ofNullable(glassPair(stepEntry))
+                : index.materialSet(stepEntry).stream().filter(m -> m.kind() == kind).findFirst();
+        // A pane is its own kind to a recolour, so the step's pane itself is the palette, where a stair comes from the full block.
+        BlockState to = own.isEmpty() ? borrowed(kind, step) : kind == Kind.PANE ? own.get().block().defaultBlockState() : step;
         if (to == null) return _ -> null;
         if (own.map(Entry::block).orElse(to.getBlock()) == here.getBlock()) return UnaryOperator.identity();
         // A recolour into a palette of that one block gives the shaped block that block's shape of it.
@@ -95,6 +97,18 @@ final class GradientShapes {
         } catch (Refused _) {
             return _ -> null;
         }
+    }
+
+    /**
+     * A glass's own pane, or a pane's own glass, such as black stained glass and its pane, which the index doesn't put
+     * in one material as their ids differ by more than a shape's suffix. Null when there is none.
+     */
+    static @Nullable Entry glassPair(Entry e) {
+        String id = e.id();
+        String want = e.kind() == Kind.GLASS ? id + "_pane" : e.kind() == Kind.PANE && id.endsWith("glass_pane") ? id.substring(0, id.length() - "_pane".length()) : null;
+        if (want == null) return null;
+        for (Entry m : BlockIndex.get().entries()) if (m.id().equals(want)) return m;
+        return null;
     }
 
     private static Palette palette(BlockState state) {
