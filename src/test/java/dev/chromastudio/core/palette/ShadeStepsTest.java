@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Metric;
 import dev.chromastudio.core.color.Oklch;
+import dev.chromastudio.core.color.Tone;
 import dev.chromastudio.core.palette.ShadeSteps.Direction;
 import dev.chromastudio.core.palette.ShadeSteps.Look;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ class ShadeStepsTest {
     // its spread, and whether its material comes in stairs or slabs. Cracked stone bricks, calcite, clay, terracotta
     // and concrete don't.
     private static final List<Block> BLOCKS = List.of(
+            block("nether_bricks", 0.238, 0.038, 9.1, 0.040, true),
             block("black_concrete", 0.145, 0.011, 266.8, 0.005, false),
             block("blackstone", 0.281, 0.014, 316.4, 0.065, true),
             block("polished_blackstone_bricks", 0.310, 0.017, 310.1, 0.069, true),
@@ -171,6 +173,20 @@ class ShadeStepsTest {
             }
         }
         assertEquals("red_terracotta", next(steps, "orange_terracotta", Direction.DARKER));
+    }
+
+    @Test
+    void aGreyStaysGrey() {
+        for (double step : new double[] {ShadeSteps.MIN_STEP, DEFAULT, ShadeSteps.MAX_STEP}) {
+            ShadeSteps steps = steps(step);
+            for (Block b : BLOCKS) {
+                if (b.look.colour().oklch().c() >= Tone.MIN_CHROMA) continue;
+                for (Direction d : Direction.values()) {
+                    String there = next(steps, b.id, d);
+                    if (there != null) assertTrue(BLOCKS.get(at(there)).look.colour().oklch().c() < Tone.MIN_CHROMA, b.id + " " + d + " to " + there);
+                }
+            }
+        }
     }
 
     @Test

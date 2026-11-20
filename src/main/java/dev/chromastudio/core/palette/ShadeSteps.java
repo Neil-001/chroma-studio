@@ -25,10 +25,12 @@ public final class ShadeSteps {
     public static final double MIN_STEP = 0.03, MAX_STEP = 0.12;
 
     // How far a pick may stray across the step, in OKLab. A hue change counts by how far it moves the colour, so
-    // greys, whose hue means little, are held by chroma alone. Stone bricks to tuff bricks is about 0.01 in chroma;
-    // orange to red terracotta about 0.035 in hue. White terracotta to smooth stone, a tan to a grey, is 0.044 in chroma.
-    // A flat block such as concrete and a textured one such as planks are more than 0.04 apart in spread.
-    private static final double MAX_HUE = 0.04, MAX_CHROMA = 0.04, MAX_SPREAD = 0.04;
+    // greys, whose hue means little, are held by chroma alone: orange to red terracotta is about 0.035 in hue. Chroma
+    // may change by a share of the more colourful block's, so red concrete may dull to red terracotta, 0.03 apart, but
+    // a grey may not take on colour: stone bricks to tuff bricks is 0.01, while polished blackstone bricks to nether
+    // bricks, a grey to a dark red, is 0.021 and white terracotta to smooth stone, a tan to a grey, 0.044. A flat
+    // block such as concrete and a textured one such as planks are more than 0.04 apart in spread.
+    private static final double MAX_HUE = 0.04, MIN_CHROMA_CHANGE = 0.02, CHROMA_SHARE = 0.3, MAX_SPREAD = 0.04;
     // What counts as the same in each, which weighs it against the others: one step's error in lightness costs 1.
     private static final double HUE_SCALE = 0.025, CHROMA_SCALE = 0.04, SPREAD_SCALE = 0.03;
     // What a block of another family costs, as tuff bricks are a nearer step from stone bricks than tuff is, and
@@ -143,7 +145,8 @@ public final class ShadeSteps {
         double rise = l.l() - d.l();
         if (rise < Math.max(VISIBLE, SHORTEST * step) || rise > LONGEST * step) return Double.POSITIVE_INFINITY;
         double hue = hueDistance(d, l), chroma = Math.abs(l.c() - d.c()), spread = Math.abs(light.spread() - dark.spread());
-        if (hue > MAX_HUE || chroma > MAX_CHROMA || spread > MAX_SPREAD) return Double.POSITIVE_INFINITY;
+        double maxChroma = Math.max(MIN_CHROMA_CHANGE, CHROMA_SHARE * Math.max(d.c(), l.c()));
+        if (hue > MAX_HUE || chroma > maxChroma || spread > MAX_SPREAD) return Double.POSITIVE_INFINITY;
         double off = (rise - step) / step;
         boolean sameFamily = !dark.family().isEmpty() && dark.family().equals(light.family());
         return off * off + square(hue / HUE_SCALE) + square(chroma / CHROMA_SCALE) + square(spread / SPREAD_SCALE)
