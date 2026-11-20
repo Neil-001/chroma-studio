@@ -1,9 +1,11 @@
 package dev.chromastudio.client.axiom;
 
 import dev.chromastudio.client.ChromaStudioClient;
+import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.palette.Recolour;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
@@ -146,7 +148,9 @@ public final class AxiomBridge {
     }
 
     /** See {@link AxiomScripts#recolour}. */
-    public static Script recolourScript(Palette to, @Nullable Palette from) throws Refused { return AxiomScripts.recolour(to, from); }
+    public static Script recolourScript(Palette to, @Nullable Palette from, Recolour.Mode mode) throws Refused {
+        return AxiomScripts.recolour(to, from, mode);
+    }
 
     /** See {@link AxiomScripts#scatter}. */
     public static Script scatterScript(Palette p) throws Refused { return AxiomScripts.scatter(p); }
@@ -154,6 +158,19 @@ public final class AxiomBridge {
     /** See {@link AxiomScripts#gradient}. */
     public static Script gradientScript(String name, List<PaletteEntry> steps, AxiomScript.Axis axis) throws Refused {
         return AxiomScripts.gradient(name, steps, axis);
+    }
+
+    /**
+     * A palette's name for a From choice: as the Palettes tab shows it, and marked as a preset when one of the
+     * player's own palettes shows the same name, so the two can be told apart.
+     */
+    public static String fromName(Palette p) {
+        String name = PaletteStore.get().shownName(p);
+        if (!p.preset) return name;
+        for (Palette own : PaletteStore.get().own()) {
+            if (own.name.strip().equalsIgnoreCase(name.strip())) return Component.translatable("axiom.chromastudio.from.preset", name).getString();
+        }
+        return name;
     }
 
     /** Puts a script on the clipboard. */

@@ -1,0 +1,227 @@
+package dev.chromastudio.core.palette;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import dev.chromastudio.core.color.Color;
+import dev.chromastudio.core.color.Oklab;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+
+class RecolourTest {
+    // The mean colours of the blocks' textures in the vanilla game, in linear light, read from their PNGs.
+    private static final Map<String, String> CONCRETE = ordered(
+            "red", "#8E2121", "orange", "#E06101", "yellow", "#F1AF15", "lime", "#5EA919", "green", "#495B24",
+            "cyan", "#157788", "light_blue", "#2489C7", "blue", "#2D2F8F", "purple", "#64209C", "magenta", "#A9309F",
+            "pink", "#D6658F", "white", "#CFD5D6", "light_gray", "#7D7D73", "gray", "#373A3E", "black", "#080A0F",
+            "brown", "#603C20");
+    /** The Desert preset. */
+    private static final Map<String, String> DESERT = ordered(
+            "sandstone", "#DBCFA2", "smooth_sandstone", "#E0D6AB", "cut_sandstone", "#DDD3A6", "chiseled_sandstone", "#DCD1A5",
+            "sand", "#DBD0A4", "terracotta", "#985E44", "orange_terracotta", "#A25426", "yellow_terracotta", "#BA8523",
+            "birch_planks", "#C2B17A", "red_sandstone", "#B9631F", "cut_red_sandstone", "#BA6420");
+    /** The Nether preset's full blocks. */
+    private static final Map<String, String> NETHER = ordered(
+            "nether_bricks", "#2E171B", "red_nether_bricks", "#4A080A", "netherrack", "#632828", "blackstone", "#2C272E",
+            "polished_blackstone_bricks", "#332E37", "basalt", "#515154", "crimson_planks", "#693249", "crimson_stem", "#6C2A3B",
+            "nether_wart_block", "#750403", "gilded_blackstone", "#48382C");
+    /** A small house's stone blocks, darkest to lightest. */
+    private static final Map<String, String> HOUSE = ordered(
+            "deepslate_tiles", "#393939", "deepslate_bricks", "#4B4B4B", "cobbled_deepslate", "#515153", "mossy_stone_bricks", "#767B6E",
+            "cracked_stone_bricks", "#787778", "stone_bricks", "#7C7C7C", "cobblestone", "#848484", "polished_andesite", "#878988",
+            "andesite", "#89898A", "smooth_stone", "#A0A0A0");
+
+    private static Map<String, String> ordered(String... pairs) {
+        Map<String, String> out = new LinkedHashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) out.put(pairs[i], pairs[i + 1]);
+        return out;
+    }
+
+    /** The presets' weights, where they aren't 1. */
+    private static final Map<String, Integer> WEIGHTS = Map.of("sandstone", 4, "smooth_sandstone", 3, "cut_sandstone", 2, "sand", 2,
+            "terracotta", 2, "nether_bricks", 4, "red_nether_bricks", 3, "netherrack", 2, "blackstone", 2, "polished_blackstone_bricks", 2);
+
+    private static List<Recolour.Look> looks(Map<String, String> colours) {
+        return colours.entrySet().stream().map(e -> new Recolour.Look(Color.fromHex(e.getValue()), false, WEIGHTS.getOrDefault(e.getKey(), 1))).toList();
+    }
+
+    private static Recolour.Look solid(String hex) { return new Recolour.Look(Color.fromHex(hex), false); }
+
+    private static Recolour.Look glass(String hex) { return new Recolour.Look(Color.fromHex(hex), true); }
+
+    /** What each block of a build becomes, by name. */
+    private static List<String> recolour(Map<String, String> build, Map<String, String> palette, Recolour.Mode mode) {
+        List<Recolour.Look> b = looks(build);
+        Recolour r = new Recolour(looks(palette), b, mode);
+        List<String> names = List.copyOf(palette.keySet());
+        return b.stream().map(l -> names.get(r.pick(l))).toList();
+    }
+
+    private static double lightness(String hex) { return Color.fromHex(hex).oklab().l(); }
+
+    @Test
+    void shadingKeepsARainbowFromCollapsingIntoOneBlock() {
+        List<String> closest = recolour(CONCRETE, DESERT, Recolour.Mode.CLOSEST);
+        List<String> shading = recolour(CONCRETE, DESERT, Recolour.Mode.SHADING);
+        int before = new HashSet<>(closest).size(), after = new HashSet<>(shading).size();
+        // Plain closest colour sends 16 concretes to a handful of Desert blocks, most of them to one terracotta.
+        assertTrue(before <= 6, "closest colour gave " + before + ": " + closest);
+        long most = closest.stream().filter(n -> n.equals("terracotta")).count();
+        assertTrue(most >= 5, "closest colour sent " + most + " to terracotta: " + closest);
+        // Keeping the shading spreads them over most of Desert's blocks.
+        assertTrue(after >= 8, after + ": " + shading);
+        // Without a From palette the brush can't know the build, so every block in the game sets the darkest and
+        // lightest. Here a wider set of blocks stands in for them: the spread is smaller, and still far from one block.
+        List<Recolour.Look> wider = new ArrayList<>();
+        for (Map<String, String> m : List.of(CONCRETE, HOUSE, DESERT, NETHER)) wider.addAll(looks(m));
+        Recolour r = new Recolour(looks(DESERT), wider, Recolour.Mode.SHADING);
+        Set<Integer> picked = new HashSet<>();
+        for (Recolour.Look l : looks(CONCRETE)) picked.add(r.pick(l));
+        assertTrue(picked.size() >= 5 && picked.size() > before, picked.toString());
+    }
+
+    @Test
+    void shadingSpreadsAStoneHouseOverEachPalette() {
+        for (Map<String, String> palette : List.of(DESERT, NETHER)) {
+            int closest = new HashSet<>(recolour(HOUSE, palette, Recolour.Mode.CLOSEST)).size();
+            List<String> shading = recolour(HOUSE, palette, Recolour.Mode.SHADING);
+            assertTrue(closest <= 2, "closest colour gave " + closest);
+            // Ten stones, of which stone bricks and their cracked and mossy kinds, and andesite and polished
+            // andesite, look nearly alike and so may share a block.
+            assertTrue(new HashSet<>(shading).size() >= 6, shading.toString());
+        }
+    }
+
+    @Test
+    void shadingKeepsTheOrderFromDarkestToLightest() {
+        for (Map<String, String> build : List.of(CONCRETE, HOUSE)) {
+            for (Map<String, String> palette : List.of(DESERT, NETHER)) {
+                List<String> keys = new ArrayList<>(build.keySet());
+                keys.sort(Comparator.comparingDouble(k -> lightness(build.get(k))));
+                List<String> out = recolour(build, palette, Recolour.Mode.SHADING);
+                List<String> order = List.copyOf(build.keySet());
+                double last = -1;
+                for (String k : keys) {
+                    double l = lightness(palette.get(out.get(order.indexOf(k))));
+                    assertTrue(l >= last, k + " became darker than a darker block's new block: " + out);
+                    last = l;
+                }
+                String darkest = palette.keySet().stream().min(Comparator.comparingDouble(k -> lightness(palette.get(k)))).orElseThrow();
+                String lightest = palette.keySet().stream().max(Comparator.comparingDouble(k -> lightness(palette.get(k)))).orElseThrow();
+                assertEquals(darkest, out.get(order.indexOf(keys.getFirst())));
+                assertEquals(lightest, out.get(order.indexOf(keys.getLast())));
+            }
+        }
+    }
+
+    @Test
+    void closestIsThePlainNearestColour() {
+        Recolour r = new Recolour(looks(DESERT), List.of(), Recolour.Mode.CLOSEST);
+        List<String> names = List.copyOf(DESERT.keySet());
+        assertEquals("sandstone", names.get(r.pick(solid("#DBCFA2"))));
+        assertEquals("orange_terracotta", names.get(r.pick(solid("#8E2121"))));
+        assertEquals("terracotta", names.get(r.pick(solid("#373A3E"))));
+        assertEquals("birch_planks", names.get(r.pick(solid("#F1AF15"))));
+    }
+
+    @Test
+    void solidBlocksBecomeGlassOnlyWhenThePaletteHasNothingElse() {
+        List<Recolour.Look> palette = List.of(solid("#DBCFA2"), glass("#334CB2"), solid("#985E44"));
+        List<Recolour.Look> build = looks(CONCRETE);
+        for (Recolour.Mode mode : Recolour.Mode.values()) {
+            Recolour r = new Recolour(palette, build, mode);
+            // Blue concrete is nearest the blue glass in colour, and still stays solid.
+            for (Recolour.Look l : build) assertTrue(r.pick(l) != 1, mode + " " + l);
+            // A window stays a window.
+            assertEquals(1, r.pick(glass("#B4D7DC")));
+            // Where only glass may be had, as when no solid block has the shape, the solid block takes it.
+            assertEquals(1, r.pick(solid("#2D2F8F"), i -> i == 1));
+        }
+        // With no see-through block, glass is left as it is.
+        Recolour noGlass = new Recolour(looks(DESERT), build, Recolour.Mode.SHADING);
+        assertEquals(-1, noGlass.pick(glass("#B4D7DC")));
+        // A palette of glass alone recolours solid blocks into it.
+        Recolour allGlass = new Recolour(List.of(glass("#334CB2"), glass("#B4D7DC")), build, Recolour.Mode.SHADING);
+        assertEquals(1, allGlass.pick(solid("#CFD5D6")));
+        assertEquals(0, allGlass.pick(solid("#080A0F")));
+    }
+
+    @Test
+    void aBlockOnlyBecomesWhatItsShapeAllows() {
+        // Say only sandstone, birch and red sandstone have stairs, as in the game.
+        Set<String> stairs = Set.of("sandstone", "birch_planks", "red_sandstone");
+        List<String> names = List.copyOf(DESERT.keySet());
+        Recolour r = new Recolour(looks(DESERT), looks(HOUSE), Recolour.Mode.SHADING);
+        // The darkest stair takes the darkest material that has stairs, not the darkest palette block.
+        int picked = r.pick(solid("#393939"), i -> stairs.contains(names.get(i)));
+        assertEquals("red_sandstone", names.get(picked));
+        assertEquals("orange_terracotta", names.get(r.pick(solid("#393939"))));
+        // With nothing of its shape, a block is left alone.
+        assertEquals(-1, r.pick(solid("#393939"), _ -> false));
+    }
+
+    @Test
+    void aPalettesWeightsSayHowMuchOfABigBuildEachBlockTakes() {
+        // Sixteen concretes onto three blocks weighted 8, 1 and 1: the heavy one takes the bulk.
+        List<Recolour.Look> palette = List.of(new Recolour.Look(Color.fromHex("#985E44"), false, 1),
+                new Recolour.Look(Color.fromHex("#DBCFA2"), false, 8), new Recolour.Look(Color.fromHex("#E0D6AB"), false, 1));
+        Recolour r = new Recolour(palette, looks(CONCRETE), Recolour.Mode.SHADING);
+        long heavy = looks(CONCRETE).stream().filter(l -> r.pick(l) == 1).count();
+        assertTrue(heavy >= 10, heavy + " of 16");
+    }
+
+    @Test
+    void withEnoughPaletteBlocksEachPlainShadeKeepsItsOwn() {
+        // Three plainly different shades and three blocks: weights don't merge them.
+        List<Recolour.Look> palette = List.of(new Recolour.Look(Color.fromHex("#202020"), false, 8),
+                new Recolour.Look(Color.fromHex("#808080"), false, 1), new Recolour.Look(Color.fromHex("#E0E0E0"), false, 1));
+        List<Recolour.Look> build = List.of(solid("#303030"), solid("#707070"), solid("#C0C0C0"));
+        Recolour r = new Recolour(palette, build, Recolour.Mode.SHADING);
+        assertEquals(List.of(0, 1, 2), build.stream().map(r::pick).toList());
+        // A near-identical variant of one shade doesn't make the others share.
+        List<Recolour.Look> variant = List.of(solid("#303030"), solid("#707070"), solid("#C0C0C0"), solid("#C1C1C1"));
+        Recolour v = new Recolour(palette, variant, Recolour.Mode.SHADING);
+        assertEquals(List.of(0, 1, 2, 2), variant.stream().map(v::pick).toList());
+        // Nor do variants of two shades, too close to them to be told apart, shift a third onto its neighbour.
+        List<Recolour.Look> variants = List.of(solid("#303030"), solid("#707070"), solid("#727272"), solid("#C0C0C0"), solid("#C2C2C2"));
+        Recolour w = new Recolour(palette, variants, Recolour.Mode.SHADING);
+        assertEquals(List.of(0, 1, 1, 2, 2), variants.stream().map(w::pick).toList());
+        // One shade too many: every block still takes one, and the heavy block takes the extra.
+        List<Recolour.Look> heavy = List.of(new Recolour.Look(Color.fromHex("#202020"), false, 99),
+                new Recolour.Look(Color.fromHex("#808080"), false, 1), new Recolour.Look(Color.fromHex("#E0E0E0"), false, 1));
+        List<Recolour.Look> four = List.of(solid("#202020"), solid("#606060"), solid("#A0A0A0"), solid("#E0E0E0"));
+        Recolour h = new Recolour(heavy, four, Recolour.Mode.SHADING);
+        assertEquals(List.of(0, 0, 1, 2), four.stream().map(h::pick).toList());
+        // Blocks a shape rules out take no share: with the middle block barred, the dark and light ones split the build.
+        assertEquals(List.of(0, 0, 2), build.stream().map(l -> r.pick(l, i -> i != 1)).toList());
+        // Two shades a hair apart, which no one could tell apart in a wall, may share one.
+        List<Recolour.Look> close = List.of(solid("#999999"), solid("#9A9A9A"), solid("#FFFFFF"));
+        Recolour c = new Recolour(palette, close, Recolour.Mode.SHADING);
+        assertEquals(2, c.pick(close.get(2)));
+        assertTrue(c.pick(close.get(0)) == c.pick(close.get(1)) || c.pick(close.get(0)) + 1 == c.pick(close.get(1)));
+        // A captured stone house onto Desert: its ten stones take eight Desert blocks.
+        assertTrue(new HashSet<>(recolour(HOUSE, DESERT, Recolour.Mode.SHADING)).size() >= 8);
+    }
+
+    private static Oklab[] grey(double... lightness) { return Arrays.stream(lightness).mapToObj(l -> new Oklab(l, 0, 0)).toArray(Oklab[]::new); }
+
+    @Test
+    void shadesGroupVariantsThatCantBeToldApart() {
+        Recolour.Shades shades = new Recolour.Shades(grey(0.2, 0.4, 0.4, 0.41, 0.8));
+        // 0.4 and 0.41 can't be told apart, nor can the two 0.4s.
+        assertEquals(3, shades.count());
+        assertEquals(List.of(0, 1, 1, 2), Arrays.stream(grey(0.2, 0.4, 0.41, 0.8)).map(shades::of).toList());
+        // A colour the build lacks goes with the nearest shade.
+        assertEquals(2, shades.of(new Oklab(0.75, 0, 0)));
+        // Two colours of one lightness but far apart in hue are two shades.
+        assertEquals(2, new Recolour.Shades(new Oklab[] {new Oklab(0.5, 0.15, 0), new Oklab(0.5, -0.15, 0)}).count());
+        assertEquals(0, new Recolour.Shades(grey()).count());
+    }
+}

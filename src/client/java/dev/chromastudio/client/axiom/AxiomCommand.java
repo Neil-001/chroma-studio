@@ -12,6 +12,7 @@ import dev.chromastudio.client.axiom.AxiomBridge.Refused;
 import dev.chromastudio.client.axiom.AxiomBridge.Script;
 import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
+import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.StoredGradient;
 import java.util.Locale;
 import java.util.Optional;
@@ -34,11 +35,11 @@ final class AxiomCommand {
                 axiom.then(LiteralArgumentBuilder.<S>literal("block").executes(_ -> block()));
                 axiom.then(LiteralArgumentBuilder.<S>literal("recolour").executes(_ -> usage())
                         .then(RequiredArgumentBuilder.<S, String>argument("palette", StringArgumentType.greedyString())
-                                .executes(ctx -> copy(() -> AxiomScripts.recolour(palette(ctx, "palette"), null)))));
+                                .executes(ctx -> copy(() -> AxiomScripts.recolour(palette(ctx, "palette"), null, Recolour.Mode.SHADING)))));
                 axiom.then(LiteralArgumentBuilder.<S>literal("remap").executes(_ -> usage())
                         .then(RequiredArgumentBuilder.<S, String>argument("from", StringArgumentType.string())
                                 .then(RequiredArgumentBuilder.<S, String>argument("to", StringArgumentType.greedyString())
-                                        .executes(ctx -> copy(() -> AxiomScripts.recolour(palette(ctx, "to"), palette(ctx, "from")))))));
+                                        .executes(ctx -> copy(() -> AxiomScripts.recolour(palette(ctx, "to"), palette(ctx, "from"), Recolour.Mode.SHADING))))));
                 axiom.then(LiteralArgumentBuilder.<S>literal("scatter").executes(_ -> usage())
                         .then(RequiredArgumentBuilder.<S, String>argument("palette", StringArgumentType.greedyString())
                                 .executes(ctx -> copy(() -> AxiomScripts.scatter(palette(ctx, "palette"))))));

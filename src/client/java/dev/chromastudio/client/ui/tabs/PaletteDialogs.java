@@ -26,6 +26,7 @@ import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Generator;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.ShareString;
 import dev.chromastudio.core.palette.WorldEditPattern;
 import java.io.IOException;
@@ -571,15 +572,17 @@ final class PaletteDialogs {
     /**
      * Builds a script for Axiom's Script Brush, to copy: from a palette, a recolour into it or a scatter of it, and
      * from a gradient, a brush that paints it along an axis. The script is made afresh whenever a choice changes, so
-     * the summary under the controls always says what Copy would give.
+     * the summary under the controls always says what Copy would give, and how long the script is.
      */
     static final class Axiom extends Dialog {
         private enum Script { RECOLOUR, SCATTER }
 
         private static Script script = Script.RECOLOUR;
         private static AxiomScript.Axis axis = AxiomScript.Axis.Y;
-        // The palette a recolour changes blocks from, by name, so a choice outlives the dialog. Empty for any block.
-        private static String fromName = "";
+        private static Recolour.Mode match = Recolour.Mode.SHADING;
+        // The palette a recolour changes blocks from, so a choice outlives the dialog: a preset by its id and the
+        // player's own by name, as a palette of their own may share a preset's shown name. Empty for any block.
+        private static String fromKey = "";
 
         private final Palette palette;
         private final String gradientName;
@@ -590,7 +593,8 @@ final class PaletteDialogs {
 
         /** A recolour or scatter of a palette. */
         Axiom(Palette palette) {
-            super(tr("axiom.chromastudio.title"), 300, 140);
+            // Room for the summary, the script's size and the note on servers' limit, which is the part a player most needs.
+            super(tr("axiom.chromastudio.title"), 300, 140 + PanelTab.ROW + 18);
             this.palette = palette;
             this.gradientName = null;
             this.steps = null;
@@ -610,7 +614,7 @@ final class PaletteDialogs {
             try {
                 if (palette == null) made = AxiomBridge.gradientScript(gradientName, steps, axis);
                 else if (script == Script.SCATTER) made = AxiomBridge.scatterScript(palette);
-                else made = AxiomBridge.recolourScript(palette, from());
+                else made = AxiomBridge.recolourScript(palette, from(), match);
             } catch (AxiomBridge.Refused r) {
                 problem = r.reason();
             }
@@ -619,8 +623,13 @@ final class PaletteDialogs {
         /** The palette a recolour changes blocks from, or null for any block. */
         private Palette from() {
             // The palette itself stands for any block, so a remembered name that happens to be its own isn't a choice.
-            for (Palette p : fromChoices()) if (p != palette && PaletteStore.get().shownName(p).equals(fromName)) return p;
+            for (Palette p : fromChoices()) if (p != palette && key(p).equals(fromKey)) return p;
             return null;
+        }
+
+        private static String key(Palette p) {
+            String preset = PaletteStore.get().presetId(p);
+            return preset != null ? "preset:" + preset : "own:" + p.name;
         }
 
         /** Any block, then every other palette. A list can't hold null, so the palette itself stands for any block. */
@@ -641,16 +650,22 @@ final class PaletteDialogs {
                 widgets.cycler(x, y, 40, null, List.of(AxiomScript.Axis.values()), axis, a -> Component.literal(a.name().toLowerCase(Locale.ROOT)),
                         a -> { axis = a; refresh(); }, tr("axiom.chromastudio.axis.tip"));
             } else {
-                labelW = labelWidth("axiom.chromastudio.script", "axiom.chromastudio.from");
+                labelW = labelWidth("axiom.chromastudio.script", "axiom.chromastudio.from", "axiom.chromastudio.match");
                 x = in.x() + labelW;
                 widgets.cycler(x, y, in.right() - x, null, List.of(Script.values()), script, s -> tr("axiom.chromastudio.script." + s.name().toLowerCase(Locale.ROOT)),
                         s -> { script = s; refresh(); }, tr("axiom.chromastudio.script.tip"));
                 y += PanelTab.ROW;
                 Palette from = from();
                 var fromButton = widgets.cycler(x, y, in.right() - x, null, fromChoices(), from == null ? palette : from,
-                        p -> p == palette ? tr("axiom.chromastudio.from.any") : Component.literal(PaletteStore.get().shownName(p)),
-                        p -> { fromName = p == palette ? "" : PaletteStore.get().shownName(p); refresh(); }, tr("axiom.chromastudio.from.tip"));
-                if (script != Script.RECOLOUR) Widgets.disable(fromButton, tr("axiom.chromastudio.from.na"));
+                        p -> p == palette ? tr("axiom.chromastudio.from.any") : Component.literal(AxiomBridge.fromName(p)),
+                        p -> { fromKey = p == palette ? "" : key(p); refresh(); }, tr("axiom.chromastudio.from.tip"));
+                y += PanelTab.ROW;
+                var matchButton = widgets.cycler(x, y, in.right() - x, null, List.of(Recolour.Mode.values()), match,
+                        m -> tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT)), m -> { match = m; refresh(); }, tr("axiom.chromastudio.match.tip"));
+                if (script != Script.RECOLOUR) {
+                    Widgets.disable(fromButton, tr("axiom.chromastudio.from.na"));
+                    Widgets.disable(matchButton, tr("axiom.chromastudio.from.na"));
+                }
             }
             Component copyLabel = tr("palettes.chromastudio.copy");
             Button copy = widgets.button(in.right() - Widgets.buttonWidth(copyLabel), in.bottom() - Widgets.H - STATUS_H, copyLabel, () -> {
@@ -666,8 +681,9 @@ final class PaletteDialogs {
             else {
                 label(g, "axiom.chromastudio.script", in.x(), in.y());
                 label(g, "axiom.chromastudio.from", in.x(), in.y() + PanelTab.ROW);
+                label(g, "axiom.chromastudio.match", in.x(), in.y() + 2 * PanelTab.ROW);
             }
-            int top = in.y() + (palette == null ? 1 : 2) * PanelTab.ROW;
+            int top = in.y() + (palette == null ? 1 : 3) * PanelTab.ROW;
             Component said = made != null ? made.summary() : problem;
             List<FormattedCharSequence> lines = PanelTab.font().split(said, in.w());
             int fit = Math.max(1, (in.bottom() - Widgets.H - STATUS_H - PanelTab.GAP - top) / 9);
