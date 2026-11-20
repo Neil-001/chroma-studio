@@ -1,0 +1,151 @@
+package dev.chromastudio.client.axiom;
+
+import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge.Refused;
+import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.client.index.Entry;
+import dev.chromastudio.client.index.Kind;
+import dev.chromastudio.client.index.TintContext;
+import dev.chromastudio.core.color.Color;
+import dev.chromastudio.core.color.Face;
+import dev.chromastudio.core.palette.Palette;
+import dev.chromastudio.core.palette.Recolour;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.UnaryOperator;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.Fallable;
+import net.minecraft.world.level.block.WeatheringCopper;
+import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * What a stair, slab, wall or other shaped block of a build becomes when the gradient tool gives it a step: the step's
+ * block in the same shape, facing and half, as a recolour gives it, so a tower's trim follows the gradient rather than
+ * keeping a stripe of its old material. {@link RecolourPlan} makes the change, so the two tools shape blocks alike.
+ *
+ * <p>When the step's material has no block of that shape, as concrete has no stairs, the shape is taken from the block
+ * of that shape closest in colour to the step, so the trim still fades with the gradient. A glass pane follows a
+ * gradient of glass, taking the pane closest in colour to its step's glass, and is left alone in any other step, so a
+ * window in a stone gradient keeps its glass. Doors are left alone, as their two halves could fall in different steps.
+ */
+final class GradientShapes {
+    /** The shapes that follow the gradient. */
+    private static final Set<Kind> SHAPES = Set.of(Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE, Kind.TRAPDOOR, Kind.PANE);
+
+    private final BlockIndex index = BlockIndex.get();
+    private final Face face;
+    private final TintContext tint;
+    /**
+     * What each step does to each shaped block, as {@link #apply} answers. A step is keyed by its state, as two states
+     * of one block, such as a lit and an unlit lamp, differ in colour and so may borrow different shapes.
+     */
+    private final Map<List<Object>, UnaryOperator<BlockState>> changes = new HashMap<>();
+    /** The blocks of each shape that a step may borrow it from, with how they look. */
+    private final Map<Kind, Candidates> candidates = new EnumMap<>(Kind.class);
+
+    /** With the face and biome the settings match by. */
+    GradientShapes() { this(PaletteBlocks.queryFace(), PaletteBlocks.tint()); }
+
+    GradientShapes(Face face, TintContext tint) {
+        this.face = face;
+        this.tint = tint;
+    }
+
+    /**
+     * Whether a block is one of the shapes that keep their shape in a step, such as a stair or a slab, a double slab
+     * included, rather than a block the step replaces whole.
+     */
+    boolean shaped(BlockState here) {
+        Entry e = index.entryOf(here);
+        return e != null && SHAPES.contains(e.kind());
+    }
+
+    /**
+     * The block that a shaped block becomes in a step whose full block is {@code step}, with its facing, half and the
+     * like kept: itself when it's already the shape the step gives, or null when it's left alone as no step can take
+     * its shape.
+     */
+    @Nullable BlockState apply(BlockState step, BlockState here) {
+        Entry e = index.entryOf(here);
+        if (e == null || !SHAPES.contains(e.kind()) || here.getBlock() instanceof EntityBlock) return null;
+        return changes.computeIfAbsent(List.of(step, here.getBlock()), _ -> change(step, here, e.kind())).apply(here);
+    }
+
+    /** What a step does to one shaped block: gives it the step's own material where that has the shape, or else the closest-coloured block that has it. */
+    private UnaryOperator<BlockState> change(BlockState step, BlockState here, Kind kind) {
+        Entry stepEntry = index.entryOf(step);
+        if (stepEntry == null) return _ -> null;
+        // Panes come only from glass, as no other block has them as its shape.
+        if (kind == Kind.PANE && stepEntry.kind() != Kind.GLASS) return _ -> null;
+        Optional<Entry> own = kind == Kind.PANE ? Optional.ofNullable(glassPair(stepEntry))
+                : index.materialSet(stepEntry).stream().filter(m -> m.kind() == kind).findFirst();
+        // A pane is its own kind to a recolour, so the step's pane itself is the palette, where a stair comes from the full block.
+        BlockState to = own.isEmpty() ? borrowed(kind, step) : kind == Kind.PANE ? own.get().block().defaultBlockState() : step;
+        if (to == null) return _ -> null;
+        if (own.map(Entry::block).orElse(to.getBlock()) == here.getBlock()) return UnaryOperator.identity();
+        // A recolour into a palette of that one block gives the shaped block that block's shape of it.
+        try {
+            RecolourPlan plan = RecolourPlan.of(palette(to), palette(here), Recolour.Mode.CLOSEST, face, tint);
+            return plan::apply;
+        } catch (Refused _) {
+            return _ -> null;
+        }
+    }
+
+    /**
+     * A glass's own pane, or a pane's own glass, such as black stained glass and its pane, which the index doesn't put
+     * in one material as their ids differ by more than a shape's suffix. Null when there is none.
+     */
+    static @Nullable Entry glassPair(Entry e) {
+        String id = e.id();
+        String want = e.kind() == Kind.GLASS ? id + "_pane" : e.kind() == Kind.PANE && id.endsWith("glass_pane") ? id.substring(0, id.length() - "_pane".length()) : null;
+        if (want == null) return null;
+        for (Entry m : BlockIndex.get().entries()) if (m.id().equals(want)) return m;
+        return null;
+    }
+
+    private static Palette palette(BlockState state) {
+        Palette p = new Palette();
+        p.entries.add(PaletteBlocks.of(state.getBlock().defaultBlockState()));
+        return p;
+    }
+
+    /**
+     * The blocks of a shape a step may borrow it from: not ones with a block entity, not ones that fall, not copper
+     * that hasn't been waxed, which would weather to another colour after it was placed, and of panes only glass ones.
+     */
+    private Candidates candidates(Kind kind) {
+        List<BlockState> states = new ArrayList<>();
+        List<Recolour.Look> looks = new ArrayList<>();
+        for (Entry e : index.entries()) {
+            Block b = e.block();
+            if (e.kind() != kind || b instanceof EntityBlock || b instanceof Fallable || b instanceof WeatheringCopper) continue;
+            // Iron bars are panes to the index, but not glass.
+            if (kind == Kind.PANE && !e.id().endsWith("glass_pane")) continue;
+            Optional<Color> colour = index.colourOf(b.defaultBlockState(), face, tint);
+            if (colour.isEmpty()) continue;
+            states.add(b.defaultBlockState());
+            looks.add(new Recolour.Look(colour.get(), false));
+        }
+        return new Candidates(states, looks.isEmpty() ? null : new Recolour(looks, List.of(), Recolour.Mode.CLOSEST));
+    }
+
+    /** The blocks of one shape a step may borrow it from, and the recolour that picks the one closest in colour. */
+    private record Candidates(List<BlockState> states, @Nullable Recolour closest) {}
+
+    /** The candidate closest in colour to a step's block, or null when there are none or the step's colour can't be read. */
+    private @Nullable BlockState borrowed(Kind kind, BlockState step) {
+        Candidates c = candidates.computeIfAbsent(kind, this::candidates);
+        Optional<Color> colour = index.colourOf(step, face, tint);
+        if (c.closest() == null || colour.isEmpty()) return null;
+        int i = c.closest().pick(new Recolour.Look(colour.get(), false), _ -> true);
+        return i < 0 ? null : c.states().get(i);
+    }
+}
