@@ -210,18 +210,69 @@ class RecolourTest {
         assertTrue(new HashSet<>(recolour(HOUSE, DESERT, Recolour.Mode.SHADING)).size() >= 8);
     }
 
+    /** The house as a builder lays it: how many of each block, and each one's material with variants folded in. */
+    private static final Map<String, Integer> HOUSE_COUNTS = Map.of("deepslate_tiles", 90, "deepslate_bricks", 20, "cobbled_deepslate", 5,
+            "mossy_stone_bricks", 10, "cracked_stone_bricks", 30, "stone_bricks", 120, "cobblestone", 30, "polished_andesite", 10,
+            "andesite", 20, "smooth_stone", 30);
+    private static final Map<String, String> HOUSE_FAMILIES = Map.of("mossy_stone_bricks", "stone_brick", "cracked_stone_bricks", "stone_brick",
+            "stone_bricks", "stone_brick", "deepslate_tiles", "deepslate_tile", "deepslate_bricks", "deepslate_brick");
+
+    /** What each block of the house, counted and in families, becomes, by name. */
+    private static Map<String, String> recolourHouse(Map<String, String> palette) {
+        List<Recolour.Look> build = new ArrayList<>();
+        for (var e : HOUSE.entrySet()) {
+            build.add(new Recolour.Look(Color.fromHex(e.getValue()), false, HOUSE_COUNTS.get(e.getKey()), HOUSE_FAMILIES.getOrDefault(e.getKey(), e.getKey())));
+        }
+        Recolour r = new Recolour(looks(palette), build, Recolour.Mode.SHADING);
+        List<String> names = List.copyOf(palette.keySet()), kinds = List.copyOf(HOUSE.keySet());
+        Map<String, String> out = new LinkedHashMap<>();
+        for (int i = 0; i < build.size(); i++) out.put(kinds.get(i), names.get(r.pick(build.get(i))));
+        return out;
+    }
+
+    @Test
+    void aCountedHouseKeepsItsMaterialsApartAndItsWallsOnThePalettesMainBlock() {
+        for (Map<String, String> palette : List.of(DESERT, NETHER)) {
+            Map<String, String> out = recolourHouse(palette);
+            // The walls, stone bricks with their cracked and mossy kinds, are most of the house: they take one block,
+            // and one the palette means for the bulk of a build.
+            String walls = out.get("stone_bricks");
+            assertEquals(walls, out.get("cracked_stone_bricks"), out.toString());
+            assertEquals(walls, out.get("mossy_stone_bricks"), out.toString());
+            assertTrue(WEIGHTS.getOrDefault(walls, 1) >= 2, out.toString());
+            // Cobblestone, andesite and polished andesite look nearly alike but were mixed on purpose: each keeps its own.
+            assertEquals(3, Set.of(out.get("cobblestone"), out.get("andesite"), out.get("polished_andesite")).size(), out.toString());
+            assertTrue(new HashSet<>(out.values()).size() >= 8, out.toString());
+            // Still in order from darkest to lightest.
+            List<String> byLightness = new ArrayList<>(HOUSE.keySet());
+            byLightness.sort(Comparator.comparingDouble(k -> lightness(HOUSE.get(k))));
+            double last = -1;
+            for (String k : byLightness) {
+                double l = lightness(palette.get(out.get(k)));
+                assertTrue(l >= last, k + " became darker than a darker block's new block: " + out);
+                last = l;
+            }
+        }
+        assertEquals("sandstone", recolourHouse(DESERT).get("stone_bricks"));
+    }
+
     private static Oklab[] grey(double... lightness) { return Arrays.stream(lightness).mapToObj(l -> new Oklab(l, 0, 0)).toArray(Oklab[]::new); }
+
+    /** Looks of no family with these OKLab colours. */
+    private static List<Recolour.Look> looks(Oklab... colours) {
+        return Arrays.stream(colours).map(c -> new Recolour.Look(Color.of(c), false)).toList();
+    }
 
     @Test
     void shadesGroupVariantsThatCantBeToldApart() {
-        Recolour.Shades shades = new Recolour.Shades(grey(0.2, 0.4, 0.4, 0.41, 0.8));
+        Recolour.Shades shades = new Recolour.Shades(looks(grey(0.2, 0.4, 0.4, 0.41, 0.8)));
         // 0.4 and 0.41 can't be told apart, nor can the two 0.4s.
         assertEquals(3, shades.count());
-        assertEquals(List.of(0, 1, 1, 2), Arrays.stream(grey(0.2, 0.4, 0.41, 0.8)).map(shades::of).toList());
+        assertEquals(List.of(0, 1, 1, 2), Arrays.stream(grey(0.2, 0.4, 0.41, 0.8)).map(c -> shades.of(Color.of(c).oklab(), null)).toList());
         // A colour the build lacks goes with the nearest shade.
-        assertEquals(2, shades.of(new Oklab(0.75, 0, 0)));
+        assertEquals(2, shades.of(new Oklab(0.75, 0, 0), null));
         // Two colours of one lightness but far apart in hue are two shades.
-        assertEquals(2, new Recolour.Shades(new Oklab[] {new Oklab(0.5, 0.15, 0), new Oklab(0.5, -0.15, 0)}).count());
-        assertEquals(0, new Recolour.Shades(grey()).count());
+        assertEquals(2, new Recolour.Shades(looks(new Oklab(0.5, 0.15, 0), new Oklab(0.5, -0.15, 0))).count());
+        assertEquals(0, new Recolour.Shades(List.of()).count());
     }
 }

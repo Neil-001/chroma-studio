@@ -359,14 +359,18 @@ final class PaletteBrushTool implements CustomTool {
 
     /**
      * Sends the whole-build change to Axiom as one entry in its history, and starts over. A block that has changed
-     * since the preview was made is left as it now is. False when there's nothing to change.
+     * since the preview was made, or that the tool masks now keep out, is left as it now is. False when there's
+     * nothing to change.
      */
     private boolean apply() {
         ClientLevel level = Minecraft.getInstance().level;
         if (planned.isEmpty() || level == null) return false;
         change.clear();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (Planned p : planned) if (level.getBlockState(pos.set(p.x(), p.y(), p.z())) == p.was()) change.addBlock(p.x(), p.y(), p.z(), p.next());
+        AxiomMask.Test allowed = AxiomMask.now(level);
+        for (Planned p : planned) {
+            if (level.getBlockState(pos.set(p.x(), p.y(), p.z())) == p.was() && allowed.allows(p.x(), p.y(), p.z())) change.addBlock(p.x(), p.y(), p.z(), p.next());
+        }
         boolean any = !change.isEmpty();
         if (any) AxiomTools.tools.pushBlockRegionChange(change);
         reset();

@@ -721,7 +721,7 @@
   "axiom.chromastudio.brush.recolour.tip": "このパレットへの Axiom スクリプトと同じように各ブロックを色替えします。空気・液体・地面はそのままです。",
   "axiom.chromastudio.brush.not_ready": "Chroma Studio はまだブロックの色を読み込んでいます。",
   "axiom.chromastudio.brush.empty": "このパレットのブロックはこのゲームにありません。",
-  "axiom.chromastudio.mask.changed": "このバージョンの Axiom はツールマスクを共有しないため、ブラシは届くすべてのブロックを変更します。",
+  "axiom.chromastudio.mask.changed": "このバージョンの Axiom では、Axiom のツールマスクはこのツールに適用されません。届くすべてのブロックを変更します。",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "散布は落ちたり壊れたりしないブロック全体を置くため、階段やハーフブロックは元のフルブロックとして入り、次は除外されます: %s",
   "axiom.chromastudio.brush.whole": "建物全体",

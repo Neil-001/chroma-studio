@@ -721,7 +721,7 @@
   "axiom.chromastudio.brush.recolour.tip": "Recolore chaque bloc comme le ferait le script Axiom vers cette palette. L'air, les liquides et le sol restent tels quels.",
   "axiom.chromastudio.brush.not_ready": "Chroma Studio lit encore les couleurs des blocs.",
   "axiom.chromastudio.brush.empty": "Aucun bloc de cette palette n'existe dans ce jeu.",
-  "axiom.chromastudio.mask.changed": "Cette version d'Axiom ne partage pas ses masques d'outil, donc le pinceau change chaque bloc qu'il atteint.",
+  "axiom.chromastudio.mask.changed": "Les masques d'outil d'Axiom ne s'appliquent pas à cet outil sur cette version d'Axiom, donc il change chaque bloc qu'il atteint.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Disperser place des blocs entiers qui restent en place : les escaliers et dalles deviennent leur bloc plein, et ceux-ci sont laissés de côté : %s",
   "axiom.chromastudio.brush.whole": "Construction entière",

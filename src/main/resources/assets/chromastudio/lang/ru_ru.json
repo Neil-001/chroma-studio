@@ -721,7 +721,7 @@
   "axiom.chromastudio.brush.recolour.tip": "Перекрашивает каждый блок так же, как скрипт Axiom в эту палитру. Воздух, жидкости и земля не меняются.",
   "axiom.chromastudio.brush.not_ready": "Chroma Studio ещё считывает цвета блоков.",
   "axiom.chromastudio.brush.empty": "Ни одного блока этой палитры нет в этой игре.",
-  "axiom.chromastudio.mask.changed": "Эта версия Axiom не даёт доступа к своим маскам инструментов, поэтому кисть меняет каждый блок, до которого достаёт.",
+  "axiom.chromastudio.mask.changed": "Маски инструментов Axiom не действуют на этот инструмент в этой версии Axiom, поэтому он меняет каждый блок, до которого достаёт.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Разброс ставит целые блоки, которые не падают и не ломаются, поэтому ступени и плиты идут как их полный блок, а эти пропускаются: %s",
   "axiom.chromastudio.brush.whole": "Вся постройка",

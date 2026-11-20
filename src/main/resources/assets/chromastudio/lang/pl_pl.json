@@ -721,7 +721,7 @@
   "axiom.chromastudio.brush.recolour.tip": "Przekolorowuje każdy blok tak, jak zrobiłby to skrypt Axiom do tej palety. Powietrze, ciecze i grunt zostają bez zmian.",
   "axiom.chromastudio.brush.not_ready": "Chroma Studio wciąż odczytuje kolory bloków.",
   "axiom.chromastudio.brush.empty": "Żadnego z bloków tej palety nie ma w tej grze.",
-  "axiom.chromastudio.mask.changed": "Ta wersja Axiom nie udostępnia swoich masek narzędzi, więc pędzel zmienia każdy blok, do którego sięga.",
+  "axiom.chromastudio.mask.changed": "Maski narzędzi Axiom nie działają dla tego narzędzia w tej wersji Axiom, więc zmienia ono każdy blok, do którego sięga.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Rozsyp stawia całe bloki, które zostają na miejscu, więc schody i półbloki trafiają jako ich pełny blok, a te zostają pominięte: %s",
   "axiom.chromastudio.brush.whole": "Cała budowla",

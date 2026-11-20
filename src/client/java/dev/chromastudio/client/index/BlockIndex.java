@@ -350,6 +350,9 @@ public final class BlockIndex {
         return b.materials.getOrDefault(MaterialSets.base(e.id()), List.of()).stream().filter(m -> technical || !m.technical()).toList();
     }
 
+    /** An entry's material with worn and overgrown variants folded in, as {@link MaterialSets#family} says. */
+    public String family(Entry e) { return MaterialSets.family(e.id()); }
+
     /** What to call an entry's material set, such as "Cherry" for the set cherry planks are in. */
     public String materialName(Entry e) {
         String name = MaterialSets.name(e.id());

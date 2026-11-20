@@ -721,7 +721,7 @@
   "axiom.chromastudio.brush.recolour.tip": "Färbt jeden Block so um, wie es das Axiom-Skript in diese Palette täte. Luft, Flüssigkeiten und der Boden bleiben, wie sie sind.",
   "axiom.chromastudio.brush.not_ready": "Chroma Studio liest noch die Farben der Blöcke.",
   "axiom.chromastudio.brush.empty": "Keiner der Blöcke dieser Palette ist in diesem Spiel.",
-  "axiom.chromastudio.mask.changed": "Diese Axiom-Version gibt ihre Werkzeugmasken nicht heraus, daher ändert der Pinsel jeden Block, den er erreicht.",
+  "axiom.chromastudio.mask.changed": "Axioms Werkzeugmasken gelten auf dieser Axiom-Version nicht für dieses Werkzeug, daher ändert es jeden Block, den es erreicht.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Streuen setzt ganze Blöcke, die liegen bleiben, also kommen Treppen und Stufen als ihr voller Block hinein, und diese bleiben weg: %s",
   "axiom.chromastudio.brush.whole": "Ganzes Bauwerk",

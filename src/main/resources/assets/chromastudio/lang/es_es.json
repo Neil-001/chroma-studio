@@ -721,7 +721,7 @@
   "axiom.chromastudio.brush.recolour.tip": "Recolorea cada bloque como lo haría el script de Axiom hacia esta paleta. El aire, los líquidos y el suelo se quedan como están.",
   "axiom.chromastudio.brush.not_ready": "Chroma Studio aún está leyendo los colores de los bloques.",
   "axiom.chromastudio.brush.empty": "Ninguno de los bloques de esta paleta está en este juego.",
-  "axiom.chromastudio.mask.changed": "Esta versión de Axiom no comparte sus máscaras de herramienta, así que el pincel cambia todos los bloques que alcanza.",
+  "axiom.chromastudio.mask.changed": "Las máscaras de herramienta de Axiom no se aplican a esta herramienta en esta versión de Axiom, así que cambia todos los bloques que alcanza.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Esparcir coloca bloques enteros que no se caen, así que las escaleras y losas entran como su bloque completo, y estos quedan fuera: %s",
   "axiom.chromastudio.brush.whole": "Construcción entera",

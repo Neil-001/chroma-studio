@@ -207,28 +207,37 @@ final class RecolourPlan {
     private static Kind group(Kind kind) { return SHAPED.contains(kind) ? Kind.FULL : kind; }
 
     /**
-     * The blocks a recolour may change, one a block: those of {@code from}, looked at in the state it lists them in,
-     * or every block the index holds. Blocks with a block entity, such as chests and signs, technical blocks, the
+     * The blocks a recolour may change, one a block: those of {@code from}, looked at in the state it lists them in
+     * and weighted as it weights them, or every block the index holds, each once. Each knows its family, so variants
+     * share a shade and different materials don't. Blocks with a block entity, such as chests and signs, technical blocks, the
      * ground without a From palette, kinds a palette can't recolour, such as plants, and blocks whose colour couldn't
      * be read are left out.
      */
     private static List<Source> sources(BlockIndex index, @Nullable Palette from, Face face, TintContext tint) {
+        // Each block with how much of the build it is: every block in the game counts once, and a From palette's
+        // blocks by their weights, which for a palette made from a build are how many of each it has.
         List<BlockState> states = new ArrayList<>();
-        if (from == null) for (Entry e : index.entries()) states.add(e.block().defaultBlockState());
-        else for (PaletteEntry pe : from.entries) {
+        List<Integer> weights = new ArrayList<>();
+        if (from == null) for (Entry e : index.entries()) {
+            states.add(e.block().defaultBlockState());
+            weights.add(1);
+        } else for (PaletteEntry pe : from.entries) {
             BlockState state = PaletteBlocks.state(pe);
-            if (state != null) states.add(state);
+            if (state == null) continue;
+            states.add(state);
+            weights.add(pe.weight());
         }
         List<Source> out = new ArrayList<>();
         Set<Block> seen = new HashSet<>();
-        for (BlockState state : states) {
+        for (int i = 0; i < states.size(); i++) {
+            BlockState state = states.get(i);
             Block block = state.getBlock();
             if (!seen.add(block)) continue;
             Entry e = index.entryOf(state);
             if (e == null || block instanceof EntityBlock || e.technical() || from == null && ground(state)) continue;
             if (!SHAPED.contains(e.kind()) && !takesPart(e)) continue;
-            Recolour.Look look = look(index, from == null ? e.state() : state, face, tint, 1);
-            if (look != null) out.add(new Source(e, look));
+            Recolour.Look look = look(index, from == null ? e.state() : state, face, tint, weights.get(i));
+            if (look != null) out.add(new Source(e, new Recolour.Look(look.colour(), look.seeThrough(), look.weight(), index.family(e))));
         }
         return out;
     }
