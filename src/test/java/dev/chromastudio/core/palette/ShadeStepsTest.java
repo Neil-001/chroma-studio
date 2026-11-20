@@ -318,4 +318,62 @@ class ShadeStepsTest {
         assertEquals(ShadeSteps.MAX_STEP, new ShadeSteps(List.of(), 1).step());
         assertEquals(ShadeSteps.MIN_STEP, new ShadeSteps(List.of(), 0).step());
     }
+
+    // Desert's blocks as shades: the full blocks the brush may use, with the faces it averages. Sand falls, so it can't
+    // be a shade.
+    private static final List<Block> DESERT = List.of(
+            block("terracotta", 0.540, 0.085, 44.7, 0.006, false),
+            block("orange_terracotta", 0.532, 0.119, 48.4, 0.007, false),
+            block("red_sandstone", 0.592, 0.135, 53.4, 0.040, true),
+            block("cut_red_sandstone", 0.597, 0.135, 54.0, 0.036, true),
+            block("yellow_terracotta", 0.653, 0.125, 77.6, 0.007, false),
+            block("birch_planks", 0.762, 0.075, 92.9, 0.066, true),
+            block("sandstone", 0.848, 0.062, 94.6, 0.048, true),
+            block("chiseled_sandstone", 0.848, 0.062, 94.6, 0.050, false),
+            block("cut_sandstone", 0.859, 0.060, 95.9, 0.038, true),
+            block("smooth_sandstone", 0.873, 0.058, 96.5, 0.018, true));
+
+    private static String nextIn(List<Block> set, ShadeSteps steps, String id, Direction d) {
+        int from = -1;
+        for (int i = 0; i < set.size(); i++) if (set.get(i).id.equals(id)) from = i;
+        int i = steps.next(from, d, _ -> true);
+        return i < 0 ? null : set.get(i).id;
+    }
+
+    /**
+     * With Shades set to Desert, sandstone darkens to the palette's next block down, yellow terracotta, at every step
+     * size, though it's a long step to a flatter, more orange block that no step among every building block takes.
+     * The palette's steps still keep stone from wood and plain blocks from decorated ones.
+     */
+    @Test
+    void aPalettesBlocksStepToItsNextBlockThatWay() {
+        for (double step = ShadeSteps.MIN_STEP; step <= ShadeSteps.MAX_STEP + 1e-9; step += 0.005) {
+            ShadeSteps steps = new ShadeSteps(DESERT.stream().map(Block::look).toList(), step, true);
+            String at = String.format("%.3f", step);
+            assertEquals("yellow_terracotta", nextIn(DESERT, steps, "sandstone", Direction.DARKER), at);
+            assertEquals("yellow_terracotta", nextIn(DESERT, steps, "cut_sandstone", Direction.DARKER), at);
+            assertEquals("sandstone", nextIn(DESERT, steps, "smooth_sandstone", Direction.DARKER), at);
+            assertEquals("smooth_sandstone", nextIn(DESERT, steps, "sandstone", Direction.LIGHTER), at);
+            assertEquals("orange_terracotta", nextIn(DESERT, steps, "red_sandstone", Direction.DARKER), at);
+            assertTrue(nextIn(DESERT, steps, "yellow_terracotta", Direction.DARKER) != null, at);
+            for (Block b : DESERT) {
+                for (Direction d : Direction.values()) {
+                    String there = nextIn(DESERT, steps, b.id, d);
+                    if (there == null) continue;
+                    assertEquals(b.id.equals("birch_planks"), there.equals("birch_planks"), at + " " + b.id + " " + d + " to " + there);
+                    assertTrue(decorated(b.id) || !decorated(there), at + " " + b.id + " " + d + " to " + there);
+                }
+            }
+        }
+        // Among every building block, nothing darker is close enough to sandstone in colour and texture.
+        assertEquals(null, next(steps(DEFAULT), "sandstone", Direction.DARKER));
+    }
+
+    @Test
+    void aGreyInAPaletteStaysGrey() {
+        // Stone bricks among a palette's warm blocks, of which light grey terracotta and bricks are darker: a grey never
+        // takes on colour.
+        List<Look> looks = List.of(BLOCKS.get(at("stone_bricks")).look, BLOCKS.get(at("light_gray_terracotta")).look, BLOCKS.get(at("bricks")).look);
+        assertEquals(-1, new ShadeSteps(looks, DEFAULT, true).next(0, Direction.DARKER, _ -> true));
+    }
 }

@@ -40,7 +40,10 @@ final class AxiomScripts {
         RecolourPlan plan = RecolourPlan.of(to, from, mode);
         if (plan.size() == 0) throw new Refused(Component.translatable("axiom.chromastudio.nothing_to_change"));
         String title = from == null ? to.name : from.name + " to " + to.name;
-        return made(AxiomScript.recolour(title, plan.rows()), Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped()),
+        MutableComponent summary = Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped());
+        // A build mostly of the palette's own blocks hardly changes, which would look like the script failing.
+        if (plan.kept() > 0) summary.append(" ").append(Component.translatable(plan.kept() == 1 ? "axiom.chromastudio.recolour.kept.one" : "axiom.chromastudio.recolour.kept", plan.kept()));
+        return made(AxiomScript.recolour(title, plan.rows()), summary,
                 from == null ? "axiom.chromastudio.long.from" : "axiom.chromastudio.long.brush",
                 from == null ? "axiom.chromastudio.too_long.from" : "axiom.chromastudio.too_long");
     }

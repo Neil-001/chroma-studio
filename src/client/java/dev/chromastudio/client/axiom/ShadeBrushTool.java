@@ -66,7 +66,8 @@ import org.jspecify.annotations.Nullable;
  * the same {@link RecolourPlan} the recolour brush uses. Air, liquids, the ground, see-through blocks and blocks with
  * contents stay as they are, as does a block with no shade close enough that way.
  *
- * <p>The shades come from any building block, or only from a palette's, so the shading keeps to a build's materials.
+ * <p>The shades come from any building block, or only from a palette's, so the shading keeps to a build's materials;
+ * among a palette's blocks a step reaches as far as the palette's next block that way.
  * A stroke ({@link BrushStroke}) shows while the button is held and goes to Axiom as one change when it's let go, so
  * one undo takes it back. Every change keeps to the player's tool masks in Axiom ({@link AxiomMask}).
  */
@@ -342,7 +343,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
                 looks.add(look);
             }
             this.shades = kept;
-            this.steps = looks.isEmpty() ? null : new ShadeSteps(looks, key.step);
+            this.steps = looks.isEmpty() ? null : new ShadeSteps(looks, key.step, key.palette != null);
         }
 
         static Plan of(Key key, BlockIndex index, TintContext tint) {
