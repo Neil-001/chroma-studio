@@ -29,6 +29,7 @@ final class AxiomTools {
         registry.register(new PaletteBrushTool());
         registry.register(new EyedropperTool());
         registry.register(gradient = new GradientTool());
+        registry.register(new ShadeBrushTool());
     }
 
     /** Called every client tick, for the tools that need to notice what Axiom doesn't tell them. */

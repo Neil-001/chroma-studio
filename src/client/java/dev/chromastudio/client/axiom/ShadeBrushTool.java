@@ -1,0 +1,431 @@
+package dev.chromastudio.client.axiom;
+
+import static dev.chromastudio.client.axiom.AxiomTools.tr;
+
+import com.moulberry.axiomclientapi.CustomTool;
+import com.moulberry.axiomclientapi.Effects;
+import com.moulberry.axiomclientapi.IAxiomWorldRenderContext;
+import com.moulberry.axiomclientapi.pathers.BallShape;
+import com.moulberry.axiomclientapi.pathers.ToolPatherUnique;
+import com.moulberry.axiomclientapi.regions.BlockRegion;
+import com.moulberry.axiomclientapi.regions.BooleanRegion;
+import dev.chromastudio.client.PaletteStore;
+import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.axiom.AxiomBridge.Refused;
+import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.client.index.Entry;
+import dev.chromastudio.client.index.Kind;
+import dev.chromastudio.client.index.TintContext;
+import dev.chromastudio.core.color.Color;
+import dev.chromastudio.core.color.Face;
+import dev.chromastudio.core.palette.Palette;
+import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.palette.Recolour;
+import dev.chromastudio.core.palette.ShadeSteps;
+import dev.chromastudio.core.palette.ShadeSteps.Direction;
+import imgui.moulberry92.ImGui;
+import imgui.moulberry92.flag.ImGuiColorEditFlags;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.Fallable;
+import net.minecraft.world.level.block.WeatheringCopper;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * An Axiom brush that shades a build: each block it touches becomes its next shade a step darker or lighter, a block
+ * close to it in hue and texture, such as stone bricks to tuff bricks, as {@link ShadeSteps} picks it. A stroke over
+ * the same spot steps again, and a stroke the other way steps back. Shapes keep their shape, facing and half, through
+ * the same {@link RecolourPlan} the recolour brush uses. Air, liquids, the ground, see-through blocks and blocks with
+ * contents stay as they are, as does a block with no shade close enough that way.
+ *
+ * <p>The shades come from any building block, or only from a palette's, so the shading keeps to a build's materials.
+ * The stroke shows while the button is held and goes to Axiom as one change when it's let go, so one undo takes it back.
+ */
+final class ShadeBrushTool implements CustomTool {
+    /** The button that uses a tool, as Axiom numbers them: ImGui's order from 0, in which 1 is the right button. */
+    private static final int USE_TOOL = 1;
+    private static final int MAX_RADIUS = 16;
+    /** The lightness of a step at each size the slider offers, in OKLab. Small is about one shade a builder can see. */
+    private static final double[] STEPS = {0.03, 0.045, 0.06, 0.08, 0.1};
+    /** The kinds of block the brush can change, which the panel turns on and off. Doors are two blocks, so a ball's edge could part their halves. */
+    private static final List<Kind> CHANGEABLE = List.of(Kind.FULL, Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE, Kind.TRAPDOOR);
+    private static final Set<Kind> SHAPES = EnumSet.of(Kind.SLAB, Kind.STAIRS, Kind.WALL);
+
+    private final BlockRegion stroke = AxiomTools.regions.createBlock();
+    private final BooleanRegion outline = AxiomTools.regions.createBoolean();
+    private final int[] radius = {3};
+    private int outlineRadius = -1;
+    private final int[] stepSize = {3};
+    private Direction direction = Direction.DARKER;
+    /** The palette whose blocks are the shades, or null for any building block. */
+    private Palette from;
+    private final Set<Kind> kinds = EnumSet.copyOf(CHANGEABLE);
+    /** The block under the cursor when the button isn't held, for the panel's preview. */
+    private @Nullable BlockState hovered;
+    private @Nullable Plan plan;
+
+    // Set for the length of one stroke.
+    private ToolPatherUnique pather;
+
+    @Override
+    public String name() { return tr("axiom.chromastudio.shade"); }
+
+    @Override
+    public void reset() {
+        stroke.clear();
+        pather = null;
+    }
+
+    @Override
+    public boolean callUseTool() {
+        reset();
+        if (plan() == null) return false;
+        pather = AxiomTools.pathers.createUnique(radius[0], BallShape.SPHERE);
+        return true;
+    }
+
+    @Override
+    public void render(IAxiomWorldRenderContext rc) {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (pather == null) {
+            BlockHitResult hit = AxiomTools.tools.raycastBlock();
+            boolean onBlock = hit != null && hit.getType() == HitResult.Type.BLOCK && level != null;
+            hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : null;
+            if (!onBlock) return;
+            if (outlineRadius != radius[0]) {
+                outlineRadius = radius[0];
+                outline.clear();
+                BallShape.SPHERE.fillRegion(outline, outlineRadius);
+            }
+            outline.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.BLUE | Effects.OUTLINE);
+            return;
+        }
+        if (!AxiomTools.tools.isMouseDown(USE_TOOL)) {
+            if (!stroke.isEmpty()) AxiomTools.tools.pushBlockRegionChange(stroke);
+            reset();
+            return;
+        }
+        Plan p = plan();
+        if (level == null || p == null) return;
+        pather.update((x, y, z) -> {
+            BlockState now = level.getBlockState(new BlockPos(x, y, z));
+            BlockState next = p.apply(now, direction, kinds);
+            if (next != null && next != now) stroke.addBlock(x, y, z, next);
+        });
+        // A slow pulse, as Axiom's own brushes show a stroke that hasn't been committed yet.
+        float pulse = (float) Math.sin(rc.nanos() / 400_000_000.0);
+        stroke.render(rc, Vec3.ZERO, 0.75f + pulse * 0.25f, 0.3f - pulse * 0.2f);
+    }
+
+    @Override
+    public void displayImguiOptions() {
+        for (Direction d : List.of(Direction.DARKER, Direction.LIGHTER)) {
+            if (d == Direction.LIGHTER) ImGui.sameLine();
+            if (ImGui.radioButton(tr("axiom.chromastudio.shade." + d.name().toLowerCase(Locale.ROOT)), direction == d)) direction = d;
+            ImGui.setItemTooltip(tr("axiom.chromastudio.shade." + d.name().toLowerCase(Locale.ROOT) + ".tip"));
+        }
+        ImGui.sliderInt(tr("axiom.chromastudio.shade.step"), stepSize, 1, STEPS.length);
+        ImGui.setItemTooltip(tr("axiom.chromastudio.shade.step.tip"));
+        ImGui.sliderInt(tr("axiom.chromastudio.brush.radius"), radius, 0, MAX_RADIUS);
+
+        List<Palette> all = PaletteStore.get().all();
+        Palette chosen = from();
+        String any = tr("axiom.chromastudio.shade.any");
+        if (ImGui.beginCombo(tr("axiom.chromastudio.shade.from") + "##shades", chosen == null ? any : AxiomBridge.fromName(chosen))) {
+            if (ImGui.selectable(any + "##any", chosen == null)) from = null;
+            for (int i = 0; i < all.size(); i++) {
+                Palette p = all.get(i);
+                if (ImGui.selectable(AxiomBridge.fromName(p) + "##from" + i, p == chosen)) from = p;
+            }
+            ImGui.endCombo();
+        }
+        wrappedTooltip(tr("axiom.chromastudio.shade.from.tip"));
+
+        ImGui.text(tr("axiom.chromastudio.shade.kinds"));
+        ImGui.setItemTooltip(tr("axiom.chromastudio.shade.kinds.tip"));
+        for (int i = 0; i < CHANGEABLE.size(); i++) {
+            Kind k = CHANGEABLE.get(i);
+            String label = tr("kind.chromastudio." + k.name().toLowerCase(Locale.ROOT));
+            // As many to a row as the panel is wide: a box, the gap after it and the label.
+            float width = ImGui.getFrameHeight() + ImGui.getStyle().getItemInnerSpacingX() + ImGui.calcTextSize(label).x;
+            if (i > 0) {
+                ImGui.sameLine();
+                if (ImGui.getContentRegionAvailX() < width) ImGui.newLine();
+            }
+            if (ImGui.checkbox(label + "##kind", kinds.contains(k))) {
+                if (!kinds.remove(k)) kinds.add(k);
+            }
+        }
+
+        ImGui.separator();
+        preview();
+    }
+
+    /** What the brush would make of the block under the cursor, or why it would leave it. */
+    private void preview() {
+        if (!BlockIndex.get().ready()) {
+            ImGui.textWrapped(tr("axiom.chromastudio.brush.not_ready"));
+            return;
+        }
+        Plan p = plan();
+        if (p == null) {
+            ImGui.textWrapped(tr("axiom.chromastudio.shade.no_shades"));
+            return;
+        }
+        BlockState here = hovered;
+        if (here == null) {
+            ImGui.textWrapped(tr("axiom.chromastudio.shade.point"));
+            return;
+        }
+        swatch("here", here);
+        ImGui.sameLine();
+        ImGui.text(here.getBlock().getName().getString());
+        BlockState next = p.apply(here, direction, kinds);
+        if (next == null) {
+            ImGui.textWrapped(tr(p.whyLeft(here, direction, kinds)));
+            return;
+        }
+        ImGui.text(tr("axiom.chromastudio.shade.becomes"));
+        ImGui.sameLine();
+        swatch("next", next);
+        ImGui.sameLine();
+        ImGui.text(next.getBlock().getName().getString());
+    }
+
+    /** A block's colour as a small square. */
+    private static void swatch(String id, BlockState state) {
+        Optional<Color> c = BlockIndex.get().colourOf(state, PaletteBlocks.queryFace(), PaletteBlocks.tint());
+        if (c.isEmpty()) return;
+        ImGui.colorButton("##" + id, c.get().red() / 255f, c.get().green() / 255f, c.get().blue() / 255f, 1f, ImGuiColorEditFlags.NoTooltip);
+    }
+
+    /** A tooltip for the last item that wraps its text, as these run to a few sentences and would leave the screen. */
+    private static void wrappedTooltip(String text) {
+        if (!ImGui.beginItemTooltip()) return;
+        ImGui.pushTextWrapPos(ImGui.getFontSize() * 30f);
+        ImGui.textUnformatted(text);
+        ImGui.popTextWrapPos();
+        ImGui.endTooltip();
+    }
+
+    /** The chosen palette, while it's still in the list, or null for any building block. */
+    private @Nullable Palette from() {
+        for (Palette p : PaletteStore.get().all()) if (p == from) return p;
+        return null;
+    }
+
+    /**
+     * The shades for the panel's choices, made again when one of them or the index changes, as the panel asks every
+     * frame. Null while the index is building or when no block can be a shade.
+     */
+    private @Nullable Plan plan() {
+        BlockIndex index = BlockIndex.get();
+        if (!index.ready()) return null;
+        Palette shades = from();
+        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[stepSize[0] - 1], PaletteBlocks.queryFace());
+        if (plan == null || !plan.key.equals(key)) plan = Plan.of(key, index, PaletteBlocks.tint());
+        return plan.steps == null ? null : plan;
+    }
+
+    /** The blocks that may be shades, and what each block becomes, for one set of choices. */
+    private static final class Plan {
+        /** The choices a plan is made for. A palette is told apart by which one it is, and by its blocks, as it can be edited. */
+        record Key(int version, @Nullable Palette palette, int entries, double step, Face face) {}
+
+        final Key key;
+        private final BlockIndex index;
+        private final TintContext tint;
+        /** The full blocks that may be shades, each standing for its material's shapes. */
+        private final List<Entry> shades;
+        private final Map<Block, Integer> place = new IdentityHashMap<>();
+        private final @Nullable ShadeSteps steps;
+        /** For each shape, which shades' materials come in it. */
+        private final Map<Kind, boolean[]> hasShape = new EnumMap<>(Kind.class);
+        /** What each block becomes each way, worked out on first use. An empty one leaves it alone. */
+        private final Map<Direction, Map<Block, Optional<RecolourPlan>>> changes = new EnumMap<>(Direction.class);
+
+        private Plan(Key key, BlockIndex index, TintContext tint, List<Entry> candidates) {
+            this.key = key;
+            this.index = index;
+            this.tint = tint;
+            // A block whose colour the index can't read sits out.
+            List<Entry> kept = new ArrayList<>();
+            List<ShadeSteps.Look> looks = new ArrayList<>();
+            for (Entry e : candidates) {
+                ShadeSteps.Look look = look(e);
+                if (look == null) continue;
+                place.put(e.block(), kept.size());
+                kept.add(e);
+                looks.add(look);
+            }
+            this.shades = kept;
+            this.steps = looks.isEmpty() ? null : new ShadeSteps(looks, key.step);
+        }
+
+        static Plan of(Key key, BlockIndex index, TintContext tint) {
+            List<Entry> shades = new ArrayList<>();
+            Set<Block> seen = new HashSet<>();
+            if (key.palette == null) {
+                Set<Block> building = buildingTabs();
+                for (Entry e : index.entries()) {
+                    if (e.kind() == Kind.FULL && e.isDefaultState() && anyShade(e) && (building.isEmpty() || building.contains(e.block())) && seen.add(e.block())) shades.add(e);
+                }
+            } else {
+                for (PaletteEntry pe : key.palette.entries) {
+                    BlockState state = PaletteBlocks.state(pe);
+                    Entry e = state == null ? null : index.entryOf(state);
+                    Entry base = e == null ? null : base(index, e);
+                    if (base != null && paletteShade(base) && seen.add(base.block())) shades.add(base);
+                }
+            }
+            return new Plan(key, index, tint, shades);
+        }
+
+        /**
+         * The block a block becomes a step that way, with its shape, facing and half, or null to leave it as it is:
+         * when it's one this brush never changes, its kind is turned off, or no shade is close enough.
+         */
+        @Nullable BlockState apply(BlockState here, Direction d, Set<Kind> kinds) {
+            Entry e = changeable(here, kinds);
+            if (e == null) return null;
+            RecolourPlan change = changes.computeIfAbsent(d, _ -> new IdentityHashMap<>()).computeIfAbsent(here.getBlock(), _ -> change(e, d)).orElse(null);
+            return change == null ? null : change.apply(here);
+        }
+
+        /** The key that says why {@link #apply} leaves a block as it is. */
+        String whyLeft(BlockState here, Direction d, Set<Kind> kinds) {
+            Entry e = index.entryOf(here);
+            if (e == null || never(here, e)) return "axiom.chromastudio.shade.left.never";
+            if (RecolourPlan.ground(here)) return "axiom.chromastudio.shade.left.ground";
+            if (!kinds.contains(e.kind())) return "axiom.chromastudio.shade.left.kind";
+            return "axiom.chromastudio.shade.left." + d.name().toLowerCase(Locale.ROOT);
+        }
+
+        /** The block's entry when the brush may change it, or null. */
+        private @Nullable Entry changeable(BlockState here, Set<Kind> kinds) {
+            Entry e = index.entryOf(here);
+            if (e == null || never(here, e) || RecolourPlan.ground(here) || !kinds.contains(e.kind())) return null;
+            return e;
+        }
+
+        /** Air, liquids, blocks with contents, see-through blocks and technical ones, which no shading touches. */
+        private static boolean never(BlockState here, Entry e) {
+            // Liquids are of their own kind, which isn't one the brush changes.
+            return here.isAir() || here.getBlock() instanceof EntityBlock || e.technical() || !CHANGEABLE.contains(e.kind())
+                    || e.kind() == Kind.FULL && !e.opaque();
+        }
+
+        /** The recolour that takes a block to its next shade that way, made once per block. */
+        private Optional<RecolourPlan> change(Entry e, Direction d) {
+            Entry base = base(index, e);
+            ShadeSteps.Look look = base == null ? null : look(base);
+            if (look == null || steps == null) return Optional.empty();
+            boolean[] allowed = e.kind() == Kind.FULL ? null : hasShape.computeIfAbsent(e.kind(), this::hasShape);
+            Integer at = place.get(base.block());
+            int picked = at != null
+                    ? steps.next(at, d, i -> allowed == null || allowed[i])
+                    : steps.next(look, d, i -> allowed == null || allowed[i]);
+            if (picked < 0) return Optional.empty();
+            Palette to = new Palette(""), source = new Palette("");
+            to.entries.add(PaletteBlocks.of(shades.get(picked)));
+            source.entries.add(PaletteBlocks.of(e));
+            try {
+                RecolourPlan change = RecolourPlan.of(to, source, Recolour.Mode.CLOSEST, key.face, tint);
+                return change.size() == 0 ? Optional.empty() : Optional.of(change);
+            } catch (Refused _) {
+                return Optional.empty();
+            }
+        }
+
+        private boolean[] hasShape(Kind kind) {
+            boolean[] out = new boolean[shades.size()];
+            for (int i = 0; i < out.length; i++) for (Entry m : index.materialSet(shades.get(i))) out[i] |= m.kind() == kind;
+            return out;
+        }
+
+        /** How a full block looks to the steps, or null when the index can't say. */
+        private ShadeSteps.@Nullable Look look(Entry e) {
+            Optional<Color> colour = index.colourOf(e.state(), key.face, tint);
+            if (colour.isEmpty()) return null;
+            double spread = 0;
+            List<Face> faces = key.face == Face.ANY ? List.of(Face.UP, Face.DOWN, Face.NORTH, Face.SOUTH, Face.WEST, Face.EAST) : List.of(key.face);
+            for (Face f : faces) spread += e.face(f, tint).spread() / faces.size();
+            boolean shaped = false;
+            for (Entry m : index.materialSet(e)) shaped |= SHAPES.contains(m.kind());
+            return new ShadeSteps.Look(colour.get(), spread, family(e.id()), shaped);
+        }
+
+        /** The last word of a block's id, which names what it's made as: bricks, tiles, planks, terracotta. */
+        private static String family(String id) {
+            return id.substring(Math.max(id.indexOf(':'), id.lastIndexOf('_')) + 1);
+        }
+
+        /** A block's material's full block: itself for a full block, else the first in its material, or null. */
+        private static @Nullable Entry base(BlockIndex index, Entry e) {
+            if (e.kind() == Kind.FULL) return e;
+            for (Entry m : index.materialSet(e)) if (m.kind() == Kind.FULL) return m;
+            return null;
+        }
+
+        /** Whether a palette's block may be a shade: a solid full block that stays put and has nothing inside. */
+        private static boolean paletteShade(Entry e) {
+            Block b = e.block();
+            return e.kind() == Kind.FULL && e.opaque() && !(b instanceof EntityBlock) && !(b instanceof Fallable);
+        }
+
+        /**
+         * Whether a block may be a shade when any block may: a plain building block that looks the same whichever
+         * way it's placed and stays as it's left. Lights, ores, the ground, blocks that fall, weather or power
+         * redstone, blocks with contents, blocks a survival player can't get, and blocks that turn, such as logs and
+         * glazed terracotta, are left out.
+         */
+        private static boolean anyShade(Entry e) {
+            Block b = e.block();
+            BlockState s = e.state();
+            return paletteShade(e) && !e.technical() && !e.creativeOnly() && !e.lightSource() && !RecolourPlan.ground(s)
+                    && !(b instanceof WeatheringCopper) && !s.isSignalSource() && !s.is(BlockTags.BEACON_BASE_BLOCKS)
+                    && s.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) >= 0
+                    && !s.hasProperty(BlockStateProperties.AXIS) && !s.hasProperty(BlockStateProperties.HORIZONTAL_FACING)
+                    && !s.hasProperty(BlockStateProperties.FACING);
+        }
+
+        /**
+         * The blocks the Building blocks and Coloured blocks tabs list, which keeps ores, plants and machines out.
+         * Empty when the tabs haven't been filled, which the index does when a world is joined.
+         */
+        private static Set<Block> buildingTabs() {
+            Set<Block> out = new HashSet<>();
+            for (var key : List.of(CreativeModeTabs.BUILDING_BLOCKS, CreativeModeTabs.COLORED_BLOCKS)) {
+                CreativeModeTab tab = BuiltInRegistries.CREATIVE_MODE_TAB.getValue(key);
+                if (tab == null) continue;
+                for (ItemStack stack : tab.getDisplayItems()) if (stack.getItem() instanceof BlockItem item) out.add(item.getBlock());
+            }
+            return out;
+        }
+    }
+}
