@@ -2,6 +2,7 @@ package dev.chromastudio.client.axiom;
 
 import com.moulberry.axiomclientapi.CustomTool;
 import com.moulberry.axiomclientapi.IAxiomWorldRenderContext;
+import java.util.function.BooleanSupplier;
 
 /**
  * What Axiom holds for each of Chroma Studio's tools: the tool, with every call Axiom makes into it caught. A tool calls
@@ -22,64 +23,42 @@ record GuardedTool(CustomTool tool) implements CustomTool {
     }
 
     @Override
-    public void reset() {
-        try {
-            tool.reset();
-        } catch (Throwable t) {
-            failed(t);
-        }
-    }
+    public void reset() { run(tool::reset); }
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
-        if (AxiomTools.off()) return;
-        try {
-            tool.render(rc);
-        } catch (Throwable t) {
-            failed(t);
-        }
+        if (!AxiomTools.off()) run(() -> tool.render(rc));
     }
 
     @Override
-    public boolean callUseTool() {
-        if (AxiomTools.off()) return false;
-        try {
-            return tool.callUseTool();
-        } catch (Throwable t) {
-            failed(t);
-            return false;
-        }
-    }
+    public boolean callUseTool() { return ask(tool::callUseTool); }
 
     @Override
-    public boolean callConfirm() {
-        if (AxiomTools.off()) return false;
-        try {
-            return tool.callConfirm();
-        } catch (Throwable t) {
-            failed(t);
-            return false;
-        }
-    }
+    public boolean callConfirm() { return ask(tool::callConfirm); }
 
     @Override
-    public boolean callDelete() {
-        if (AxiomTools.off()) return false;
-        try {
-            return tool.callDelete();
-        } catch (Throwable t) {
-            failed(t);
-            return false;
-        }
-    }
+    public boolean callDelete() { return ask(tool::callDelete); }
 
     /** Drawn even once the features are off, as the panel then says why. */
     @Override
-    public void displayImguiOptions() {
+    public void displayImguiOptions() { run(tool::displayImguiOptions); }
+
+    private void run(Runnable call) {
         try {
-            tool.displayImguiOptions();
+            call.run();
         } catch (Throwable t) {
             failed(t);
+        }
+    }
+
+    /** Whether the tool took the call, which it never does once the features are off. */
+    private boolean ask(BooleanSupplier call) {
+        if (AxiomTools.off()) return false;
+        try {
+            return call.getAsBoolean();
+        } catch (Throwable t) {
+            failed(t);
+            return false;
         }
     }
 

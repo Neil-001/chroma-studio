@@ -86,7 +86,6 @@ final class AxiomEditor {
                 ModSettings.readoutSeconds);
     }
 
-
     /**
      * Call at the end of every client tick. Remembers the active block while the editor is open, and takes the player
      * back into it once the window it left for has closed to the world. It doesn't when the player has left the world,

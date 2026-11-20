@@ -321,8 +321,8 @@ final class PaletteBrushTool implements CustomTool {
             return;
         }
         BlockPos at = picked;
-        Palette shading = fromKey.equals(FROM_BUILD) ? null : from;
         boolean fromBuild = fromKey.equals(FROM_BUILD);
+        Palette shading = fromBuild ? null : from;
         Recolour.Mode m = match;
         AxiomMask.Test mask = AxiomMask.now(level);
         WholeBuild made;
