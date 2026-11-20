@@ -23,7 +23,11 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -57,6 +61,32 @@ class PaletteBrushTest {
         blocks.put("oak_leaves", "block/oak_leaves");
         blocks.put("lantern", "block/lantern");
         blocks.put("white_carpet", "block/white_wool");
+        // The blocks of the house the in-game evidence uses, and of the Desert, Nether and Medieval presets.
+        Map<String, String> shapes = Map.ofEntries(Map.entry("deepslate_tile", "deepslate_tiles"), Map.entry("smooth_sandstone", "sandstone_top"),
+                Map.entry("cut_sandstone", "cut_sandstone"), Map.entry("cut_red_sandstone", "cut_red_sandstone"), Map.entry("birch", "birch_planks"),
+                Map.entry("nether_brick", "nether_bricks"), Map.entry("red_nether_brick", "red_nether_bricks"), Map.entry("blackstone", "blackstone"),
+                Map.entry("polished_blackstone_brick", "polished_blackstone_bricks"), Map.entry("crimson", "crimson_planks"),
+                Map.entry("andesite", "andesite"), Map.entry("mossy_stone_brick", "mossy_stone_bricks"), Map.entry("spruce", "spruce_planks"),
+                Map.entry("smooth_stone", "smooth_stone"), Map.entry("polished_andesite", "polished_andesite"));
+        shapes.forEach((material, texture) -> {
+            for (String shape : List.of("_stairs", "_slab", "_wall", "_fence")) {
+                if (net.minecraft.core.registries.BuiltInRegistries.BLOCK.containsKey(net.minecraft.resources.Identifier.withDefaultNamespace(material + shape))) {
+                    blocks.putIfAbsent(material + shape, "block/" + texture);
+                }
+            }
+        });
+        for (String full : List.of("cracked_stone_bricks", "deepslate_bricks", "deepslate_tiles", "chiseled_sandstone", "yellow_terracotta",
+                "birch_planks", "cut_red_sandstone", "nether_bricks", "red_nether_bricks", "netherrack", "blackstone", "polished_blackstone_bricks",
+                "crimson_planks", "nether_wart_block", "shroomlight", "gilded_blackstone", "mossy_stone_bricks", "spruce_planks", "white_terracotta")) {
+            blocks.putIfAbsent(full, "block/" + full);
+        }
+        blocks.put("basalt", "block/basalt_side");
+        blocks.put("crimson_stem", "block/crimson_stem");
+        blocks.put("magma_block", "block/magma");
+        blocks.put("stripped_spruce_log", "block/stripped_spruce_log");
+        blocks.put("dark_oak_log", "block/dark_oak_log");
+        blocks.put("smooth_stone_slab", "block/smooth_stone");
+        blocks.put("cobblestone_wall", "block/cobblestone");
         TestIndex.index(blocks);
     }
 
@@ -105,6 +135,87 @@ class PaletteBrushTest {
         w.put(2, 1, 2, Blocks.TORCH);
         w.put(12, 1, 2, block("sandstone"));
         return w;
+    }
+
+    /**
+     * The house the in-game evidence recolours, block for block as the test datapack builds it: a cobblestone footing,
+     * walls of stone bricks mixed with cracked stone bricks and andesite, deepslate brick corners, a smooth stone band,
+     * glass windows with smooth stone slab sills, a polished andesite floor, a gabled deepslate tile roof and a
+     * cobblestone chimney, on ground.
+     */
+    private static World evidenceHouse() {
+        World w = new World();
+        for (int x = 15; x <= 33; x++) for (int z = 4; z <= 22; z++) w.put(x, -61, z, Blocks.GRAVEL);
+        for (int x = 20; x <= 28; x++) for (int z = 10; z <= 16; z++) w.put(x, -61, z, block("polished_andesite"));
+        String[] mix = {"stone_bricks", "stone_bricks", "cracked_stone_bricks", "stone_bricks", "andesite", "stone_bricks", "stone_bricks",
+                "cracked_stone_bricks", "andesite"};
+        for (int y = -60; y <= -56; y++) for (int x = 20; x <= 28; x++) for (int z = 10; z <= 16; z++) {
+            boolean edgeX = x == 20 || x == 28, edgeZ = z == 10 || z == 16;
+            if (!edgeX && !edgeZ) continue;
+            w.put(x, y, z, block(edgeX && edgeZ ? "deepslate_bricks" : y == -60 ? "cobblestone" : y == -56 ? "smooth_stone"
+                    : mix[Math.floorMod(x * 7 + y * 3 + z * 5, mix.length)]));
+        }
+        for (int y = -60; y <= -58; y++) w.blocks.remove(new BlockPos(24, y, 10));
+        w.blocks.put(new BlockPos(24, -60, 9), block("stone_brick_stairs").defaultBlockState().setValue(StairBlock.FACING, Direction.SOUTH));
+        for (int x : new int[] {21, 22, 26, 27}) {
+            for (int y = -58; y <= -57; y++) {
+                w.put(x, y, 10, Blocks.GLASS);
+                w.put(x, y, 16, Blocks.GLASS);
+            }
+            w.blocks.put(new BlockPos(x, -59, 9), block("smooth_stone_slab").defaultBlockState().setValue(SlabBlock.TYPE, SlabType.TOP));
+        }
+        for (int y = -58; y <= -57; y++) for (int z = 12; z <= 14; z++) {
+            w.put(20, y, z, Blocks.GLASS);
+            w.put(28, y, z, Blocks.GLASS);
+        }
+        for (int i = 0; i < 4; i++) {
+            int y = -55 + i;
+            for (int x = 19; x <= 29; x++) {
+                w.blocks.put(new BlockPos(x, y, 9 + i), block("deepslate_tile_stairs").defaultBlockState().setValue(StairBlock.FACING, Direction.SOUTH));
+                w.blocks.put(new BlockPos(x, y, 17 - i), block("deepslate_tile_stairs").defaultBlockState().setValue(StairBlock.FACING, Direction.NORTH));
+            }
+            for (int z = 10 + i; z <= 16 - i; z++) {
+                w.put(20, y, z, block("stone_bricks"));
+                w.put(28, y, z, block("stone_bricks"));
+            }
+        }
+        for (int x = 19; x <= 29; x++) w.put(x, -52, 13, block("deepslate_tile_slab"));
+        for (int y = -55; y <= -50; y++) w.put(26, y, 15, block("cobblestone"));
+        w.put(26, -49, 15, block("cobblestone_wall"));
+        return w;
+    }
+
+    private static Palette preset(String id) throws java.io.IOException {
+        try (var in = PaletteBrushTest.class.getResourceAsStream("/assets/chromastudio/presets/" + id + ".json")) {
+            return dev.chromastudio.core.palette.PaletteCodec.fromJson(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    void theEvidenceHouseKeepsItsMaterialsAndPutsItsWallsOnAMainBlock() throws Exception {
+        World w = evidenceHouse();
+        FoundBuild found = FoundBuild.from(w, new BlockPos(20, -58, 11));
+        assertNotNull(found);
+        List<String> full = List.of("deepslate_bricks", "cobblestone", "andesite", "polished_andesite", "cracked_stone_bricks", "stone_bricks", "smooth_stone");
+        for (String id : List.of("desert", "nether", "medieval")) {
+            Palette to = preset(id);
+            for (boolean own : new boolean[] {true, false}) {
+                RecolourPlan plan = RecolourPlan.of(to, own ? found.kinds() : null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
+                Map<String, String> out = new LinkedHashMap<>();
+                for (String b : full) {
+                    BlockState next = plan.apply(block(b).defaultBlockState());
+                    out.put(b, next == null ? b : net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(next.getBlock()).getPath());
+                }
+                if (!own) continue;
+                // With the build's own range and counts, the walls take the palette's main block, cracked stone bricks
+                // with them, and cobblestone, andesite and polished andesite never collapse into one.
+                String walls = out.get("stone_bricks");
+                assertEquals(walls, out.get("cracked_stone_bricks"), id + " " + out);
+                assertEquals(Map.of("desert", "sandstone", "nether", "red_nether_bricks", "medieval", "stone_bricks").get(id), walls, id + " " + out);
+                assertTrue(new HashSet<>(List.of(out.get("cobblestone"), out.get("andesite"), out.get("polished_andesite"))).size() >= 2, id + " " + out);
+                assertTrue(new HashSet<>(out.values()).size() >= 5, id + " " + out);
+            }
+        }
     }
 
     @Test

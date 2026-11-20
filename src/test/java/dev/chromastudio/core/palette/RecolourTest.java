@@ -242,7 +242,8 @@ class RecolourTest {
             assertTrue(WEIGHTS.getOrDefault(walls, 1) >= 2, out.toString());
             // Cobblestone, andesite and polished andesite look nearly alike but were mixed on purpose: each keeps its own.
             assertEquals(3, Set.of(out.get("cobblestone"), out.get("andesite"), out.get("polished_andesite")).size(), out.toString());
-            assertTrue(new HashSet<>(out.values()).size() >= 8, out.toString());
+            // Ten stones onto ten blocks: putting the walls on a main block may make two neighbours share, but no more.
+            assertTrue(new HashSet<>(out.values()).size() >= 7, out.toString());
             // Still in order from darkest to lightest.
             List<String> byLightness = new ArrayList<>(HOUSE.keySet());
             byLightness.sort(Comparator.comparingDouble(k -> lightness(HOUSE.get(k))));

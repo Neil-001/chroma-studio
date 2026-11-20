@@ -156,68 +156,91 @@ public final class Recolour {
     }
 
     /**
-     * How much a shade's place in the build's lightness counts against its place along the build's amounts when the
-     * two disagree, as when a build's lightest block is a sliver of it: enough that white stays the palette's lightest
-     * block, not so much that a build's main material is pushed off the palette's main blocks.
+     * What two neighbouring shades sharing a block costs, as if the smaller sat this far along the line from its
+     * place: enough that shades stay apart wherever the palette has room, not so much that the build's main material
+     * is pushed off the palette's main block to make room for its accents.
      */
-    private static final double LIGHTNESS = 0.3;
+    private static final double SHARING = 2;
 
     /**
-     * A block of its own for each of a build's shades, when there are no more shades than blocks, in order from
-     * darkest to lightest. Each shade has two places from 0 to 1: the middle of its share of the build, and its
-     * lightness between the build's darkest and lightest; each block has the same two along the palette's weights and
-     * lightness. Of all the ways to hand out the blocks in order, this takes the one whose places differ least.
+     * A block for each of a build's shades, when there are no more shades than blocks, in order from darkest to
+     * lightest. The build's darkest shade takes the palette's darkest block and its lightest the lightest, so the
+     * shading spans the palette, and the largest shade between them, such as a house's walls, takes the palette's
+     * heaviest block between its ends, such as a desert's sandstone. Each other shade has a place from 0 to 1: the
+     * middle of its share of the build; and
+     * each block a stretch of the same line, as long as its weight. A shade fits a block whose stretch holds its place,
+     * and less well the further outside it, by how much of the build the shade is. Of
+     * all the ways to hand out blocks in order, this takes the best fit, where two neighbouring shades share a block
+     * only when keeping them apart would put a larger one far from its place.
      */
     private int[] matched(int[] eligible, Shades build) {
         int n = eligible.length, shades = build.count();
         if (shades == 0) return new int[] {eligible[(n - 1) / 2]};
-        double[] shareAt = new double[shades], lightAt = new double[shades];
+        double[] at = new double[shades];
         double before = 0;
         for (int k = 0; k < shades; k++) {
-            shareAt[k] = (before + build.amount(k) / 2) / build.total();
+            at[k] = (before + build.amount(k) / 2) / build.total();
             before += build.amount(k);
-            lightAt[k] = between(build.lightness(k), build.lightness(0), build.lightness(shades - 1));
         }
         double weight = 0;
         for (int i : eligible) weight += weights[i];
-        double[] blockShareAt = new double[n], blockLightAt = new double[n];
+        double[] from = new double[n], to = new double[n];
         double upTo = 0;
         for (int j = 0; j < n; j++) {
-            blockShareAt[j] = (upTo + weights[eligible[j]] / 2.0) / weight;
+            from[j] = upTo / weight;
             upTo += weights[eligible[j]];
-            blockLightAt[j] = between(palette[eligible[j]].l(), palette[eligible[0]].l(), palette[eligible[n - 1]].l());
+            to[j] = upTo / weight;
         }
-        // best[k][j]: the least difference for shades 0..k with shade k on block j; from[k][j] the block of shade k-1.
-        double[][] best = new double[shades][n];
-        int[][] from = new int[shades][n];
-        for (int k = 0; k < shades; k++) {
-            double bestBefore = Double.POSITIVE_INFINITY;
-            int bestBlock = -1;
-            for (int j = 0; j < n; j++) {
-                if (k > 0 && j > 0 && best[k - 1][j - 1] < bestBefore) {
-                    bestBefore = best[k - 1][j - 1];
-                    bestBlock = j - 1;
+        // The largest shade between the ends, and the heaviest block between them, nearest its place among equals.
+        int main = -1, heaviest = -1;
+        if (shades >= 3 && n >= 3) {
+            for (int k = 1; k < shades - 1; k++) if (main < 0 || build.amount(k) > build.amount(main)) main = k;
+            // Only a block that leaves room for the shades on either side of it, all but one at most, so pinning the
+            // main shade doesn't crowd the rest onto a few blocks.
+            for (int j = 1; j < n - 1; j++) {
+                int crowded = Math.max(0, main - j) + Math.max(0, shades - 1 - main - (n - 1 - j));
+                if (crowded > 1) continue;
+                if (heaviest < 0 || weights[eligible[j]] > weights[eligible[heaviest]]
+                        || weights[eligible[j]] == weights[eligible[heaviest]] && away(at[main], from[j], to[j]) < away(at[main], from[heaviest], to[heaviest])) {
+                    heaviest = j;
                 }
-                // A shade needs room below it for the darker shades and above it for the lighter ones.
-                if (j < k || n - j < shades - k) {
-                    best[k][j] = Double.POSITIVE_INFINITY;
+            }
+            if (heaviest < 0) main = -1;
+        }
+        // best[k][j]: the least cost for shades 0..k with shade k on block j; back[k][j] the block shade k-1 took.
+        double[][] best = new double[shades][n];
+        int[][] back = new int[shades][n];
+        for (int k = 0; k < shades; k++) {
+            double share = build.amount(k) / build.total();
+            for (int j = 0; j < n; j++) {
+                boolean pinned = shades > 1 && (k == 0 && j != 0 || k == shades - 1 && j != n - 1) || k == main && j != heaviest;
+                best[k][j] = Double.POSITIVE_INFINITY;
+                if (pinned) continue;
+                double fit = share * away(at[k], from[j], to[j]);
+                if (k == 0) {
+                    best[k][j] = fit;
                     continue;
                 }
-                // A shade's mismatch counts by how much of the build it is, so the main material gets the best fit.
-                double cost = (Math.abs(shareAt[k] - blockShareAt[j]) + LIGHTNESS * Math.abs(lightAt[k] - blockLightAt[j])) * build.amount(k);
-                best[k][j] = (k == 0 ? 0 : bestBefore) + cost;
-                from[k][j] = bestBlock;
+                for (int i = 0; i <= j; i++) {
+                    if (best[k - 1][i] == Double.POSITIVE_INFINITY) continue;
+                    double shared = i == j ? SHARING * Math.min(share, build.amount(k - 1) / build.total()) : 0;
+                    double cost = best[k - 1][i] + fit + shared;
+                    if (cost < best[k][j]) {
+                        best[k][j] = cost;
+                        back[k][j] = i;
+                    }
+                }
             }
         }
-        int last = shades - 1;
-        for (int j = last; j < n; j++) if (best[shades - 1][j] < best[shades - 1][last]) last = j;
+        int last = 0;
+        for (int j = 1; j < n; j++) if (best[shades - 1][j] < best[shades - 1][last]) last = j;
         int[] out = new int[shades];
-        for (int k = shades - 1, j = last; k >= 0; j = from[k][j], k--) out[k] = eligible[j];
+        for (int k = shades - 1, j = last; k >= 0; j = back[k][j], k--) out[k] = eligible[j];
         return out;
     }
 
-    /** Where {@code x} sits between {@code low} and {@code high}, from 0 to 1, or the middle when they're the same. */
-    private static double between(double x, double low, double high) { return high > low ? (x - low) / (high - low) : 0.5; }
+    /** How far a place on a line is from a stretch of it, or 0 inside it. */
+    private static double away(double at, double from, double to) { return Math.max(0, Math.max(from - at, at - to)); }
 
     /** {@link #pick} with every palette block allowed. */
     public int pick(Look block) { return pick(block, _ -> true); }
@@ -270,7 +293,7 @@ public final class Recolour {
                     amounts.add(0.0);
                 }
                 shadeOf.putIfAbsent(key, shade);
-                double weight = Math.max(1, l.weight());
+                double weight = Math.sqrt(Math.max(1, l.weight()));
                 amounts.set(shade, amounts.get(shade) + weight);
                 total += weight;
             }
@@ -281,9 +304,6 @@ public final class Recolour {
 
         /** How much of the build a shade is. */
         double amount(int shade) { return amounts.get(shade); }
-
-        /** How light a shade is where it starts, in OKLab. */
-        double lightness(int shade) { return starts.get(shade).l(); }
 
         /** How much there is of the whole build. */
         double total() { return total; }
