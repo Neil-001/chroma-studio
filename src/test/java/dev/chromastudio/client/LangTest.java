@@ -12,6 +12,7 @@ import dev.chromastudio.core.color.Harmony;
 import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.palette.Analyzer;
 import dev.chromastudio.core.palette.Recolour;
+import dev.chromastudio.core.palette.ShadeSteps;
 import dev.chromastudio.core.palette.WorldEditPattern;
 import java.io.IOException;
 import java.io.InputStream;
@@ -83,6 +84,12 @@ class LangTest {
         keys.add("kind.chromastudio.all");
         for (Kind k : Kind.values()) keys.add("kind.chromastudio." + k.name().toLowerCase(Locale.ROOT));
         for (Recolour.Mode m : Recolour.Mode.values()) keys.add("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT));
+        for (ShadeSteps.Direction d : ShadeSteps.Direction.values()) {
+            String way = d.name().toLowerCase(Locale.ROOT);
+            keys.add("axiom.chromastudio.shade." + way);
+            keys.add("axiom.chromastudio.shade." + way + ".tip");
+            keys.add("axiom.chromastudio.shade.left." + way);
+        }
         for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) {
             keys.add("palettes.chromastudio.tool." + tool);
             keys.add("palettes.chromastudio.tool." + tool + ".tip");
