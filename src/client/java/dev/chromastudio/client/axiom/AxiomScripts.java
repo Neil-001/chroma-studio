@@ -77,11 +77,11 @@ final class AxiomScripts {
         for (ScatterBlocks.Placed b : blocks.blocks()) placed.entries.add(PaletteBlocks.of(b.state()).withWeight(b.weight()));
         MutableComponent summary = Component.translatable("axiom.chromastudio.scatter.done", placed.entries.size());
         if (!blocks.leftOut().isEmpty()) summary.append(" ").append(leftOut);
-        // As the brush's Scatter does, it leaves a block that holds items, or one half of a door or a tall plant; the
-        // script tells the halves by their property.
+        // As the brush's Scatter does, it leaves a block that holds items, one with water in it, or one half of a door
+        // or a tall plant; the script tells the last two by their properties.
         AxiomScript.Kept kept = kept(s -> !ScatterBlocks.paintsOver(s), s -> {
             String half = property(s, "half");
-            return "upper".equals(half) || "lower".equals(half);
+            return "upper".equals(half) || "lower".equals(half) || "true".equals(property(s, "waterlogged"));
         });
         return made(AxiomScript.scatter(placed, kept), summary, "axiom.chromastudio.long.brush", "axiom.chromastudio.too_long");
     }

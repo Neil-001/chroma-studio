@@ -146,11 +146,11 @@ class ScriptSafetyTest {
             boolean[] put = {false};
             painter.paint(0, 0, 0, s, (_, _, _) -> true, (x, y, z, _) -> put[0] |= x == 0 && y == 0 && z == 0);
             brush.put(s, put[0]);
-            if (put[0] && holdsSomething(s)) wrong.add(s);
+            if (put[0] && (holdsSomething(s) || waterlogged(s))) wrong.add(s);
         }
         String script = AxiomScripts.scatter(p).text();
         assertAll(() -> assertTrue(wrong.isEmpty(), "Scatter paints over " + wrong.size() + " states that hold something, of " + blocks(wrong)),
-                () -> check("scatter", script, s -> brush.get(s) && !holdsSomething(s)));
+                () -> check("scatter", script, s -> brush.get(s) && !holdsSomething(s) && !waterlogged(s)));
     }
 
     @Test
@@ -175,6 +175,11 @@ class ScriptSafetyTest {
         Block b = s.getBlock();
         return b instanceof EntityBlock || b instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR || b instanceof CandleCakeBlock
                 || b instanceof AbstractCauldronBlock && b != Blocks.CAULDRON || b instanceof ComposterBlock && s.getValue(ComposterBlock.LEVEL) > 0;
+    }
+
+    /** Whether a block has water in it, which Scatter's block would take away; a recolour keeps it. */
+    private static boolean waterlogged(BlockState s) {
+        return s.hasProperty(BlockStateProperties.WATERLOGGED) && s.getValue(BlockStateProperties.WATERLOGGED);
     }
 
     /** The blocks of the states listed, each once, so a failure names every block it's about. */

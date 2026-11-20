@@ -71,13 +71,14 @@ record ScatterBlocks(List<Placed> blocks, List<PaletteEntry> leftOut) {
     /**
      * Whether Scatter may put a block where {@code now} stands: not over a block that holds items or other data, such
      * as a chest, a sign or a brewing stand, nor one that may hold what a player put in it, as a flower pot holds a
-     * plant, a cake a candle, a cauldron water or lava and a composter compost, as they would be lost; nor over one
-     * half of a door or a tall plant, which would leave the other half on its own.
+     * plant, a cake a candle, a cauldron water or lava and a composter compost, or a waterlogged block water, as they
+     * would be lost; nor over one half of a door or a tall plant, which would leave the other half on its own.
      */
     static boolean paintsOver(BlockState now) {
         Block b = now.getBlock();
         return !(b instanceof EntityBlock || b instanceof FlowerPotBlock || b instanceof CandleCakeBlock || b instanceof AbstractCauldronBlock
-                || b instanceof ComposterBlock) && !now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF);
+                || b instanceof ComposterBlock) && !now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)
+                && !(now.hasProperty(BlockStateProperties.WATERLOGGED) && now.getValue(BlockStateProperties.WATERLOGGED));
     }
 
     /** Leaves that won't decay. Any other block as it is. */

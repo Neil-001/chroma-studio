@@ -190,8 +190,8 @@ public final class AxiomScript {
     /**
      * A brush that paints blocks from the palette at random, each as often as its weight says. As the palette brush's
      * Scatter does, it fills air too, unless its Paint air box is cleared, and leaves either half of a door or a tall
-     * plant alone, which would otherwise be left standing on its own, and every block {@code kept} covers, which
-     * holds items or text, such as a chest or a sign.
+     * plant alone, which would otherwise be left standing on its own, a block with water in it, and every block
+     * {@code kept} covers, which holds items or text, such as a chest or a sign.
      */
     public static String scatter(Palette p, Kept kept) {
         if (p.entries.isEmpty()) throw new IllegalArgumentException("The palette is empty");
@@ -214,8 +214,9 @@ public final class AxiomScript {
         s.append("local b = getBlock(x, y, z)\n");
         // Caves are filled with cave air, which Paint air means too.
         s.append("if not paint_air and (b == blocks.air or b == blocks.cave_air or b == blocks.void_air) then return nil end\n");
-        s.append("local half = getBlockProperty(getBlockState(x, y, z), \"half\")\n");
-        s.append("if chroma_skipped[b] or half == \"upper\" or half == \"lower\" then return nil end\n");
+        s.append("local here = getBlockState(x, y, z)\n");
+        s.append("local half = getBlockProperty(here, \"half\")\n");
+        s.append("if chroma_skipped[b] or half == \"upper\" or half == \"lower\" or getBlockProperty(here, \"waterlogged\") == \"true\" then return nil end\n");
         s.append(checks(kept.properties(), ""));
         s.append("""
                 if chroma_total == 0 then return nil end

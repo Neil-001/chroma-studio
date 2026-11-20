@@ -73,7 +73,7 @@ class AxiomScriptTest {
         assertTrue(script.contains("local roll = math.random() * chroma_total\n"), script);
         // As the palette brush's Scatter does: it fills air too, and leaves either half of a door or tall plant.
         assertEquals(List.of("$boolean(Paint air, true)$"), controls(script));
-        assertTrue(script.contains("if chroma_skipped[b] or half == \"upper\" or half == \"lower\" then return nil end\n"), script);
+        assertTrue(script.contains("if chroma_skipped[b] or half == \"upper\" or half == \"lower\" or getBlockProperty(here, \"waterlogged\") == \"true\" then return nil end\n"), script);
         // And the blocks that hold items: by a property only they have, and by name.
         String kept = AxiomScript.scatter(palette("Mix", new PaletteEntry("minecraft:stone", "", 1)),
                 new AxiomScript.Kept(List.of("conditional"), List.of("minecraft:chest", "minecraft:barrel")));
