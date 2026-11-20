@@ -348,16 +348,16 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
 
     /** What the preview found, and how to adjust it, under every control so none moves as they come and go. */
     private void notes(@Nullable Choice shown) {
-        if (shown != null) {
-            int usable = states(shown).size(), left = shown.steps().size() - usable;
-            if (usable < 2) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.missing"));
-            else if (left > 0) AxiomPanel.note(AxiomTools.count("axiom.chromastudio.gradient_tool.skipped", left, left));
-        }
         // The Gradient tab works its gradient out only once it has been shown, so until then this says how to bring it here.
         if (GradientTab.stepsOnShow().isEmpty()) {
             AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.tab_unseen"));
             // The window opens at the next tick, after Axiom has finished drawing its panels this frame.
             if (AxiomPanel.button(tr("key.chromastudio.open"), true, tr("axiom.chromastudio.open.tip"))) ChromaStudioClient.openWindowSoon("gradient");
+        }
+        if (shown != null) {
+            int usable = states(shown).size(), left = shown.steps().size() - usable;
+            if (usable < 2) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.missing"));
+            else if (left > 0) AxiomPanel.note(AxiomTools.count("axiom.chromastudio.gradient_tool.skipped", left, left));
         }
         // Started on a pane, a stair or the like, the gradient keeps to blocks of that kind, which would look like nothing happening.
         ClientLevel level = Minecraft.getInstance().level;

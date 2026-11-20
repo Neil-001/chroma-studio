@@ -74,10 +74,20 @@ final class AxiomPanel {
                 return;
             }
             // The bottom part has the first claim on the space, as it holds what must be read before acting; the options
-            // scroll in what's left. Until it has been measured, it takes the whole panel for that one frame.
+            // scroll in what's left. Until it has been measured, it takes the whole panel for that one frame. In a panel
+            // too short for both, the two scroll together, so nothing is out of reach.
             float room = ImGui.getContentRegionAvailY();
-            float fixed = this.bottom < 0 ? room : Math.min(this.bottom, room);
-            float above = room - fixed - ImGui.getStyle().getItemSpacingY();
+            float above = this.bottom < 0 ? 0 : room - this.bottom - ImGui.getStyle().getItemSpacingY();
+            if (this.bottom >= 0 && above < ImGui.getFrameHeightWithSpacing() * 2) {
+                child("##options", 0, () -> {
+                    options.run();
+                    float top = ImGui.getCursorPosY();
+                    ImGui.separator();
+                    bottom.run();
+                    this.bottom = ImGui.getCursorPosY() - top;
+                });
+                return;
+            }
             if (above >= 1) child("##options", above, options);
             child("##bottom", 0, () -> {
                 ImGui.separator();
