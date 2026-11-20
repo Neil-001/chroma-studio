@@ -489,8 +489,8 @@ final class ShadeBrushTool implements CustomTool {
         /**
          * Whether a block may be a shade when any block may: a plain building block that looks the same whichever
          * way it's placed and stays as it's left. Lights, ores and blocks of them, the ground, blocks that fall, weather or power
-         * redstone, blocks with contents, blocks a survival player can't get, and blocks that turn, such as logs and
-         * glazed terracotta, are left out.
+         * redstone, blocks with contents, blocks a survival player can't get, blocks that turn, such as logs and
+         * glazed terracotta, and chiseled blocks, whose carved motif is an accent rather than a shade, are left out.
          */
         private static boolean anyShade(Entry e) {
             Block b = e.block();
@@ -499,7 +499,7 @@ final class ShadeBrushTool implements CustomTool {
                     && !(b instanceof WeatheringCopper) && !s.isSignalSource() && !s.is(BlockTags.BEACON_BASE_BLOCKS) && !STORAGE.contains(b)
                     && s.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) >= 0
                     && !s.hasProperty(BlockStateProperties.AXIS) && !s.hasProperty(BlockStateProperties.HORIZONTAL_FACING)
-                    && !s.hasProperty(BlockStateProperties.FACING);
+                    && !s.hasProperty(BlockStateProperties.FACING) && !e.id().contains("chiseled");
         }
 
         /**
