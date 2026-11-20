@@ -69,7 +69,7 @@ import org.jspecify.annotations.Nullable;
  * A stroke ({@link BrushStroke}) shows while the button is held and goes to Axiom as one change when it's let go, so
  * one undo takes it back. Every change keeps to the player's tool masks in Axiom ({@link AxiomMask}).
  */
-final class ShadeBrushTool implements CustomTool {
+final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     /** The lightness of a step at each size the slider offers, in OKLab. Small is about one shade a builder can see. */
     private static final double[] STEPS = {0.03, 0.045, 0.06, 0.08, 0.1};
     /**
@@ -97,14 +97,14 @@ final class ShadeBrushTool implements CustomTool {
     private @Nullable BlockState hovered;
     private @Nullable Plan plan;
 
-    /** What the stroke on now does to each block, fixed as it started, so a choice changed mid-stroke doesn't split it. */
-    private BrushStroke.Painter painter;
-
     @Override
     public String name() { return tr("axiom.chromastudio.shade"); }
 
     @Override
     public void reset() { stroke.cancel(); }
+
+    @Override
+    public void putAway() { stroke.away(); }
 
     @Override
     public boolean callUseTool() {
@@ -121,16 +121,20 @@ final class ShadeBrushTool implements CustomTool {
         double share = AxiomPanel.held(strength, 10, 100) / 100.0;
         // Which blocks a stroke at less than full strength changes, a new choice each stroke.
         long seed = System.nanoTime();
-        painter = (x, y, z, now, _, put) -> {
+        BrushStroke.Painter painter = (x, y, z, now, _, put) -> {
             BlockState next = WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
             if (next != null) put.put(x, y, z, next);
         };
-        stroke.start(level, queue, AxiomPanel.radius(radius));
-        return true;
+        // The shades are fixed as the stroke starts, for the index it was queued with; a rebuilt index refuses it.
+        try {
+            return stroke.start(level, queue, AxiomPanel.radius(radius), _ -> painter);
+        } catch (Refused _) {
+            return false;
+        }
     }
 
     /** Called every client tick. */
-    void tick(boolean closed) { stroke.tick(closed); }
+    void tick() { stroke.tick(); }
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
@@ -138,7 +142,7 @@ final class ShadeBrushTool implements CustomTool {
         ClientLevel level = Minecraft.getInstance().level;
         if (stroke.active()) {
             hovered = null;
-            stroke.render(rc, painter);
+            stroke.render(rc);
             return;
         }
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
