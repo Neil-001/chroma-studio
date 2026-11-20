@@ -51,6 +51,11 @@ final class BuildPreview {
         AxiomTools.tools.setBlockRenderOverride(x, y, z, next);
     }
 
+    /** Watches a block of the build that stays as it is, so Apply refuses if it changes, as when a joining block is broken. */
+    void watch(int x, int y, int z, BlockState was) {
+        if (queued != null) queued.watch(x, y, z, was);
+    }
+
     /** How many blocks will change. */
     int count() { return queued == null ? 0 : queued.size(); }
 

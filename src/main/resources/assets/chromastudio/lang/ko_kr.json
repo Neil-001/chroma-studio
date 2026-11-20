@@ -720,6 +720,7 @@
   "axiom.chromastudio.incompatible": "Chroma Studio의 도구가 이 버전의 Axiom과 맞지 않아 Axiom 기능이 꺼져 있습니다. 더 새로운 Chroma Studio가 지원할 수도 있습니다. 이유는 로그에 있습니다.",
   "axiom.chromastudio.editor.unknown": "Chroma Studio가 Axiom 편집기가 열려 있는지 알 수 없습니다",
   "axiom.chromastudio.editor.unknown.how": "Chroma Studio 창이 좁아 보이면 Axiom 편집기를 닫은 다음 Chroma Studio를 여세요.",
+  "axiom.chromastudio.editor.unknown.tools": "이 버전의 Axiom에서는 Axiom 편집기가 계속 열려 있었는지 Chroma Studio가 알 수 없어 도구로는 아무것도 바꿀 수 없습니다. 더 새로운 Chroma Studio는 지원할 수도 있습니다.",
   "axiom.chromastudio.not_ready": "Chroma Studio가 아직 블록 색을 읽는 중입니다. 끝나면 도구를 쓸 수 있습니다.",
   "axiom.chromastudio.not_build": "건축물의 일부가 아닙니다. 땅, 식물, 공기, 물 대신 건축물의 블록을 우클릭하세요.",
   "axiom.chromastudio.whole_build": "건축물 전체",

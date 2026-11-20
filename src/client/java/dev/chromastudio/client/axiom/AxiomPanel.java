@@ -12,6 +12,7 @@ import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import imgui.moulberry92.flag.ImGuiSliderFlags;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
@@ -48,6 +49,12 @@ final class AxiomPanel {
 
     /** Draws a tool's panel in a scrolling area the size of the space Axiom gives it. */
     static void draw(Runnable panel) {
+        // A tool Axiom still holds after Chroma Studio's features were turned off says why, and shows nothing else.
+        Optional<Component> off = AxiomBridge.whyNot();
+        if (off.isPresent()) {
+            wrapped(off.get());
+            return;
+        }
         if (ImGui.beginChild("##chromastudio", 0, 0, false)) panel.run();
         ImGui.endChild();
     }
@@ -175,6 +182,8 @@ final class AxiomPanel {
      * and that Axiom applies them only while its Tool Masks window is open, which would surprise a player otherwise.
      */
     static void masks() {
+        // Said before the player starts, as these tools then change nothing.
+        if (!AxiomEditor.known()) wrapped(tr("axiom.chromastudio.editor.unknown.tools"));
         AxiomMask.unavailable().ifPresentOrElse(why -> wrapped(why), () -> {
             note(tr("axiom.chromastudio.masks"));
             tip(tr("axiom.chromastudio.masks.tip"));

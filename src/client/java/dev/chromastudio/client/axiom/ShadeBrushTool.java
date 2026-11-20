@@ -108,6 +108,7 @@ final class ShadeBrushTool implements CustomTool {
 
     @Override
     public boolean callUseTool() {
+        if (AxiomTools.off()) return false;
         stroke.cancel();
         stroke.forget();
         ClientLevel level = Minecraft.getInstance().level;
@@ -133,6 +134,7 @@ final class ShadeBrushTool implements CustomTool {
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
+        if (AxiomTools.off()) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (stroke.active()) {
             hovered = null;

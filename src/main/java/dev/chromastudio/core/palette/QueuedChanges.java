@@ -55,6 +55,13 @@ public final class QueuedChanges<S> {
 
     private final Origin origin;
     private final Map<Long, Change<S>> changes = new LinkedHashMap<>();
+    /**
+     * Blocks that stay as they are but decided what the tool does, such as the blocks that join a build, each with
+     * what was there: when one of them changes, what the player saw no longer holds, so nothing is sent.
+     */
+    private final Map<Long, Watched<S>> watched = new LinkedHashMap<>();
+
+    private record Watched<S>(int x, int y, int z, S was) {}
 
     public QueuedChanges(Origin origin) { this.origin = Objects.requireNonNull(origin); }
 
@@ -66,6 +73,9 @@ public final class QueuedChanges<S> {
         changes.merge(BuildSearch.pack(x, y, z), new Change<>(x, y, z, was, next), (old, now) -> new Change<>(x, y, z, old.was(), now.next()));
     }
 
+    /** Watches a block that stays as it is, so the changes are refused if it changes. A queued change there wins. */
+    public void watch(int x, int y, int z, S was) { watched.putIfAbsent(BuildSearch.pack(x, y, z), new Watched<>(x, y, z, was)); }
+
     public boolean isEmpty() { return changes.isEmpty(); }
 
     public int size() { return changes.size(); }
@@ -75,8 +85,8 @@ public final class QueuedChanges<S> {
 
     /**
      * Whether the changes may be sent now, from {@code now}. Every queued block is tested against the masks as they
-     * are now and compared with the world, so a mask that was changed, or a block that another player broke or filled
-     * with a chest, refuses the lot. The masks are asked about every block before their failure is looked at, as
+     * are now and compared with the world, as is every watched block, so a mask that was changed, or a block that
+     * another player broke or filled with a chest, refuses the lot. The masks are asked about every block before their failure is looked at, as
      * asking is what makes a failure show.
      */
     public Refusal check(Origin now, World<S> world, Mask mask) {
@@ -89,6 +99,7 @@ public final class QueuedChanges<S> {
             denied |= !mask.allows(c.x(), c.y(), c.z());
             changed |= !Objects.equals(world.at(c.x(), c.y(), c.z()), c.was());
         }
+        for (Watched<S> w : watched.values()) changed |= !Objects.equals(world.at(w.x(), w.y(), w.z()), w.was());
         if (mask.failed()) return Refusal.MASK_FAILED;
         if (denied) return Refusal.MASK_DENIES;
         return changed ? Refusal.BLOCK_CHANGED : Refusal.NONE;

@@ -720,6 +720,7 @@
   "axiom.chromastudio.incompatible": "Chroma Studio 的工具与此版本的 Axiom 不兼容，所以它的 Axiom 功能已关闭。更新的 Chroma Studio 可能支持它。原因见日志。",
   "axiom.chromastudio.editor.unknown": "Chroma Studio 无法判断 Axiom 的编辑器是否已打开",
   "axiom.chromastudio.editor.unknown.how": "如果 Chroma Studio 的窗口看起来被挤窄了，请先关闭 Axiom 编辑器，再打开 Chroma Studio。",
+  "axiom.chromastudio.editor.unknown.tools": "在此版本的 Axiom 上，Chroma Studio 无法判断 Axiom 编辑器是否一直开着，所以它的工具不会做任何更改。更新版本的 Chroma Studio 也许能支持。",
   "axiom.chromastudio.not_ready": "Chroma Studio 仍在读取方块的颜色，读取完成后其工具才能使用。",
   "axiom.chromastudio.not_build": "这不属于建筑。请右键点击建筑上的方块，而不是地面、植物、空气或水。",
   "axiom.chromastudio.whole_build": "整个建筑",

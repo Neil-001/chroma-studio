@@ -108,4 +108,17 @@ class QueuedChangesTest {
         assertEquals("tuff", c.next());
         assertEquals(Refusal.NONE, q.check(HERE, world, new Mask()));
     }
+
+    @Test
+    void aWatchedBlockThatChangedRefusesTheLot() {
+        // A stone bridge joins two wings: the gradient leaves it as it is, but without it the far wing is no longer
+        // part of the build the player saw.
+        QueuedChanges<String> q = twoBricks();
+        set(5, 0, 0, "stone");
+        q.watch(5, 0, 0, "stone");
+        assertEquals(2, q.size());
+        assertEquals(Refusal.NONE, q.check(HERE, world, new Mask()));
+        set(5, 0, 0, "air");
+        assertEquals(Refusal.BLOCK_CHANGED, q.check(HERE, world, new Mask()));
+    }
 }

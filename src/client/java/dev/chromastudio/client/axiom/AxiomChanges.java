@@ -42,6 +42,8 @@ final class AxiomChanges {
         Optional<Component> off = AxiomBridge.whyNot();
         if (off.isPresent()) return off;
         if (level == null) return Optional.of(refusal(QueuedChanges.Refusal.WORLD));
+        // Without knowing whether the editor closed since the changes were queued, they can't be vouched for.
+        if (!AxiomEditor.known()) return Optional.of(Component.translatable("axiom.chromastudio.editor.unknown.tools"));
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         QueuedChanges.Origin now = origin(level);
         QueuedChanges.Refusal why = changes.check(now, (x, y, z) -> level.getBlockState(pos.set(x, y, z)), AxiomMask.now(level));

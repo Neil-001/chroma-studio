@@ -720,6 +720,7 @@
   "axiom.chromastudio.incompatible": "Инструменты Chroma Studio не работают с этой версией Axiom, поэтому его функции для Axiom отключены. Возможно, их поддерживает более новая версия Chroma Studio. Причина в журнале.",
   "axiom.chromastudio.editor.unknown": "Chroma Studio не может определить, открыт ли редактор Axiom",
   "axiom.chromastudio.editor.unknown.how": "Если окно Chroma Studio выглядит сжатым, закройте редактор Axiom, прежде чем открыть Chroma Studio.",
+  "axiom.chromastudio.editor.unknown.tools": "В этой версии Axiom Chroma Studio не может определить, оставался ли редактор Axiom открытым, поэтому её инструменты ничего не меняют. Более новая Chroma Studio может это поддерживать.",
   "axiom.chromastudio.not_ready": "Chroma Studio ещё считывает цвета блоков. После этого инструменты станут доступны.",
   "axiom.chromastudio.not_build": "Это не часть постройки. Щёлкните правой кнопкой по блоку постройки, а не по земле, растению, воздуху или воде.",
   "axiom.chromastudio.whole_build": "Вся постройка",

@@ -84,6 +84,7 @@ final class SamplerTool implements CustomTool {
 
     @Override
     public boolean callUseTool() {
+        if (AxiomTools.off()) return false;
         pather = null;
         if (!BlockIndex.get().ready()) {
             said = tr("axiom.chromastudio.not_ready");
@@ -117,6 +118,7 @@ final class SamplerTool implements CustomTool {
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
+        if (AxiomTools.off()) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (pather != null && level != null) {
             // A stroke ends where the world does, as when the player changes dimension with the button held.

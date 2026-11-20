@@ -63,6 +63,16 @@ final class AxiomTools {
         shade.tick(closed);
     }
 
+    /** Whether Chroma Studio's Axiom features are off for the session, so a tool Axiom still holds does nothing. */
+    static boolean off() { return AxiomBridge.whyNot().isPresent(); }
+
+    /** Drops every preview and stroke, as Axiom's features are turned off, so none is left in the world. */
+    static void shutDown() {
+        if (brush != null) brush.reset();
+        if (gradient != null) gradient.reset();
+        if (shade != null) shade.reset();
+    }
+
     /** Which visit to Axiom's editor this is. */
     static long visit() { return visit; }
 

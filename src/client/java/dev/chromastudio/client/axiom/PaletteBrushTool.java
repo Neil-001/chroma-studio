@@ -154,6 +154,7 @@ final class PaletteBrushTool implements CustomTool {
 
     @Override
     public boolean callUseTool() {
+        if (AxiomTools.off()) return false;
         stroke.cancel();
         Palette to = current();
         if (to == null || !ChromaStudioApi.indexReady()) return false;
@@ -242,7 +243,7 @@ final class PaletteBrushTool implements CustomTool {
     }
 
     @Override
-    public boolean callConfirm() { return wholeBuild() && apply(); }
+    public boolean callConfirm() { return !AxiomTools.off() && wholeBuild() && apply(); }
 
     @Override
     public boolean callDelete() {
@@ -261,6 +262,7 @@ final class PaletteBrushTool implements CustomTool {
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
+        if (AxiomTools.off()) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
         if (wholeBuild()) {
@@ -348,6 +350,8 @@ final class PaletteBrushTool implements CustomTool {
             BlockState next = changes ? whole.apply(level, x, y, z, admit) : null;
             if (next == null) {
                 after.add(now.getBlock());
+                // It still joins the build the player saw, so Apply refuses if it changes meanwhile.
+                preview.watch(x, y, z, now);
                 continue;
             }
             after.add(next.getBlock());

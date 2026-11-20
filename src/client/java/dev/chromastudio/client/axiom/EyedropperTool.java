@@ -23,6 +23,7 @@ final class EyedropperTool implements CustomTool {
 
     @Override
     public boolean callUseTool() {
+        if (AxiomTools.off()) return false;
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) return false;
         if (Eyedropper.read(hit, false)) {

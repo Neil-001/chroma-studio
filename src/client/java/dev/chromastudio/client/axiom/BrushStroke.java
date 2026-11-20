@@ -97,9 +97,10 @@ final class BrushStroke {
         QueuedChanges<BlockState> q = queued;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         RecolourPlan.Admit admit = mask::allows;
+        // The painter's admit has tested every position it puts, a door's other half included, against these masks.
         RecolourPlan.Put put = (x, y, z, next) -> {
             BlockState was = now.getBlockState(pos.set(x, y, z));
-            if (next == was || !mask.allows(x, y, z)) return;
+            if (next == was) return;
             q.add(x, y, z, was, next);
             shown.addBlock(x, y, z, next);
         };

@@ -719,6 +719,7 @@
   "axiom.chromastudio.incompatible": "Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off. A newer Chroma Studio may support it. The log says why.",
   "axiom.chromastudio.editor.unknown": "Chroma Studio can't tell whether Axiom's editor is open",
   "axiom.chromastudio.editor.unknown.how": "If its window looks squeezed, close Axiom's editor before opening it.",
+  "axiom.chromastudio.editor.unknown.tools": "Chroma Studio can't tell whether Axiom's editor stayed open on this version of Axiom, so its tools change nothing. A newer Chroma Studio may support it.",
   "axiom.chromastudio.not_ready": "Chroma Studio is still reading the blocks' colours. Its tools work once that's done.",
   "axiom.chromastudio.not_build": "That isn't part of a build. Right-click a block of the build, not the ground, a plant, air or water.",
   "axiom.chromastudio.whole_build": "Whole build",

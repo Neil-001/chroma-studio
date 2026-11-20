@@ -123,6 +123,7 @@ final class GradientTool implements CustomTool {
 
     @Override
     public boolean callUseTool() {
+        if (AxiomTools.off()) return false;
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
         ClientLevel level = Minecraft.getInstance().level;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK || level == null) return false;
@@ -148,7 +149,7 @@ final class GradientTool implements CustomTool {
     }
 
     @Override
-    public boolean callConfirm() { return apply(); }
+    public boolean callConfirm() { return !AxiomTools.off() && apply(); }
 
     @Override
     public boolean callDelete() {
@@ -164,6 +165,7 @@ final class GradientTool implements CustomTool {
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
+        if (AxiomTools.off()) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
         // The ends belong to the world they were set in, so a trip to another dimension or server doesn't carry them over.
@@ -227,17 +229,21 @@ final class GradientTool implements CustomTool {
             int at = line.step(x, y, z, steps.size(), blend[0] / 100.0);
             BlockState step = steps.get(reversed ? steps.size() - 1 - at : at);
             BlockState next = shapes.shaped(now) ? shapes.apply(step, now) : paintable(level, pos, now) ? step : null;
+            // Every block of the build is either changed or watched, as each one decides which blocks are joined to it.
             if (next == null) {
                 leftAlone++;
+                preview.watch(x, y, z, now);
                 continue;
             }
             if (!preview.allows(x, y, z)) {
                 masked++;
+                preview.watch(x, y, z, now);
                 continue;
             }
             covered++;
             preview.outline(x, y, z);
             if (next != now) preview.change(x, y, z, now, next);
+            else preview.watch(x, y, z, now);
         }
         preview.made();
     }

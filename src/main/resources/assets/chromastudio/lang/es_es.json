@@ -720,6 +720,7 @@
   "axiom.chromastudio.incompatible": "Las herramientas de Chroma Studio no funcionan con esta versión de Axiom, así que sus funciones para Axiom están desactivadas. Puede que una versión más nueva de Chroma Studio la admita. El registro dice por qué.",
   "axiom.chromastudio.editor.unknown": "Chroma Studio no puede saber si el editor de Axiom está abierto",
   "axiom.chromastudio.editor.unknown.how": "Si la ventana de Chroma Studio se ve estrecha, cierra el editor de Axiom antes de abrir Chroma Studio.",
+  "axiom.chromastudio.editor.unknown.tools": "En esta versión de Axiom, Chroma Studio no puede saber si el editor de Axiom siguió abierto, así que sus herramientas no cambian nada. Un Chroma Studio más reciente puede admitirlo.",
   "axiom.chromastudio.not_ready": "Chroma Studio sigue leyendo los colores de los bloques. Sus herramientas funcionan cuando termine.",
   "axiom.chromastudio.not_build": "Eso no es parte de una construcción. Haz clic derecho en un bloque de la construcción, no en el suelo, una planta, el aire ni el agua.",
   "axiom.chromastudio.whole_build": "Construcción entera",

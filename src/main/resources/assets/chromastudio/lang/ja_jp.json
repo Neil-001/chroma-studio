@@ -720,6 +720,7 @@
   "axiom.chromastudio.incompatible": "Chroma Studio のツールはこのバージョンの Axiom では動かないため、Axiom 向けの機能はオフになっています。新しい Chroma Studio が対応しているかもしれません。理由はログにあります。",
   "axiom.chromastudio.editor.unknown": "Axiom のエディターが開いているか、Chroma Studio には判断できません",
   "axiom.chromastudio.editor.unknown.how": "Chroma Studio のウィンドウが窮屈に見える場合は、Axiom のエディターを閉じてから Chroma Studio を開いてください。",
+  "axiom.chromastudio.editor.unknown.tools": "このバージョンの Axiom では、Axiom のエディターが開いたままだったかを Chroma Studio が判断できないため、ツールは何も変更しません。新しい Chroma Studio なら対応しているかもしれません。",
   "axiom.chromastudio.not_ready": "Chroma Studio はまだブロックの色を読み込んでいます。終わるとツールが使えます。",
   "axiom.chromastudio.not_build": "建築物の一部ではありません。地面・植物・空気・水ではなく、建築物のブロックを右クリックしてください。",
   "axiom.chromastudio.whole_build": "建築物全体",
