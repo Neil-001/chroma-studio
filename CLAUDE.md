@@ -69,7 +69,7 @@ The one exception is a tool the player is using in Axiom's editor. It hands its 
 ## Limits
 
 - Spread, which `Badge` goes by, can't order every texture as the eye does: wool, gravel and granite come out grainy.
-- Left out on purpose: placement and world editing outside Axiom's editor, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.
+- Left out on purpose: placement and world editing outside Axiom's editor, structure import to a CAD, online accounts, server components, in-world previews other than the capture outline and the previews of the tools in Axiom's editor, and Cloth Config.
 
 ## Releasing
 
