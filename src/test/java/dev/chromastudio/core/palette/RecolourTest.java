@@ -460,6 +460,18 @@ class RecolourTest {
     }
 
     @Test
+    void theMainBlockHoldsWhenKeptBlocksMakeShadesShare() {
+        // Five shades onto five blocks, the andesite kept: the two dark accents share black so the walls keep stone bricks.
+        List<Recolour.Look> palette = List.of(grey(0.15, 1, "black"), grey(0.55, 5, "stone_bricks"), grey(0.65, 1, "andesite"), grey(0.75, 9, "light"),
+                grey(0.9, 1, "white"));
+        List<Recolour.Look> build = List.of(grey(0.25, 5, "a"), grey(0.35, 5, "b"), grey(0.5, 900, "wall"), grey(0.65, 5, "andesite"), grey(0.85, 5, "c"));
+        List<Integer> picked = picks(new Recolour(palette, build, Recolour.Mode.SHADING), build);
+        assertEquals(1, picked.get(2), picked.toString());
+        assertEquals(2, picked.get(3), picked.toString());
+        inOrder(palette, build, picked);
+    }
+
+    @Test
     void everyBlockThePaletteKeepsInOneShadeBoundsTheOthers() {
         // Two bricks of one family the palette has, which share a shade, and a lighter material: it may not go darker
         // than the lighter brick, though it stays itself.

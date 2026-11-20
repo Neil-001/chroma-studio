@@ -413,6 +413,13 @@ public final class Recolour {
             } else {
                 heaviest = roomy;
             }
+            // When the blocks the palette keeps leave no such room, the main shade still takes the heaviest block it
+            // may, and as many neighbours share as that needs: better two accents on one block than the walls on a
+            // minor one.
+            if (heaviest < 0) {
+                heaviest = heaviest(eligible, at[main], from, to, main, shades, shades, room);
+                shares = heaviest < 0 ? 0 : Math.max(0, main - heaviest) + Math.max(0, shades - 1 - main - (n - 1 - heaviest));
+            }
             if (heaviest < 0) main = -1;
         }
         // best[s][k][j]: the least cost for shades 0..k with shade k on block j and s pairs of shades sharing a block;
