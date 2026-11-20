@@ -303,8 +303,7 @@ public final class HotbarFill {
 
     /** Axiom's number for the hotbar in hand, {@link #NO_AXIOM} without Axiom, or {@link #UNKNOWN} when it can't say. */
     private static int heldHotbar() {
-        // An Axiom whose features are off, as one Chroma Studio's tools don't work with, counts as none.
-        if (AxiomBridge.whyNot().isPresent()) return NO_AXIOM;
+        if (!AxiomBridge.isPresent()) return NO_AXIOM;
         try {
             return AxiomBridge.activeHotbar();
         } catch (Throwable _) {

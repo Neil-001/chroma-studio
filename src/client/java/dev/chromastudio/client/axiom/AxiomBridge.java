@@ -77,11 +77,7 @@ public final class AxiomBridge {
     private static void fail(Throwable t) {
         ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
         broken = Component.translatable("axiom.chromastudio.incompatible");
-        try {
-            AxiomTools.shutDown();
-        } catch (Throwable _) {
-            // What failed may be what the previews need to be put away; the world then shows them until it's reloaded.
-        }
+        AxiomTools.shutDown();
     }
 
     // Axiom's editor, which Chroma Studio's window steps out of while it's open.
@@ -162,7 +158,8 @@ public final class AxiomBridge {
 
     /** The hotbar the player holds now. */
     public static int activeHotbar() throws Throwable {
-        live();
+        // Only read, through the hotbars' own guard, and still needed with the tools off: a fill must know which
+        // hotbar it went into, or its Undo could put the slots back into another one the player has switched to.
         return AxiomHotbars.active();
     }
 

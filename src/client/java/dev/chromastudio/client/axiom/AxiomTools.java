@@ -68,9 +68,14 @@ final class AxiomTools {
 
     /** Drops every preview and stroke, as Axiom's features are turned off, so none is left in the world. */
     static void shutDown() {
-        if (brush != null) brush.reset();
-        if (gradient != null) gradient.reset();
-        if (shade != null) shade.reset();
+        // Each on its own, so one that can't be put away doesn't leave the others' previews in the world.
+        for (CustomTool tool : new CustomTool[] {brush, gradient, shade}) {
+            try {
+                if (tool != null) tool.reset();
+            } catch (Throwable _) {
+                // Logged once already, as the failure that turned the features off.
+            }
+        }
     }
 
     /** Which visit to Axiom's editor this is. */

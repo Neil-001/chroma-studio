@@ -1,9 +1,12 @@
 package dev.chromastudio.client.axiom;
 
+import dev.chromastudio.core.palette.BuildSearch;
 import dev.chromastudio.core.palette.QueuedChanges;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
@@ -91,10 +94,19 @@ final class AxiomMask {
         }
         return new Test() {
             private boolean failed;
+            /**
+             * Each position's first answer. A mask's script can answer differently each time it's asked, at random say,
+             * and one stroke or preview must give a position one answer, or a door could be let through by halves.
+             */
+            private final Map<Long, Boolean> asked = new HashMap<>();
 
             @Override
             public boolean allows(int x, int y, int z) {
                 if (failed) return false;
+                return asked.computeIfAbsent(BuildSearch.pack(x, y, z), _ -> ask(x, y, z));
+            }
+
+            private boolean ask(int x, int y, int z) {
                 try {
                     h.setPosition.invoke(context, x, y, z);
                     return (boolean) h.test.invoke(mask, context);
