@@ -79,10 +79,11 @@ public final class Recolour {
 
     /**
      * What two materials sharing one block costs beyond the difference between them, in OKLab, times the smaller one's
-     * amount: about two just-noticeable steps, so materials a builder mixed on purpose keep blocks of their own unless
-     * the palette's next block is that much further off than the one they'd share.
+     * amount: one just-noticeable step, so materials a builder mixed on purpose keep blocks of their own while the
+     * palette has a near one for each, and share rather than take a colour of the palette's that sits between them in
+     * lightness, as cobblestone beside polished andesite takes a palette's andesite with it rather than its copper.
      */
-    private static final double SHARE = 0.05;
+    private static final double SHARE = 0.02;
 
     private final Mode mode;
     private final Oklab[] palette;

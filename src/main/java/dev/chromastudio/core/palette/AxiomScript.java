@@ -222,16 +222,17 @@ public final class AxiomScript {
         for (PaletteEntry e : steps) s.append("\t\t").append(ref(e.blockId(), e.properties())).append(" or false,\n");
         s.append("\t}\n");
         s.append("end\n\n");
+        // As the gradient tool does: the ground, plants and blocks a full step would reshape or empty stay. No comment
+        // says so in the script, as servers count comments toward the length they allow.
         s.append("""
-                -- As the gradient tool does: the ground, plants and blocks a full step would reshape or empty stay.
-                local here = getBlock(x, y, z)
-                if here == blocks.air then
+                local b = getBlock(x, y, z)
+                if b == blocks.air then
                 \tif not paint_air then return nil end
-                elseif not isSolid(here) or isBlockTagged(here, "substrate_overworld") or isBlockTagged(here, "sand") or here == blocks.gravel then
+                elseif not isSolid(b) or isBlockTagged(b, "substrate_overworld") or isBlockTagged(b, "sand") or b == blocks.gravel then
                 \treturn nil
                 else
-                \tlocal state = getBlockState(x, y, z)
-                \tfor _, p in ipairs({"waterlogged", "facing", "half"}) do if getBlockProperty(state, p) then return nil end end
+                \tlocal s = getBlockState(x, y, z)
+                \tfor _, p in ipairs({"waterlogged", "facing", "half"}) do if getBlockProperty(s, p) then return nil end end
                 end
                 """);
         // Each step takes an equal share of the blocks from first to last, both ends included.

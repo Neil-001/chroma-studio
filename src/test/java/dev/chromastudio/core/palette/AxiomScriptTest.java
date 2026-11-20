@@ -87,8 +87,8 @@ class AxiomScriptTest {
         List<PaletteEntry> steps = List.of(new PaletteEntry("minecraft:white_wool", ""), new PaletteEntry("minecraft:black_wool", ""));
         String script = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8);
         // The ground, plants and torches, and stairs, slabs, doors and chests, which a step's full block would replace.
-        assertTrue(script.contains("not isSolid(here)"), script);
-        for (String tag : List.of("substrate_overworld", "sand")) assertTrue(script.contains("isBlockTagged(here, \"" + tag + "\")"), script);
+        assertTrue(script.contains("not isSolid(b)"), script);
+        for (String tag : List.of("substrate_overworld", "sand")) assertTrue(script.contains("isBlockTagged(b, \"" + tag + "\")"), script);
         for (String property : List.of("waterlogged", "facing", "half")) assertTrue(script.contains("\"" + property + "\""), script);
         assertTrue(AxiomScript.counted(script) < AxiomScript.SERVER_LIMIT, AxiomScript.counted(script) + "");
     }
