@@ -343,7 +343,6 @@ final class PaletteBrushTool implements CustomTool {
         }
         kindsBefore = before.size();
         kindsAfter = after.size();
-        dev.chromastudio.client.ChromaStudioClient.LOGGER.info("EVIDENCE from={} to={} before={} after={} rows={}", fromKey, PaletteStore.get().shownName(to), before, after, whole.rows()); // TEMP
     }
 
     private void clearPreview() {
