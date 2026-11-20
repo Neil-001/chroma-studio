@@ -51,11 +51,13 @@ final class AxiomTools {
         shade = new ShadeBrushTool();
         EyedropperTool eyedropper = new EyedropperTool();
         sampler = new SamplerTool();
+        // The tools that change blocks first, then those that only read them, each group in the order a build goes:
+        // paint it, lay a gradient over it, shade it; then sample it, or take one block's colour.
         add(registry, brush, AxiomIcons.PALETTE_BRUSH);
-        add(registry, eyedropper, AxiomIcons.EYEDROPPER);
         add(registry, gradient, AxiomIcons.GRADIENT);
         add(registry, shade, AxiomIcons.SHADE_BRUSH);
         add(registry, sampler, AxiomIcons.SAMPLER);
+        add(registry, eyedropper, AxiomIcons.EYEDROPPER);
     }
 
     /** Hands a tool to Axiom, caught by {@link GuardedTool}, and gives it its icon. */
@@ -120,4 +122,10 @@ final class AxiomTools {
      * game's components, so the text is looked up in the player's language here, each frame, as the game's own would be.
      */
     static String tr(String key, Object... args) { return Component.translatable(key, args).getString(); }
+
+    /**
+     * As {@link #tr}, for a sentence about {@code n} of something: {@code key.one} when there's one, which English and
+     * most of the languages say differently. Languages with more forms word {@code key} so that it fits any other number.
+     */
+    static String count(String key, int n, Object... args) { return tr(n == 1 ? key + ".one" : key, args); }
 }

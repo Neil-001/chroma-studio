@@ -65,7 +65,7 @@ class AxiomPlanTest {
         PaletteBrushTool.WholeBuild w = PaletteBrushTool.wholeBuild(axiom.level, BlockPos.ZERO, to, null, true, Recolour.Mode.CLOSEST,
                 AxiomMask.now(axiom.level), made);
         BuildPreview preview = new BuildPreview("test");
-        preview.show(made, w.outlined(), mask -> {
+        preview.show(made, AxiomMask.now(axiom.level), w.outlined(), mask -> {
             QueuedChanges<BlockState> redone = AxiomChanges.queue(axiom.level);
             try {
                 PaletteBrushTool.wholeBuild(axiom.level, BlockPos.ZERO, to, null, true, Recolour.Mode.CLOSEST, mask, redone);
@@ -105,7 +105,7 @@ class AxiomPlanTest {
         GradientTool.Laid laid = GradientTool.lay(axiom.level, GradientTool.search(axiom.level, first, second, first, true, 64), steps, false, 75,
                 AxiomMask.now(axiom.level), made);
         BuildPreview preview = new BuildPreview("test");
-        preview.show(made, laid.outlined(), mask -> {
+        preview.show(made, AxiomMask.now(axiom.level), laid.outlined(), mask -> {
             QueuedChanges<BlockState> redone = AxiomChanges.queue(axiom.level);
             GradientTool.lay(axiom.level, GradientTool.search(axiom.level, first, second, first, true, 64), steps, false, 75, mask, redone);
             return redone;

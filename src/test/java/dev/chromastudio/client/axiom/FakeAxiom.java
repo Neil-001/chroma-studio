@@ -1,5 +1,6 @@
 package dev.chromastudio.client.axiom;
 
+import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.moulberry.axiom.editor.EditorUI;
 import com.moulberry.axiom.editor.EditorWindowType;
@@ -34,9 +35,13 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.IntPredicate;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.OptionInstance;
+import net.minecraft.client.Options;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.resources.language.LanguageManager;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -89,6 +94,7 @@ final class FakeAxiom {
         AxiomBridge.forget();
         AxiomMask.INTERNALS.forget();
         AxiomMask.WINDOW.forget();
+        AxiomMask.SCRIPT.forget();
         AxiomEditor.INTERNALS.forget();
         AxiomIcons.INTERNALS.forget();
         AxiomTools.regions = new Regions();
@@ -103,6 +109,9 @@ final class FakeAxiom {
         MaskManager.mode = new int[] {0};
         EditorWindowType.TOOL_MASKS.open = true;
         ToolMaskWindow.luaExecutionError = null;
+        set(ToolMaskWindow.class, null, "lastLuaCompile", 0L);
+        MaskManager.useLuaScript = false;
+        MaskManager.luaScript = null;
         ToolManager.tools = new ArrayList<>();
         ToolManager.keybindMap = new HashMap<>();
         return a;
@@ -112,7 +121,54 @@ final class FakeAxiom {
     static void uninstall() {
         ChromaStudioClient.platform = null;
         AxiomBridge.forget();
+        setStatic(Minecraft.class, "instance", null);
     }
+
+    /**
+     * Puts a game client in place whose world is this one, in English, as the tools read the world, the language and
+     * the window from it. Made without its constructor, like the world, so it holds nothing else.
+     */
+    void client() {
+        Minecraft mc = make(Minecraft.class);
+        mc.level = level;
+        LanguageManager language = make(LanguageManager.class);
+        set(LanguageManager.class, language, "currentCode", "en_us");
+        set(Minecraft.class, mc, "languageManager", language);
+        // A 720-pixel window at the default field of view, which a swatch's colour is read for.
+        Window window = make(Window.class);
+        set(Window.class, window, "height", 720);
+        set(Minecraft.class, mc, "window", window);
+        OptionInstance<?> fov = make(OptionInstance.class);
+        set(OptionInstance.class, fov, "value", 70);
+        Options options = make(Options.class);
+        set(Options.class, options, "fov", fov);
+        set(Minecraft.class, mc, "options", options);
+        setStatic(Minecraft.class, "instance", mc);
+    }
+
+    /** Sets a field of an object, a private or final one included, as a tool's panel would set it. */
+    static void set(Class<?> type, Object on, String name, Object value) {
+        try {
+            Field f = type.getDeclaredField(name);
+            f.setAccessible(true);
+            f.set(on, value);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    /** Reads a field of an object, a private one included. */
+    static Object get(Class<?> type, Object on, String name) {
+        try {
+            Field f = type.getDeclaredField(name);
+            f.setAccessible(true);
+            return f.get(on);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static void setStatic(Class<?> type, String name, Object value) { set(type, null, name, value); }
 
     /** Hands a tool to Axiom as Chroma Studio's own are, and returns what Axiom then holds and calls. */
     CustomTool register(CustomTool tool, char icon) {
@@ -186,6 +242,10 @@ final class FakeAxiom {
         final List<Map<BlockPos, BlockState>> pushed = new ArrayList<>();
         /** Thrown when a change is sent, as by an Axiom that lacks the method. */
         Throwable failPush;
+        /** Thrown once, the next time a preview lets go of the world's look. */
+        Throwable failRelease;
+        /** The block under the mouse, or null. */
+        BlockPos hit;
         /** The previews holding the world's look, by name. */
         final Set<String> overriding = new HashSet<>();
         final Map<BlockPos, BlockState> overrides = new HashMap<>();
@@ -199,7 +259,7 @@ final class FakeAxiom {
         }
 
         @Override
-        public BlockHitResult raycastBlock() { return null; }
+        public BlockHitResult raycastBlock() { return hit == null ? null : new BlockHitResult(Vec3.atCenterOf(hit), net.minecraft.core.Direction.UP, hit, false); }
 
         @Override
         public BlockState getActiveBlock() { return Blocks.STONE.defaultBlockState(); }
@@ -225,6 +285,10 @@ final class FakeAxiom {
 
         @Override
         public void releaseChunkRenderOverrider(String id) {
+            Throwable fail = failRelease;
+            failRelease = null;
+            if (fail instanceof Error e) throw e;
+            if (fail instanceof RuntimeException e) throw e;
             if (!overriding.contains(id)) throw new Error("Chunk render overrider isn't locked by " + id);
             overriding.remove(id);
             overrides.clear();
@@ -346,6 +410,9 @@ final class FakeAxiom {
 
         @Override
         public boolean isModLoaded(String id) { return id.equals("axiom"); }
+
+        @Override
+        public boolean isFabric() { return true; }
 
         @Override
         public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockStateModelPart> out) {}

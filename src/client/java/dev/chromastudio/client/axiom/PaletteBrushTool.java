@@ -102,7 +102,10 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private Recolour.Mode match = Recolour.Mode.valueOf(ModSettings.brushMatch);
 
     /** Why the last use or preview couldn't go ahead, shown in the panel until the next. */
-    private @Nullable String said;
+    private @Nullable Component said;
+    /** Whether a stroke was dropped partway, as when the player picked another tool, for the panel to say so. */
+    private boolean dropped;
+    private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
     /**
      * Why the last Apply didn't go. Until the tool is used again, no new preview is made, so a second Apply has
      * nothing to send.
@@ -144,6 +147,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     @Override
     public void reset() {
+        // Axiom resets a tool before it says another was picked, so a stroke dropped here is the one left partway.
+        if (stroke.active()) dropped = true;
         stroke.cancel();
         picked = null;
         pickedIn = null;
@@ -179,7 +184,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             if (hit == null || hit.getType() != HitResult.Type.BLOCK) return false;
             BlockPos at = hit.getBlockPos().immutable();
             if (!FoundBuild.member(level, at, level.getBlockState(at))) {
-                said = tr("axiom.chromastudio.not_build");
+                said = Component.translatable("axiom.chromastudio.not_build");
                 return false;
             }
             picked = at;
@@ -188,48 +193,26 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             clearPreview();
             return true;
         }
-        BrushStroke.Setup setup;
-        if (mode == Mode.SCATTER) {
-            long seed = System.nanoTime();
-            setup = _ -> {
-                List<ScatterBlocks.Placed> blocks = ScatterBlocks.of(to).blocks();
-                if (blocks.isEmpty()) return null;
-                WeightedPick<ScatterBlocks.Placed> scatter = new WeightedPick<>(blocks, ScatterBlocks.Placed::weight);
-                // Painting over one half of a door or a tall plant would leave the other half on its own.
-                return (x, y, z, now, _, put) -> {
-                    if (!now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
-                };
-            };
-        } else if (fromKey.equals(FROM_BUILD)) {
-            BlockHitResult hit = AxiomTools.tools.raycastBlock();
-            if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
-                said = tr("axiom.chromastudio.not_build");
-                return false;
-            }
-            BlockPos at = hit.getBlockPos().immutable();
-            Recolour.Mode m = match;
-            setup = lvl -> {
-                FoundBuild build = FoundBuild.from(lvl, at);
-                if (build == null) throw new Refused(Component.translatable("axiom.chromastudio.not_build"));
-                showFound(build);
-                // With From set to This build, a stroke that reaches another build leaves it alone.
-                Set<Long> inBuild = new HashSet<>();
-                for (long b : build.blocks()) inBuild.add(b);
-                return recolour(lvl, RecolourPlan.of(to, build.kinds(), m), inBuild);
-            };
-        } else {
-            if (fromGone()) {
-                said = tr("axiom.chromastudio.brush.from_gone");
-                return false;
-            }
-            Palette from = from();
-            Recolour.Mode m = match;
-            setup = lvl -> recolour(lvl, RecolourPlan.of(to, from, m), null);
+        // The block the stroke starts on, whose build it keeps to with From set to This build, Scatter's choices, new
+        // each stroke, and the ball's radius, which Axiom keeps for the whole stroke, are what the stroke is, as the
+        // positions its ball reaches are. Everything else is read again each time the painter is made, at the start
+        // and when the stroke is checked before it's sent.
+        BlockHitResult hit = AxiomTools.tools.raycastBlock();
+        BlockPos at = hit == null || hit.getType() != HitResult.Type.BLOCK ? null : hit.getBlockPos().immutable();
+        if (mode == Mode.RECOLOUR && fromKey.equals(FROM_BUILD) && at == null) {
+            said = Component.translatable("axiom.chromastudio.not_build");
+            return false;
+        } else if (mode == Mode.RECOLOUR && fromGone()) {
+            said = Component.translatable("axiom.chromastudio.brush.from_gone");
+            return false;
         }
+        long seed = System.nanoTime();
+        int size = AxiomPanel.radius(radius);
+        BrushStroke.Setup setup = lvl -> painterNow(lvl, at, seed, size);
         try {
-            return stroke.start(level, queue, AxiomPanel.radius(radius), setup);
+            return stroke.start(level, queue, size, setup);
         } catch (Refused r) {
-            said = r.reason().getString();
+            said = r.reason();
             return false;
         }
     }
@@ -242,6 +225,37 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (plan.size() == 0) throw new Refused(Component.translatable("axiom.chromastudio.nothing_to_change"));
         return (x, y, z, _, admit, put) -> plan.change(level, x, y, z,
                 (ax, ay, az) -> admit.test(ax, ay, az) && (inBuild == null || inBuild.contains(BuildSearch.pack(ax, ay, az))), put);
+    }
+
+    /**
+     * The stroke's painter as the panel is set now: the mode, the palette and its blocks, From and how blocks match,
+     * read afresh each time, so the check before sending paints the stroke again with them, and sends nothing unless
+     * that comes out the same. {@code at} is the block the stroke started on, {@code seed} Scatter's choices for it,
+     * and {@code size} the ball's radius; with Radius set otherwise now, there's nothing to paint with.
+     */
+    private BrushStroke.@Nullable Painter painterNow(Level lvl, @Nullable BlockPos at, long seed, int size) throws Refused {
+        Palette to = current();
+        if (to == null || wholeBuild() || AxiomPanel.radius(radius) != size) return null;
+        if (mode == Mode.SCATTER) {
+            List<ScatterBlocks.Placed> blocks = ScatterBlocks.of(to).blocks();
+            if (blocks.isEmpty()) return null;
+            WeightedPick<ScatterBlocks.Placed> scatter = new WeightedPick<>(blocks, ScatterBlocks.Placed::weight);
+            // Painting over one half of a door or a tall plant would leave the other half on its own.
+            return (x, y, z, now, _, put) -> {
+                if (!now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
+            };
+        }
+        if (fromKey.equals(FROM_BUILD)) {
+            FoundBuild build = at == null ? null : FoundBuild.from(lvl, at);
+            if (build == null) throw new Refused(Component.translatable("axiom.chromastudio.not_build"));
+            showFound(build);
+            // With From set to This build, a stroke that reaches another build leaves it alone.
+            Set<Long> inBuild = new HashSet<>();
+            for (long b : build.blocks()) inBuild.add(b);
+            return recolour(lvl, RecolourPlan.of(to, build.kinds(), match), inBuild);
+        }
+        if (fromGone()) throw new Refused(Component.translatable("axiom.chromastudio.brush.from_gone"));
+        return recolour(lvl, RecolourPlan.of(to, from(), match), null);
     }
 
     private void showFound(FoundBuild build) {
@@ -279,6 +293,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             return;
         }
         if (stroke.active()) {
+            // Cleared here, as Axiom draws the tool every frame but its panel only while Tool Options is open.
+            dropped = false;
             stroke.render(rc);
             return;
         }
@@ -302,7 +318,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
                 from == null ? 0 : fromEdits.of(from), match, BlockIndex.get().version());
         // After a refused Apply, nothing is shown until the tool is used again.
         if (refused == null && !Objects.equals(key, previewFor)) {
-            makePreview(level, to, from);
+            makePreview(level);
             previewFor = key;
         }
         if (picked == null) {
@@ -315,48 +331,57 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     /**
      * Works out what recolouring the build at {@link #picked} would do and shows it in the world in place of the
-     * blocks there, with the blocks that change outlined.
+     * blocks there, with the blocks that change outlined. Apply works it out again by the same steps,
+     * {@link #wholeBuildNow}, so what it sends was made from the panel's choices as they are then.
      */
-    private void makePreview(ClientLevel level, @Nullable Palette to, @Nullable Palette from) {
+    void makePreview(ClientLevel level) {
         preview.clear();
-        if (picked == null || to == null || !ChromaStudioApi.indexReady()) return;
+        if (picked == null || current() == null || !ChromaStudioApi.indexReady()) return;
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
         said = null;
         if (fromGone()) {
-            said = tr("axiom.chromastudio.brush.from_gone");
+            said = Component.translatable("axiom.chromastudio.brush.from_gone");
             return;
         }
-        BlockPos at = picked;
-        boolean fromBuild = fromKey.equals(FROM_BUILD);
-        Palette shading = fromBuild ? null : from;
-        Recolour.Mode m = match;
         AxiomMask.Test mask = AxiomMask.now(level);
         WholeBuild made;
         try {
-            made = wholeBuild(level, at, to, shading, fromBuild, m, mask, queue);
+            made = wholeBuildNow(level, mask, queue);
         } catch (Refused r) {
-            said = r.reason().getString();
+            said = r.reason();
             return;
         }
         showFound(made.build());
         // A preview the masks failed while making could show blocks they were keeping out.
         if (mask.failed()) {
-            said = AxiomMask.unavailable().orElse(AxiomChanges.refusal(QueuedChanges.Refusal.MASK_FAILED)).getString();
+            said = AxiomMask.unavailable().orElse(AxiomChanges.refusal(QueuedChanges.Refusal.MASK_FAILED));
             return;
         }
         masked = made.masked();
         kindsBefore = made.kindsBefore();
         kindsAfter = made.kindsAfter();
-        boolean shown = preview.show(queue, made.outlined(), again -> {
+        boolean shown = preview.show(queue, mask, made.outlined(), again -> {
             QueuedChanges<BlockState> redone = new QueuedChanges<>(queue.origin());
             try {
-                wholeBuild(level, at, to, shading, fromBuild, m, again, redone);
+                wholeBuildNow(level, again, redone);
             } catch (Refused _) {
                 // Nothing to recolour now, which is never what the player saw.
             }
             return redone;
         });
-        if (!shown) said = tr("axiom.chromastudio.preview.busy");
+        if (!shown) said = Component.translatable("axiom.chromastudio.preview.busy");
+    }
+
+    /**
+     * Recolours the build at {@link #picked} into {@code into} as the panel is set now: the palette and its blocks,
+     * From and how blocks match, read afresh, with the build found again from the world.
+     */
+    private WholeBuild wholeBuildNow(Level level, QueuedChanges.Mask mask, QueuedChanges<BlockState> into) throws Refused {
+        Palette to = current();
+        boolean fromBuild = fromKey.equals(FROM_BUILD);
+        if (picked == null || to == null || !wholeBuild()) throw new Refused(Component.translatable("axiom.chromastudio.not_build"));
+        if (fromGone()) throw new Refused(Component.translatable("axiom.chromastudio.brush.from_gone"));
+        return wholeBuild(level, picked, to, fromBuild ? null : from(), fromBuild, match, mask, into);
     }
 
     /** What recolouring a whole build works out to: the build, the blocks outlined, and what the panel says of it. */
@@ -421,9 +446,10 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     }
 
     @Override
-    public void displayImguiOptions() { AxiomPanel.draw(this::panel); }
+    public void displayImguiOptions() { layout.draw(this::options, this::bottom); }
 
-    private void panel() {
+    /** What the brush paints with and how. Nothing here comes and goes with the mode, so no control moves when it changes. */
+    private void options() {
         List<Palette> all = palettes();
         Palette shown = current();
         boolean ready = ChromaStudioApi.indexReady();
@@ -437,12 +463,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (shown != null) {
             readSwatches(shown);
             AxiomPanel.swatches("swatch", swatches);
-            if (!anyInGame) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.empty"));
-            else if (mode == Mode.SCATTER && scattered != null && !scattered.leftOut().isEmpty()) {
-                AxiomPanel.note(tr("axiom.chromastudio.brush.left_out",
-                        scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "))));
-                AxiomPanel.tip(tr("axiom.chromastudio.brush.left_out.tip"));
-            }
         }
 
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.scatter"), mode == Mode.SCATTER, ready,
@@ -459,31 +479,41 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         if (AxiomPanel.radius(radius, !wholeBuild(), tr(wholeBuild() ? "axiom.chromastudio.radius.whole" : "axiom.chromastudio.radius.tip"))) remember();
         recolourOptions(all, recolour);
-        AxiomPanel.masks();
-
-        AxiomPanel.separator();
-        if (wholeBuild()) {
-            AxiomPanel.applyCancel(!preview.isEmpty(), tr("axiom.chromastudio.brush.apply.none"), picked != null, this::apply, this::reset, null);
+        // Notes that come and go, under every control so none moves; the bottom part keeps what must be read before acting.
+        if (shown != null && !anyInGame) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.empty"));
+        if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
+            AxiomPanel.note(tr("axiom.chromastudio.brush.left_out",
+                    scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "))));
+            AxiomPanel.tip(tr("axiom.chromastudio.brush.left_out.tip"));
         }
-        Component why = wholeBuild() ? refused : stroke.refused();
-        if (why != null) AxiomPanel.wrapped(why);
-        if (recolour && fromGone()) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.from_gone"));
-        else if (said != null) AxiomPanel.wrapped(said);
-        if (!wholeBuild()) {
-            AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
-        } else if (picked == null) {
-            if (said == null) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.pick"));
-        } else if (found != null && said == null && refused == null) {
-            AxiomPanel.wrapped(tr("axiom.chromastudio.count", preview.count(), found.blocks().length));
-            if (masked > 0) AxiomPanel.wrapped(tr("axiom.chromastudio.masked", masked));
-            AxiomPanel.note(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
-            if (found.capped()) AxiomPanel.wrapped(tr("axiom.chromastudio.capped", FoundBuild.CAP));
-        }
+        if (!wholeBuild()) AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
+        else if (picked != null && found != null && said == null && refused == null) AxiomPanel.note(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
         if (recolour && fromKey.equals(FROM_BUILD) && found != null) {
             // What the build the tool found holds, darkest first, as that sets the shading.
             AxiomPanel.note(tr("axiom.chromastudio.brush.found"));
             AxiomPanel.swatches("found", foundSwatches);
         }
+    }
+
+    /** What the player must read before painting or pressing Apply, and the buttons, held to the panel's bottom. */
+    private void bottom() {
+        boolean recolour = mode == Mode.RECOLOUR;
+        // Whether the masks bind the change is read before it's made, so it's never scrolled out of sight.
+        AxiomPanel.masks();
+        Component why = wholeBuild() ? refused : stroke.refused();
+        if (why == null && dropped && !wholeBuild()) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
+        if (why != null) AxiomPanel.wrapped(why);
+        if (recolour && fromGone()) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.from_gone"));
+        else if (said != null) AxiomPanel.wrapped(said);
+        if (!wholeBuild()) return;
+        if (picked == null) {
+            if (said == null) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.pick"));
+        } else if (found != null && said == null && refused == null) {
+            AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.count", found.blocks().length, preview.count(), found.blocks().length));
+            if (masked > 0) AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.masked", masked, masked));
+            if (found.capped()) AxiomPanel.wrapped(tr("axiom.chromastudio.capped", FoundBuild.CAP));
+        }
+        AxiomPanel.applyCancel(!preview.isEmpty(), tr("axiom.chromastudio.brush.apply.none"), picked != null, this::apply, this::reset, null);
     }
 
     private void setMode(Mode m) {

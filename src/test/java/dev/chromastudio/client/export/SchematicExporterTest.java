@@ -314,6 +314,7 @@ class SchematicExporterTest {
     private record Platform(Path gameDir) implements ClientPlatform {
         @Override public Path configDir() { return gameDir.resolve("config"); }
         @Override public boolean isModLoaded(String id) { return false; }
+        @Override public boolean isFabric() { return true; }
         @Override public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockStateModelPart> out) { }
         @Override public Material.Baked particleMaterial(BlockStateModel model, BlockState state) { return null; }
         @Override public void sendChatCommand(String command) { }

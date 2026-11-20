@@ -772,7 +772,7 @@ final class PaletteDialogs {
             boolean replaces = preview.filter(p -> p.replaced() > 0).isPresent();
             int over = Math.max(0, blocks - 9);
             Component text = over == 0 ? tr("palettes.chromastudio.hotbar.about", blocks)
-                    : preview.map(p -> about(over, p))
+                    : preview.map(p -> about(over, p, result != null))
                             .orElseGet(() -> tr("palettes.chromastudio.hotbar.about." + ModSettings.hotbarOverflowMode.name().toLowerCase(Locale.ROOT), over));
             // The result takes the description's place. A warning that the next fill replaces what the player keeps in
             // Axiom's hotbars keeps rows of its own at the bottom, in the warning colour, however long the result.
@@ -783,7 +783,8 @@ final class PaletteDialogs {
             int saidRows = result == null ? 0 : Math.min(said.size(), Math.max(1, fit - (warningRows > 0 ? warningRows + 1 : 0)));
             for (int i = 0; i < saidRows; i++) g.text(PanelTab.font(), said.get(i), in.x(), in.y() + i * 9, Theme.TEXT, false);
             int warningTop = in.y() + (saidRows > 0 ? (saidRows + 1) * 9 : 0);
-            int colour = replaces ? Theme.FAIR : Theme.DIM;
+            // Under a result, the warning is about filling again, not about what just happened, so it isn't coloured as one.
+            int colour = replaces && result == null ? Theme.FAIR : Theme.DIM;
             for (int i = 0; i < Math.min(warningRows, warning.size()); i++) g.text(PanelTab.font(), warning.get(i), in.x(), warningTop + i * 9, colour, false);
             // Whatever was cut is shown whole while the pointer is over the text.
             if ((said.size() > saidRows || warning.size() > warningRows) && mouseX >= in.x() && mouseX < in.right() && mouseY >= in.y() && mouseY < in.y() + fit * 9) {
@@ -817,8 +818,14 @@ final class PaletteDialogs {
 
         private static String reason(Optional<Component> why) { return why.map(Component::getString).orElse(""); }
 
-        /** What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to keep. */
-        private static Component about(int over, HotbarFill.AxiomPreview p) {
+        /**
+         * What a fill into Axiom's hotbars will do, and how many slots there it replaces, which the player may want to
+         * keep. Straight after a fill or undo, {@code again} says it of the next fill, as the slots it counts may hold
+         * what the fill just put there.
+         */
+        private static Component about(int over, HotbarFill.AxiomPreview p, boolean again) {
+            if (again && p.replaced() > 0) return p.replaced() == 1 ? tr("palettes.chromastudio.hotbar.about.axiom.again_one", p.hotbars())
+                    : tr("palettes.chromastudio.hotbar.about.axiom.again", p.hotbars(), p.replaced());
             if (p.replaced() == 0) return tr("palettes.chromastudio.hotbar.about.axiom", over, p.hotbars());
             return p.replaced() == 1 ? tr("palettes.chromastudio.hotbar.about.axiom.replaces_one", over, p.hotbars())
                     : tr("palettes.chromastudio.hotbar.about.axiom.replaces", over, p.hotbars(), p.replaced());
