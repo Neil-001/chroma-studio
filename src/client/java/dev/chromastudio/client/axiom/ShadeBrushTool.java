@@ -30,6 +30,7 @@ import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -103,10 +104,21 @@ final class ShadeBrushTool implements CustomTool {
 
     // Set for the length of one stroke.
     private ToolPatherUnique pather;
-    /** The shades as the stroke started, so a choice changed or an index rebuilt mid-stroke doesn't split it. */
+    /** The shades and choices as the stroke started, so a choice changed mid-stroke doesn't split it. */
     private @Nullable Plan strokePlan;
+    private Direction strokeDirection;
+    private Set<Kind> strokeKinds;
+    private double strokeShare;
     /** Which blocks a stroke at less than full strength changes, a new choice each stroke. */
     private long seed;
+    /**
+     * Each queued change by its position, {@link BlockPos#asLong}, so a block that changes
+     * before the stroke is let go, as one another player fills with a chest, is left out of the change.
+     */
+    private final Map<Long, Queued> queued = new HashMap<>();
+
+    /** A queued change: what the position held when the stroke reached it, and what it becomes. */
+    private record Queued(BlockState was, BlockState next) {}
 
     @Override
     public String name() { return tr("axiom.chromastudio.shade"); }
@@ -114,6 +126,7 @@ final class ShadeBrushTool implements CustomTool {
     @Override
     public void reset() {
         stroke.clear();
+        queued.clear();
         pather = null;
         strokePlan = null;
     }
@@ -124,6 +137,9 @@ final class ShadeBrushTool implements CustomTool {
         strokePlan = plan();
         if (strokePlan == null) return false;
         pather = AxiomTools.pathers.createUnique(radius[0], BallShape.SPHERE);
+        strokeDirection = direction;
+        strokeKinds = EnumSet.copyOf(kinds);
+        strokeShare = strength[0] / 100.0;
         seed = System.nanoTime();
         return true;
     }
@@ -144,23 +160,40 @@ final class ShadeBrushTool implements CustomTool {
             outline.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.BLUE | Effects.OUTLINE);
             return;
         }
-        if (!AxiomTools.tools.isMouseDown(USE_TOOL)) {
-            if (!stroke.isEmpty()) AxiomTools.tools.pushBlockRegionChange(stroke);
+        Plan p = strokePlan;
+        // The plan reads the index as it goes, so a stroke that outlives the index it began with is dropped whole
+        // rather than mixing two.
+        if (level == null || p == null || p.key.version() != BlockIndex.get().version()) {
             reset();
             return;
         }
-        Plan p = strokePlan;
-        if (level == null) return;
-        double share = strength[0] / 100.0;
+        if (!AxiomTools.tools.isMouseDown(USE_TOOL)) {
+            if (!stroke.isEmpty()) AxiomTools.tools.pushBlockRegionChange(unchanged(level));
+            reset();
+            return;
+        }
         pather.update((x, y, z) -> {
-            if (WeightedPick.unit(seed, x, y, z) >= share) return;
-            BlockState now = level.getBlockState(new BlockPos(x, y, z));
-            BlockState next = p.apply(now, direction, kinds);
-            if (next != null && next != now) stroke.addBlock(x, y, z, next);
+            if (WeightedPick.unit(seed, x, y, z) >= strokeShare) return;
+            BlockPos pos = new BlockPos(x, y, z);
+            BlockState now = level.getBlockState(pos);
+            BlockState next = p.apply(now, strokeDirection, strokeKinds);
+            if (next == null || next == now) return;
+            stroke.addBlock(x, y, z, next);
+            queued.put(pos.asLong(), new Queued(now, next));
         });
         // A slow pulse, as Axiom's own brushes show a stroke that hasn't been committed yet.
         float pulse = (float) Math.sin(rc.nanos() / 400_000_000.0);
         stroke.render(rc, Vec3.ZERO, 0.75f + pulse * 0.25f, 0.3f - pulse * 0.2f);
+    }
+
+    /** The stroke's changes at the positions that still hold what they held when the stroke reached them. */
+    private BlockRegion unchanged(ClientLevel level) {
+        BlockRegion out = AxiomTools.regions.createBlock();
+        queued.forEach((at, q) -> {
+            BlockPos pos = BlockPos.of(at);
+            if (level.getBlockState(pos) == q.was) out.addBlock(pos.getX(), pos.getY(), pos.getZ(), q.next);
+        });
+        return out;
     }
 
     @Override
@@ -336,7 +369,8 @@ final class ShadeBrushTool implements CustomTool {
                     BlockState state = PaletteBlocks.state(pe);
                     Entry e = state == null ? null : index.entryOf(state);
                     Entry base = e == null ? null : base(index, e);
-                    if (base == null || !paletteShade(base)) continue;
+                    // A kind the brush never changes, such as a trapdoor, lends nothing.
+                    if (base == null || !paletteShade(base) || !CHANGEABLE.contains(e.kind())) continue;
                     if (seen.add(base.block())) shades.add(base);
                     listed.computeIfAbsent(base.block(), _ -> EnumSet.noneOf(Kind.class)).add(e.kind());
                 }
