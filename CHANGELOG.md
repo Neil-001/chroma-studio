@@ -9,12 +9,12 @@ Chroma Studio now works with Axiom, the building editor, on Fabric. In Axiom's e
 - Lay a gradient across a build with the Chroma gradient tool in Axiom's editor: right-click where it starts and where it ends, see the result in the world, then Apply (#54)
 - Opened in Axiom's editor, Chroma Studio's window steps out of the editor and goes back when it closes. The eyedropper reads the block under the mouse there, and the export dialog says how to import a `.litematic` into Axiom (#55)
 - Recolour a build into a palette with the Chroma palette brush or a script, keeping its shading. Stairs, slabs and walls keep their shape, windows stay windows, and grass, dirt, sand and gravel are left alone unless you recolour from a palette that has them (#56)
-- Recolour a whole build at once, shaded by its own blocks, and limit the palette brush with Axiom's tool masks. Scatter places only whole blocks that stay put, and the brush remembers its choices (#57)
+- Recolour a whole build at once, shaded by its own blocks, and limit it with Axiom's tool masks. Scatter places only whole blocks that stay put, and the brush remembers its choices (#57)
 - Set how far the gradient tool blends its steps into each other, from hard bands to a fade across each step. Stairs, slabs, walls and fences take their step's block in the same shape (#58)
 - Shade a build lighter or darker with the Chroma shade brush, which turns each block into a near shade, close in hue and texture (#59)
 - Sample a build into a weighted palette with the Chroma build sampler, by brushing over it or taking the whole build (#60)
 - A recolour changes a door as a whole, so a door never ends up in two materials. A fill into Axiom's hotbars that fails partway names each slot it left changed, and Undo puts them back (#62)
-- TODO(P): the consistency PR
+- The Chroma tools in Axiom's editor each have their own icon, and the palette brush, gradient tool and shade brush all follow Axiom's tool masks. A stroke or Apply changes everything you saw, or nothing if something changed meanwhile. The gradient tool straightens ends that are nearly in line, and a `%` in a palette or block name shows as written (#63)
 
 ## Fixes
 

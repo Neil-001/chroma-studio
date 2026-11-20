@@ -48,6 +48,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - Use cyclers for options, so right-click steps backwards, and spinners for numbers. Make them through `Widgets`, which lets the mouse wheel step them. In a scrolling list, such as the settings or the Palettes tab's entries, use `Widgets.wheelNeedsClick`, so scrolling past a control doesn't change it.
 - Size buttons with the text's width. Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
 - Take colours from `Theme`, never a hex literal, apart from a colour that is data, such as a swatch, and the black and white marks drawn over one. The game's own tooltips and text fields stay dark on every theme, so text in them uses `Theme.TIP_*` and `Theme.FIELD_BAD`. Centre text with `Widgets.centred`.
+- A tool's panel in Axiom's editor is drawn by ImGui, not with `Widgets`. Draw it through `AxiomPanel`, which keeps these conventions there.
 - Use plain, sentence case UI copy without jargon.
 - Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
 - Visual fixes must preserve other behaviour. Prove it, for example by comparing pixels.
@@ -64,7 +65,7 @@ The mod never places or changes blocks in the world itself. It acts only through
 - Commands go through `ClientPlatform.sendChatCommand`, as if the player had typed them.
 - Exported files are never silently overwritten.
 
-The one exception is a tool the player is using in Axiom's editor. It hands its blocks to Axiom's `pushBlockRegionChange`, so Axiom's permissions, server checks and undo apply, and each stroke is one entry in Axiom's history. Nothing else changes the world, and nothing does so without the player's own click.
+The one exception is a tool the player is using in Axiom's editor. It hands its blocks through `AxiomChanges` to Axiom's `pushBlockRegionChange`, so Axiom's permissions, server checks and undo apply, and each stroke is one entry in Axiom's history. Nothing else changes the world, and nothing does so without the player's own click.
 
 ## Limits
 
