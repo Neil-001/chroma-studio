@@ -63,10 +63,12 @@ import org.jspecify.annotations.Nullable;
  * An Axiom brush that shades a build: each block it touches becomes its next shade a step darker or lighter, a block
  * close to it in hue and texture, such as stone bricks to tuff bricks, as {@link ShadeSteps} picks it. A stroke over
  * the same spot steps again, and a stroke the other way steps back. Shapes keep their shape, facing and half, through
- * the same {@link RecolourPlan} the recolour brush uses. Air, liquids, the ground, see-through blocks and blocks with
- * contents stay as they are, as does a block with no shade close enough that way.
+ * the same {@link RecolourPlan} the recolour brush uses. Air, liquids, the ground, see-through blocks, blocks with
+ * contents and full blocks that turn, such as logs, stay as they are, as does a block with no shade close enough that
+ * way.
  *
- * <p>The shades come from any building block, or only from a palette's, so the shading keeps to a build's materials.
+ * <p>The shades come from any building block, or only from a palette's, so the shading keeps to a build's materials;
+ * among a palette's blocks a step reaches as far as the palette's next block that way.
  * A stroke ({@link BrushStroke}) shows while the button is held and goes to Axiom as one change when it's let go, so
  * one undo takes it back. Every change keeps to the player's tool masks in Axiom ({@link AxiomMask}).
  */
@@ -342,7 +344,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
                 looks.add(look);
             }
             this.shades = kept;
-            this.steps = looks.isEmpty() ? null : new ShadeSteps(looks, key.step);
+            this.steps = looks.isEmpty() ? null : new ShadeSteps(looks, key.step, key.palette != null);
         }
 
         static Plan of(Key key, BlockIndex index, TintContext tint) {
@@ -383,6 +385,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         /** The key that says why {@link #apply} leaves a block as it is. */
         String whyLeft(BlockState here, Direction d, Set<Kind> kinds) {
             Entry e = index.entryOf(here);
+            if (e != null && turns(here, e.kind())) return "axiom.chromastudio.shade.left.turns";
             if (e == null || never(here, e)) return "axiom.chromastudio.shade.left.never";
             if (RecolourPlan.ground(here)) return "axiom.chromastudio.shade.left.ground";
             if (!kinds.contains(e.kind())) return "axiom.chromastudio.shade.left.kind";
@@ -396,11 +399,25 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             return e;
         }
 
-        /** Air, liquids, blocks with contents, see-through blocks and technical ones, which no shading touches. */
+        /**
+         * Air, liquids, blocks with contents, see-through blocks, technical ones and blocks that turn, which no
+         * shading touches.
+         */
         private static boolean never(BlockState here, Entry e) {
             // Liquids are of their own kind, which isn't one the brush changes.
             return here.isAir() || here.getBlock() instanceof EntityBlock || e.technical() || !CHANGEABLE.contains(e.kind())
-                    || e.kind() == Kind.FULL && !e.opaque();
+                    || e.kind() == Kind.FULL && !e.opaque() || turns(here, e.kind());
+        }
+
+        /**
+         * Whether a full block turns, as a log or glazed terracotta does, and so shows another face once turned. Its
+         * colour is read from one face of one way round, so a step judged by it could make a turned one darker when
+         * asked for lighter. Such a block is neither shaded nor a shade. Stairs and the like turn too, but they take
+         * their full block's shade.
+         */
+        private static boolean turns(BlockState s, Kind kind) {
+            return kind == Kind.FULL && (s.hasProperty(BlockStateProperties.AXIS) || s.hasProperty(BlockStateProperties.HORIZONTAL_FACING)
+                    || s.hasProperty(BlockStateProperties.FACING));
         }
 
         /** The recolour that takes a block to its next shade that way, made once per block. */
@@ -471,10 +488,13 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             return null;
         }
 
-        /** Whether a palette's block may be a shade: a solid full block that stays put and has nothing inside. */
+        /**
+         * Whether a palette's block may be a shade: a solid full block that stays put, has nothing inside, and doesn't
+         * turn ({@link #turns}).
+         */
         private static boolean paletteShade(Entry e) {
             Block b = e.block();
-            return e.kind() == Kind.FULL && e.opaque() && !(b instanceof EntityBlock) && !(b instanceof Fallable);
+            return e.kind() == Kind.FULL && e.opaque() && !(b instanceof EntityBlock) && !(b instanceof Fallable) && !turns(e.state(), e.kind());
         }
 
         /**
@@ -488,9 +508,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             BlockState s = e.state();
             return paletteShade(e) && !e.technical() && !e.creativeOnly() && !e.lightSource() && !RecolourPlan.ground(s)
                     && !(b instanceof WeatheringCopper) && !s.isSignalSource() && !s.is(BlockTags.BEACON_BASE_BLOCKS) && !STORAGE.contains(b)
-                    && s.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) >= 0
-                    && !s.hasProperty(BlockStateProperties.AXIS) && !s.hasProperty(BlockStateProperties.HORIZONTAL_FACING)
-                    && !s.hasProperty(BlockStateProperties.FACING) && !e.id().contains("chiseled");
+                    && s.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) >= 0 && !e.id().contains("chiseled");
         }
 
         /**

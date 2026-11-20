@@ -23,6 +23,12 @@ import java.util.function.IntPredicate;
  * only ever a step from another such block, so a wall brushed lighter never grows moss. A decorated block may still
  * step to a plain one.
  *
+ * <p>Steps among a palette's blocks reach further. Choosing a palette tells the brush which blocks to use, and a
+ * palette rarely has a block one small step from each of its others: Desert's next block darker than sandstone is
+ * yellow terracotta, a long step that is flatter and more orange. So among a palette's blocks a step may be as long as
+ * it takes, as short as can be seen, of any texture or family, and stray twice as far in hue and chroma. It still never turns a
+ * grey to a colour, stone to wood, or a plain block to a decorated one.
+ *
  * <p>What it answers never changes after it is made, so any number of threads may ask it at once.
  */
 public final class ShadeSteps {
@@ -47,6 +53,10 @@ public final class ShadeSteps {
     private static final double SHORTEST = 0.5, LONGEST = 2.5, VISIBLE = 0.025;
     // How much worse than the closest step a partner may be and still be taken, so that the steps undo each other.
     private static final double PARTNER_SLACK = 0.75;
+    // How far a step among a palette's blocks may stray in hue and chroma. Sandstone to yellow terracotta is 0.025 in
+    // hue and 0.063 in chroma, and to red sandstone 0.064 and 0.075, while sandstone to prismarine, a tan to a teal,
+    // is 0.088 in hue.
+    private static final double PALETTE_MAX_HUE = 0.08, PALETTE_CHROMA_SHARE = 0.6;
 
     /** Which way a step goes. */
     public enum Direction {
@@ -86,13 +96,22 @@ public final class ShadeSteps {
     private final List<Look> blocks;
     private final Oklch[] lch;
     private final double step;
+    /** Whether the blocks are a palette's, whose steps reach further. */
+    private final boolean palette;
     // Each block's lighter and darker partner, or -1.
     private final int[] lighter, darker;
 
-    /** @param step the lightness one step aims for, held within {@link #MIN_STEP} and {@link #MAX_STEP} */
-    public ShadeSteps(List<Look> blocks, double step) {
+    /** Steps among any building blocks, as {@link #ShadeSteps(List, double, boolean)} with no palette. */
+    public ShadeSteps(List<Look> blocks, double step) { this(blocks, step, false); }
+
+    /**
+     * @param step the lightness one step aims for, held within {@link #MIN_STEP} and {@link #MAX_STEP}
+     * @param palette whether the blocks are a palette's the player chose, among which a step reaches further
+     */
+    public ShadeSteps(List<Look> blocks, double step, boolean palette) {
         this.blocks = List.copyOf(blocks);
         this.step = Math.clamp(step, MIN_STEP, MAX_STEP);
+        this.palette = palette;
         int n = blocks.size();
         lch = new Oklch[n];
         for (int i = 0; i < n; i++) lch[i] = blocks.get(i).colour().oklch();
@@ -169,21 +188,22 @@ public final class ShadeSteps {
 
     /**
      * How far {@code light} is from being the next shade up from {@code dark}, the same whichever way it's asked, so
-     * the pairs mirror. Infinite when it's too short or long a step, or strays too far in hue, chroma or texture.
+     * the pairs mirror. Infinite when it's too short or long a step, or strays too far in hue, chroma or texture;
+     * among a palette's blocks, only when it can't be seen or strays too far in hue or chroma.
      */
     private double cost(Look dark, Oklch d, Look light, Oklch l) {
         double rise = l.l() - d.l();
-        if (rise < Math.max(VISIBLE, SHORTEST * step) || rise > LONGEST * step) return Double.POSITIVE_INFINITY;
+        if (rise < (palette ? VISIBLE : Math.max(VISIBLE, SHORTEST * step)) || !palette && rise > LONGEST * step) return Double.POSITIVE_INFINITY;
         double hue = hueDistance(d, l), chroma = Math.abs(l.c() - d.c()), spread = Math.abs(light.spread() - dark.spread());
-        double maxChroma = Math.max(MIN_CHROMA_CHANGE, CHROMA_SHARE * Math.max(d.c(), l.c()));
-        if (hue > MAX_HUE || chroma > maxChroma || spread > MAX_SPREAD) return Double.POSITIVE_INFINITY;
+        double maxChroma = Math.max(MIN_CHROMA_CHANGE, (palette ? PALETTE_CHROMA_SHARE : CHROMA_SHARE) * Math.max(d.c(), l.c()));
+        if (hue > (palette ? PALETTE_MAX_HUE : MAX_HUE) || chroma > maxChroma || !palette && spread > MAX_SPREAD) return Double.POSITIVE_INFINITY;
         // A grey stays a grey, however little colour the other has: polished blackstone bricks never darken to
         // cracked nether bricks. And stone never turns to wood.
         if (d.c() < Tone.MIN_CHROMA != l.c() < Tone.MIN_CHROMA || !dark.material().equals(light.material())) return Double.POSITIVE_INFINITY;
         double off = (rise - step) / step;
         boolean sameFamily = !dark.family().isEmpty() && dark.family().equals(light.family());
         return off * off + square(hue / HUE_SCALE) + square(chroma / CHROMA_SCALE) + square(spread / SPREAD_SCALE)
-                + (sameFamily ? 0 : OTHER_FAMILY) + (dark.shaped() == light.shaped() ? 0 : OTHER_SHAPES);
+                + (sameFamily || palette ? 0 : OTHER_FAMILY) + (dark.shaped() == light.shaped() ? 0 : OTHER_SHAPES);
     }
 
     /** How far apart two colours' hues put them, as ΔE 2000's ΔH does: by the angle, scaled by both chromas. */

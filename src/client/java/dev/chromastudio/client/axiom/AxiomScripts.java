@@ -38,11 +38,23 @@ final class AxiomScripts {
      */
     static Script recolour(Palette to, @Nullable Palette from, Recolour.Mode mode) throws Refused {
         RecolourPlan plan = RecolourPlan.of(to, from, mode);
-        if (plan.size() == 0) throw new Refused(Component.translatable("axiom.chromastudio.nothing_to_change"));
+        if (plan.size() == 0) {
+            // When it's because the palette already has the blocks, the player is told so.
+            MutableComponent why = Component.translatable("axiom.chromastudio.nothing_to_change");
+            throw new Refused(plan.kept() == 0 ? why : why.append(" ").append(kept(plan)));
+        }
         String title = from == null ? to.name : from.name + " to " + to.name;
-        return made(AxiomScript.recolour(title, plan.rows()), Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped()),
+        Script made = made(AxiomScript.recolour(title, plan.rows()), Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped()),
                 from == null ? "axiom.chromastudio.long.from" : "axiom.chromastudio.long.brush",
                 from == null ? "axiom.chromastudio.too_long.from" : "axiom.chromastudio.too_long");
+        // A build mostly of the palette's own blocks hardly changes, which would look like the script failing. It goes
+        // last, after the note on servers' limit, which the dialog is sized to show.
+        return plan.kept() == 0 ? made : new Script(made.text(), made.summary().copy().append(" ").append(kept(plan)));
+    }
+
+    /** How many kinds of block a recolour leaves as they are because the palette already has them. */
+    private static Component kept(RecolourPlan plan) {
+        return Component.translatable(plan.kept() == 1 ? "axiom.chromastudio.recolour.kept.one" : "axiom.chromastudio.recolour.kept", plan.kept());
     }
 
     /** A brush that paints the palette's blocks at random by weight. */

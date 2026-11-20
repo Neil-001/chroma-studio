@@ -13,6 +13,7 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Recolour;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -72,10 +73,13 @@ final class RecolourPlan {
 
     private final Map<Block, Change> changes;
     private final int unshaped;
+    /** The blocks that stay as they are because the palette already has them, in their shape or as their full block. */
+    private final Set<Block> kept;
 
-    private RecolourPlan(Map<Block, Change> changes, int unshaped) {
+    private RecolourPlan(Map<Block, Change> changes, int unshaped, Set<Block> kept) {
         this.changes = changes;
         this.unshaped = unshaped;
+        this.kept = kept;
     }
 
     /** {@link #of(Palette, Palette, Recolour.Mode, Face, TintContext)} with the face and biome the settings match by. */
@@ -126,6 +130,7 @@ final class RecolourPlan {
         for (Source s : sources(index, from, mode, face, tint)) sources.computeIfAbsent(group(s.entry.kind()), _ -> new ArrayList<>()).add(s);
 
         Map<Block, Change> changes = new IdentityHashMap<>();
+        Set<Block> kept = Collections.newSetFromMap(new IdentityHashMap<>());
         int unshaped = 0;
         for (Map.Entry<Kind, List<Source>> g : sources.entrySet()) {
             List<Target> group = new ArrayList<>(targets.getOrDefault(g.getKey(), Map.of()).values());
@@ -163,12 +168,18 @@ final class RecolourPlan {
                     continue;
                 }
                 BlockState target = PaletteBlocks.state(shaped.get(picked));
-                if (target == null || target == source.entry.block().defaultBlockState()) continue;
+                if (target == null) continue;
+                // The same block in another state, such as a log the palette lists lying on its side, becomes itself,
+                // as it keeps its own properties.
+                if (target.getBlock() == source.entry.block()) {
+                    kept.add(source.entry.block());
+                    continue;
+                }
                 // The row names the block as the game writes it, so the script reads it as the brush does.
                 changes.put(source.entry.block(), new Change(PaletteBlocks.of(target), target, shared(source.entry.block(), target.getBlock())));
             }
         }
-        return new RecolourPlan(changes, unshaped);
+        return new RecolourPlan(changes, unshaped, kept);
     }
 
     /** A palette block that a recolour may give: its state, the entry to place, and how it takes part. */
@@ -272,6 +283,12 @@ final class RecolourPlan {
 
     /** How many blocks are left alone because no palette block has their shape or, for glass, can be seen through. */
     int unshaped() { return unshaped; }
+
+    /** Whether a block stays as it is because the palette already has it, so the player can be told why. */
+    boolean keeps(BlockState here) { return kept.contains(here.getBlock()); }
+
+    /** How many kinds of block stay as they are because the palette already has them. */
+    int kept() { return kept.size(); }
 
     /** The group a block is matched in: shapes with their full blocks, and every other kind with its own. */
     private static Kind group(Kind kind) { return SHAPED.contains(kind) ? Kind.FULL : kind; }

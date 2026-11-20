@@ -124,8 +124,11 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private @Nullable Object previewFor;
     /** Count edits to the palettes the preview is made from, so it's made again when one is. */
     private final Edits toEdits = new Edits(), fromEdits = new Edits();
-    /** How many kinds of block the previewed build has now, and will have once recoloured, and how many blocks the masks keep out. */
-    private int kindsBefore, kindsAfter, masked;
+    /**
+     * How many kinds of block the previewed build has now, and will have once recoloured, how many blocks the masks
+     * keep out, and how many stay as they are because the palette already has them.
+     */
+    private int kindsBefore, kindsAfter, masked, kept;
 
     // The panel's view of the palettes, made again only when they change.
     private List<Palette> listed = List.of();
@@ -360,6 +363,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         masked = made.masked();
         kindsBefore = made.kindsBefore();
         kindsAfter = made.kindsAfter();
+        kept = kept(level, made.build());
         boolean shown = preview.show(queue, mask, made.outlined(), again -> {
             QueuedChanges<BlockState> redone = new QueuedChanges<>(queue.origin());
             try {
@@ -382,6 +386,26 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (picked == null || to == null || !wholeBuild()) throw new Refused(Component.translatable("axiom.chromastudio.not_build"));
         if (fromGone()) throw new Refused(Component.translatable("axiom.chromastudio.brush.from_gone"));
         return wholeBuild(level, picked, to, fromBuild ? null : from(), fromBuild, match, mask, into);
+    }
+
+    /**
+     * How many of a build's blocks stay as they are because the palette already has them, which the panel says, as a
+     * build mostly of the palette's own blocks hardly changes and the player should know why. Only what the player
+     * reads: what changes is worked out by {@link #wholeBuild}.
+     */
+    private int kept(Level level, FoundBuild build) {
+        Palette to = current();
+        if (to == null) return 0;
+        RecolourPlan plan;
+        try {
+            plan = RecolourPlan.of(to, fromKey.equals(FROM_BUILD) ? build.kinds() : from(), match);
+        } catch (Refused _) {
+            return 0;
+        }
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        int n = 0;
+        for (long p : build.blocks()) if (plan.keeps(level.getBlockState(pos.set(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p))))) n++;
+        return n;
     }
 
     /** What recolouring a whole build works out to: the build, the blocks outlined, and what the panel says of it. */
@@ -486,8 +510,12 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
                     scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "))));
             AxiomPanel.tip(tr("axiom.chromastudio.brush.left_out.tip"));
         }
-        if (!wholeBuild()) AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
-        else if (picked != null && found != null && said == null && refused == null) AxiomPanel.note(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
+        if (!wholeBuild()) {
+            AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
+            // A stroke over blocks the palette already has changes nothing, which would look like the brush failing.
+            // Closest colour may still swap a block for one of the same colour listed first, so it says nothing.
+            if (recolour && match == Recolour.Mode.SHADING) AxiomPanel.note(tr("axiom.chromastudio.brush.keeps"));
+        } else if (picked != null && found != null && said == null && refused == null) AxiomPanel.note(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
         if (recolour && fromKey.equals(FROM_BUILD) && found != null) {
             // What the build the tool found holds, darkest first, as that sets the shading.
             AxiomPanel.note(tr("axiom.chromastudio.brush.found"));
@@ -510,6 +538,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             if (said == null) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.pick"));
         } else if (found != null && said == null && refused == null) {
             AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.count", found.blocks().length, preview.count(), found.blocks().length));
+            if (kept > 0) AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.brush.kept", kept, kept));
             if (masked > 0) AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.masked", masked, masked));
             if (found.capped()) AxiomPanel.wrapped(tr("axiom.chromastudio.capped", FoundBuild.CAP));
         }

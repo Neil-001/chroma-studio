@@ -593,8 +593,9 @@ final class PaletteDialogs {
 
         /** A recolour or scatter of a palette. */
         Axiom(Palette palette) {
-            // Room for the summary, the script's size and the note on servers' limit, which is the part a player most needs.
-            super(tr("axiom.chromastudio.title"), 300, 140 + PanelTab.ROW + 18);
+            // Room for the summary, the script's size and the note on servers' limit, which is the part a player most needs,
+            // and a line for the blocks the palette already has.
+            super(tr("axiom.chromastudio.title"), 300, 140 + PanelTab.ROW + 27);
             this.palette = palette;
             this.gradientName = null;
             this.steps = null;
