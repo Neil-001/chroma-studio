@@ -48,8 +48,8 @@ import org.jspecify.annotations.Nullable;
  * An Axiom brush that paints with one of Chroma Studio's palettes. Scatter fills the brush's ball with the palette's
  * blocks, each as often as its weight says, as {@link ScatterBlocks} has them, but not over a block that holds items,
  * such as a chest. Recolour changes each block the ball touches as a recolour script into the palette would, through
- * the same {@link RecolourPlan}, and so leaves the ground, air and liquids alone. A stroke ({@link BrushStroke}) shows while the button is held and goes to Axiom as one
- * change when it's let go, so one undo takes it back.
+ * the same {@link RecolourPlan}, and so leaves the ground, air and liquids alone. A stroke ({@link BrushStroke}) shows
+ * while the button is held and goes to Axiom as one change when it's let go, so one undo takes it back.
  *
  * <p>Recolour can also take a whole build at once: used on a block, the tool finds the build joined to it
  * ({@link FoundBuild}) and shows it recoloured ({@link BuildPreview}), and Apply sends it to Axiom as one change, as

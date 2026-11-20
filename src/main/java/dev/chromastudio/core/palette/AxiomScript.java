@@ -249,8 +249,9 @@ public final class AxiomScript {
      * anything, so it goes by what it can ask: a block with no collision, one with one of {@link #KEPT_BY_PROPERTY},
      * such as a stair, slab, wall, door or chest, or with a property or tag of {@code kept}, such as a turtle egg or a
      * flower pot, is left alone, where the tool would give a stair the step's stair; and so is each block
-     * {@code kept} names, which the tool leaves and those checks miss, such as a jukebox or a brewing stand. Unlike the tool, it paints any other
-     * solid block the brush reaches, not only one build. Every step must be a full block, which the caller sees to.
+     * {@code kept} names, which the tool leaves and those checks miss, such as a jukebox. Unlike the tool, it paints
+     * any other solid block the brush reaches, not only one build. Every step must be a full block, which the caller
+     * sees to.
      */
     public static String gradient(String title, List<PaletteEntry> steps, Axis axis, int start, int length, Kept kept) {
         if (steps.size() < 2) throw new IllegalArgumentException("A gradient needs at least two steps");
