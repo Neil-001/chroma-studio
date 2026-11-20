@@ -186,9 +186,6 @@ final class FakeAxiom {
             if (!c.compiled) {
                 c.compiled = true;
                 ToolMaskWindow.luaExecutionError = null;
-        set(ToolMaskWindow.class, null, "lastLuaCompile", 0L);
-        MaskManager.useLuaScript = false;
-        MaskManager.luaScript = null;
             }
             asked.add(c.x);
             if (c.broken) return false;

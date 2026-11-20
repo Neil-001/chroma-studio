@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -67,21 +68,28 @@ final class AxiomMask {
     }
 
     /**
-     * Masks that answer as {@code before} did wherever it was asked, and as {@code now} elsewhere, to tell whether the
-     * masks alone changed a plan. Only for choosing what the player is told: it decides nothing about sending.
+     * Whether the masks alone changed a plan: {@code again} made with the answers {@code before} gave, and the fresh
+     * ones {@code now} gave where {@code before} wasn't asked, comes out as {@code plan}. It never asks the masks
+     * anything new, as that could run a script again and leave an error behind, so a plan that needs an answer
+     * neither gave isn't put down to the masks. Only for choosing what the player is told: it decides nothing about
+     * sending.
      */
-    static QueuedChanges.Mask answeringAs(Test before, Test now) {
-        Map<Long, Boolean> answers = before.answers();
-        return new QueuedChanges.Mask() {
+    static boolean aloneChanged(QueuedChanges<BlockState> plan, Test before, Test now, QueuedChanges.Plan<BlockState> again) {
+        Map<Long, Boolean> was = before.answers(), fresh = now.answers();
+        boolean[] unknown = {false};
+        QueuedChanges<BlockState> redone = again.make(new QueuedChanges.Mask() {
             @Override
             public boolean allows(int x, int y, int z) {
-                Boolean was = answers.get(BuildSearch.pack(x, y, z));
-                return was != null ? was : now.allows(x, y, z);
+                long p = BuildSearch.pack(x, y, z);
+                Boolean a = was.containsKey(p) ? was.get(p) : fresh.get(p);
+                if (a == null) unknown[0] = true;
+                return a != null && a;
             }
 
             @Override
             public boolean failed() { return false; }
-        };
+        });
+        return !unknown[0] && plan.sameAs(redone);
     }
 
     private static final Test FAILED = new Fixed(false, true);

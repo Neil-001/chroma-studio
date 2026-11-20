@@ -584,6 +584,35 @@ class AxiomCommitTest {
         }
     }
 
+    @Test
+    void tellingThePlayerWhyNeverRunsTheMasksAgain() throws Exception {
+        BlockState lower = TestIndex.block("oak_door").defaultBlockState().setValue(DoorBlock.FACING, Direction.EAST)
+                .setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER);
+        axiom.level.put(0, 0, 0, lower);
+        Palette spruce = new Palette("Spruce");
+        spruce.entries.add(new PaletteEntry("minecraft:spruce_planks", ""));
+        // The stroke's context lets everything through; the check's keeps the lower half out and would fail on the
+        // upper, which the check never asks about.
+        Map<MaskContext, Integer> contexts = new IdentityHashMap<>();
+        MaskManager.mask = c -> {
+            if (contexts.computeIfAbsent(c, _ -> contexts.size()) == 0) return true;
+            if (c.y == 1) ToolMaskWindow.luaExecutionError = "attempt to compare nil with number";
+            return false;
+        };
+        BrushStroke stroke = new BrushStroke();
+        stroke.start(axiom.level, AxiomChanges.queue(axiom.level), 1, level -> {
+            RecolourPlan plan = RecolourPlan.of(spruce, null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
+            return (x, y, z, _, admit, put) -> plan.change(level, x, y, z, admit, put);
+        });
+        frame(stroke, true, at(0));
+        axiom.level.put(0, 1, 0, lower.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER));
+        frame(stroke, false);
+        assertEquals(List.of(), axiom.tools.pushed);
+        assertEquals(FakeAxiom.refusal("changed"), stroke.refused());
+        // Choosing the words asked nothing new, so no script ran to leave an error for the next stroke.
+        assertNull(ToolMaskWindow.luaExecutionError);
+    }
+
     /** A tool with a preview, as the whole-build tools have, which it puts away when Axiom picks another tool. */
     private static final class PreviewTool implements CustomTool, GuardedTool.PutAway {
         final BuildPreview preview = new BuildPreview("test");
