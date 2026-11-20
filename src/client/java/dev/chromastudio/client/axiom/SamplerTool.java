@@ -185,7 +185,7 @@ final class SamplerTool implements CustomTool {
         if (name == null) name = new ImString(tr("axiom.chromastudio.sampler.default_name"), 64);
         boolean brush = mode == Mode.BRUSH;
         if (AxiomPanel.radio(tr("axiom.chromastudio.sampler.brush"), brush, true, tr("axiom.chromastudio.sampler.brush.tip"))) mode = Mode.BRUSH;
-        AxiomPanel.sameLine();
+        AxiomPanel.besideChoice(tr("axiom.chromastudio.whole_build"));
         if (AxiomPanel.radio(tr("axiom.chromastudio.whole_build"), !brush, true, tr("axiom.chromastudio.sampler.build.tip"))) mode = Mode.BUILD;
         AxiomPanel.radius(radius, brush, tr(brush ? "axiom.chromastudio.radius.tip" : "axiom.chromastudio.radius.whole"));
         if (AxiomPanel.checkbox(tr("axiom.chromastudio.sampler.ground"), ground && brush, brush,
@@ -197,7 +197,7 @@ final class SamplerTool implements CustomTool {
         ImGui.inputText(tr("axiom.chromastudio.sampler.name"), name);
         if (AxiomPanel.button(tr("axiom.chromastudio.sampler.save"), !empty && !saved, empty ? tr("axiom.chromastudio.sampler.save.empty")
                 : saved ? tr("axiom.chromastudio.sampler.save.done", savedAs.name) : tr("axiom.chromastudio.sampler.save.tip", BuildSample.MAX_WEIGHT))) save();
-        AxiomPanel.sameLine();
+        AxiomPanel.besideButton(tr("axiom.chromastudio.sampler.open"));
         if (AxiomPanel.button(tr("axiom.chromastudio.sampler.open"), !empty, tr(empty ? "axiom.chromastudio.sampler.save.empty" : "axiom.chromastudio.sampler.open.tip"))
                 && (saved || save())) {
             PaletteStore.get().select(savedAs);
@@ -217,7 +217,7 @@ final class SamplerTool implements CustomTool {
         int total = sample.total();
         ImGui.alignTextToFramePadding();
         AxiomPanel.text(tr("axiom.chromastudio.sampler.total", total, rows.size()));
-        AxiomPanel.sameLine();
+        AxiomPanel.besideButton(tr("axiom.chromastudio.sampler.clear"));
         if (AxiomPanel.button(tr("axiom.chromastudio.sampler.clear"), true, tr("axiom.chromastudio.sampler.clear.tip"))) {
             sample.clear();
             changed();

@@ -171,7 +171,7 @@ final class ShadeBrushTool implements CustomTool {
 
         for (Direction d : List.of(Direction.DARKER, Direction.LIGHTER)) {
             String key = "axiom.chromastudio.shade." + d.name().toLowerCase(Locale.ROOT);
-            if (d == Direction.LIGHTER) AxiomPanel.sameLine();
+            if (d == Direction.LIGHTER) AxiomPanel.besideChoice(tr(key));
             if (AxiomPanel.radio(tr(key), direction == d, true, tr(key + ".tip"))) direction = d;
         }
         AxiomPanel.radius(radius, true, tr("axiom.chromastudio.radius.tip"));

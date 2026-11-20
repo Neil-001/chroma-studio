@@ -403,7 +403,7 @@ final class PaletteBrushTool implements CustomTool {
 
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.scatter"), mode == Mode.SCATTER, ready,
                 tr(ready ? "axiom.chromastudio.brush.scatter.tip" : "axiom.chromastudio.not_ready"))) setMode(Mode.SCATTER);
-        AxiomPanel.sameLine();
+        AxiomPanel.besideChoice(tr("axiom.chromastudio.brush.recolour"));
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.recolour"), recolour, ready,
                 tr(ready ? "axiom.chromastudio.brush.recolour.tip" : "axiom.chromastudio.not_ready"))) setMode(Mode.RECOLOUR);
         if (AxiomPanel.checkbox(tr("axiom.chromastudio.whole_build"), wholeBuild, recolour,
@@ -467,8 +467,9 @@ final class PaletteBrushTool implements CustomTool {
         ImGui.endDisabled();
         AxiomPanel.tip(tr(recolour ? "axiom.chromastudio.brush.from.tip" : "axiom.chromastudio.from.na"));
         for (Recolour.Mode m : Recolour.Mode.values()) {
-            if (m.ordinal() > 0) AxiomPanel.sameLine();
-            if (AxiomPanel.radio(tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT)), match == m, recolour,
+            String label = tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT));
+            if (m.ordinal() > 0) AxiomPanel.besideChoice(label);
+            if (AxiomPanel.radio(label, match == m, recolour,
                     tr(recolour ? "axiom.chromastudio.match.tip" : "axiom.chromastudio.from.na"))) {
                 match = m;
                 remember();

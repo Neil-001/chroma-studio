@@ -181,24 +181,38 @@ final class AxiomPanel {
         });
     }
 
-    /** Apply and Cancel, as a whole-build tool has them, with {@code between} drawn between the two. */
+    /** Apply and Cancel, as a whole-build tool has them, with {@code between} drawn between the two, placed with {@link #besideButton}. */
     static void applyCancel(boolean canApply, String applyWhyNot, boolean canCancel, Runnable apply, Runnable cancel, @Nullable Runnable between) {
+        String cancelLabel = tr("axiom.chromastudio.cancel");
         if (button(tr("axiom.chromastudio.apply"), canApply, canApply ? tr("axiom.chromastudio.apply.tip") : applyWhyNot)) {
             apply.run();
             // The panel would keep the keyboard after the click, and Axiom's undo key would go to it rather than to
             // Axiom, when undo is the first thing a builder reaches for after Apply.
             ImGui.setWindowFocus(null);
         }
-        if (between != null) {
-            ImGui.sameLine();
-            between.run();
-        }
-        ImGui.sameLine();
-        if (button(tr("axiom.chromastudio.cancel"), canCancel, tr(canCancel ? "axiom.chromastudio.cancel.tip" : "axiom.chromastudio.cancel.none"))) cancel.run();
+        if (between != null) between.run();
+        besideButton(cancelLabel);
+        if (button(cancelLabel, canCancel, tr(canCancel ? "axiom.chromastudio.cancel.tip" : "axiom.chromastudio.cancel.none"))) cancel.run();
     }
 
     /** A separator between a panel's choices and its buttons. */
     static void separator() { ImGui.separator(); }
 
     static void sameLine() { ImGui.sameLine(); }
+
+    /**
+     * Puts the next button on the line of the last control when it fits there, or on a line of its own, so a longer
+     * translation wraps rather than running off the panel's edge.
+     */
+    static void besideButton(String label) { beside(ImGui.calcTextSizeX(label, true) + ImGui.getStyle().getFramePaddingX() * 2); }
+
+    /** As {@link #besideButton}, for a radio button or checkbox: its box, the gap after it, and its label. */
+    static void besideChoice(String label) {
+        beside(ImGui.getFrameHeight() + ImGui.getStyle().getItemInnerSpacingX() + ImGui.calcTextSizeX(label, true));
+    }
+
+    private static void beside(float width) {
+        float right = ImGui.getItemRectMaxX() + ImGui.getStyle().getItemSpacingX() + width;
+        if (right <= ImGui.getWindowPosX() + ImGui.getWindowContentRegionMaxX()) ImGui.sameLine();
+    }
 }

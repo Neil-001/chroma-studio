@@ -295,6 +295,7 @@ final class GradientTool implements CustomTool {
         boolean ready = BlockIndex.get().ready();
         AxiomPanel.applyCancel(!preview.isEmpty(), tr(second != null && !ready ? "axiom.chromastudio.not_ready" : "axiom.chromastudio.gradient_tool.apply.none"),
                 first != null, this::apply, this::reset, () -> {
+                    AxiomPanel.besideButton(tr("axiom.chromastudio.gradient_tool.swap"));
                     if (AxiomPanel.button(tr("axiom.chromastudio.gradient_tool.swap"), second != null,
                             tr(second == null ? "axiom.chromastudio.gradient_tool.swap.none" : "axiom.chromastudio.gradient_tool.swap.tip"))) reversed = !reversed;
                 });
