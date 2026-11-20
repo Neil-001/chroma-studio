@@ -77,7 +77,11 @@ public final class AxiomBridge {
     private static void fail(Throwable t) {
         ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
         broken = Component.translatable("axiom.chromastudio.incompatible");
-        AxiomTools.shutDown();
+        try {
+            AxiomTools.shutDown();
+        } catch (Throwable _) {
+            // Axiom's classes may be what's missing, before any tool could be put away; then there's none to put away.
+        }
     }
 
     // Axiom's editor, which Chroma Studio's window steps out of while it's open.

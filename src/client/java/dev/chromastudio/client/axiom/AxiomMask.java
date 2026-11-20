@@ -37,7 +37,11 @@ final class AxiomMask {
 
     private static final Test EVERY_BLOCK = new Fixed(true, false), FAILED = new Fixed(false, true);
 
-    private record Handles(MethodHandle destMask, MethodHandle context, MethodHandle setPosition, MethodHandle test) {}
+    /**
+     * @param luaError Axiom's last Lua mask error: a mask's script that fails makes Axiom answer "no" for that block,
+     *                 and say so only here, so an answer given just before the failure would otherwise look trusted
+     */
+    private record Handles(MethodHandle destMask, MethodHandle context, MethodHandle setPosition, MethodHandle test, MethodHandle luaError) {}
 
     private static final String MANAGER = "com.moulberry.axiom.mask.MaskManager";
 
@@ -50,7 +54,8 @@ final class AxiomMask {
                 return new Handles(lookup.findStatic(manager, "getDestMask", MethodType.methodType(element)),
                         lookup.findConstructor(context, MethodType.methodType(void.class, Level.class)),
                         lookup.findVirtual(context, "setPosition", MethodType.methodType(void.class, int.class, int.class, int.class)),
-                        lookup.findVirtual(element, "test", MethodType.methodType(boolean.class, context)));
+                        lookup.findVirtual(element, "test", MethodType.methodType(boolean.class, context)),
+                        lookup.findStaticGetter(Class.forName("com.moulberry.axiom.editor.windows.global_mask.ToolMaskWindow"), "luaExecutionError", String.class));
             });
 
     /** Whether this Axiom has no tool masks at all, as an older one might not, rather than masks this version can't read. */
@@ -84,10 +89,11 @@ final class AxiomMask {
     static Test now(Level level) {
         if (INTERNALS.reason().isPresent()) return none() ? EVERY_BLOCK : FAILED;
         Handles h = INTERNALS.handles();
-        Object mask, context;
+        Object mask, context, errorBefore;
         try {
             mask = h.destMask.invoke();
             context = h.context.invoke(level);
+            errorBefore = h.luaError.invoke();
         } catch (Throwable t) {
             INTERNALS.failed(t);
             return FAILED;
@@ -109,7 +115,14 @@ final class AxiomMask {
             private boolean ask(int x, int y, int z) {
                 try {
                     h.setPosition.invoke(context, x, y, z);
-                    return (boolean) h.test.invoke(mask, context);
+                    boolean allows = (boolean) h.test.invoke(mask, context);
+                    // A new Lua error, a string Axiom makes afresh each time, fails the whole stroke or preview, as a throw does.
+                    Object error = h.luaError.invoke();
+                    if (error != null && error != errorBefore) {
+                        failed = true;
+                        return false;
+                    }
+                    return allows;
                 } catch (Throwable t) {
                     INTERNALS.failed(t);
                     failed = true;
