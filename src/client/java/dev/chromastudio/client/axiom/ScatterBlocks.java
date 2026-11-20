@@ -11,7 +11,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.minecraft.world.level.block.AbstractCauldronBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CandleCakeBlock;
+import net.minecraft.world.level.block.ComposterBlock;
 import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.Fallable;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -24,6 +29,8 @@ import org.jspecify.annotations.Nullable;
  * none, such as a lantern, a carpet or a flower, is left out: a flower or petals in the air break and drop as items.
  * So are blocks that hold items, such as chests, and blocks that fall, such as sand and concrete powder, which would
  * pour out of the ball. Leaves are placed persistent, as a player's own are, so they don't decay and drop saplings.
+ * Where it paints, Scatter leaves alone what it would spoil: a block that holds items, text or what a player put in it
+ * ({@link #paintsOver}).
  */
 record ScatterBlocks(List<Placed> blocks, List<PaletteEntry> leftOut) {
     /** A block Scatter places, and how often. */
@@ -59,6 +66,19 @@ record ScatterBlocks(List<Placed> blocks, List<PaletteEntry> leftOut) {
         if (!SHAPES.contains(e.kind())) return null;
         for (Entry m : index.materialSet(e)) if (m.kind() == Kind.FULL) return m.state();
         return null;
+    }
+
+    /**
+     * Whether Scatter may put a block where {@code now} stands: not over a block that holds items or other data, such
+     * as a chest, a sign or a brewing stand, nor one that may hold what a player put in it, as a flower pot holds a
+     * plant, a cake a candle, a cauldron water or lava and a composter compost, or a waterlogged block water, as they
+     * would be lost; nor over one half of a door or a tall plant, which would leave the other half on its own.
+     */
+    static boolean paintsOver(BlockState now) {
+        Block b = now.getBlock();
+        return !(b instanceof EntityBlock || b instanceof FlowerPotBlock || b instanceof CandleCakeBlock || b instanceof AbstractCauldronBlock
+                || b instanceof ComposterBlock) && !now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)
+                && !(now.hasProperty(BlockStateProperties.WATERLOGGED) && now.getValue(BlockStateProperties.WATERLOGGED));
     }
 
     /** Leaves that won't decay. Any other block as it is. */

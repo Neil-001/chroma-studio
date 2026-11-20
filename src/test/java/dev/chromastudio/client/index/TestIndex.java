@@ -6,16 +6,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.VanillaPackResourcesBuilder;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.tags.TagLoader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -28,14 +33,24 @@ public final class TestIndex {
 
     private static ResourceManager resources;
 
-    /** Loads the game's registries and its vanilla textures, once. */
+    /**
+     * Loads the game's registries with the vanilla block tags bound, as a world has them, and its vanilla textures,
+     * once. Without the tags, a check such as whether a block is sand would say no to every block.
+     */
     public static void loadGame() {
         if (resources != null) return;
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
-        resources = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, List.of(new VanillaPackResourcesBuilder()
-                .exposeNamespace("minecraft").pushJarResources()
-                .build(new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty())).fullResources()));
+        try (MultiPackResourceManager data = new MultiPackResourceManager(PackType.SERVER_DATA, List.of(vanilla()))) {
+            TagLoader.loadTagsForExistingRegistries(data, RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY))
+                    .stream().filter(t -> t.key().equals(Registries.BLOCK)).forEach(Registry.PendingTags::apply);
+        }
+        resources = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, List.of(vanilla()));
+    }
+
+    private static PackResources vanilla() {
+        return new VanillaPackResourcesBuilder().exposeNamespace("minecraft").pushJarResources()
+                .build(new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty())).fullResources();
     }
 
     /** A vanilla block by its id's path. */

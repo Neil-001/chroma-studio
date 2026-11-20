@@ -46,9 +46,18 @@ class AxiomScriptsTest {
         keys(script.summary(), keys);
         assertTrue(keys.contains("axiom.chromastudio.gradient.done[7, y]"), keys.toString());
         assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped[2]"), keys.toString());
-        // Without the chest, as the saved gradient has it, the script fits what a server lets a player run.
-        AxiomBridge.Script seven = AxiomScripts.gradient("Tower", tower.subList(0, 8), AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
-        assertTrue(AxiomScript.counted(seven.text()) < AxiomScript.SERVER_LIMIT, AxiomScript.counted(seven.text()) + " " + AxiomScripts.kept());
+        // One left out is said in the singular.
+        keys.clear();
+        keys(AxiomScripts.gradient("Tower", tower.subList(0, 3), AxiomScript.Axis.Y, BlockPos.ZERO).summary(), keys);
+        assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped.one[1]"), keys.toString());
+        // Naming every block the tool leaves that holds something, potted plants included, takes more room than a
+        // server lets a player without import rights run, even for two steps, and the summary says so.
+        AxiomBridge.Script two = AxiomScripts.gradient("Tower", tower.subList(2, 4), AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
+        for (AxiomBridge.Script made : List.of(script, two)) {
+            keys.clear();
+            keys(made.summary(), keys);
+            assertTrue(keys.contains("axiom.chromastudio.long[" + AxiomScript.SERVER_LIMIT + "]"), keys.toString());
+        }
     }
 
     @Test
@@ -57,7 +66,7 @@ class AxiomScriptsTest {
         Palette p = new Palette("Mixed");
         p.entries.addAll(steps("stone", "oak_stairs", "lantern"));
         AxiomBridge.Script script = AxiomScripts.scatter(p);
-        assertTrue(script.text().contains("\"oak_planks\"") && script.text().contains("\"stone\""), script.text());
+        assertTrue(script.text().contains("blocks.oak_planks") && script.text().contains("blocks.stone"), script.text());
         assertFalse(script.text().contains("oak_stairs") || script.text().contains("lantern"), script.text());
         List<String> keys = new ArrayList<>();
         keys(script.summary(), keys);
@@ -66,11 +75,13 @@ class AxiomScriptsTest {
     }
 
     @Test
-    void theGradientScriptNamesTheFullBlocksThatHoldItemsWhichItsPropertiesMiss() {
-        List<String> kept = AxiomScripts.kept();
-        // A jukebox and a spawner have no way they face; a barrel, which faces a way, is left alone by that.
-        assertTrue(kept.contains("minecraft:jukebox") && kept.contains("minecraft:spawner"), kept.toString());
-        assertFalse(kept.contains("minecraft:barrel") || kept.contains("minecraft:stone"), kept.toString());
+    void theGradientScriptNamesTheBlocksThatHoldItemsWhichItsOtherChecksMiss() {
+        AxiomScript.Kept kept = AxiomScripts.gradientKept();
+        // A jukebox and a spawner have no way they face, so they're named; a barrel, which faces a way, is left alone by
+        // that, a player head by its rotation, and a brewing stand by a property only it has.
+        assertTrue(kept.blocks().contains("minecraft:jukebox") && kept.blocks().contains("minecraft:spawner"), kept.toString());
+        assertFalse(kept.blocks().contains("minecraft:barrel") || kept.blocks().contains("minecraft:player_head") || kept.blocks().contains("minecraft:stone"), kept.toString());
+        assertTrue(kept.properties().contains("has_bottle_0"), kept.toString());
     }
 
     /** The translation keys in a message, with their arguments. */
