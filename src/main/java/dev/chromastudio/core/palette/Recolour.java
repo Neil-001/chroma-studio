@@ -201,29 +201,36 @@ public final class Recolour {
             if (heaviest < 0) main = -1;
         }
         // best[s][k][j]: the least cost for shades 0..k with shade k on block j and s pairs of shades sharing a block;
-        // back[s][k][j] the block shade k-1 took.
+        // back[s][k][j] the block shade k-1 took, the first among equal costs, and one of its own only when that costs
+        // less. Shade k-1 on an earlier block is the cheapest of a running minimum, so each cell costs the same
+        // however many blocks the palette has.
         double[][][] best = new double[shares + 1][shades][n];
         int[][][] back = new int[shares + 1][shades][n];
         for (int k = 0; k < shades; k++) {
             double share = build.amount(k) / build.total();
-            for (int j = 0; j < n; j++) {
-                boolean pinned = shades > 1 && (k == 0 && j != 0 || k == shades - 1 && j != n - 1) || k == main && j != heaviest;
-                double fit = share * away(at[k], from[j], to[j]);
-                for (int s = 0; s <= shares; s++) {
+            for (int s = 0; s <= shares; s++) {
+                double earlier = Double.POSITIVE_INFINITY;
+                int earlierAt = 0;
+                for (int j = 0; j < n; j++) {
+                    if (k > 0 && j > 0 && best[s][k - 1][j - 1] < earlier) {
+                        earlier = best[s][k - 1][j - 1];
+                        earlierAt = j - 1;
+                    }
                     best[s][k][j] = Double.POSITIVE_INFINITY;
+                    boolean pinned = shades > 1 && (k == 0 && j != 0 || k == shades - 1 && j != n - 1) || k == main && j != heaviest;
                     if (pinned) continue;
+                    double fit = share * away(at[k], from[j], to[j]);
                     if (k == 0) {
                         if (s == 0) best[s][k][j] = fit;
                         continue;
                     }
-                    for (int i = 0; i <= j; i++) {
-                        int had = i == j ? s - 1 : s;
-                        if (had < 0 || best[had][k - 1][i] == Double.POSITIVE_INFINITY) continue;
-                        double cost = best[had][k - 1][i] + fit;
-                        if (cost < best[s][k][j]) {
-                            best[s][k][j] = cost;
-                            back[s][k][j] = i;
-                        }
+                    if (earlier != Double.POSITIVE_INFINITY) {
+                        best[s][k][j] = earlier + fit;
+                        back[s][k][j] = earlierAt;
+                    }
+                    if (s > 0 && best[s - 1][k - 1][j] != Double.POSITIVE_INFINITY && best[s - 1][k - 1][j] + fit < best[s][k][j]) {
+                        best[s][k][j] = best[s - 1][k - 1][j] + fit;
+                        back[s][k][j] = j;
                     }
                 }
             }
