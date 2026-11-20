@@ -447,7 +447,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             for (Face f : faces) spread += e.face(f, tint).spread() / faces.size();
             boolean shaped = false;
             for (Entry m : index.materialSet(e)) shaped |= SHAPES.contains(m.kind());
-            return new ShadeSteps.Look(colour.get(), spread, family(e.id()), material(e.state()), shaped);
+            return new ShadeSteps.Look(colour.get(), spread, family(e.id()), material(e.state()), shaped, ShadeSteps.decorated(e.id()));
         }
 
         /** What a block is made of, as the tool that mines it says: stone, wood, earth or soft growth, or none, as wool. */

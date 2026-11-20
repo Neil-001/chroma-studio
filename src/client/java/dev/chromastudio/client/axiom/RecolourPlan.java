@@ -15,6 +15,7 @@ import dev.chromastudio.core.palette.Recolour;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -122,14 +123,17 @@ final class RecolourPlan {
         if (anyFull) for (Target t : targets.getOrDefault(Kind.FULL, Map.of()).values()) t.onlyShapes = !t.listed;
 
         Map<Kind, List<Source>> sources = new EnumMap<>(Kind.class);
-        for (Source s : sources(index, from, face, tint)) sources.computeIfAbsent(group(s.entry.kind()), _ -> new ArrayList<>()).add(s);
+        for (Source s : sources(index, from, mode, face, tint)) sources.computeIfAbsent(group(s.entry.kind()), _ -> new ArrayList<>()).add(s);
 
         Map<Block, Change> changes = new IdentityHashMap<>();
         int unshaped = 0;
         for (Map.Entry<Kind, List<Source>> g : sources.entrySet()) {
             List<Target> group = new ArrayList<>(targets.getOrDefault(g.getKey(), Map.of()).values());
             List<Recolour.Look> looks = new ArrayList<>();
-            for (Target t : group) looks.add(look(index, t.state, face, tint, t.weight));
+            for (Target t : group) {
+                Recolour.Look look = look(index, t.state, face, tint, t.weight);
+                looks.add(look == null ? null : new Recolour.Look(look.colour(), look.seeThrough(), look.weight(), null, id(t.state.getBlock())));
+            }
             // A palette block whose colour couldn't be read, as one an index rebuild has just dropped, sits out.
             for (int j = group.size() - 1; j >= 0; j--) {
                 if (looks.get(j) != null) continue;
@@ -274,19 +278,51 @@ final class RecolourPlan {
 
     /**
      * The blocks a recolour may change, one a block: those of {@code from}, looked at in the state it lists them in
-     * and weighted as it weights them, or every block the index holds, each once. Each knows its family, so variants
-     * share a shade and different materials don't. Blocks with a block entity, such as chests and signs, technical
+     * and weighted as it weights them, with the shapes of each full block it lists, or every block the index holds,
+     * each once. Each knows its family, so variants share a shade and different materials don't, and which block it
+     * is, so a block the palette has is known. Blocks with a block entity, such as chests and signs, technical
      * blocks, the ground without a From palette, kinds a palette can't recolour, such as plants, and blocks whose
      * colour couldn't be read are left out.
+     *
+     * <p>To keep the shading, a shape, such as a stair or a door, counts as its material's full block, as a palette
+     * sampled from a build counts it: it takes that block's shade and changes with it, so the build itself and a
+     * palette sampled from it as From give the same blocks.
      */
-    private static List<Source> sources(BlockIndex index, @Nullable Palette from, Face face, TintContext tint) {
+    private static List<Source> sources(BlockIndex index, @Nullable Palette from, Recolour.Mode mode, Face face, TintContext tint) {
         // Each block with how much of the build it is: every block in the game counts once, and a From palette's
-        // blocks by their weights, which for a palette made from a build are how many of each it has.
+        // blocks by their weights, which for a palette made from a build are how many of each it has. A full block
+        // it lists brings its shapes along, which add nothing, as its weight already counts them.
         Map<BlockState, Integer> weights = new LinkedHashMap<>();
         if (from == null) for (Entry e : index.entries()) weights.putIfAbsent(e.block().defaultBlockState(), 1);
-        else for (PaletteEntry pe : from.entries) {
-            BlockState state = PaletteBlocks.state(pe);
-            if (state != null) weights.putIfAbsent(state, pe.weight());
+        else {
+            for (PaletteEntry pe : from.entries) {
+                BlockState state = PaletteBlocks.state(pe);
+                if (state != null) weights.putIfAbsent(state, pe.weight());
+            }
+            for (BlockState state : List.copyOf(weights.keySet())) {
+                Entry e = index.entryOf(state);
+                if (e == null || e.kind() != Kind.FULL) continue;
+                for (Entry m : index.materialSet(e)) if (m.kind() != Kind.FULL && SHAPED.contains(m.kind())) weights.putIfAbsent(m.block().defaultBlockState(), 0);
+            }
+        }
+        // To keep the shading, a From palette's shape counts toward its full block, which joins the blocks that change
+        // if the palette lacks it, as a palette sampled from the build counts it: the build and its sample then find
+        // the same main material. Every block in the game counts once as it is, so none of them is a main material.
+        if (mode == Recolour.Mode.SHADING && from != null) {
+            Map<Block, BlockState> full = new HashMap<>();
+            for (BlockState state : weights.keySet()) full.putIfAbsent(state.getBlock(), state);
+            Map<BlockState, Integer> folded = new LinkedHashMap<>();
+            for (Map.Entry<BlockState, Integer> w : weights.entrySet()) {
+                Entry e = index.entryOf(w.getKey());
+                Entry base = e == null || e.kind() == Kind.FULL || e.kind() == Kind.GLASS ? null : base(index, e);
+                if (base == null) {
+                    folded.merge(w.getKey(), w.getValue(), Integer::sum);
+                    continue;
+                }
+                folded.merge(full.getOrDefault(base.block(), base.state()), w.getValue(), Integer::sum);
+                folded.putIfAbsent(w.getKey(), 0);
+            }
+            weights = folded;
         }
         List<Source> out = new ArrayList<>();
         Set<Block> seen = new HashSet<>();
@@ -297,11 +333,16 @@ final class RecolourPlan {
             Entry e = index.entryOf(state);
             if (e == null || block instanceof EntityBlock || e.technical() || from == null && ground(state)) continue;
             if (!SHAPED.contains(e.kind()) && !takesPart(e)) continue;
-            Recolour.Look look = look(index, from == null ? e.state() : state, face, tint, w.getValue());
-            if (look != null) out.add(new Source(e, new Recolour.Look(look.colour(), look.seeThrough(), look.weight(), index.family(e))));
+            Entry as = mode == Recolour.Mode.SHADING && e.kind() != Kind.FULL && e.kind() != Kind.GLASS ? base(index, e) : null;
+            if (as == null) as = e;
+            Recolour.Look look = look(index, as != e || from == null ? as.state() : state, face, tint, w.getValue());
+            if (look != null) out.add(new Source(e, new Recolour.Look(look.colour(), look.seeThrough(), look.weight(), index.family(as), id(as.block()))));
         }
         return out;
     }
+
+    /** A block's id, as the palette names it. */
+    private static String id(Block block) { return PaletteBlocks.of(block.defaultBlockState()).blockId(); }
 
     /** Whether a block of a kind that keeps to its own takes part in a recolour. */
     private static boolean takesPart(Entry e) { return OWN_KIND.contains(e.kind()) && (e.kind() != Kind.LIGHT || e.fullCube()); }

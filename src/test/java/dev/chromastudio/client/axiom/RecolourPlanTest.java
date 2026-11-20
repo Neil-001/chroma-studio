@@ -165,9 +165,11 @@ class RecolourPlanTest {
         // Without a From palette, grass is left alone by its tag, which only a world loads, so the game shows that.
         RecolourPlan from = RecolourPlan.of(desert(), palette("Garden", "grass_block", "stone_bricks"), Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
         assertNotNull(from.apply(TestIndex.block("grass_block").defaultBlockState()));
-        // A From palette limits the recolour to its own blocks.
+        // A From palette limits the recolour to its own blocks, with the shapes of the full blocks it lists, as a
+        // palette sampled from a build counts a stair as its full block: grass, stone bricks and their stairs and slabs.
         assertNull(from.apply(TestIndex.block("cobblestone").defaultBlockState()));
-        assertEquals(2, from.size());
+        assertNotNull(from.apply(TestIndex.block("stone_brick_stairs").defaultBlockState()));
+        assertEquals(4, from.size(), from.rows().toString());
     }
 
     @Test
