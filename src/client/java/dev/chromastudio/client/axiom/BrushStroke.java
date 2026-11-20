@@ -50,12 +50,12 @@ final class BrushStroke {
     private @Nullable Component refused;
 
     /** Starts a stroke with a ball of {@code radius}. */
-    void start(ClientLevel level, int radius) {
+    void start(ClientLevel level, QueuedChanges<BlockState> queue, int radius) {
         cancel();
         refused = null;
         this.level = level;
         pather = AxiomTools.pathers.createUnique(radius, BallShape.SPHERE);
-        queued = AxiomChanges.queue(level);
+        queued = queue;
         mask = AxiomMask.now(level);
         drawn = System.nanoTime();
     }
@@ -113,10 +113,11 @@ final class BrushStroke {
 
     /**
      * Called every client tick. Axiom never tells a tool that its editor closed or that another tool was picked, so a
-     * stroke it has stopped drawing is dropped here; one still held when the editor comes back would otherwise be made.
+     * stroke it has stopped drawing is dropped here, as is one when the editor has just closed; one still held when
+     * the editor comes back would otherwise be made.
      */
-    void tick() {
-        if (pather != null && System.nanoTime() - drawn > PUT_AWAY) {
+    void tick(boolean closed) {
+        if (pather != null && (closed || System.nanoTime() - drawn > PUT_AWAY)) {
             refused = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
             cancel();
         }

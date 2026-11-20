@@ -29,9 +29,9 @@ final class BuildPreview {
     BuildPreview(String id) { this.id = id; }
 
     /** Starts a new preview in {@code level}, with the tool masks as they are now. */
-    void begin(ClientLevel level) {
+    void begin(ClientLevel level, QueuedChanges<BlockState> queue) {
         clear();
-        queued = AxiomChanges.queue(level);
+        queued = queue;
         mask = AxiomMask.now(level);
         AxiomTools.tools.acquireChunkRenderOverrider(id);
         overriding = true;
@@ -82,12 +82,12 @@ final class BuildPreview {
     }
 
     /**
-     * Called every client tick. Drops the preview once Axiom has stopped drawing the tool, as when the player leaves
-     * the editor or picks another tool, neither of which Axiom tells a tool about: the world would otherwise go on
-     * showing blocks that aren't there. Returns whether it did, so the tool can make it again when it's back.
+     * Called every client tick. Drops the preview when the editor has just closed, or once Axiom has stopped drawing
+     * the tool, as when the player picks another tool, which Axiom doesn't tell a tool about: the world would otherwise
+     * go on showing blocks that aren't there. Returns whether it did, so the tool can make it again when it's back.
      */
-    boolean tick() {
-        if (!overriding || System.nanoTime() - drawn <= BrushStroke.PUT_AWAY) return false;
+    boolean tick(boolean closed) {
+        if (!overriding || !closed && System.nanoTime() - drawn <= BrushStroke.PUT_AWAY) return false;
         clear();
         return true;
     }

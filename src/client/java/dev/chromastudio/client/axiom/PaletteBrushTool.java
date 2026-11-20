@@ -17,6 +17,7 @@ import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.palette.BuildSearch;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.palette.QueuedChanges;
 import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.WeightedPick;
 import imgui.moulberry92.ImGui;
@@ -158,6 +159,7 @@ final class PaletteBrushTool implements CustomTool {
         if (to == null || !ChromaStudioApi.indexReady()) return false;
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return false;
+        QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
         said = null;
         refused = null;
         stroke.forget();
@@ -217,7 +219,7 @@ final class PaletteBrushTool implements CustomTool {
             painter = (x, y, z, _, admit, put) -> plan.change(level, x, y, z,
                     (ax, ay, az) -> admit.test(ax, ay, az) && (inBuild == null || inBuild.contains(BuildSearch.pack(ax, ay, az))), put);
         }
-        stroke.start(level, AxiomPanel.radius(radius));
+        stroke.start(level, queue, AxiomPanel.radius(radius));
         return true;
     }
 
@@ -250,9 +252,9 @@ final class PaletteBrushTool implements CustomTool {
     }
 
     /** Called every client tick. The block the tool was used on is kept, so the preview comes back with the tool. */
-    void tick() {
-        stroke.tick();
-        if (preview.tick()) previewFor = null;
+    void tick(boolean closed) {
+        stroke.tick(closed);
+        if (preview.tick(closed)) previewFor = null;
     }
 
     private boolean wholeBuild() { return mode == Mode.RECOLOUR && wholeBuild; }
@@ -306,6 +308,7 @@ final class PaletteBrushTool implements CustomTool {
     private void makePreview(ClientLevel level, @Nullable Palette to, @Nullable Palette from) {
         preview.clear();
         if (picked == null || to == null || !ChromaStudioApi.indexReady()) return;
+        QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
         said = null;
         FoundBuild build = FoundBuild.from(level, picked);
         if (build == null) {
@@ -324,7 +327,7 @@ final class PaletteBrushTool implements CustomTool {
             said = r.reason().getString();
             return;
         }
-        preview.begin(level);
+        preview.begin(level, queue);
         masked = 0;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         Set<Block> before = new HashSet<>(), after = new HashSet<>();

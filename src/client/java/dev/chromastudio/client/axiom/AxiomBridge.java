@@ -51,6 +51,13 @@ public final class AxiomBridge {
     /** Whether Axiom is here and Chroma Studio's features in it work. */
     private static boolean usable() { return whyNot().isEmpty(); }
 
+    /** Throws for a call that would reach Axiom once its features are off, as the hotbar calls' callers expect. */
+    private static void live() {
+        whyNot().ifPresent(why -> {
+            throw new IllegalStateException(why.getString());
+        });
+    }
+
     /**
      * Adds {@code /chroma axiom}, on every client, and the tools to Axiom's editor when Axiom is here. Call once while
      * the client starts, after Axiom's own entrypoint, so its tool list is there to add to. Anything that goes wrong
@@ -149,13 +156,22 @@ public final class AxiomBridge {
     public static void hotbarsFailed(Throwable t) { AxiomHotbars.failed(t); }
 
     /** The hotbar the player holds now. */
-    public static int activeHotbar() throws Throwable { return AxiomHotbars.active(); }
+    public static int activeHotbar() throws Throwable {
+        live();
+        return AxiomHotbars.active();
+    }
 
     /** A copy of what one slot of a hotbar holds, the active one included. */
-    public static ItemStack hotbarItem(int hotbar, int slot) throws Throwable { return AxiomHotbars.get(hotbar, slot); }
+    public static ItemStack hotbarItem(int hotbar, int slot) throws Throwable {
+        live();
+        return AxiomHotbars.get(hotbar, slot);
+    }
 
     /** Sets one slot of a hotbar other than the active one, which callers write as the player's own hotbar. */
-    public static void setHotbarItem(int hotbar, int slot, ItemStack stack) throws Throwable { AxiomHotbars.set(hotbar, slot, stack); }
+    public static void setHotbarItem(int hotbar, int slot, ItemStack stack) throws Throwable {
+        live();
+        AxiomHotbars.set(hotbar, slot, stack);
+    }
 
     /** The key that opens Axiom's menu of hotbars, as the player has it bound, or Left Alt, its default. */
     public static Component hotbarKey() { return AxiomHotbars.switchKey(); }

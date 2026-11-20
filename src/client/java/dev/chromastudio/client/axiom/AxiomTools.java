@@ -52,13 +52,15 @@ final class AxiomTools {
 
     /** Called every client tick, for the tools to notice what Axiom doesn't tell them. */
     static void tick() {
-        // When this Axiom can't say whether its editor is open, the tools' own check on being drawn stands alone.
-        boolean open = !AxiomEditor.known() || AxiomEditor.active();
-        if (wasOpen && !open) visit++;
+        // Whether the editor is switched on changes at once, where Axiom says it's active a frame late. When this Axiom
+        // can't say either, the tools' own check on being drawn stands alone.
+        boolean open = !AxiomEditor.known() || AxiomEditor.enabled();
+        boolean closed = wasOpen && !open;
+        if (closed) visit++;
         wasOpen = open;
-        brush.tick();
-        gradient.tick();
-        shade.tick();
+        brush.tick(closed);
+        gradient.tick(closed);
+        shade.tick(closed);
     }
 
     /** Which visit to Axiom's editor this is. */

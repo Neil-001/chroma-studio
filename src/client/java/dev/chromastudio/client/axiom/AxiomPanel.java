@@ -128,8 +128,14 @@ final class AxiomPanel {
         return slider(tr("axiom.chromastudio.radius"), radius, 0, ModSettings.BRUSH_MAX_RADIUS, "%d", enabled, tip);
     }
 
-    /** A brush's radius held to what the slider offers, for one that's read without the panel being drawn. */
-    static int radius(int[] radius) { return radius[0] = Math.clamp(radius[0], 0, ModSettings.BRUSH_MAX_RADIUS); }
+    /**
+     * A slider's value held to what it offers, for a tool that reads it: the panel may not have been drawn since it was
+     * set, and a value typed in or remembered could be anything.
+     */
+    static int held(int[] value, int min, int max) { return value[0] = Math.clamp(value[0], min, max); }
+
+    /** A brush's radius held to what the slider offers. */
+    static int radius(int[] radius) { return held(radius, 0, ModSettings.BRUSH_MAX_RADIUS); }
 
     /**
      * A list to choose one from, under its heading, up to {@link #LIST_ROWS} rows tall. Returns the row clicked, or -1.

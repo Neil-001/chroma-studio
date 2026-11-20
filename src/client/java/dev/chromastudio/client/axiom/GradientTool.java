@@ -15,12 +15,12 @@ import dev.chromastudio.client.ui.tabs.GradientTab;
 import dev.chromastudio.core.palette.BuildSearch;
 import dev.chromastudio.core.palette.GradientLine;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.palette.QueuedChanges;
 import dev.chromastudio.core.palette.StoredGradient;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
@@ -79,12 +79,16 @@ final class GradientTool implements CustomTool {
     /** The world the ends are in. */
     private @Nullable ClientLevel endsIn;
 
-    /** The build between the ends and the line through them, found again only when what it's found from changes. */
+    /**
+     * Whether Swap ends has turned the gradient round. The line stays where it is, as straightening anchors it on the
+     * first end, so turning it round changes only which way the steps run, never which blocks it covers.
+     */
+    private boolean reversed;
+    /** The build between the ends and the line through them, as the preview on show found them. */
     private BuildSearch.@Nullable Found found;
     private @Nullable GradientLine line;
-    private @Nullable Object foundFor;
-    /** What the preview on show was painted for, so it's painted again only when something changes. */
-    private @Nullable Object paintedFor;
+    /** What the preview on show was made for, so it's made again only when something changes. */
+    private @Nullable Object previewFor;
     /** What the preview found: the blocks it covers, those it leaves as they are, and those the tool masks keep out. */
     private int covered, leftAlone, masked;
     /** Why the last Apply didn't go, until the next use or Apply. */
@@ -103,6 +107,7 @@ final class GradientTool implements CustomTool {
         second = null;
         seed = null;
         endsIn = null;
+        reversed = false;
         refused = null;
         clearPreview();
     }
@@ -112,8 +117,7 @@ final class GradientTool implements CustomTool {
         ends.clear();
         found = null;
         line = null;
-        foundFor = null;
-        paintedFor = null;
+        previewFor = null;
         covered = leftAlone = masked = 0;
     }
 
@@ -125,6 +129,8 @@ final class GradientTool implements CustomTool {
         if (endsIn != level) reset();
         endsIn = level;
         refused = null;
+        // The preview for the old ends goes at once, so Apply can't send it before the new one has been made.
+        clearPreview();
         BlockPos at = hit.getBlockPos().immutable();
         if (first == null) {
             first = at;
@@ -152,8 +158,8 @@ final class GradientTool implements CustomTool {
     }
 
     /** Called every client tick. The ends are kept when the preview is dropped, so it comes back with the tool. */
-    void tick() {
-        if (preview.tick()) foundFor = paintedFor = null;
+    void tick(boolean closed) {
+        if (preview.tick(closed)) previewFor = null;
     }
 
     @Override
@@ -163,17 +169,11 @@ final class GradientTool implements CustomTool {
         // The ends belong to the world they were set in, so a trip to another dimension or server doesn't carry them over.
         if (first != null && endsIn != level) reset();
         Choice choice = current(choices());
-        Object search = second == null || !BlockIndex.get().ready() ? null
-                : Arrays.asList(first, second, seed, likeFirst, reach[0], BlockIndex.get().version());
-        if (!Objects.equals(search, foundFor)) {
-            find(level);
-            foundFor = search;
-            paintedFor = null;
-        }
-        Object paint = Arrays.asList(foundFor, choice == null ? null : choice.steps(), blend[0]);
-        if (!paint.equals(paintedFor)) {
-            paint(level, choice);
-            paintedFor = paint;
+        Object key = Arrays.asList(choice == null ? null : choice.steps(), first, second, seed, reversed, likeFirst,
+                AxiomPanel.held(reach, 1, MAX_REACH), AxiomPanel.held(blend, 0, 100), BlockIndex.get().version());
+        if (!key.equals(previewFor)) {
+            preview(level, choice);
+            previewFor = key;
         }
         if (second == null) {
             BlockHitResult hit = AxiomTools.tools.raycastBlock();
@@ -186,7 +186,8 @@ final class GradientTool implements CustomTool {
 
     /**
      * Finds the build between the ends: only blocks of the build change, never air or liquid, and with
-     * {@link #likeFirst} only those of the first block's material.
+     * {@link #likeFirst} only those of the first block's material. It's found afresh with each preview, so a preview
+     * never covers blocks that joined or left the build since.
      */
     private void find(ClientLevel level) {
         found = null;
@@ -208,21 +209,23 @@ final class GradientTool implements CustomTool {
      * there. A block that holds items or other data, such as a barrel, which the change would empty, stays as it is.
      * A block that isn't a full cube keeps its shape, or stays as it is when it has none a step can take.
      */
-    private void paint(ClientLevel level, @Nullable Choice choice) {
-        preview.clear();
-        ends.clear();
-        covered = leftAlone = masked = 0;
+    private void preview(ClientLevel level, @Nullable Choice choice) {
+        clearPreview();
         if (first != null) ends.add(first.getX(), first.getY(), first.getZ());
         if (second != null) ends.add(second.getX(), second.getY(), second.getZ());
+        QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
         List<BlockState> steps = choice == null ? List.of() : states(choice);
-        if (found == null || line == null || steps.size() < 2) return;
-        preview.begin(level);
+        if (steps.size() < 2) return;
+        find(level);
+        if (found == null || line == null) return;
+        preview.begin(level, queue);
         GradientShapes shapes = new GradientShapes();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (long p : found.blocks()) {
             int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
             BlockState now = level.getBlockState(pos.set(x, y, z));
-            BlockState step = steps.get(line.step(x, y, z, steps.size(), blend[0] / 100.0));
+            int at = line.step(x, y, z, steps.size(), blend[0] / 100.0);
+            BlockState step = steps.get(reversed ? steps.size() - 1 - at : at);
             BlockState next = shapes.shaped(now) ? shapes.apply(step, now) : paintable(level, pos, now) ? step : null;
             if (next == null) {
                 leftAlone++;
@@ -254,7 +257,7 @@ final class GradientTool implements CustomTool {
         Optional<Component> why = preview.apply();
         if (why.isPresent()) {
             refused = why.get();
-            foundFor = paintedFor = null;
+            previewFor = null;
             return false;
         }
         reset();
@@ -293,11 +296,7 @@ final class GradientTool implements CustomTool {
         AxiomPanel.applyCancel(!preview.isEmpty(), tr(second != null && !ready ? "axiom.chromastudio.not_ready" : "axiom.chromastudio.gradient_tool.apply.none"),
                 first != null, this::apply, this::reset, () -> {
                     if (AxiomPanel.button(tr("axiom.chromastudio.gradient_tool.swap"), second != null,
-                            tr(second == null ? "axiom.chromastudio.gradient_tool.swap.none" : "axiom.chromastudio.gradient_tool.swap.tip"))) {
-                        BlockPos was = first;
-                        first = second;
-                        second = was;
-                    }
+                            tr(second == null ? "axiom.chromastudio.gradient_tool.swap.none" : "axiom.chromastudio.gradient_tool.swap.tip"))) reversed = !reversed;
                 });
         if (refused != null) AxiomPanel.wrapped(refused);
         if (first == null) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.start"));

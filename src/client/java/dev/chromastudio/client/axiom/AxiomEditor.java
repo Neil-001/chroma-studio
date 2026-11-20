@@ -50,6 +50,9 @@ final class AxiomEditor {
     /** Whether Chroma Studio can tell if the editor is open. */
     static boolean known() { return INTERNALS.reason().isEmpty(); }
 
+    /** Whether the editor is switched on, which changes as soon as it's opened or closed. False when that can't be told. */
+    static boolean enabled() { return call(h -> (boolean) h.enabled.invoke()); }
+
     /** Whether the editor is open. False when that can't be told. */
     static boolean active() { return call(h -> (boolean) h.active.invoke()); }
 

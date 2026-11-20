@@ -25,6 +25,10 @@ final class AxiomChanges {
         return new QueuedChanges.Origin(level, BlockIndex.get().version(), AxiomTools.visit());
     }
 
+    /**
+     * A queue for changes made now. Take it before reading the index to work out what to change, so a rebuilt index
+     * that the plan might already have read refuses the changes rather than vouching for them.
+     */
     static QueuedChanges<BlockState> queue(ClientLevel level) { return new QueuedChanges<>(origin(level)); }
 
     /**
@@ -34,9 +38,15 @@ final class AxiomChanges {
     static Optional<Component> send(QueuedChanges<BlockState> changes) {
         ClientLevel level = Minecraft.getInstance().level;
         if (changes.isEmpty()) return Optional.empty();
+        // Once Axiom's features are off for the session, as when a tool couldn't be added, nothing reaches the world.
+        Optional<Component> off = AxiomBridge.whyNot();
+        if (off.isPresent()) return off;
         if (level == null) return Optional.of(refusal(QueuedChanges.Refusal.WORLD));
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        QueuedChanges.Refusal why = changes.check(origin(level), (x, y, z) -> level.getBlockState(pos.set(x, y, z)), AxiomMask.now(level));
+        QueuedChanges.Origin now = origin(level);
+        QueuedChanges.Refusal why = changes.check(now, (x, y, z) -> level.getBlockState(pos.set(x, y, z)), AxiomMask.now(level));
+        // The index is rebuilt on its own thread, so one published while the blocks were checked refuses them too.
+        if (why == QueuedChanges.Refusal.NONE && BlockIndex.get().version() != now.index()) why = QueuedChanges.Refusal.INDEX;
         if (why != QueuedChanges.Refusal.NONE) return Optional.of(refusal(why));
         BlockRegion region = AxiomTools.regions.createBlock();
         for (QueuedChanges.Change<BlockState> c : changes.changes()) region.addBlock(c.x(), c.y(), c.z(), c.next());
