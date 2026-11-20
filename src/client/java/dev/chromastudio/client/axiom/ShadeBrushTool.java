@@ -106,6 +106,8 @@ final class ShadeBrushTool implements CustomTool {
     private ToolPatherUnique pather;
     /** The shades and choices as the stroke started, so a choice changed mid-stroke doesn't split it. */
     private @Nullable Plan strokePlan;
+    /** The world the stroke began in. A stroke still held when the player changes world is dropped. */
+    private @Nullable ClientLevel strokeLevel;
     private Direction strokeDirection;
     private Set<Kind> strokeKinds;
     private double strokeShare;
@@ -129,6 +131,7 @@ final class ShadeBrushTool implements CustomTool {
         queued.clear();
         pather = null;
         strokePlan = null;
+        strokeLevel = null;
     }
 
     @Override
@@ -137,6 +140,7 @@ final class ShadeBrushTool implements CustomTool {
         strokePlan = plan();
         if (strokePlan == null) return false;
         pather = AxiomTools.pathers.createUnique(radius[0], BallShape.SPHERE);
+        strokeLevel = Minecraft.getInstance().level;
         strokeDirection = direction;
         strokeKinds = EnumSet.copyOf(kinds);
         strokeShare = strength[0] / 100.0;
@@ -163,12 +167,13 @@ final class ShadeBrushTool implements CustomTool {
         Plan p = strokePlan;
         // The plan reads the index as it goes, so a stroke that outlives the index it began with is dropped whole
         // rather than mixing two.
-        if (level == null || p == null || p.key.version() != BlockIndex.get().version()) {
+        if (level == null || level != strokeLevel || p == null || p.key.version() != BlockIndex.get().version()) {
             reset();
             return;
         }
         if (!AxiomTools.tools.isMouseDown(USE_TOOL)) {
-            if (!stroke.isEmpty()) AxiomTools.tools.pushBlockRegionChange(unchanged(level));
+            BlockRegion change = unchanged(level);
+            if (!change.isEmpty()) AxiomTools.tools.pushBlockRegionChange(change);
             reset();
             return;
         }
