@@ -74,6 +74,7 @@ public final class ChromaStudioNeoForgeClient implements ClientPlatform {
     @Override public Path configDir() { return FMLPaths.CONFIGDIR.get(); }
     @Override public Path gameDir() { return FMLPaths.GAMEDIR.get(); }
     @Override public boolean isModLoaded(String id) { return ModList.get().isLoaded(id); }
+    @Override public boolean isFabric() { return false; }
     // The colours are worked out without a world, so NeoForge's methods get an empty one.
     @Override public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockStateModelPart> out) {
         model.collectParts(BlockAndTintGetter.EMPTY, BlockPos.ZERO, state, random, out);

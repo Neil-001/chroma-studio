@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.client.index.Entry;
+import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.client.index.TintContext;
 import dev.chromastudio.core.color.Face;
@@ -96,7 +99,7 @@ class PaletteBrushTest {
     }
 
     /** A few blocks in an otherwise empty world. */
-    private static final class World implements BlockGetter {
+    static final class World implements BlockGetter {
         final Map<BlockPos, BlockState> blocks = new HashMap<>();
 
         void put(int x, int y, int z, Block b) { blocks.put(new BlockPos(x, y, z), b.defaultBlockState()); }
@@ -189,6 +192,14 @@ class PaletteBrushTest {
         return w;
     }
 
+    /** The OKLab lightness of the full block a block's material has, as the index reads it. */
+    private static double lightness(BlockState state) {
+        BlockIndex index = BlockIndex.get();
+        Entry e = index.entryOf(state);
+        for (Entry m : index.materialSet(e)) if (m.kind() == Kind.FULL) e = m;
+        return index.colourOf(e.state(), Face.NORTH, TintContext.none()).orElseThrow().oklab().l();
+    }
+
     private static Palette preset(String id) throws IOException {
         try (InputStream in = PaletteBrushTest.class.getResourceAsStream("/assets/chromastudio/presets/" + id + ".json")) {
             return PaletteCodec.fromJson(new String(in.readAllBytes(), StandardCharsets.UTF_8));
@@ -212,12 +223,16 @@ class PaletteBrushTest {
             // With the build's own range and counts, the walls take a main block of the palette, cracked stone bricks
             // with them, and cobblestone, andesite and polished andesite never collapse into one.
             String walls = out.get("stone_bricks");
-            assertEquals(walls, out.get("cracked_stone_bricks"), id + " " + out);
+            // Unless the palette has cracked stone bricks of its own, which then stay, as Medieval's do.
+            if (to.entries.stream().noneMatch(e -> e.blockId().equals("minecraft:cracked_stone_bricks"))) assertEquals(walls, out.get("cracked_stone_bricks"), id + " " + out);
             // One of the blocks the preset means for the bulk of a build, weighted 2 or more, and never an accent.
             int weight = to.entries.stream().filter(e -> e.blockId().equals("minecraft:" + walls)).mapToInt(PaletteEntry::weight).max().orElse(0);
             assertTrue(weight >= 2, id + " " + out);
             assertTrue(new HashSet<>(List.of(out.get("cobblestone"), out.get("andesite"), out.get("polished_andesite"))).size() >= 2, id + " " + out);
             assertTrue(new HashSet<>(out.values()).size() >= 5, id + " " + out);
+            // The dark roof's stairs stay darker than the walls, though stairs are matched among the blocks that have them.
+            BlockState roof = plan.apply(block("deepslate_tile_stairs").defaultBlockState()), wall = plan.apply(block("stone_bricks").defaultBlockState());
+            if (roof != null && wall != null) assertTrue(lightness(roof) <= lightness(wall), id + " " + roof + " " + wall);
         }
     }
 

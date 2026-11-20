@@ -31,11 +31,12 @@ final class AxiomChanges {
     static QueuedChanges<BlockState> queue(ClientLevel level) { return new QueuedChanges<>(origin(level)); }
 
     /**
-     * Sends the changes when {@code again}, the steps that made them, makes the same again now. Returns why not
+     * Sends the changes when {@code again}, the steps that made them, makes the same again now. {@code before} is the
+     * masks they were made with, which only choose what the player is told when they aren't sent. Returns why not
      * otherwise, or nothing when they were sent or there was nothing to send. A call into Axiom that throws reaches the
      * tool's caller, {@link GuardedTool}, which turns the features off.
      */
-    static Optional<Component> send(QueuedChanges<BlockState> changes, QueuedChanges.Plan<BlockState> again) {
+    static Optional<Component> send(QueuedChanges<BlockState> changes, AxiomMask.Test before, QueuedChanges.Plan<BlockState> again) {
         if (changes.isEmpty()) return Optional.empty();
         // Once Axiom's features are off for the session, as when a tool couldn't be added, nothing reaches the world.
         Optional<Component> off = AxiomBridge.whyNot();
@@ -44,7 +45,14 @@ final class AxiomChanges {
         if (level == null) return Optional.of(refusal(QueuedChanges.Refusal.WORLD));
         // Without knowing whether the editor closed since the changes were queued, they can't be vouched for.
         if (!AxiomEditor.known()) return Optional.of(Component.translatable("axiom.chromastudio.editor.unknown.tools"));
-        QueuedChanges.Refusal why = changes.check(() -> origin(level), AxiomTools::editorOn, () -> AxiomMask.now(level), again);
+        AxiomMask.Test[] fresh = new AxiomMask.Test[1];
+        QueuedChanges.Refusal why = changes.check(() -> origin(level), AxiomTools::editorOn, () -> fresh[0] = AxiomMask.now(level), again);
+        // Only what the player reads: when the masks answering as they did before would have made the same plan, the
+        // masks alone changed it, as a script's unseeded noise does, and they're named, so the player knows what to fix.
+        if (why == QueuedChanges.Refusal.CHANGED && fresh[0] != null && AxiomMask.differ(before, fresh[0])
+                && AxiomMask.aloneChanged(changes, before, fresh[0], again)) {
+            return Optional.of(Component.translatable("axiom.chromastudio.refused.masks_differ"));
+        }
         if (why != QueuedChanges.Refusal.NONE) return Optional.of(refusal(why));
         BlockRegion region = AxiomTools.regions.createBlock();
         for (QueuedChanges.Change<BlockState> c : changes.changes()) region.addBlock(c.x(), c.y(), c.z(), c.next());

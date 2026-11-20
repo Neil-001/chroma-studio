@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -37,6 +38,12 @@ public final class AxiomScript {
         /** A row for a block one high. */
         public Remap(String from, PaletteEntry to, List<String> copied) { this(from, to, copied, false); }
     }
+
+    /**
+     * The properties by which a gradient script leaves a block alone: a stair, slab, wall, door, chest or any block
+     * that faces a way has one, which a full step would reshape, turn or empty.
+     */
+    public static final List<String> KEPT_BY_PROPERTY = List.of("waterlogged", "facing", "half", "orientation", "mode");
 
     /** The axis a gradient runs along. */
     public enum Axis { X, Y, Z }
@@ -149,16 +156,33 @@ public final class AxiomScript {
         return s.toString();
     }
 
+    private static final Pattern PLAIN = Pattern.compile("[a-z_][a-z0-9_]*");
+    private static final Set<String> LUA_WORDS = Set.of("and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto", "if",
+            "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while");
+
+    /** Whether a block is the game's own, without properties, and named so that {@code blocks.name} reads it. */
+    private static boolean plain(String id, String properties) {
+        String path = shortId(id);
+        return (properties == null || properties.isEmpty()) && PLAIN.matcher(path).matches() && !LUA_WORDS.contains(path);
+    }
+
+    /** {@code blocks.stone} for a plain block, and otherwise a call of the function that finds it. */
+    private static String lookup(String id, String properties) { return plain(id, properties) ? "blocks." + shortId(id) : ref(id, properties); }
+
     /** {@code stone} for {@code minecraft:stone}, and any other id as it is. */
     private static String shortId(String id) {
         return id.startsWith(PaletteEntry.DEFAULT_NAMESPACE) ? id.substring(PaletteEntry.DEFAULT_NAMESPACE.length()) : id;
     }
 
-    /** A brush that paints blocks from the palette at random, each as often as its weight says. */
+    /**
+     * A brush that paints blocks from the palette at random, each as often as its weight says. As the palette brush's
+     * Scatter does, it fills air too, unless its Paint air box is cleared, and leaves either half of a door or a tall
+     * plant alone, which would otherwise be left standing on its own.
+     */
     public static String scatter(Palette p) {
         if (p.entries.isEmpty()) throw new IllegalArgumentException("The palette is empty");
         StringBuilder s = header(p.name, "Paints random blocks from the palette, as often as their weights say.");
-        s.append(airControl());
+        s.append(airControl(true));
         s.append("if chroma_picks == nil then\n");
         s.append(indent(BLOCK_FUNCTION));
         s.append("\tlocal picks, total = {}, 0\n");
@@ -169,6 +193,8 @@ public final class AxiomScript {
         s.append("\tchroma_picks, chroma_total = picks, total\n");
         s.append("end\n\n");
         s.append(airCheck());
+        s.append("local half = getBlockProperty(getBlockState(x, y, z), \"half\")\n");
+        s.append("if half == \"upper\" or half == \"lower\" then return nil end\n");
         s.append("""
                 if chroma_total == 0 then return nil end
                 local roll = math.random() * chroma_total
@@ -185,11 +211,20 @@ public final class AxiomScript {
      * {@code start + length - 1}, held at either end past them. Along Y the two ends are controls in the brush's
      * window; along X or Z the start is fixed where the script was made and the length is a control, negative to run
      * the other way. A blend control lets neighbouring steps mix at their edges.
+     *
+     * <p>It changes what the gradient tool would: solid blocks, but not the ground, and not a block whose shape a full
+     * step would lose or whose contents it would empty. The script can't ask a block's shape or whether it holds
+     * anything, so it goes by its properties: a block with one of {@link #KEPT_BY_PROPERTY}, such as a stair, slab,
+     * wall, door or chest, is left alone, where the tool would give a stair the step's stair; and so is each block of
+     * {@code kept}, which holds items or data with none of those properties, such as a jukebox. Unlike the tool, it
+     * paints any other solid block the brush reaches, not only one build. Every step must be a full block, which the
+     * caller sees to.
      */
-    public static String gradient(String title, List<PaletteEntry> steps, Axis axis, int start, int length) {
+    public static String gradient(String title, List<PaletteEntry> steps, Axis axis, int start, int length, List<String> kept) {
         if (steps.size() < 2) throw new IllegalArgumentException("A gradient needs at least two steps");
         if (length == 0) throw new IllegalArgumentException("A gradient needs a length");
-        StringBuilder s = header(title, "Paints the gradient's " + steps.size() + " blocks along " + axis.name() + ".");
+        // Only the title, as servers count comments toward the length they allow, and the chat says what it does.
+        StringBuilder s = new StringBuilder("-- Chroma Studio: ").append(safe(title)).append("\n\n");
         String along = axis.name().toLowerCase(Locale.ROOT);
         if (axis == Axis.Y) {
             int end = length > 0 ? start + length - 1 : start + length + 1;
@@ -203,14 +238,35 @@ public final class AxiomScript {
             s.append("if last > first then last = last - 1 else last = last + 1 end\n");
         }
         s.append("local blend = $float(Blend, 0.5, 0.0, 2.0)$\n");
-        s.append(airControl());
+        s.append(airControl(false));
         s.append("if chroma_steps == nil then\n");
-        s.append(indent(BLOCK_FUNCTION));
-        s.append("\tlocal steps = {}\n");
-        for (PaletteEntry e : steps) s.append("\tsteps[#steps + 1] = ").append(ref(e.blockId(), e.properties())).append(" or false\n");
-        s.append("\tchroma_steps = steps\n");
+        // A plain block of the game is named directly, which keeps the script short enough for a server; only another
+        // mod's block, or one with properties, needs the function that finds it.
+        if (steps.stream().anyMatch(e -> !plain(e.blockId(), e.properties())) || kept.stream().anyMatch(id -> !plain(id, ""))) s.append(indent(BLOCK_FUNCTION));
+        s.append("\tchroma_steps = {\n");
+        for (PaletteEntry e : steps) s.append("\t\t").append(lookup(e.blockId(), e.properties())).append(" or false,\n");
+        s.append("\t}\n");
+        s.append("\tchroma_kept = {}\n");
+        List<String> plain = kept.stream().filter(id -> plain(id, "")).map(AxiomScript::shortId).toList();
+        if (!plain.isEmpty()) {
+            s.append("\tfor _, k in ipairs({").append(String.join(", ", plain.stream().map(AxiomScript::quote).toList()))
+                    .append("}) do chroma_kept[blocks[k] or false] = true end\n");
+        }
+        for (String id : kept) if (!plain(id, "")) s.append("\tchroma_kept[").append(ref(id, "")).append(" or false] = true\n");
         s.append("end\n\n");
-        s.append(airCheck());
+        // As the gradient tool does: the ground, plants and blocks a full step would reshape or empty stay. No comment
+        // says so in the script, as servers count comments toward the length they allow.
+        s.append("""
+                local b = getBlock(x, y, z)
+                if b == blocks.air then
+                \tif not paint_air then return nil end
+                elseif chroma_kept[b] or not isSolid(b) or isBlockTagged(b, "substrate_overworld") or isBlockTagged(b, "sand") or b == blocks.gravel then
+                \treturn nil
+                else
+                \tlocal s = getBlockState(x, y, z)
+                """);
+        s.append("\tfor _, p in ipairs({").append(String.join(", ", KEPT_BY_PROPERTY.stream().map(AxiomScript::quote).toList()))
+                .append("}) do if getBlockProperty(s, p) then return nil end end\nend\n");
         // Each step takes an equal share of the blocks from first to last, both ends included.
         s.append("local n = #chroma_steps\n");
         s.append("local span = last - first\n");
@@ -242,7 +298,7 @@ public final class AxiomScript {
         return s;
     }
 
-    private static String airControl() { return "local paint_air = $boolean(Paint air, false)$\n\n"; }
+    private static String airControl(boolean byDefault) { return "local paint_air = $boolean(Paint air, " + byDefault + ")$\n\n"; }
 
     private static String airCheck() { return "if not paint_air and getBlock(x, y, z) == blocks.air then return nil end\n"; }
 

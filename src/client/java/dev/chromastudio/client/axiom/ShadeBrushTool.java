@@ -40,6 +40,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
@@ -83,6 +84,9 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private static final Set<Block> STORAGE = Set.of(Blocks.COAL_BLOCK, Blocks.LAPIS_BLOCK, Blocks.RAW_IRON_BLOCK, Blocks.RAW_COPPER_BLOCK, Blocks.RAW_GOLD_BLOCK);
 
     private final BrushStroke stroke = new BrushStroke();
+    /** Whether a stroke was dropped partway, as when the player picked another tool, for the panel to say so. */
+    private boolean dropped;
+    private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private final int[] radius = {3};
     private int outlineRadius = -1;
@@ -101,7 +105,11 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     public String name() { return tr("axiom.chromastudio.shade"); }
 
     @Override
-    public void reset() { stroke.cancel(); }
+    public void reset() {
+        // Axiom resets a tool before it says another was picked, so a stroke dropped here is the one left partway.
+        if (stroke.active()) dropped = true;
+        stroke.cancel();
+    }
 
     @Override
     public void putAway() { stroke.away(); }
@@ -114,23 +122,36 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return false;
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
-        Plan p = plan();
-        if (p == null) return false;
-        Direction d = direction;
-        Set<Kind> k = EnumSet.copyOf(kinds);
-        double share = AxiomPanel.held(strength, 10, 100) / 100.0;
-        // Which blocks a stroke at less than full strength changes, a new choice each stroke.
+        // Which blocks a stroke at less than full strength changes, a new choice each stroke, and so part of what the
+        // stroke is, as the positions its ball reaches are.
         long seed = System.nanoTime();
-        BrushStroke.Painter painter = (x, y, z, now, _, put) -> {
-            BlockState next = WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
-            if (next != null) put.put(x, y, z, next);
-        };
-        // The shades are fixed as the stroke starts, for the index it was queued with; a rebuilt index refuses it.
+        int size = AxiomPanel.radius(radius);
         try {
-            return stroke.start(level, queue, AxiomPanel.radius(radius), _ -> painter);
+            return stroke.start(level, queue, size, _ -> painterNow(seed, size));
         } catch (Refused _) {
             return false;
         }
+    }
+
+    /**
+     * The stroke's painter as the panel is set now: the shades worked out afresh from the index, the palette's blocks
+     * and the step size, with the direction, kinds and strength as they are, and no plan kept from before. The stroke
+     * makes it as it starts, and again when it's checked before it's sent, which sends nothing unless the stroke
+     * painted again with it comes out the same. Null when no block can be a shade, or when Radius isn't
+     * {@code size}, the ball the stroke was made with, which Axiom keeps for the whole stroke.
+     */
+    private BrushStroke.@Nullable Painter painterNow(long seed, int size) {
+        if (AxiomPanel.radius(radius) != size) return null;
+        Plan.Key key = key();
+        Plan p = key == null ? null : Plan.of(key, BlockIndex.get(), PaletteBlocks.tint());
+        if (p == null || p.steps == null) return null;
+        Direction d = direction;
+        Set<Kind> k = EnumSet.copyOf(kinds);
+        double share = AxiomPanel.held(strength, 10, 100) / 100.0;
+        return (x, y, z, now, _, put) -> {
+            BlockState next = WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
+            if (next != null) put.put(x, y, z, next);
+        };
     }
 
     /** Called every client tick. */
@@ -141,6 +162,8 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         if (AxiomTools.off()) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (stroke.active()) {
+            // Cleared here, as Axiom draws the tool every frame but its panel only while Tool Options is open.
+            dropped = false;
             hovered = null;
             stroke.render(rc);
             return;
@@ -159,9 +182,9 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     }
 
     @Override
-    public void displayImguiOptions() { AxiomPanel.draw(this::panel); }
+    public void displayImguiOptions() { layout.draw(this::options, this::bottom); }
 
-    private void panel() {
+    private void options() {
         List<Palette> all = PaletteStore.get().all();
         Palette chosen = from();
         String any = tr("axiom.chromastudio.shade.any");
@@ -199,11 +222,16 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
                 if (!kinds.remove(k)) kinds.add(k);
             }
         }
-        AxiomPanel.masks();
-
-        AxiomPanel.separator();
-        if (stroke.refused() != null) AxiomPanel.wrapped(stroke.refused());
         AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
+    }
+
+    /** Why the last stroke wasn't made, and what the brush would do to the block under the cursor, held to the panel's bottom. */
+    private void bottom() {
+        // Whether the masks bind the change is read before it's made, so it's never scrolled out of sight.
+        AxiomPanel.masks();
+        Component why = stroke.refused();
+        if (why == null && dropped) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
+        if (why != null) AxiomPanel.wrapped(why);
         preview();
     }
 
@@ -254,16 +282,23 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
 
     /**
      * The shades for the panel's choices, made again when one of them or the index changes, as the panel asks every
-     * frame. Null while the index is building or when no block can be a shade.
+     * frame. Only the panel uses it: a stroke works its shades out afresh ({@link #painterNow}). Null while the index
+     * is building or when no block can be a shade.
      */
     private @Nullable Plan plan() {
+        Plan.Key key = key();
+        if (key == null) return null;
+        if (plan == null || !plan.key.equals(key)) plan = Plan.of(key, BlockIndex.get(), PaletteBlocks.tint());
+        return plan.steps == null ? null : plan;
+    }
+
+    /** The panel's choices that the shades depend on, as they are now, or null while the index is building. */
+    private Plan.@Nullable Key key() {
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) return null;
         Palette shades = from();
-        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[AxiomPanel.held(stepSize, 1, STEPS.length) - 1], PaletteBlocks.queryFace(),
+        return new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[AxiomPanel.held(stepSize, 1, STEPS.length) - 1], PaletteBlocks.queryFace(),
                 ModSettings.biomeMode + " " + ModSettings.biome);
-        if (plan == null || !plan.key.equals(key)) plan = Plan.of(key, index, PaletteBlocks.tint());
-        return plan.steps == null ? null : plan;
     }
 
     /** The blocks that may be shades, and what each block becomes, for one set of choices. */
@@ -412,7 +447,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             for (Face f : faces) spread += e.face(f, tint).spread() / faces.size();
             boolean shaped = false;
             for (Entry m : index.materialSet(e)) shaped |= SHAPES.contains(m.kind());
-            return new ShadeSteps.Look(colour.get(), spread, family(e.id()), material(e.state()), shaped);
+            return new ShadeSteps.Look(colour.get(), spread, family(e.id()), material(e.state()), shaped, ShadeSteps.decorated(e.id()));
         }
 
         /** What a block is made of, as the tool that mines it says: stone, wood, earth or soft growth, or none, as wool. */

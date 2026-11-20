@@ -17,6 +17,7 @@ import net.minecraft.world.phys.HitResult;
 final class EyedropperTool implements CustomTool {
     /** The last block taken, to show in the panel, or null. */
     private Component last;
+    private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
 
     @Override
     public String name() { return tr("axiom.chromastudio.eyedropper"); }
@@ -34,13 +35,11 @@ final class EyedropperTool implements CustomTool {
     }
 
     @Override
-    public void displayImguiOptions() { AxiomPanel.draw(this::panel); }
+    public void displayImguiOptions() { layout.draw(() -> AxiomPanel.note(tr("axiom.chromastudio.eyedropper.how")), this::bottom); }
 
-    private void panel() {
+    private void bottom() {
+        if (last != null) AxiomPanel.wrapped(tr("axiom.chromastudio.eyedropper.last", last));
         // The window opens at the next tick, after Axiom has finished drawing its panels this frame.
         if (AxiomPanel.button(tr("key.chromastudio.open"), true, tr("axiom.chromastudio.open.tip"))) ChromaStudioClient.openWindowSoon("match");
-        AxiomPanel.separator();
-        if (last != null) AxiomPanel.wrapped(tr("axiom.chromastudio.eyedropper.last", last));
-        AxiomPanel.note(tr("axiom.chromastudio.eyedropper.how"));
     }
 }

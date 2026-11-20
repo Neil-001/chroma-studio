@@ -95,6 +95,11 @@ class LangTest {
             // Nothing to send, or nothing wrong, is never said.
             if (r != QueuedChanges.Refusal.NONE && r != QueuedChanges.Refusal.EMPTY) keys.add("axiom.chromastudio.refused." + r.name().toLowerCase(Locale.ROOT));
         }
+        // The Axiom panels' sentences about a number of blocks, which have their own words for one.
+        for (String counted : List.of("count", "masked", "gradient_tool.skipped", "gradient_tool.left_alone")) {
+            keys.add("axiom.chromastudio." + counted);
+            keys.add("axiom.chromastudio." + counted + ".one");
+        }
         for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) {
             keys.add("palettes.chromastudio.tool." + tool);
             keys.add("palettes.chromastudio.tool." + tool + ".tip");
