@@ -21,7 +21,7 @@ final class BuildPreview {
     private final String id;
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private @Nullable QueuedChanges<BlockState> queued;
-    private AxiomMask.Test mask;
+    private AxiomMask.@Nullable Test mask;
     private boolean overriding;
     private long drawn;
 
@@ -40,9 +40,6 @@ final class BuildPreview {
 
     /** Whether the masks let a block change, for the preview being made. */
     boolean allows(int x, int y, int z) { return mask != null && mask.allows(x, y, z); }
-
-    /** Whether the masks failed while the preview was made, so it can't be applied. */
-    boolean maskFailed() { return mask != null && mask.failed(); }
 
     /** Outlines a block the tool covers, whether or not it changes. */
     void outline(int x, int y, int z) { outline.add(x, y, z); }
@@ -75,8 +72,14 @@ final class BuildPreview {
         outline.render(rc, Vec3.ZERO, Effects.OUTLINE);
     }
 
-    /** Called just after a big preview was made, which can take longer than {@link #tick} waits. */
-    void drawnNow() { drawn = System.nanoTime(); }
+    /**
+     * Called once the preview has been made. It's dropped when the masks failed while it was made, as it could show
+     * blocks they were keeping out. It counts as drawn now, as making a big one can take longer than {@link #tick} waits.
+     */
+    void made() {
+        if (mask != null && mask.failed()) clear();
+        drawn = System.nanoTime();
+    }
 
     /**
      * Called every client tick. Drops the preview once Axiom has stopped drawing the tool, as when the player leaves
@@ -92,7 +95,6 @@ final class BuildPreview {
     /** Sends the change. Returns why not, or nothing when it went or there was nothing to send. */
     Optional<Component> apply() {
         if (queued == null) return Optional.empty();
-        if (maskFailed()) return Optional.of(AxiomChanges.refusal(QueuedChanges.Refusal.MASK_FAILED));
         Optional<Component> why = AxiomChanges.send(queued);
         if (why.isEmpty()) clear();
         return why;

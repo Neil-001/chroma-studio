@@ -58,8 +58,6 @@ public final class QueuedChanges<S> {
 
     public QueuedChanges(Origin origin) { this.origin = Objects.requireNonNull(origin); }
 
-    public Origin origin() { return origin; }
-
     /**
      * Queues a change. A position already queued keeps what was first seen there, so a stroke that comes back over
      * a block it has queued is still checked against the world as it was, and takes the newer block to put there.
@@ -71,8 +69,6 @@ public final class QueuedChanges<S> {
     public boolean isEmpty() { return changes.isEmpty(); }
 
     public int size() { return changes.size(); }
-
-    public boolean contains(int x, int y, int z) { return changes.containsKey(BuildSearch.pack(x, y, z)); }
 
     /** The changes in the order they were queued. */
     public Iterable<Change<S>> changes() { return Collections.unmodifiableCollection(changes.values()); }

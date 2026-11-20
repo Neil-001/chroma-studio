@@ -160,7 +160,7 @@ final class PaletteBrushTool implements CustomTool {
         if (level == null) return false;
         said = null;
         refused = null;
-        stroke.say(null);
+        stroke.forget();
         if (wholeBuild()) {
             BlockHitResult hit = AxiomTools.tools.raycastBlock();
             if (hit == null || hit.getType() != HitResult.Type.BLOCK) return false;
@@ -180,10 +180,8 @@ final class PaletteBrushTool implements CustomTool {
             if (blocks.isEmpty()) return false;
             WeightedPick<ScatterBlocks.Placed> scatter = new WeightedPick<>(blocks, ScatterBlocks.Placed::weight);
             long seed = System.nanoTime();
-            painter = (x, y, z, now, put) -> {
-                // Painting over one half of a door or a tall plant would leave the other half on its own.
-                if (!now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
-            };
+            // Painting over one half of a door or a tall plant would leave the other half on its own.
+            painter = (x, y, z, now) -> now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF) ? null : scatter.at(seed, x, y, z).state();
         } else {
             Palette from;
             Set<Long> build = null;
@@ -212,11 +210,7 @@ final class PaletteBrushTool implements CustomTool {
                 return false;
             }
             Set<Long> inBuild = build;
-            painter = (x, y, z, now, put) -> {
-                if (inBuild != null && !inBuild.contains(BuildSearch.pack(x, y, z))) return;
-                BlockState next = plan.apply(now);
-                if (next != null) put.put(x, y, z, next);
-            };
+            painter = (x, y, z, now) -> inBuild != null && !inBuild.contains(BuildSearch.pack(x, y, z)) ? null : plan.apply(now);
         }
         stroke.start(level, AxiomPanel.radius(radius));
         return true;
@@ -235,11 +229,7 @@ final class PaletteBrushTool implements CustomTool {
 
     private void showFound(FoundBuild build) {
         found = build;
-        List<AxiomPanel.Swatch> out = new ArrayList<>();
-        for (PaletteEntry e : build.kinds().entries) {
-            Color c = PaletteBlocks.colour(e);
-            if (c != null) out.add(new AxiomPanel.Swatch(c, PaletteBlocks.name(e).getString()));
-        }
+        List<AxiomPanel.Swatch> out = AxiomPanel.Swatch.of(build.kinds().entries);
         out.sort(Comparator.comparingDouble(s -> s.colour().oklab().l()));
         foundSwatches = out.subList(0, Math.min(out.size(), MAX_SHOWN));
     }
@@ -351,11 +341,9 @@ final class PaletteBrushTool implements CustomTool {
             preview.outline(x, y, z);
             preview.change(x, y, z, now, next);
         }
-        // A preview made while the masks failed could show blocks they were keeping out.
-        if (preview.maskFailed()) preview.clear();
         kindsBefore = before.size();
         kindsAfter = after.size();
-        preview.drawnNow();
+        preview.made();
     }
 
     /**

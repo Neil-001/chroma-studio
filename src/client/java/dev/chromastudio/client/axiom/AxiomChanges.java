@@ -21,7 +21,7 @@ final class AxiomChanges {
     private AxiomChanges() {}
 
     /** Where changes queued now are made: this world, this index and this visit to the editor. */
-    static QueuedChanges.Origin origin(ClientLevel level) {
+    private static QueuedChanges.Origin origin(ClientLevel level) {
         return new QueuedChanges.Origin(level, BlockIndex.get().version(), AxiomTools.visit());
     }
 

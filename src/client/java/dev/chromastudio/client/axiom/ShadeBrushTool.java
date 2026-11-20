@@ -108,20 +108,16 @@ final class ShadeBrushTool implements CustomTool {
     @Override
     public boolean callUseTool() {
         stroke.cancel();
-        stroke.say(null);
+        stroke.forget();
         Plan p = plan();
         ClientLevel level = Minecraft.getInstance().level;
         if (p == null || level == null) return false;
         Direction d = direction;
         Set<Kind> k = EnumSet.copyOf(kinds);
-        double share = Math.clamp(strength[0], 10, 100) / 100.0;
+        double share = strength[0] / 100.0;
         // Which blocks a stroke at less than full strength changes, a new choice each stroke.
         long seed = System.nanoTime();
-        painter = (x, y, z, now, put) -> {
-            if (WeightedPick.unit(seed, x, y, z) >= share) return;
-            BlockState next = p.apply(now, d, k);
-            if (next != null) put.put(x, y, z, next);
-        };
+        painter = (x, y, z, now) -> WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
         stroke.start(level, AxiomPanel.radius(radius));
         return true;
     }
@@ -252,9 +248,7 @@ final class ShadeBrushTool implements CustomTool {
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) return null;
         Palette shades = from();
-        // Held to the slider's range here too, as a number typed into it could be anything.
-        int step = stepSize[0] = Math.clamp(stepSize[0], 1, STEPS.length);
-        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[step - 1], PaletteBlocks.queryFace(),
+        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[stepSize[0] - 1], PaletteBlocks.queryFace(),
                 ModSettings.biomeMode + " " + ModSettings.biome);
         if (plan == null || !plan.key.equals(key)) plan = Plan.of(key, index, PaletteBlocks.tint());
         return plan.steps == null ? null : plan;

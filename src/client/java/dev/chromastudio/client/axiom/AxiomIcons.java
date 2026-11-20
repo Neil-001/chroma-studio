@@ -21,8 +21,8 @@ import net.minecraft.network.chat.Component;
  *
  * <p>The characters are ones Axiom's own tools don't use in this version, picked for what they show: a scribble and
  * pencil, a pipette, two strands twisting from one end to the other, arrows up and down for lighter and darker, and a
- * hand that takes blocks. Another
- * version of Axiom could draw something else for them; that would show a wrong icon, never break a tool.
+ * hand that takes blocks. Another version of Axiom could draw something else for them; that would show a wrong icon,
+ * never break a tool.
  */
 final class AxiomIcons {
     private AxiomIcons() {}

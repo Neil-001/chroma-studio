@@ -12,7 +12,6 @@ import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.ui.tabs.GradientTab;
-import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.palette.BuildSearch;
 import dev.chromastudio.core.palette.GradientLine;
 import dev.chromastudio.core.palette.PaletteEntry;
@@ -237,9 +236,7 @@ final class GradientTool implements CustomTool {
             preview.outline(x, y, z);
             if (next != now) preview.change(x, y, z, now, next);
         }
-        // A preview made while the masks failed could show blocks they were keeping out.
-        if (preview.maskFailed()) preview.clear();
-        preview.drawnNow();
+        preview.made();
     }
 
     /** Whether the gradient may change a block, or put one in, as a whole: a full cube with no block entity. */
@@ -279,7 +276,7 @@ final class GradientTool implements CustomTool {
             int clicked = AxiomPanel.list(tr("axiom.chromastudio.gradient_tool.gradient"), "##gradients", all.stream().map(Choice::label).toList(), all.indexOf(shown));
             if (clicked >= 0) picked = all.get(clicked).key();
             if (shown != null) {
-                AxiomPanel.swatches("step", swatches(shown.steps()));
+                AxiomPanel.swatches("step", AxiomPanel.Swatch.of(shown.steps()));
                 int usable = states(shown).size();
                 if (usable < 2) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.missing"));
                 else if (usable < shown.steps().size()) AxiomPanel.note(tr("axiom.chromastudio.gradient_tool.skipped", shown.steps().size() - usable));
@@ -318,16 +315,6 @@ final class GradientTool implements CustomTool {
             if (found != null && found.capped()) AxiomPanel.wrapped(tr("axiom.chromastudio.capped", FoundBuild.CAP) + " " + tr("axiom.chromastudio.gradient_tool.capped"));
             AxiomPanel.note(tr("axiom.chromastudio.gradient_tool.adjust"));
         }
-    }
-
-    /** A gradient's blocks as swatches, each named when hovered. */
-    private static List<AxiomPanel.Swatch> swatches(List<PaletteEntry> steps) {
-        List<AxiomPanel.Swatch> out = new ArrayList<>();
-        for (PaletteEntry e : steps) {
-            Color c = PaletteBlocks.colour(e);
-            if (c != null) out.add(new AxiomPanel.Swatch(c, PaletteBlocks.name(e).getString()));
-        }
-        return out;
     }
 
     /** The gradient on the Gradient tab, when it has one, and then the saved gradients by name. */

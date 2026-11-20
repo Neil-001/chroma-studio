@@ -3,11 +3,14 @@ package dev.chromastudio.client.axiom;
 import static dev.chromastudio.client.axiom.AxiomTools.tr;
 
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.core.color.Color;
+import dev.chromastudio.core.palette.PaletteEntry;
 import imgui.moulberry92.ImGui;
 import imgui.moulberry92.flag.ImGuiCol;
 import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import imgui.moulberry92.flag.ImGuiSliderFlags;
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
@@ -26,7 +29,17 @@ final class AxiomPanel {
     private AxiomPanel() {}
 
     /** A swatch: a block's colour, and what hovering it says. */
-    record Swatch(Color colour, String tip) {}
+    record Swatch(Color colour, String tip) {
+        /** Swatches for blocks, each named when hovered, leaving out those whose colour can't be read. */
+        static List<Swatch> of(List<PaletteEntry> blocks) {
+            List<Swatch> out = new ArrayList<>();
+            for (PaletteEntry e : blocks) {
+                Color c = PaletteBlocks.colour(e);
+                if (c != null) out.add(new Swatch(c, PaletteBlocks.name(e).getString()));
+            }
+            return out;
+        }
+    }
 
     /** The most rows a list shows before it scrolls, so it leaves room for the controls below it. */
     private static final int LIST_ROWS = 5;
