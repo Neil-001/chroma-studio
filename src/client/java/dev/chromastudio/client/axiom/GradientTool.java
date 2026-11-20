@@ -285,7 +285,8 @@ final class GradientTool implements CustomTool {
 
         ImGui.separator();
         ImGui.sliderInt(tr("axiom.chromastudio.gradient_tool.blend"), blend, 0, 100, "%d%%");
-        ImGui.setItemTooltip(tr("axiom.chromastudio.gradient_tool.blend.tip"));
+        // ImGui reads a tooltip as a printf format, so the percent signs the tip shows are doubled for it.
+        ImGui.setItemTooltip(tr("axiom.chromastudio.gradient_tool.blend.tip").replace("%", "%%"));
         if (ImGui.checkbox(tr("axiom.chromastudio.gradient_tool.like_first"), likeFirst)) likeFirst = !likeFirst;
         ImGui.setItemTooltip(tr("axiom.chromastudio.gradient_tool.like_first.tip"));
         ImGui.sliderInt(tr("axiom.chromastudio.gradient_tool.reach"), reach, 1, MAX_REACH);
