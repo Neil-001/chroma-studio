@@ -13,7 +13,7 @@ Chroma Studio now works with Axiom, the building editor, on Fabric. In Axiom's e
 - Set how far the gradient tool blends its steps into each other, from hard bands to a fade across each step. Stairs, slabs, walls and fences take their step's block in the same shape (#58)
 - Shade a build lighter or darker with the Chroma shade brush, which turns each block into a near shade, close in hue and texture (#59)
 - Sample a build into a weighted palette with the Chroma build sampler, by brushing over it or taking the whole build (#60)
-- A recolour changes a door as a whole, so a door never ends up in two materials. A fill into Axiom's hotbars that fails partway names each slot it left changed, and Undo puts them back (#62)
+- A recolour changes a door as a whole, so a door never ends up in two materials. A fill into Axiom's hotbars that fails partway names the slots it left changed, and Undo puts them back (#62)
 - The Chroma tools in Axiom's editor each have their own icon, and the palette brush, gradient tool and shade brush all follow Axiom's tool masks. A stroke or Apply changes everything you saw, or nothing if something changed meanwhile. The gradient tool straightens ends that are nearly in line, and a `%` in a palette or block name shows as written (#63)
 
 ## Fixes
