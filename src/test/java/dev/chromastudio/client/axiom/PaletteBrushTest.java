@@ -96,7 +96,7 @@ class PaletteBrushTest {
     }
 
     /** A few blocks in an otherwise empty world. */
-    private static final class World implements BlockGetter {
+    static final class World implements BlockGetter {
         final Map<BlockPos, BlockState> blocks = new HashMap<>();
 
         void put(int x, int y, int z, Block b) { blocks.put(new BlockPos(x, y, z), b.defaultBlockState()); }

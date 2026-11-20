@@ -67,7 +67,9 @@ class AxiomScriptTest {
         String script = AxiomScript.scatter(palette("Mix", new PaletteEntry("minecraft:stone", "", 3), new PaletteEntry("minecraft:oak_log", "axis=x", 1)));
         assertTrue(script.contains("\tput(block(\"minecraft\", \"stone\"), 3)\n\tput(block(\"minecraft\", \"oak_log\", \"axis=x\"), 1)\n"), script);
         assertTrue(script.contains("local roll = math.random() * chroma_total\n"), script);
-        assertEquals(List.of("$boolean(Paint air, false)$"), controls(script));
+        // As the palette brush's Scatter does: it fills air too, and leaves either half of a door or tall plant.
+        assertEquals(List.of("$boolean(Paint air, true)$"), controls(script));
+        assertTrue(script.contains("if getBlockProperty(getBlockState(x, y, z), \"half\") ~= nil then return nil end\n"), script);
     }
 
     @Test
@@ -78,6 +80,17 @@ class AxiomScriptTest {
         assertTrue(script.contains("local t = ((y - first) * (span < 0 and -1 or 1) + 0.5) / (math.abs(span) + 1)\n"), script);
         // Downwards, the ends swap so the bottom control stays the lower.
         assertTrue(AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, -8).contains("$int(Bottom, 63, -64, 319)$"));
+    }
+
+    @Test
+    void aGradientLeavesWhatTheGradientToolLeaves() {
+        List<PaletteEntry> steps = List.of(new PaletteEntry("minecraft:white_wool", ""), new PaletteEntry("minecraft:black_wool", ""));
+        String script = AxiomScript.gradient("Grey", steps, AxiomScript.Axis.Y, 70, 8);
+        // The ground, plants and torches, and stairs, slabs, doors and chests, which a step's full block would replace.
+        assertTrue(script.contains("not isSolid(here)"), script);
+        for (String tag : List.of("substrate_overworld", "sand")) assertTrue(script.contains("isBlockTagged(here, \"" + tag + "\")"), script);
+        for (String property : List.of("waterlogged", "facing", "half")) assertTrue(script.contains("\"" + property + "\""), script);
+        assertTrue(AxiomScript.counted(script) < AxiomScript.SERVER_LIMIT, AxiomScript.counted(script) + "");
     }
 
     @Test
@@ -92,7 +105,7 @@ class AxiomScriptTest {
     void namesCannotAddControlsOrEndTheComment() {
         String script = AxiomScript.scatter(palette("Evil $int(Tries, 64, 0, 256)$\nreturn blocks.tnt", new PaletteEntry("minecraft:stone", "")));
         assertTrue(script.startsWith("-- Chroma Studio: Evil  int(Tries, 64, 0, 256) return blocks.tnt\n"), script);
-        assertEquals(List.of("$boolean(Paint air, false)$"), controls(script));
+        assertEquals(List.of("$boolean(Paint air, true)$"), controls(script));
         assertEquals("Untitled", AxiomScript.safe("  \n "));
         assertEquals("Untitled", AxiomScript.safe(null));
     }

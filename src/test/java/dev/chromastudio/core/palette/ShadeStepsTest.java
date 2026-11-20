@@ -49,6 +49,8 @@ class ShadeStepsTest {
             block("light_gray_terracotta", 0.553, 0.039, 38.6, 0.006, false),
             block("bricks", 0.559, 0.070, 33.6, 0.078, true),
             block("cracked_stone_bricks", 0.570, 0.002, 325.6, 0.064, false),
+            block("mossy_stone_bricks", 0.575, 0.020, 124.2, 0.071, true),
+            block("chiseled_stone_bricks", 0.577, 0.002, 325.6, 0.076, false),
             block("polished_granite", 0.579, 0.066, 40.7, 0.075, true),
             block("stone_bricks", 0.586, 0.000, 0.0, 0.064, true),
             block("light_gray_concrete", 0.587, 0.015, 106.9, 0.002, false),
@@ -143,6 +145,44 @@ class ShadeStepsTest {
             }
         }
     }
+
+    /** Common building blocks that have a step each way at every size: each step there and back returns to the block itself. */
+    @Test
+    void commonBlocksRoundTripAtEveryStepSize() {
+        List<String> failures = new ArrayList<>();
+        for (double step = ShadeSteps.MIN_STEP; step <= ShadeSteps.MAX_STEP + 1e-9; step += 0.005) {
+            ShadeSteps steps = steps(step);
+            for (String id : List.of("stone_bricks", "tuff_bricks", "deepslate_bricks", "cobbled_deepslate", "polished_andesite", "cobblestone",
+                    "smooth_stone", "oak_planks", "spruce_planks", "birch_planks", "dark_oak_planks", "red_terracotta", "terracotta")) {
+                for (Direction d : Direction.values()) {
+                    String there = next(steps, id, d);
+                    if (there == null) continue;
+                    String back = next(steps, there, d.opposite());
+                    if (!id.equals(back)) failures.add(String.format("%.3f %s %s to %s and back to %s", step, id, d, there, back));
+                }
+            }
+        }
+        assertTrue(failures.isEmpty(), failures.size() + " failures: " + String.join("; ", failures));
+    }
+
+    /** A worn, overgrown or carved block is no shade of a plain one: stone bricks never step to mossy or cracked bricks. */
+    @Test
+    void aPlainBlockNeverStepsToADecoratedOne() {
+        for (double step = ShadeSteps.MIN_STEP; step <= ShadeSteps.MAX_STEP + 1e-9; step += 0.005) {
+            ShadeSteps steps = steps(step);
+            for (Block b : BLOCKS) {
+                if (decorated(b.id)) continue;
+                for (Direction d : Direction.values()) {
+                    String there = next(steps, b.id, d);
+                    assertTrue(there == null || !decorated(there), String.format("%.3f %s %s to %s", step, b.id, d, there));
+                }
+            }
+        }
+        // A decorated block itself still has shades.
+        assertTrue(next(steps(DEFAULT), "mossy_stone_bricks", Direction.DARKER) != null);
+    }
+
+    private static boolean decorated(String id) { return id.startsWith("mossy_") || id.startsWith("cracked_") || id.startsWith("chiseled_") || id.startsWith("infested_"); }
 
     @Test
     void mostStepsUndoAcrossTheWholeSet() {
