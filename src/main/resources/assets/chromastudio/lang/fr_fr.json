@@ -757,6 +757,7 @@
   "axiom.chromastudio.mask.unknown": "Les masques d’outil d’Axiom ne sont pas tels que cette version de Chroma Studio les connaît, donc ses outils ne changent rien. Un Chroma Studio plus récent les prendra peut-être en charge.",
   "axiom.chromastudio.mask.failed": "Les masques d'outil d'Axiom ne répondent plus, donc les outils de Chroma Studio ne changent rien jusqu'au redémarrage du jeu. Le journal en donne la raison.",
   "axiom.chromastudio.mask.lua": "Le script d'un masque d'outil contient une erreur, donc les outils de Chroma Studio ne changent rien : %s. Corrige le script, ou ferme l'erreur dans Masques d'outil.",
+  "axiom.chromastudio.mask.lua_invalid": "Le script d'un masque d'outil ne compile pas, donc Axiom n'applique aucun masque et les outils de Chroma Studio ne changent rien. Corrige le script ou passe Masques d'outil sur son onglet Masque.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Exclus du mode « Disperser » : %s",
   "axiom.chromastudio.brush.left_out.tip": "« Disperser » place des blocs pleins qui restent en place. Les escaliers et les dalles sont placés sous forme de blocs pleins. Les blocs qui ont besoin d’un support sont exclus.",

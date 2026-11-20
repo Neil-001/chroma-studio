@@ -757,6 +757,7 @@
   "axiom.chromastudio.mask.unknown": "Axioms Werkzeugmasken sind nicht so, wie diese Version von Chroma Studio sie kennt, deshalb ändern seine Werkzeuge nichts. Ein neueres Chroma Studio unterstützt sie vielleicht.",
   "axiom.chromastudio.mask.failed": "Axioms Werkzeugmasken antworten nicht mehr, deshalb ändern die Werkzeuge von Chroma Studio nichts, bis das Spiel neu startet. Das Protokoll nennt den Grund.",
   "axiom.chromastudio.mask.lua": "Das Skript einer Werkzeugmaske hat einen Fehler, deshalb ändern die Werkzeuge von Chroma Studio nichts: %s. Korrigiere das Skript oder schließe den Fehler unter Werkzeugmasken.",
+  "axiom.chromastudio.mask.lua_invalid": "Das Skript einer Werkzeugmaske lässt sich nicht kompilieren, daher wendet Axiom keine Maske an und Chroma Studios Werkzeuge ändern nichts. Korrigiere das Skript oder wechsle in Werkzeugmasken zum Reiter Maske.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Beim „Streuen“ ausgelassen: %s",
   "axiom.chromastudio.brush.left_out.tip": "„Streuen“ setzt ganze Blöcke, die an ihrem Platz bleiben. Treppen und Stufen werden als ganze Blöcke gesetzt. Blöcke, die eine Stütze brauchen, werden ausgelassen.",

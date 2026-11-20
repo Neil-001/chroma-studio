@@ -188,26 +188,24 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             clearPreview();
             return true;
         }
-        // The block the stroke starts on, whose build it keeps to with From set to This build, and Scatter's choices,
-        // new each stroke, are what the stroke is, as the positions its ball reaches are. Everything else is read again
-        // each time the painter is made, at the start and when the stroke is checked before it's sent.
-        BlockPos at = null;
-        if (mode == Mode.RECOLOUR && fromKey.equals(FROM_BUILD)) {
-            BlockHitResult hit = AxiomTools.tools.raycastBlock();
-            if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
-                said = tr("axiom.chromastudio.not_build");
-                return false;
-            }
-            at = hit.getBlockPos().immutable();
+        // The block the stroke starts on, whose build it keeps to with From set to This build, Scatter's choices, new
+        // each stroke, and the ball's radius, which Axiom keeps for the whole stroke, are what the stroke is, as the
+        // positions its ball reaches are. Everything else is read again each time the painter is made, at the start
+        // and when the stroke is checked before it's sent.
+        BlockHitResult hit = AxiomTools.tools.raycastBlock();
+        BlockPos at = hit == null || hit.getType() != HitResult.Type.BLOCK ? null : hit.getBlockPos().immutable();
+        if (mode == Mode.RECOLOUR && fromKey.equals(FROM_BUILD) && at == null) {
+            said = tr("axiom.chromastudio.not_build");
+            return false;
         } else if (mode == Mode.RECOLOUR && fromGone()) {
             said = tr("axiom.chromastudio.brush.from_gone");
             return false;
         }
-        BlockPos start = at;
         long seed = System.nanoTime();
-        BrushStroke.Setup setup = lvl -> painterNow(lvl, start, seed);
+        int size = AxiomPanel.radius(radius);
+        BrushStroke.Setup setup = lvl -> painterNow(lvl, at, seed, size);
         try {
-            return stroke.start(level, queue, AxiomPanel.radius(radius), setup);
+            return stroke.start(level, queue, size, setup);
         } catch (Refused r) {
             said = r.reason().getString();
             return false;
@@ -226,12 +224,13 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     /**
      * The stroke's painter as the panel is set now: the mode, the palette and its blocks, From and how blocks match,
-     * read afresh each time, so a stroke checked after any of them changed isn't the stroke the player saw, and
-     * nothing is sent. {@code at} is the block the stroke started on, and {@code seed} Scatter's choices for it.
+     * read afresh each time, so the check before sending paints the stroke again with them, and sends nothing unless
+     * that comes out the same. {@code at} is the block the stroke started on, {@code seed} Scatter's choices for it,
+     * and {@code size} the ball's radius; with Radius set otherwise now, there's nothing to paint with.
      */
-    private BrushStroke.@Nullable Painter painterNow(Level lvl, @Nullable BlockPos at, long seed) throws Refused {
+    private BrushStroke.@Nullable Painter painterNow(Level lvl, @Nullable BlockPos at, long seed, int size) throws Refused {
         Palette to = current();
-        if (to == null || wholeBuild()) return null;
+        if (to == null || wholeBuild() || AxiomPanel.radius(radius) != size) return null;
         if (mode == Mode.SCATTER) {
             List<ScatterBlocks.Placed> blocks = ScatterBlocks.of(to).blocks();
             if (blocks.isEmpty()) return null;

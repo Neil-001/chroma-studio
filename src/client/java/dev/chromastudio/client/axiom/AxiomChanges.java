@@ -47,9 +47,10 @@ final class AxiomChanges {
         if (!AxiomEditor.known()) return Optional.of(Component.translatable("axiom.chromastudio.editor.unknown.tools"));
         AxiomMask.Test[] fresh = new AxiomMask.Test[1];
         QueuedChanges.Refusal why = changes.check(() -> origin(level), AxiomTools::editorOn, () -> fresh[0] = AxiomMask.now(level), again);
-        // Only what the player reads: masks that answer otherwise for a block they were asked about before, as a
-        // script's unseeded noise does, are named, so the player knows what to fix.
-        if (why == QueuedChanges.Refusal.CHANGED && fresh[0] != null && AxiomMask.differ(before, fresh[0])) {
+        // Only what the player reads: when the masks answering as they did before would have made the same plan, the
+        // masks alone changed it, as a script's unseeded noise does, and they're named, so the player knows what to fix.
+        if (why == QueuedChanges.Refusal.CHANGED && fresh[0] != null && AxiomMask.differ(before, fresh[0])
+                && changes.sameAs(again.make(AxiomMask.answeringAs(before, fresh[0])))) {
             return Optional.of(Component.translatable("axiom.chromastudio.refused.masks_differ"));
         }
         if (why != QueuedChanges.Refusal.NONE) return Optional.of(refusal(why));

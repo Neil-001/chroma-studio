@@ -756,6 +756,7 @@
   "axiom.chromastudio.mask.unknown": "Axiom's tool masks aren't as this version of Chroma Studio knows them, so its tools change nothing. A newer Chroma Studio may support them.",
   "axiom.chromastudio.mask.failed": "Axiom's tool masks stopped answering, so Chroma Studio's tools change nothing until the game restarts. The log says why.",
   "axiom.chromastudio.mask.lua": "A tool mask's script has an error, so Chroma Studio's tools change nothing: %s. Fix the script, or close the error under Tool Masks.",
+  "axiom.chromastudio.mask.lua_invalid": "A tool mask's script doesn't compile, so Axiom applies no mask and Chroma Studio's tools change nothing. Fix the script, or switch Tool Masks to its Mask tab.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Left out of Scatter: %s",
   "axiom.chromastudio.brush.left_out.tip": "Scatter places whole blocks that stay put, so stairs and slabs go in as their full block, and blocks that can't stand alone are left out.",

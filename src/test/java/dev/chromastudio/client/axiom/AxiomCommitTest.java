@@ -493,6 +493,97 @@ class AxiomCommitTest {
         }
     }
 
+    @Test
+    void aMaskTestThatRaisedALuaErrorStaysFailedOnceAxiomClearsIt() {
+        MaskManager.mask = FakeAxiom.lua(new ArrayList<>(), x -> x == 1);
+        AxiomMask.Test mask = AxiomMask.now(axiom.level);
+        assertTrue(mask.allows(0, 0, 0));
+        assertFalse(mask.allows(1, 0, 0));
+        // Another context compiles the script, as the check before sending does, and Axiom forgets the error.
+        ToolMaskWindow.luaExecutionError = null;
+        assertTrue(mask.failed());
+    }
+
+    @Test
+    void aLuaErrorLeftFromBeforeIsntKeptOnceItsDismissed() {
+        // A script failed earlier and the player has since switched Tool Masks to a mask with no script.
+        ToolMaskWindow.luaExecutionError = "attempt to compare nil with number";
+        AxiomMask.Test mask = AxiomMask.now(axiom.level);
+        assertTrue(mask.allows(0, 0, 0));
+        assertTrue(mask.failed());
+        ToolMaskWindow.luaExecutionError = null;
+        assertFalse(mask.failed());
+    }
+
+    @Test
+    void aMaskScriptThatNoLongerCompilesRefusesApply() {
+        axiom.level.put(0, 0, 0, STONE);
+        axiom.level.put(1, 0, 0, STONE);
+        MaskManager.useLuaScript = true;
+        MaskManager.luaScript = "return true";
+        FakeAxiom.set(ToolMaskWindow.class, null, "lastLuaCompile", 1L);
+        BuildPreview preview = preview(row());
+        assertEquals(2, preview.count());
+        // The player types a script that doesn't compile: Axiom keeps no script, and applies no mask at all.
+        MaskManager.luaScript = null;
+        assertEquals(FakeAxiom.refusal("mask_failed"), preview.apply().orElse(null));
+        assertEquals(List.of(), axiom.tools.pushed);
+        assertEquals(java.util.Optional.of(Component.translatable("axiom.chromastudio.mask.lua_invalid")), AxiomMask.unavailable());
+    }
+
+    @Test
+    void theScriptingTabBeforeItHasCompiledAnythingKeepsNothingOut() {
+        axiom.level.put(0, 0, 0, STONE);
+        MaskManager.useLuaScript = true;
+        BuildPreview preview = preview(row());
+        assertTrue(preview.apply().isEmpty());
+        assertEquals(1, axiom.tools.pushed.size());
+    }
+
+    @Test
+    void aBlockChangedUnderAStrokeIsntPutDownToTheMasks() throws Exception {
+        axiom.level.put(0, 0, 0, STONE);
+        axiom.level.put(1, 0, 0, BRICKS);
+        // The check's context keeps the second block out, where the stroke's let it in; that block holds bricks
+        // already, so its answer changes nothing.
+        Map<MaskContext, Integer> contexts = new IdentityHashMap<>();
+        MaskManager.mask = c -> contexts.computeIfAbsent(c, _ -> contexts.size()) == 0 || c.x != 1;
+        BrushStroke stroke = bricks();
+        frame(stroke, true, at(0), at(1));
+        // What changes the plan is another player's block at the first.
+        axiom.level.put(0, 0, 0, Blocks.ANDESITE.defaultBlockState());
+        frame(stroke, false);
+        assertEquals(List.of(), axiom.tools.pushed);
+        assertEquals(FakeAxiom.refusal("changed"), stroke.refused());
+    }
+
+    @Test
+    void aShadeStrokeWhoseRadiusWasChangedWhileHeldSendsNothing() {
+        axiom.client();
+        axiom.level.put(0, 0, 0, BRICKS);
+        Palette shades = PaletteStore.get().create("Commit test shades",
+                new ArrayList<>(List.of(new PaletteEntry("minecraft:stone_bricks", ""), new PaletteEntry("minecraft:tuff_bricks", ""))));
+        try {
+            ShadeBrushTool tool = new ShadeBrushTool();
+            FakeAxiom.set(ShadeBrushTool.class, tool, "from", shades);
+            assertTrue(tool.callUseTool());
+            axiom.frame++;
+            axiom.tools.down = true;
+            axiom.reach.add(at(0));
+            tool.render(axiom.rc);
+            // Radius lowered while the use key is held: Axiom's ball keeps the size the stroke started with.
+            ((int[]) FakeAxiom.get(ShadeBrushTool.class, tool, "radius"))[0] = 0;
+            axiom.frame++;
+            axiom.tools.down = false;
+            tool.render(axiom.rc);
+            assertEquals(List.of(), axiom.tools.pushed);
+            BrushStroke stroke = (BrushStroke) FakeAxiom.get(ShadeBrushTool.class, tool, "stroke");
+            assertEquals(FakeAxiom.refusal("changed"), stroke.refused());
+        } finally {
+            PaletteStore.get().delete(shades);
+        }
+    }
+
     /** A tool with a preview, as the whole-build tools have, which it puts away when Axiom picks another tool. */
     private static final class PreviewTool implements CustomTool, GuardedTool.PutAway {
         final BuildPreview preview = new BuildPreview("test");

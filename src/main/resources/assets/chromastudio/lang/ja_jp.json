@@ -757,6 +757,7 @@
   "axiom.chromastudio.mask.unknown": "Axiom のツールマスクがこのバージョンの Chroma Studio の知る形と違うため、ツールは何も変更しません。新しい Chroma Studio なら対応しているかもしれません。",
   "axiom.chromastudio.mask.failed": "Axiom のツールマスクが応答しなくなったため、ゲームを再起動するまで Chroma Studio のツールは何も変更しません。理由はログにあります。",
   "axiom.chromastudio.mask.lua": "ツールマスクのスクリプトにエラーがあるため、Chroma Studio のツールは何も変更しません：%s。スクリプトを直すか、ツールマスクでエラーを閉じてください。",
+  "axiom.chromastudio.mask.lua_invalid": "ツールマスクのスクリプトがコンパイルできないため、Axiom はマスクを適用せず、Chroma Studio のツールは何も変更しません。スクリプトを直すか、ツールマスクのマスクタブに切り替えてください。",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "散布から除外：%s",
   "axiom.chromastudio.brush.left_out.tip": "「散布」は動かないフルブロックを置きます。階段やハーフブロックは同じ素材のフルブロックとして置き、支えが必要なブロックは除外します。",

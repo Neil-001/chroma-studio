@@ -66,6 +66,24 @@ final class AxiomMask {
         return false;
     }
 
+    /**
+     * Masks that answer as {@code before} did wherever it was asked, and as {@code now} elsewhere, to tell whether the
+     * masks alone changed a plan. Only for choosing what the player is told: it decides nothing about sending.
+     */
+    static QueuedChanges.Mask answeringAs(Test before, Test now) {
+        Map<Long, Boolean> answers = before.answers();
+        return new QueuedChanges.Mask() {
+            @Override
+            public boolean allows(int x, int y, int z) {
+                Boolean was = answers.get(BuildSearch.pack(x, y, z));
+                return was != null ? was : now.allows(x, y, z);
+            }
+
+            @Override
+            public boolean failed() { return false; }
+        };
+    }
+
     private static final Test FAILED = new Fixed(false, true);
 
     /** @param luaError Axiom's last Lua mask error, which is the only sign that a mask's script failed */
@@ -85,6 +103,41 @@ final class AxiomMask {
                         lookup.findVirtual(element, "test", MethodType.methodType(boolean.class, context)),
                         lookup.findStaticGetter(Class.forName("com.moulberry.axiom.editor.windows.global_mask.ToolMaskWindow"), "luaExecutionError", String.class));
             });
+
+    /**
+     * What Axiom's Scripting tab holds: whether it's the tab in use, the script it last compiled, and when it last
+     * compiled one. A script that doesn't compile leaves no script at all, and Axiom then applies no mask, quietly,
+     * where the player expects their script's.
+     */
+    private record Script(MethodHandle inUse, MethodHandle script, MethodHandle lastCompile) {}
+
+    /** Only the check for a script that doesn't compile needs these, so when they're missing the masks are still followed. */
+    static final AxiomInternals<Script> SCRIPT = new AxiomInternals<>("Axiom's mask scripts", Component.empty(), () -> {
+        MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+        Class<?> manager = Class.forName(MANAGER);
+        Class<?> window = Class.forName("com.moulberry.axiom.editor.windows.global_mask.ToolMaskWindow");
+        // The last compile is private to the window, so it's read through the window's own class.
+        MethodHandles.Lookup inWindow = MethodHandles.privateLookupIn(window, MethodHandles.lookup());
+        return new Script(lookup.findStaticGetter(manager, "useLuaScript", boolean.class),
+                lookup.findStaticGetter(manager, "luaScript", String.class),
+                inWindow.findStaticGetter(window, "lastLuaCompile", long.class));
+    });
+
+    /**
+     * Whether the Scripting tab is in use with a script that doesn't compile, while the masks apply. Axiom then applies
+     * no mask at all, so the tools change nothing until it's fixed. Before the tab has compiled anything there's no
+     * script either, which isn't an error.
+     */
+    private static boolean scriptInvalid() {
+        if (SCRIPT.reason().isPresent() || windowClosed().orElse(false)) return false;
+        Script s = SCRIPT.handles();
+        try {
+            return (boolean) s.inUse.invoke() && s.script.invoke() == null && (long) s.lastCompile.invoke() > 0;
+        } catch (Throwable t) {
+            SCRIPT.failed(t);
+            return false;
+        }
+    }
 
     /** Axiom's Tool Masks window. */
     private record Window(Object toolMasks, MethodHandle isOpen) {}
@@ -120,7 +173,8 @@ final class AxiomMask {
     static Optional<Component> unavailable() {
         if (INTERNALS.reason().isEmpty()) {
             String error = luaError();
-            return error == null ? Optional.empty() : Optional.of(Component.translatable("axiom.chromastudio.mask.lua", error));
+            if (error != null) return Optional.of(Component.translatable("axiom.chromastudio.mask.lua", error));
+            return scriptInvalid() ? Optional.of(Component.translatable("axiom.chromastudio.mask.lua_invalid")) : Optional.empty();
         }
         return Optional.of(Component.translatable(INTERNALS.found() ? "axiom.chromastudio.mask.failed" : "axiom.chromastudio.mask.unknown"));
     }
@@ -155,7 +209,7 @@ final class AxiomMask {
         return new Test() {
             private boolean threw;
             /**
-             * Whether Axiom's Lua mask error was set straight after any answer. It's kept, as Axiom clears the error
+             * Whether one of this test's answers raised Axiom's Lua mask error. It's kept, as Axiom clears the error
              * the moment another context compiles the script, which the check before sending does.
              */
             private boolean errored;
@@ -174,8 +228,13 @@ final class AxiomMask {
             private boolean ask(int x, int y, int z) {
                 try {
                     h.setPosition.invoke(context, x, y, z);
+                    Object before = h.luaError.invoke();
                     boolean allows = (boolean) h.test.invoke(mask, context);
-                    if (h.luaError.invoke() != null) errored = true;
+                    // Axiom makes a new message each time a script fails, so one that's a different object from
+                    // before was raised by this answer. An error left from before, by a script no longer running,
+                    // isn't this test's, and counts only while it's set ({@link #failed}).
+                    Object after = h.luaError.invoke();
+                    if (after != null && after != before) errored = true;
                     return allows;
                 } catch (Throwable t) {
                     INTERNALS.failed(t);
@@ -185,11 +244,11 @@ final class AxiomMask {
             }
 
             /**
-             * True once any answer came with Axiom's Lua mask error set, for good, and while the error is set now, as
-             * running the script is what sets it.
+             * True for good once an answer raised Axiom's Lua mask error, and while an error is set now, as running the
+             * script is what sets it, or while the script on the Scripting tab doesn't compile.
              */
             @Override
-            public boolean failed() { return threw || errored || INTERNALS.reason().isPresent() || luaError() != null; }
+            public boolean failed() { return threw || errored || INTERNALS.reason().isPresent() || luaError() != null || scriptInvalid(); }
 
             @Override
             public Map<Long, Boolean> answers() { return Collections.unmodifiableMap(asked); }

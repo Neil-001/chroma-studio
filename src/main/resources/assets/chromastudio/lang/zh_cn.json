@@ -757,6 +757,7 @@
   "axiom.chromastudio.mask.unknown": "Axiom 的工具遮罩与此版本的 Chroma Studio 所知的不同，所以它的工具不会做任何更改。更新版本的 Chroma Studio 也许能支持。",
   "axiom.chromastudio.mask.failed": "Axiom 的工具遮罩不再响应，所以在重启游戏前，Chroma Studio 的工具不会做任何更改。原因见日志。",
   "axiom.chromastudio.mask.lua": "某个工具遮罩的脚本有错误，所以 Chroma Studio 的工具不会做任何更改：%s。请修正脚本，或在工具遮罩中关闭该错误。",
+  "axiom.chromastudio.mask.lua_invalid": "工具遮罩的脚本无法编译，因此 Axiom 不应用任何遮罩，Chroma Studio 的工具不作任何更改。请修正脚本，或将工具遮罩切换到遮罩标签页。",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "未纳入散布：%s",
   "axiom.chromastudio.brush.left_out.tip": "散布放置的是不会移动的完整方块，所以楼梯和台阶会按完整方块放入，无法单独存在的方块则被排除。",

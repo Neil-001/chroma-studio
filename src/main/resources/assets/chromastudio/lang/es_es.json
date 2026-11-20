@@ -757,6 +757,7 @@
   "axiom.chromastudio.mask.unknown": "Las máscaras de herramienta de Axiom no son como las conoce esta versión de Chroma Studio, así que sus herramientas no cambian nada. Un Chroma Studio más reciente puede admitirlas.",
   "axiom.chromastudio.mask.failed": "Las máscaras de herramienta de Axiom dejaron de responder, así que las herramientas de Chroma Studio no cambian nada hasta que se reinicie el juego. El registro dice por qué.",
   "axiom.chromastudio.mask.lua": "El script de una máscara de herramienta tiene un error, así que las herramientas de Chroma Studio no cambian nada: %s. Corrige el script o cierra el error en Máscaras de herramienta.",
+  "axiom.chromastudio.mask.lua_invalid": "El script de una máscara de herramienta no compila, así que Axiom no aplica ninguna máscara y las herramientas de Chroma Studio no cambian nada. Corrige el script o cambia Máscaras de herramienta a su pestaña Máscara.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Excluidos de «Esparcir»: %s",
   "axiom.chromastudio.brush.left_out.tip": "«Esparcir» coloca bloques completos que se quedan en su sitio. Las escaleras y las losas se colocan como bloques completos. Los bloques que necesitan apoyo quedan fuera.",

@@ -757,6 +757,7 @@
   "axiom.chromastudio.mask.unknown": "Maski narzędzi Axiom nie są takie, jakie zna ta wersja Chroma Studio, więc jego narzędzia niczego nie zmieniają. Nowsze Chroma Studio może je obsługiwać.",
   "axiom.chromastudio.mask.failed": "Maski narzędzi Axiom przestały odpowiadać, więc narzędzia Chroma Studio niczego nie zmieniają do czasu ponownego uruchomienia gry. Powód jest w dzienniku.",
   "axiom.chromastudio.mask.lua": "Skrypt maski narzędzia ma błąd, więc narzędzia Chroma Studio niczego nie zmieniają: %s. Popraw skrypt albo zamknij błąd w Maskach narzędzi.",
+  "axiom.chromastudio.mask.lua_invalid": "Skrypt maski narzędzi się nie kompiluje, więc Axiom nie stosuje żadnej maski, a narzędzia Chroma Studio niczego nie zmieniają. Popraw skrypt albo przełącz Maski narzędzi na kartę Maska.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Pominięte w trybie „Rozsyp”: %s",
   "axiom.chromastudio.brush.left_out.tip": "„Rozsyp” stawia pełne bloki, które zostają na miejscu. Schody i płyty pojawiają się jako pełne bloki, a bloki wymagające podparcia są pomijane.",

@@ -757,6 +757,7 @@
   "axiom.chromastudio.mask.unknown": "Axiom의 도구 마스크가 이 버전의 Chroma Studio가 아는 형태와 달라 도구로는 아무것도 바꿀 수 없습니다. 더 새로운 Chroma Studio는 지원할 수도 있습니다.",
   "axiom.chromastudio.mask.failed": "Axiom의 도구 마스크가 더 이상 응답하지 않아 게임을 다시 시작할 때까지 Chroma Studio 도구로는 아무것도 바꿀 수 없습니다. 이유는 로그에 있습니다.",
   "axiom.chromastudio.mask.lua": "도구 마스크의 스크립트에 오류가 있어 Chroma Studio 도구로는 아무것도 바꿀 수 없습니다: %s. 스크립트를 고치거나 도구 마스크에서 오류를 닫으세요.",
+  "axiom.chromastudio.mask.lua_invalid": "도구 마스크 스크립트가 컴파일되지 않아 Axiom이 마스크를 적용하지 않으므로 Chroma Studio의 도구는 아무것도 바꾸지 않습니다. 스크립트를 고치거나 도구 마스크를 마스크 탭으로 바꾸세요.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "흩뿌리기에서 제외: %s",
   "axiom.chromastudio.brush.left_out.tip": "‘흩뿌리기’는 제자리에 남는 완전한 블록을 놓습니다. 계단과 반 블록은 완전한 블록으로 놓고, 지지대가 필요한 블록은 제외합니다.",

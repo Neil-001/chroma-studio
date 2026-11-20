@@ -117,8 +117,9 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         // Which blocks a stroke at less than full strength changes, a new choice each stroke, and so part of what the
         // stroke is, as the positions its ball reaches are.
         long seed = System.nanoTime();
+        int size = AxiomPanel.radius(radius);
         try {
-            return stroke.start(level, queue, AxiomPanel.radius(radius), _ -> painterNow(seed));
+            return stroke.start(level, queue, size, _ -> painterNow(seed, size));
         } catch (Refused _) {
             return false;
         }
@@ -127,10 +128,12 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     /**
      * The stroke's painter as the panel is set now: the shades worked out afresh from the index, the palette's blocks
      * and the step size, with the direction, kinds and strength as they are, and no plan kept from before. The stroke
-     * makes it as it starts, and again when it's checked before it's sent, so a stroke checked after any of them
-     * changed isn't the stroke the player saw, and nothing is sent. Null when no block can be a shade.
+     * makes it as it starts, and again when it's checked before it's sent, which sends nothing unless the stroke
+     * painted again with it comes out the same. Null when no block can be a shade, or when Radius isn't
+     * {@code size}, the ball the stroke was made with, which Axiom keeps for the whole stroke.
      */
-    private BrushStroke.@Nullable Painter painterNow(long seed) {
+    private BrushStroke.@Nullable Painter painterNow(long seed, int size) {
+        if (AxiomPanel.radius(radius) != size) return null;
         Plan.Key key = key();
         Plan p = key == null ? null : Plan.of(key, BlockIndex.get(), PaletteBlocks.tint());
         if (p == null || p.steps == null) return null;

@@ -94,6 +94,7 @@ final class FakeAxiom {
         AxiomBridge.forget();
         AxiomMask.INTERNALS.forget();
         AxiomMask.WINDOW.forget();
+        AxiomMask.SCRIPT.forget();
         AxiomEditor.INTERNALS.forget();
         AxiomIcons.INTERNALS.forget();
         AxiomTools.regions = new Regions();
@@ -108,6 +109,9 @@ final class FakeAxiom {
         MaskManager.mode = new int[] {0};
         EditorWindowType.TOOL_MASKS.open = true;
         ToolMaskWindow.luaExecutionError = null;
+        set(ToolMaskWindow.class, null, "lastLuaCompile", 0L);
+        MaskManager.useLuaScript = false;
+        MaskManager.luaScript = null;
         ToolManager.tools = new ArrayList<>();
         ToolManager.keybindMap = new HashMap<>();
         return a;
@@ -182,6 +186,9 @@ final class FakeAxiom {
             if (!c.compiled) {
                 c.compiled = true;
                 ToolMaskWindow.luaExecutionError = null;
+        set(ToolMaskWindow.class, null, "lastLuaCompile", 0L);
+        MaskManager.useLuaScript = false;
+        MaskManager.luaScript = null;
             }
             asked.add(c.x);
             if (c.broken) return false;
