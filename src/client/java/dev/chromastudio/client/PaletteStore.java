@@ -115,6 +115,12 @@ public final class PaletteStore implements PaletteSink {
         return out;
     }
 
+    /** The name of a palette's file, which stays the same until it's renamed, or null for one with no file. */
+    public String fileName(Palette p) {
+        Path file = files.get(p);
+        return file == null ? null : file.getFileName().toString();
+    }
+
     /** Whether a palette of the player's own has reached its file. False after a save that failed. */
     public boolean saved(Palette p) { return files.containsKey(p); }
 

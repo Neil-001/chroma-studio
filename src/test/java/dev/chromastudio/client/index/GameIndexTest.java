@@ -375,6 +375,18 @@ class GameIndexTest {
         assertEquals(List.of("minecraft:petrified_oak_slab"), orphans);
     }
 
+    /** Worn and overgrown variants are one family with what they vary; different stones are not. */
+    @Test
+    void variantsShareAFamilyAndDifferentStonesDont() {
+        for (String id : List.of("minecraft:stone_bricks", "minecraft:cracked_stone_bricks", "minecraft:mossy_stone_brick_stairs",
+                "minecraft:chiseled_stone_bricks", "minecraft:infested_stone_bricks")) {
+            assertEquals("minecraft:stone_brick", MaterialSets.family(id), id);
+        }
+        assertEquals("minecraft:cobblestone", MaterialSets.family("minecraft:mossy_cobblestone_wall"));
+        List<String> stones = List.of("minecraft:cobblestone", "minecraft:andesite", "minecraft:polished_andesite", "minecraft:smooth_stone");
+        assertEquals(stones.size(), stones.stream().map(MaterialSets::family).distinct().count());
+    }
+
     /** A set's palette is named after the material, whichever of its blocks the set was opened from. */
     @Test
     void aSetIsNamedAfterItsMaterial() {
