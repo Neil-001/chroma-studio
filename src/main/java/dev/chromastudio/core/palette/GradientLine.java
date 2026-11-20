@@ -6,20 +6,6 @@ package dev.chromastudio.core.palette;
  * the line gets the same step, inside the build as on its face. The ends are the centres of their blocks.
  */
 public final class GradientLine {
-    /** How neighbouring steps meet. */
-    public enum Blend {
-        /** Each step a solid band, with a sharp edge between two. */
-        BANDS,
-        /** Neighbouring steps mixed block by block near their shared edge, each step pure only at its middle. */
-        MIXED
-    }
-
-    /**
-     * How far into each band, in steps, mixing reaches from the edge on either side: half a step's width in all, so the
-     * middle half of every band stays pure and the two quarters at its edges mix with the next band.
-     */
-    private static final double MIX = 0.5;
-
     /**
      * How far past an end plane, or past the reach, a block's centre may be and still count as on it, so rounding
      * doesn't decide a block that sits exactly there, and the ends give the same answer either way round.
@@ -61,27 +47,81 @@ public final class GradientLine {
 
     /**
      * The step, from 0 to {@code steps - 1}, that a block gets. The {@code length + 1} blocks' worth from end to end
-     * are shared equally among the steps, so the first and last steps are as wide as the others. With
-     * {@link Blend#MIXED} the step may be the next one up or down near a band's edge, chosen by the block's position
-     * alone, so the same block always gets the same step.
+     * are shared equally among the steps, so the first and last steps are as wide as the others.
+     *
+     * <p>{@code blend} is how wide the zone where two neighbouring steps mix is, as a share of a step: 0 gives hard
+     * bands, and 1 mixes across the whole step, so a step is pure only along its middle. Across the zone the share of
+     * the next step's blocks rises evenly from none to all. Which blocks take it is set by {@link #dither}, by the
+     * block's position alone, so the same block always gets the same step.
      *
      * <p>When the line is shorter than the gradient has steps, sharing would skip both ends' steps, so instead each
      * block takes the step nearest its place along the line, and the two ends get the first and last steps.
      */
-    public int step(int x, int y, int z, int steps, Blend blend) {
+    public int step(int x, int y, int z, int steps, double blend) {
         if (length + 1 < steps) return Math.clamp(Math.round(along(x, y, z) / length * (steps - 1)), 0, steps - 1);
         double u = (along(x, y, z) + 0.5) / (length + 1) * steps;
-        if (blend == Blend.MIXED) u += (noise(x, y, z) - 0.5) * MIX;
+        if (blend > 0) u += (dither(x, y, z) - 0.5) * Math.min(blend, 1);
         return Math.clamp((long) Math.floor(u), 0, steps - 1);
     }
 
-    /** A number from 0 up to 1 that looks random but depends only on the position. */
-    private static double noise(int x, int y, int z) {
-        // SplitMix64's finaliser over the three coordinates.
-        long h = x * 0x9E3779B97F4A7C15L ^ y * 0xC2B2AE3D27D4EB4FL ^ z * 0x165667B19E3779F9L;
+    /**
+     * A number from 0 up to 1 for each block, which decides where in a mixing zone it switches to the next step.
+     * Random numbers clump, leaving blots of one block and holes in the other; these come from a blue noise table, in
+     * which each number's neighbours are as unlike it as can be, so at every mix the blocks of each step are spread
+     * evenly, as a builder would scatter them by hand. The table is a cube that the world is tiled with, each tile
+     * shifted by its own fixed amount, so a long wall doesn't show the same pattern over and over.
+     */
+    static double dither(int x, int y, int z) {
+        long h = (x >> Dither.BITS) * 0x9E3779B97F4A7C15L + (y >> Dither.BITS) * 0xC2B2AE3D27D4EB4FL + (z >> Dither.BITS) * 0x165667B19E3779F9L;
         h = (h ^ h >>> 30) * 0xBF58476D1CE4E5B9L;
         h = (h ^ h >>> 27) * 0x94D049BB133111EBL;
-        h ^= h >>> 31;
-        return (h >>> 11) * 0x1.0p-53;
+        int sx = (int) h, sy = (int) (h >>> 16), sz = (int) (h >>> 32);
+        return Dither.TABLE[(x + sx & Dither.MASK) << 2 * Dither.BITS | (y + sy & Dither.MASK) << Dither.BITS | z + sz & Dither.MASK];
+    }
+
+    /**
+     * The blue noise table, a cube {@link #SIZE} blocks on a side whose pattern runs on across its wrapped edges. It's made the same way on every
+     * machine when first needed, rather than shipped, by filling the cube one cell at a time, each time the cell
+     * farthest from those already filled, and numbering the cells in that order. Farthest means least crowded, with
+     * nearby filled cells counting most, as a Gaussian falls off.
+     */
+    private static final class Dither {
+        static final int BITS = 4, SIZE = 1 << BITS, MASK = SIZE - 1, CELLS = SIZE * SIZE * SIZE;
+        /** How fast crowding falls off with distance, in blocks: about one and a half, so a cell feels its near neighbours. */
+        static final double SPREAD = 1.5;
+        static final double[] TABLE = make();
+
+        private static double[] make() {
+            // How much a filled cell crowds another a given offset away, round the cube's wrapped edges.
+            double[] kernel = new double[CELLS];
+            for (int i = 0; i < CELLS; i++) {
+                int dx = wrap(i >> 2 * BITS), dy = wrap(i >> BITS & MASK), dz = wrap(i & MASK);
+                kernel[i] = StrictMath.exp(-(dx * dx + dy * dy + dz * dz) / (2 * SPREAD * SPREAD));
+            }
+            // A crumb of fixed noise on every cell, far below any real crowding, so ties don't fill the cube as a grid.
+            double[] crowding = new double[CELLS];
+            long h = 0x2545F4914F6CDD1DL;
+            for (int i = 0; i < CELLS; i++) {
+                h = h * 6364136223846793005L + 1442695040888963407L;
+                crowding[i] = (h >>> 11) * 0x1.0p-53 * 1e-3;
+            }
+            boolean[] filled = new boolean[CELLS];
+            double[] table = new double[CELLS];
+            for (int rank = 0; rank < CELLS; rank++) {
+                int best = -1;
+                for (int i = 0; i < CELLS; i++) if (!filled[i] && (best < 0 || crowding[i] < crowding[best])) best = i;
+                filled[best] = true;
+                table[best] = (rank + 0.5) / CELLS;
+                int bx = best >> 2 * BITS, by = best >> BITS & MASK, bz = best & MASK;
+                for (int i = 0; i < CELLS; i++) {
+                    int dx = (i >> 2 * BITS) - bx & MASK, dy = (i >> BITS & MASK) - by & MASK, dz = (i & MASK) - bz & MASK;
+                    crowding[i] += kernel[dx << 2 * BITS | dy << BITS | dz];
+                }
+            }
+            return table;
+        }
+
+        /** An offset along one axis taken the short way round the wrapped cube. */
+        private static int wrap(int d) { return Math.min(d, SIZE - d); }
     }
 }

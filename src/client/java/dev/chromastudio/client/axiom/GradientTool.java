@@ -10,24 +10,28 @@ import com.moulberry.axiomclientapi.regions.BooleanRegion;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.GradientStore;
 import dev.chromastudio.client.action.PaletteBlocks;
+import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.ui.tabs.GradientTab;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.palette.BuildSearch;
 import dev.chromastudio.core.palette.GradientLine;
-import dev.chromastudio.core.palette.GradientLine.Blend;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.StoredGradient;
 import imgui.moulberry92.ImGui;
 import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -38,9 +42,11 @@ import net.minecraft.world.phys.Vec3;
 /**
  * An Axiom tool that lays one of Chroma Studio's gradients across a build. The player uses it on the block where the
  * gradient starts and then where it ends. The build is the blocks joined to the first one between those two ends, and
- * each of its full blocks takes the step of where it sits along the line between them. The world shows the result
- * before anything changes, with the blocks it will change outlined; using the tool again moves the nearer end, and
- * Apply sends the whole change to Axiom as one entry in its history.
+ * each of its blocks takes the step of where it sits along the line between them, neighbouring steps mixing across a
+ * zone as wide as the player sets. Stairs, slabs, walls and the like take their step in their own shape, through
+ * {@link GradientShapes}. The world shows the result before anything changes, with the blocks the gradient covers
+ * outlined; using the tool again moves the nearer end, and Apply sends the whole change to Axiom as one entry in its
+ * history.
  */
 final class GradientTool implements CustomTool {
     /** The most blocks one gradient searches, so a build that runs on into the landscape can't stall the game. */
@@ -65,7 +71,11 @@ final class GradientTool implements CustomTool {
 
     /** The key of the gradient picked in the panel, or null until one is, and then the first in the list stands in. */
     private String picked;
-    private Blend blend = Blend.MIXED;
+    /**
+     * How wide the zone where neighbouring steps mix is, as a percentage of a step. Three quarters fades steps into
+     * each other on a tower a few blocks a step as on a long wall, while each step still shows pure along its middle.
+     */
+    private final int[] blend = {75};
     private boolean likeFirst = true;
     private final int[] reach = {16};
     private BlockPos first, second;
@@ -78,8 +88,11 @@ final class GradientTool implements CustomTool {
     /** What the preview on show was made for, so it's made again only when something changes. */
     private Object previewFor;
     private boolean overriding;
-    /** What the preview found: the blocks the build has that aren't full blocks, and whether the cap cut it short. */
-    private int leftAlone;
+    /**
+     * What the preview found: the blocks the gradient covers, the blocks it leaves as they are, as doors and barrels,
+     * and whether the cap cut the build short.
+     */
+    private int covered, leftAlone;
     private boolean capped;
     /** When Axiom last drew this tool, as {@link System#nanoTime}. */
     private long drawn;
@@ -144,7 +157,7 @@ final class GradientTool implements CustomTool {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
         Choice choice = current(choices());
-        Object key = choice == null ? null : Arrays.asList(choice.steps(), first, second, blend, likeFirst, reach[0]);
+        Object key = choice == null ? null : Arrays.asList(choice.steps(), first, second, blend[0], likeFirst, reach[0]);
         if (!Objects.equals(key, previewFor)) {
             preview(level, choice);
             previewFor = key;
@@ -162,8 +175,9 @@ final class GradientTool implements CustomTool {
 
     /**
      * Works out what the gradient would do and shows it in the world in place of the blocks there. Only blocks of the
-     * build change: never air or liquid, nor any block that isn't a full cube or that holds items or other data,
-     * such as a barrel, which the change would empty.
+     * build change: never air or liquid, nor a block that holds items or other data, such as a barrel, which the
+     * change would empty. A block that isn't a full cube keeps its shape, or is left alone when it has none a step can
+     * take.
      */
     private void preview(ClientLevel level, Choice choice) {
         clearPreview();
@@ -173,37 +187,37 @@ final class GradientTool implements CustomTool {
         if (first == null || second == null || steps.size() < 2) return;
 
         GradientLine line = new GradientLine(first.getX(), first.getY(), first.getZ(), second.getX(), second.getY(), second.getZ());
-        BlockState start = level.getBlockState(seed);
+        Set<Block> like = like(level.getBlockState(seed));
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         BuildSearch.Found found = BuildSearch.from(seed.getX(), seed.getY(), seed.getZ(), (x, y, z) -> {
             BlockState s = level.getBlockState(pos.set(x, y, z));
             if (s.isAir() || s.getBlock() instanceof LiquidBlock) return false;
-            return (!likeFirst || s.getBlock() == start.getBlock()) && line.reaches(x, y, z, reach[0]);
+            return (!likeFirst || like.contains(s.getBlock())) && line.reaches(x, y, z, reach[0]);
         }, CAP);
         capped = found.capped();
 
         AxiomTools.tools.acquireChunkRenderOverrider(PREVIEW);
         overriding = true;
+        GradientShapes shapes = new GradientShapes();
         for (long p : found.blocks()) {
             int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
             BlockState now = level.getBlockState(pos.set(x, y, z));
-            if (!paintable(level, pos, now)) {
+            BlockState step = steps.get(line.step(x, y, z, steps.size(), blend[0] / 100.0));
+            BlockState next = paintable(level, pos, now) ? step : now.getBlock() instanceof EntityBlock ? null : shapes.apply(step, now);
+            if (next == null) {
                 leftAlone++;
                 continue;
             }
-            BlockState next = steps.get(line.step(x, y, z, steps.size(), blend));
-            if (next == now) continue;
+            covered++;
             touched.add(x, y, z);
+            if (next == now) continue;
             planned.add(new Planned(x, y, z, now, next));
             change.addBlock(x, y, z, next);
             AxiomTools.tools.setBlockRenderOverride(x, y, z, next);
         }
     }
 
-    /**
-     * Whether the gradient may change a block, or put one in: a full cube with no block entity. Stairs, slabs and walls
-     * keep their shapes.
-     */
+    /** Whether the gradient may change a block, or put one in, as a whole: a full cube with no block entity. */
     private static boolean paintable(BlockGetter level, BlockPos pos, BlockState s) {
         return !(s.getBlock() instanceof EntityBlock) && s.isCollisionShapeFullBlock(level, pos);
     }
@@ -213,6 +227,7 @@ final class GradientTool implements CustomTool {
         planned.clear();
         touched.clear();
         ends.clear();
+        covered = 0;
         leftAlone = 0;
         capped = false;
         previewFor = null;
@@ -269,11 +284,8 @@ final class GradientTool implements CustomTool {
         }
 
         ImGui.separator();
-        if (ImGui.radioButton(tr("axiom.chromastudio.gradient_tool.mixed"), blend == Blend.MIXED)) blend = Blend.MIXED;
-        ImGui.setItemTooltip(tr("axiom.chromastudio.gradient_tool.mixed.tip"));
-        ImGui.sameLine();
-        if (ImGui.radioButton(tr("axiom.chromastudio.gradient_tool.bands"), blend == Blend.BANDS)) blend = Blend.BANDS;
-        ImGui.setItemTooltip(tr("axiom.chromastudio.gradient_tool.bands.tip"));
+        ImGui.sliderInt(tr("axiom.chromastudio.gradient_tool.blend"), blend, 0, 100, "%d%%");
+        ImGui.setItemTooltip(tr("axiom.chromastudio.gradient_tool.blend.tip"));
         if (ImGui.checkbox(tr("axiom.chromastudio.gradient_tool.like_first"), likeFirst)) likeFirst = !likeFirst;
         ImGui.setItemTooltip(tr("axiom.chromastudio.gradient_tool.like_first.tip"));
         ImGui.sliderInt(tr("axiom.chromastudio.gradient_tool.reach"), reach, 1, MAX_REACH);
@@ -301,7 +313,10 @@ final class GradientTool implements CustomTool {
         if (first == null) ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.start"));
         else if (second == null) ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.end"));
         else {
-            ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.count", change.count()));
+            int steps = shown == null ? 0 : states(shown).size();
+            double length = Math.sqrt(first.distSqr(second)) + 1;
+            if (steps >= 2) ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.length", Math.round(length), String.format("%.1f", length / steps)));
+            ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.count", covered, change.count()));
             if (leftAlone > 0) ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.left_alone", leftAlone));
             if (capped) ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.capped", CAP));
             ImGui.textWrapped(tr("axiom.chromastudio.gradient_tool.adjust"));
@@ -340,6 +355,18 @@ final class GradientTool implements CustomTool {
         // The panel's choice, while it's still in the list: the player may have deleted it in Chroma Studio's window.
         for (Choice c : all) if (c.key().equals(picked)) return c;
         return all.isEmpty() ? null : all.getFirst();
+    }
+
+    /**
+     * The blocks that count as like the first block: those of its material, such as stone bricks with their stairs,
+     * slabs and walls, so a build's trim takes the gradient along with its walls.
+     */
+    private static Set<Block> like(BlockState start) {
+        Set<Block> out = new HashSet<>();
+        out.add(start.getBlock());
+        Entry e = BlockIndex.get().entryOf(start);
+        if (e != null) for (Entry m : BlockIndex.get().materialSet(e)) out.add(m.block());
+        return out;
     }
 
     /**
