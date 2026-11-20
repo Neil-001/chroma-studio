@@ -17,9 +17,9 @@ Chroma Studio now works with Axiom, the building editor, on Fabric. In Axiom's e
 - The Chroma tools in Axiom's editor each have their own icon, and the palette brush, gradient tool and shade brush all follow Axiom's tool masks. A stroke or Apply changes everything you saw, or nothing if something changed meanwhile. The gradient tool straightens ends that are nearly in line, and a `%` in a palette or block name shows as written (#63)
 - Axiom's tool masks always fail safe: when the tools can't read them, or a mask fails during a stroke, nothing changes and the panel says why (#64)
 - A stroke or Apply is worked out again from the world and the tool masks when you let go or press Apply, and changes nothing unless it comes out as you saw it. The panel says when no tool mask applies because Axiom's Tool Masks window is closed (#65)
-- A tool's change is also refused when its options or the brush's radius changed as you confirmed it, and a tool mask whose script doesn't compile, or uses noise without a seed, stops the tools with advice on how to fix it (#66)
-- The tools that change blocks come first in Axiom's tool grid, the shade brush has a clearer icon, and the panels keep their buttons and messages in one place at the bottom (#67)
-- Recolour keeps the blocks the palette already has and puts the build's main material on one of the palette's main blocks. A From palette also changes the stairs and slabs of its blocks. The shade brush never turns a plain block mossy, cracked, chiseled or infested, and the gradient and scatter scripts leave alone what their tools leave alone (#68)
+- A tool's change is also refused when the brush's radius, or an option that changes the result, changed as you confirmed it. A tool mask whose script doesn't compile stops the tools, and one whose noise has no seed gets advice on how to fix it (#66)
+- Among Chroma's tools in Axiom's grid, the ones that change blocks come first, the shade brush has a clearer icon, and the panels keep their main buttons at the bottom (#67)
+- Recolour keeps the blocks the palette already has and puts the build's main material on one of the palette's main blocks. A From palette also changes the stairs and slabs of its blocks. The shade brush never turns a plain block mossy, cracked, chiseled or infested, the scatter script places the same blocks as the brush's Scatter, and the gradient script leaves out steps that aren't full blocks (#68)
 
 ## Fixes
 
