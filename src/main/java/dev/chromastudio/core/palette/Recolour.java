@@ -316,13 +316,22 @@ public final class Recolour {
                     nearest = off;
                 }
             }
-            at[main] = heaviest;
-            if (heaviest > 0) shareOut(eligible, 0, main, 0, heaviest, at);
-            else Arrays.fill(at, 0, main, heaviest);
-            if (heaviest < n - 1) shareOut(eligible, main + 1, shades, heaviest + 1, n, at);
-            else Arrays.fill(at, main + 1, shades, heaviest);
+            around(eligible, main, heaviest, at);
         }
         return at;
+    }
+
+    /**
+     * Puts the main shade on the block at place {@code heaviest}, and shares out the shades either side of it among
+     * the blocks either side, or puts them on the main block too when there are none that side.
+     */
+    private void around(int[] eligible, int main, int heaviest, int[] at) {
+        int n = eligible.length, shades = at.length;
+        at[main] = heaviest;
+        if (heaviest > 0) shareOut(eligible, 0, main, 0, heaviest, at);
+        else Arrays.fill(at, 0, main, heaviest);
+        if (heaviest < n - 1) shareOut(eligible, main + 1, shades, heaviest + 1, n, at);
+        else Arrays.fill(at, main + 1, shades, heaviest);
     }
 
     /**
@@ -421,6 +430,14 @@ public final class Recolour {
                 shares = heaviest < 0 ? 0 : Math.max(0, main - heaviest) + Math.max(0, shades - 1 - main - (n - 1 - heaviest));
             }
             if (heaviest < 0) main = -1;
+            // Each pair that shares adds a table as large as the first, so beyond one the shades either side are
+            // shared out by weight instead, as when there are more shades than blocks.
+            if (shares > 1) {
+                int[] places = new int[shades], out = new int[shades];
+                around(eligible, main, heaviest, places);
+                for (int k = 0; k < shades; k++) out[k] = eligible[places[k]];
+                return out;
+            }
         }
         // best[s][k][j]: the least cost for shades 0..k with shade k on block j and s pairs of shades sharing a block;
         // back[s][k][j] the block shade k-1 took: the first earlier block whose cost, with this shade's fit added, is

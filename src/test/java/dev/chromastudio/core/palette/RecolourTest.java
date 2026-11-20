@@ -472,6 +472,23 @@ class RecolourTest {
     }
 
     @Test
+    void aMainBlockThatMakesManyShadesShareNeedsLittleMemory() {
+        // 600 shades onto 600 blocks: the walls, second lightest, must take the heaviest block, second darkest, below
+        // the kept lightest shade's block, so hundreds of shades share. That must not take a table per shared pair.
+        int n = 600;
+        List<Recolour.Look> palette = new ArrayList<>(), build = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            double l = 0.1 + 0.8 * i / n;
+            palette.add(new Recolour.Look(Color.of(new Oklab(l, 0, 0)), false, i == 1 ? 100 : 1, "p" + i, i == 2 ? "kept" : "p" + i));
+            build.add(new Recolour.Look(Color.of(new Oklab(l + 0.0005, 0, 0)), false, i == n - 2 ? 100_000 : 1, "b" + i, i == n - 1 ? "kept" : "b" + i));
+        }
+        List<Integer> picked = picks(new Recolour(palette, build, Recolour.Mode.SHADING), build);
+        assertEquals(1, picked.get(n - 2));
+        assertEquals(2, picked.get(n - 1));
+        inOrder(palette, build, picked);
+    }
+
+    @Test
     void everyBlockThePaletteKeepsInOneShadeBoundsTheOthers() {
         // Two bricks of one family the palette has, which share a shade, and a lighter material: it may not go darker
         // than the lighter brick, though it stays itself.
