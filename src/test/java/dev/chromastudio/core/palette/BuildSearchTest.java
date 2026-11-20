@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 class BuildSearchTest {
     private static final int GRASS = 1, STONE = 2;
@@ -91,6 +92,29 @@ class BuildSearchTest {
             assertEquals(c[0], BuildSearch.x(p));
             assertEquals(c[1], BuildSearch.y(p));
             assertEquals(c[2], BuildSearch.z(p));
+        }
+    }
+
+    /**
+     * How long the search takes over a build as big as the cap, with a test that costs nothing, so only the search
+     * itself is timed. Off by default, as timings depend on the machine; run it with {@code -Dchroma.timing=true}.
+     */
+    @Test
+    @EnabledIfSystemProperty(named = "chroma.timing", matches = "true")
+    void aSearchUpToTheCapTakesAFewMilliseconds() {
+        // A solid box of 50 by 40 by 50, exactly 100,000 blocks, and the same box searched with a cap it overruns.
+        BuildSearch.Member box = (x, y, z) -> x >= 0 && x < 50 && y >= 0 && y < 40 && z >= 0 && z < 50;
+        for (int cap : new int[] {100_000, 50_000}) {
+            double ms = Double.POSITIVE_INFINITY;
+            for (int run = 0; run < 8; run++) {
+                long start = System.nanoTime();
+                BuildSearch.Found found = BuildSearch.from(0, 0, 0, box, cap);
+                ms = Math.min(ms, (System.nanoTime() - start) / 1e6);
+                assertEquals(cap, found.blocks().length);
+                assertEquals(cap < 100_000, found.capped());
+            }
+            System.out.printf("build search: %d blocks: %.1f ms%n", cap, ms);
+            assertTrue(ms < 15, cap + " blocks took " + ms + " ms");
         }
     }
 }

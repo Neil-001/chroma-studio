@@ -201,29 +201,50 @@ public final class Recolour {
             if (heaviest < 0) main = -1;
         }
         // best[s][k][j]: the least cost for shades 0..k with shade k on block j and s pairs of shades sharing a block;
-        // back[s][k][j] the block shade k-1 took.
+        // back[s][k][j] the block shade k-1 took: the first earlier block whose cost, with this shade's fit added, is
+        // the least, or block j itself, shared, only when that costs less still.
+        //
+        // Rather than trying every earlier block for every cell, each row keeps the places where its running minimum
+        // drops, cheapest last. Adding the same fit to each can round two costs to the same total, which makes the
+        // earlier block win, so the first place whose total rounds to the least is found by halving.
         double[][][] best = new double[shares + 1][shades][n];
         int[][][] back = new int[shares + 1][shades][n];
+        int[] dropAt = new int[n];
+        double[] dropTo = new double[n];
         for (int k = 0; k < shades; k++) {
             double share = build.amount(k) / build.total();
-            for (int j = 0; j < n; j++) {
-                boolean pinned = shades > 1 && (k == 0 && j != 0 || k == shades - 1 && j != n - 1) || k == main && j != heaviest;
-                double fit = share * away(at[k], from[j], to[j]);
-                for (int s = 0; s <= shares; s++) {
+            for (int s = 0; s <= shares; s++) {
+                int drops = 0;
+                for (int j = 0; j < n; j++) {
+                    if (k > 0 && j > 0) {
+                        double cost = best[s][k - 1][j - 1];
+                        if (cost != Double.POSITIVE_INFINITY && (drops == 0 || cost < dropTo[drops - 1])) {
+                            dropAt[drops] = j - 1;
+                            dropTo[drops++] = cost;
+                        }
+                    }
                     best[s][k][j] = Double.POSITIVE_INFINITY;
+                    boolean pinned = shades > 1 && (k == 0 && j != 0 || k == shades - 1 && j != n - 1) || k == main && j != heaviest;
                     if (pinned) continue;
+                    double fit = share * away(at[k], from[j], to[j]);
                     if (k == 0) {
                         if (s == 0) best[s][k][j] = fit;
                         continue;
                     }
-                    for (int i = 0; i <= j; i++) {
-                        int had = i == j ? s - 1 : s;
-                        if (had < 0 || best[had][k - 1][i] == Double.POSITIVE_INFINITY) continue;
-                        double cost = best[had][k - 1][i] + fit;
-                        if (cost < best[s][k][j]) {
-                            best[s][k][j] = cost;
-                            back[s][k][j] = i;
+                    if (drops > 0) {
+                        double least = dropTo[drops - 1] + fit;
+                        int lo = 0, hi = drops - 1;
+                        while (lo < hi) {
+                            int mid = (lo + hi) >>> 1;
+                            if (dropTo[mid] + fit <= least) hi = mid;
+                            else lo = mid + 1;
                         }
+                        best[s][k][j] = least;
+                        back[s][k][j] = dropAt[lo];
+                    }
+                    if (s > 0 && best[s - 1][k - 1][j] != Double.POSITIVE_INFINITY && best[s - 1][k - 1][j] + fit < best[s][k][j]) {
+                        best[s][k][j] = best[s - 1][k - 1][j] + fit;
+                        back[s][k][j] = j;
                     }
                 }
             }

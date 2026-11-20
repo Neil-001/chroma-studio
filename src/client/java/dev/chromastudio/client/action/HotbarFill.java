@@ -238,12 +238,12 @@ public final class HotbarFill {
             ChromaStudioClient.LOGGER.warn("Axiom's hotbars didn't take the fill", result.failure());
             // A write that quietly didn't take is as much a sign of a changed Axiom as one that threw.
             AxiomBridge.hotbarsFailed(result.failure());
-            // Putting back what it wrote failed too, so Undo is left to try again, and no new fill may take its place.
-            if (!result.undo().isEmpty()) {
-                rememberAxiom(result.undo());
-                lastFailed = true;
-            }
-            return Component.translatable(result.undo().isEmpty() ? "hotbar.chromastudio.axiom.failed" : "hotbar.chromastudio.axiom.failed_undo");
+            if (result.undo().isEmpty()) return Component.translatable("hotbar.chromastudio.axiom.failed");
+            // Putting back what it wrote failed too, so Undo is left the slots still changed to try again, and no new
+            // fill may take their place.
+            rememberAxiom(result.undo());
+            lastFailed = true;
+            return Component.translatable("hotbar.chromastudio.axiom.failed_left", slotNames(result.undo()));
         }
         rememberAxiom(result.undo());
         Hud.strip(stacks.subList(0, HOTBAR), Component.translatable("hotbar.chromastudio.mode.axiom", axiomHotbarNames(active, rest)));
@@ -331,6 +331,27 @@ public final class HotbarFill {
         };
     }
 
+    /** The most slots a message names; the log has the rest. */
+    private static final int NAMED = 3;
+
+    /**
+     * Names slots still changed and what each held before, as the player finds them in Axiom's menu, numbered from 1
+     * where Axiom numbers from 0. Past a few it says how many more, and the log lists them all.
+     */
+    private static Component slotNames(List<HotbarWrites.Was<ItemStack>> left) {
+        MutableComponent out = Component.empty();
+        for (int i = 0; i < Math.min(NAMED, left.size()); i++) {
+            HotbarWrites.Was<ItemStack> w = left.get(i);
+            if (i > 0) out.append("; ");
+            out.append(w.item().isEmpty() ? Component.translatable("hotbar.chromastudio.axiom.slot_empty", w.hotbar() + 1, w.slot() + 1)
+                    : Component.translatable("hotbar.chromastudio.axiom.slot", w.hotbar() + 1, w.slot() + 1, w.item().getHoverName()));
+        }
+        if (left.size() > NAMED) out.append("; ").append(Component.translatable("hotbar.chromastudio.axiom.more", left.size() - NAMED));
+        for (HotbarWrites.Was<ItemStack> w : left)
+            ChromaStudioClient.LOGGER.warn("Axiom hotbar {} slot {} is still changed; it held {}", w.hotbar() + 1, w.slot() + 1, w.item());
+        return out;
+    }
+
     private static void rememberAxiom(List<HotbarWrites.Was<ItemStack>> before) {
         lastFailed = false;
         last = List.of();
@@ -410,18 +431,23 @@ public final class HotbarFill {
         }
         if (!hotbars.isEmpty()) {
             // In creative mode, as whyNoUndo makes sure, every write here takes at once, so each is read back.
-            Throwable failed;
+            HotbarWrites.Restored<ItemStack> back;
             try {
-                failed = HotbarWrites.restore(axiomHotbars(AxiomBridge.activeHotbar()), hotbars);
+                back = HotbarWrites.restore(axiomHotbars(AxiomBridge.activeHotbar()), hotbars);
             } catch (Throwable t) {
-                failed = t;
+                back = new HotbarWrites.Restored<>(hotbars, t);
             }
-            if (failed != null) {
-                ChromaStudioClient.LOGGER.warn("Axiom's hotbars couldn't be put back", failed);
-                AxiomBridge.hotbarsFailed(failed);
-                // What wasn't put back is still to be, so no new fill may take its place.
+            if (back.failure() != null) {
+                ChromaStudioClient.LOGGER.warn("Axiom's hotbars couldn't be put back", back.failure());
+                AxiomBridge.hotbarsFailed(back.failure());
+            }
+            if (!back.done()) {
+                // What wasn't put back is still to be, and only that, so a slot the player has used since it was put
+                // back isn't written again. No new fill may take its place.
+                lastAxiom = back.left();
+                last = slots;
                 lastFailed = true;
-                return Component.translatable("hotbar.chromastudio.axiom.failed_undo");
+                return Component.translatable("hotbar.chromastudio.axiom.undo_left", slotNames(back.left()));
             }
         }
         for (Was was : slots) put(was.slot, was.stack);

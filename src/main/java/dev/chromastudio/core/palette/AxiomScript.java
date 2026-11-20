@@ -26,12 +26,16 @@ public final class AxiomScript {
 
     /**
      * One row of a recolour: the block the brush finds, the block it puts there with that block's fixed properties,
-     * and the properties it copies over from what it found, such as a stair's {@code facing}.
+     * the properties it copies over from what it found, such as a stair's {@code facing}, and whether the block found
+     * stands two high, as a door does, so that its other half changes with it.
      */
-    public record Remap(String from, PaletteEntry to, List<String> copied) {
+    public record Remap(String from, PaletteEntry to, List<String> copied, boolean twoHigh) {
         public Remap {
             copied = List.copyOf(copied);
         }
+
+        /** A row for a block one high. */
+        public Remap(String from, PaletteEntry to, List<String> copied) { this(from, to, copied, false); }
     }
 
     /** The axis a gradient runs along. */
@@ -61,6 +65,11 @@ public final class AxiomScript {
      * <p>A recolour of every block runs to a thousand rows or more, and the game copies text through a buffer of
      * 64 KiB, so the script is kept small: each block it puts down is written out once, in a list, and the rows are
      * one long string of {@code from=number} pairs that the script reads into its table.
+     *
+     * <p>A door changes as a whole: when the rows hold a block two high, the half the brush reaches also sets its
+     * other half, which may lie past the edge of the stroke, as the palette brush does. Axiom's {@code setBlock}
+     * doesn't ask the tool masks, so neither half is left behind when a mask cuts a door in two. Scripts without such
+     * a row leave that part out, as servers limit how long a script may be.
      */
     public static String recolour(String title, List<Remap> rows) {
         if (rows.isEmpty()) throw new IllegalArgumentException("A recolour needs at least one block to change");
@@ -118,8 +127,25 @@ public final class AxiomScript {
                 \t\tif value ~= nil then out = withBlockProperty(out, row[i] .. "=" .. value) end
                 \tend
                 end
-                return out
                 """);
+        if (rows.stream().anyMatch(Remap::twoHigh)) s.append("""
+                -- A door changes as a whole: its other half takes the same block, even past the edge of the stroke or a mask.
+                local half = getBlockProperty(getBlockState(x, y, z), "half")
+                if half == "lower" or half == "upper" then
+                \tlocal oy = y + 1
+                \tif half == "upper" then oy = y - 1 end
+                \tlocal other = getBlockState(x, oy, z)
+                \tif getBlock(x, oy, z) == getBlock(x, y, z) and getBlockProperty(other, "half") ~= half then
+                \t\tlocal put = row[1]
+                \t\tfor i = 2, #row do
+                \t\t\tlocal value = getBlockProperty(other, row[i])
+                \t\t\tif value ~= nil then put = withBlockProperty(put, row[i] .. "=" .. value) end
+                \t\tend
+                \t\tsetBlock(x, oy, z, put)
+                \tend
+                end
+                """);
+        s.append("return out\n");
         return s.toString();
     }
 

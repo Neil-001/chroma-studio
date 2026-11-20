@@ -12,8 +12,10 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 class RecolourTest {
     // The mean colours of the blocks' textures in the vanilla game, in linear light, read from their PNGs.
@@ -311,5 +313,49 @@ class RecolourTest {
         // Two colours of one lightness but far apart in hue are two shades.
         assertEquals(2, new Recolour.Shades(looks(new Oklab(0.5, 0.15, 0), new Oklab(0.5, -0.15, 0))).count());
         assertEquals(0, new Recolour.Shades(List.of()).count());
+    }
+
+    @Test
+    void costsThatRoundToATieKeepTheEarlierBlock() {
+        // Two ways to hand out these shades cost the same once rounded; the earlier blocks win, as they always have.
+        int[] buildWeights = {9, 1, 1, 1, 16, 64}, paletteWeights = {4, 1, 1, 3, 3, 6, 4, 5, 5, 2, 7, 6, 5};
+        List<Recolour.Look> build = new ArrayList<>(), palette = new ArrayList<>();
+        for (int i = 0; i < buildWeights.length; i++)
+            build.add(new Recolour.Look(Color.of(new Oklab(0.1 + 0.5 * i / buildWeights.length, 0, 0)), false, buildWeights[i], "build " + i));
+        for (int i = 0; i < paletteWeights.length; i++)
+            palette.add(new Recolour.Look(Color.of(new Oklab(0.1 + 0.5 * i / paletteWeights.length, 0, 0)), false, paletteWeights[i], "palette " + i));
+        Recolour recolour = new Recolour(palette, build, Recolour.Mode.SHADING);
+        assertEquals(List.of(0, 3, 4, 5, 10, 12), build.stream().map(recolour::pick).toList());
+    }
+
+    /** {@code count} looks of random colours, each of a family of its own so that none share a shade. */
+    private static List<Recolour.Look> randomLooks(int count, long seed) {
+        Random r = new Random(seed);
+        List<Recolour.Look> out = new ArrayList<>();
+        for (int i = 0; i < count; i++)
+            out.add(new Recolour.Look(Color.ofRgb(r.nextInt(0x1000000)), false, 1 + r.nextInt(50), "family " + seed + " " + i));
+        return out;
+    }
+
+    /**
+     * How long a recolour takes to set up and answer every block of a build, for a build of every kind in the game
+     * into a palette made from another big build. Off by default, as timings depend on the machine; run it with
+     * {@code -Dchroma.timing=true}.
+     */
+    @Test
+    @EnabledIfSystemProperty(named = "chroma.timing", matches = "true")
+    void aBigRecolourIsWorkedOutWithinAFrameOrTwo() {
+        for (int[] size : new int[][] {{750, 1000}, {1000, 300}, {300, 64}}) {
+            List<Recolour.Look> build = randomLooks(size[0], 1), palette = randomLooks(size[1], 2);
+            double ms = Double.POSITIVE_INFINITY;
+            for (int run = 0; run < 5; run++) {
+                long start = System.nanoTime();
+                Recolour recolour = new Recolour(palette, build, Recolour.Mode.SHADING);
+                for (Recolour.Look l : build) recolour.pick(l);
+                ms = Math.min(ms, (System.nanoTime() - start) / 1e6);
+            }
+            System.out.printf("recolour: %d build kinds into %d palette blocks: %.1f ms%n", size[0], size[1], ms);
+            assertTrue(ms < 50, size[0] + " into " + size[1] + " took " + ms + " ms");
+        }
     }
 }
