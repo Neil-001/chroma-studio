@@ -48,9 +48,10 @@ public final class AxiomScript {
 
     /**
      * The block tags by which a gradient script leaves a block alone: the ground, and families of blocks a full step
-     * would wrongly fill, such as flower pots and carpets.
+     * would wrongly fill, such as carpets. A block that holds something is never left to a tag, as the world a script
+     * runs in may tag it otherwise; the script names it.
      */
-    public static final List<String> GRADIENT_TAGS = List.of("substrate_overworld", "sand", "flower_pots", "wool_carpets", "candle_cakes", "cauldrons");
+    public static final List<String> GRADIENT_TAGS = List.of("substrate_overworld", "sand", "wool_carpets", "candle_cakes", "cauldrons");
 
     /**
      * What a script leaves alone besides what it always checks: blocks with any of {@code properties}; blocks with

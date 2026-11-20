@@ -29,7 +29,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import org.jspecify.annotations.Nullable;
@@ -162,7 +164,8 @@ final class AxiomScripts {
         Set<String> changed = new HashSet<>();
         for (Block b : BuiltInRegistries.BLOCK) {
             List<BlockState> states = b.getStateDefinition().getPossibleStates();
-            boolean tagged = known.stream().anyMatch(b.defaultBlockState()::is);
+            // A tag never stands in for a block that holds something: the world a script runs in may tag it otherwise.
+            boolean tagged = !holdsSomething(b) && known.stream().anyMatch(b.defaultBlockState()::is);
             if (!tagged && states.stream().anyMatch(s -> refuses.test(s) && !caught.test(s))) named.add(b);
             boolean left = states.stream().allMatch(refuses);
             for (Property<?> p : b.getStateDefinition().getProperties()) {
@@ -189,6 +192,9 @@ final class AxiomScripts {
         }
         return new AxiomScript.Kept(properties, tagNames, named.stream().map(b -> BuiltInRegistries.BLOCK.getKey(b).toString()).toList());
     }
+
+    /** Whether a block holds items or other data, such as a chest or a potted plant, which a replacement would lose. */
+    static boolean holdsSomething(Block b) { return b instanceof EntityBlock || b instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR; }
 
     /** A block's id as a script names it: its path alone for one of the game's own. */
     private static String name(Block b) {

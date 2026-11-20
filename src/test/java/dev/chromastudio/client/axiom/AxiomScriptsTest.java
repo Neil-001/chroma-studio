@@ -50,16 +50,14 @@ class AxiomScriptsTest {
         keys.clear();
         keys(AxiomScripts.gradient("Tower", tower.subList(0, 3), AxiomScript.Axis.Y, BlockPos.ZERO).summary(), keys);
         assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped.one[1]"), keys.toString());
-        // Leaving alone every block the tool leaves takes room: three steps fit what a server lets a player without
-        // import rights run, and the Tower's seven don't, which the summary says.
-        AxiomBridge.Script three = AxiomScripts.gradient("Tower", tower.subList(2, 5), AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
-        assertTrue(AxiomScript.counted(three.text()) < AxiomScript.SERVER_LIMIT, AxiomScript.counted(three.text()) + " " + AxiomScripts.gradientKept());
-        keys.clear();
-        keys(script.summary(), keys);
-        assertTrue(keys.contains("axiom.chromastudio.long[" + AxiomScript.SERVER_LIMIT + "]"), keys.toString());
-        keys.clear();
-        keys(three.summary(), keys);
-        assertFalse(keys.stream().anyMatch(k -> k.startsWith("axiom.chromastudio.long")), keys.toString());
+        // Naming every block the tool leaves that holds something, potted plants included, takes more room than a
+        // server lets a player without import rights run, even for two steps, and the summary says so.
+        AxiomBridge.Script two = AxiomScripts.gradient("Tower", tower.subList(2, 4), AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
+        for (AxiomBridge.Script made : List.of(script, two)) {
+            keys.clear();
+            keys(made.summary(), keys);
+            assertTrue(keys.contains("axiom.chromastudio.long[" + AxiomScript.SERVER_LIMIT + "]"), keys.toString());
+        }
     }
 
     @Test

@@ -170,6 +170,25 @@ class ScriptSafetyTest {
         return s.getBlock() instanceof EntityBlock || s.getBlock() instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR;
     }
 
+    @Test
+    void noScriptLeavesABlockThatHoldsSomethingToATag() throws Exception {
+        // A tag is the world's data, and a script may be run in another world than it was made in, whose data packs tag
+        // blocks otherwise. So each block that holds something is named, or caught by a property, which is the game's code.
+        Palette p = palette("Script safety tags", "stone_bricks");
+        AxiomScript.Kept gradient = AxiomScripts.gradientKept();
+        String scatter = AxiomScripts.scatter(p).text();
+        List<String> wrong = new ArrayList<>();
+        for (Block b : BuiltInRegistries.BLOCK) {
+            BlockState s = b.defaultBlockState();
+            if (!holdsSomething(s) || s.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty()) continue;
+            String id = BuiltInRegistries.BLOCK.getKey(b).toString();
+            boolean byProperty = s.getProperties().stream().anyMatch(q -> AxiomScript.KEPT_BY_PROPERTY.contains(q.getName()) || gradient.properties().contains(q.getName()));
+            if (!byProperty && !gradient.blocks().contains(id)) wrong.add("gradient " + id);
+        }
+        assertTrue(wrong.isEmpty(), wrong.toString());
+        assertFalse(scatter.contains("isBlockTagged"), scatter);
+    }
+
     /** The blocks of the states listed, each once, so a failure names every block it's about. */
     private static String blocks(List<BlockState> wrong) {
         return wrong.stream().map(s -> BuiltInRegistries.BLOCK.getKey(s.getBlock()).getPath()).distinct().toList().toString();
