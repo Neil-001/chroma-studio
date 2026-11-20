@@ -752,7 +752,6 @@
   "axiom.chromastudio.brush.recolour": "다시 칠하기",
   "axiom.chromastudio.brush.recolour.tip": "이 팔레트로 다시 칠하는 Axiom 스크립트와 같은 방식으로 블록을 바꿉니다. 공기, 액체, 땅은 바뀌지 않습니다.",
   "axiom.chromastudio.brush.empty": "이 팔레트의 블록은 이 게임에 없습니다.",
-  "axiom.chromastudio.mask.changed": "이 버전의 Axiom에는 도구 마스크가 없어 Chroma Studio 도구가 닿는 모든 블록을 바꿉니다.",
   "axiom.chromastudio.mask.unknown": "Axiom의 도구 마스크가 이 버전의 Chroma Studio가 아는 형태와 달라 도구로는 아무것도 바꿀 수 없습니다. 더 새로운 Chroma Studio는 지원할 수도 있습니다.",
   "axiom.chromastudio.mask.failed": "Axiom의 도구 마스크가 더 이상 응답하지 않아 게임을 다시 시작할 때까지 Chroma Studio 도구로는 아무것도 바꿀 수 없습니다. 이유는 로그에 있습니다.",
   "axiom.chromastudio.brush.weight": "%s ×%s",

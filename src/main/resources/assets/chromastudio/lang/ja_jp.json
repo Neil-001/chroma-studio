@@ -752,7 +752,6 @@
   "axiom.chromastudio.brush.recolour": "色替え",
   "axiom.chromastudio.brush.recolour.tip": "このパレットで色替えする Axiom スクリプトと同じように、各ブロックを色替えします。空気・液体・地面はそのままです。",
   "axiom.chromastudio.brush.empty": "このパレットのブロックはこのゲームにありません。",
-  "axiom.chromastudio.mask.changed": "このバージョンの Axiom にはツールマスクがないため、Chroma Studio のツールは届くすべてのブロックを変更します。",
   "axiom.chromastudio.mask.unknown": "Axiom のツールマスクがこのバージョンの Chroma Studio の知る形と違うため、ツールは何も変更しません。新しい Chroma Studio なら対応しているかもしれません。",
   "axiom.chromastudio.mask.failed": "Axiom のツールマスクが応答しなくなったため、ゲームを再起動するまで Chroma Studio のツールは何も変更しません。理由はログにあります。",
   "axiom.chromastudio.brush.weight": "%s ×%s",

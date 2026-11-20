@@ -752,7 +752,6 @@
   "axiom.chromastudio.brush.recolour": "重新着色",
   "axiom.chromastudio.brush.recolour.tip": "按 Axiom 脚本的方式，用此调色板重新着色每个方块。空气、液体和地面保持不变。",
   "axiom.chromastudio.brush.empty": "此调色板中的方块在本游戏中都不存在。",
-  "axiom.chromastudio.mask.changed": "此版本的 Axiom 没有工具遮罩，所以 Chroma Studio 的工具会更改它们触及的每个方块。",
   "axiom.chromastudio.mask.unknown": "Axiom 的工具遮罩与此版本的 Chroma Studio 所知的不同，所以它的工具不会做任何更改。更新版本的 Chroma Studio 也许能支持。",
   "axiom.chromastudio.mask.failed": "Axiom 的工具遮罩不再响应，所以在重启游戏前，Chroma Studio 的工具不会做任何更改。原因见日志。",
   "axiom.chromastudio.brush.weight": "%s ×%s",

@@ -90,7 +90,9 @@ final class BrushStroke {
             return;
         }
         if (!AxiomTools.tools.isMouseDown(USE_TOOL)) {
-            refused = AxiomChanges.send(queued).orElse(null);
+            // A mask that failed partway may have kept blocks out of the queue that it should have let in, or the
+            // other way round, and a fresh mask at sending can't tell; so the stroke sends nothing.
+            refused = mask.failed() ? AxiomChanges.refusal(QueuedChanges.Refusal.MASK_FAILED) : AxiomChanges.send(queued).orElse(null);
             cancel();
             return;
         }
