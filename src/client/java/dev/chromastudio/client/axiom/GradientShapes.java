@@ -69,19 +69,10 @@ final class GradientShapes {
     private UnaryOperator<BlockState> change(BlockState step, BlockState here, Kind kind) {
         Entry stepEntry = index.entryOf(step);
         if (stepEntry == null) return _ -> null;
-        BlockState to = null;
-        for (Entry m : index.materialSet(stepEntry)) {
-            if (m.kind() == kind) {
-                to = step;
-                if (m.block() == here.getBlock()) return UnaryOperator.identity();
-                break;
-            }
-        }
-        if (to == null) {
-            to = borrowed(kind, step);
-            if (to == null) return _ -> null;
-            if (to.getBlock() == here.getBlock()) return UnaryOperator.identity();
-        }
+        Optional<Entry> own = index.materialSet(stepEntry).stream().filter(m -> m.kind() == kind).findFirst();
+        BlockState to = own.isPresent() ? step : borrowed(kind, step);
+        if (to == null) return _ -> null;
+        if (own.map(Entry::block).orElse(to.getBlock()) == here.getBlock()) return UnaryOperator.identity();
         // A recolour into a palette of that one block gives the shaped block that block's shape of it.
         try {
             RecolourPlan plan = RecolourPlan.of(palette(to), palette(here), Recolour.Mode.CLOSEST, face, tint);

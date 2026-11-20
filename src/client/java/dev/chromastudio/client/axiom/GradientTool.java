@@ -365,8 +365,9 @@ final class GradientTool implements CustomTool {
     private static Set<Block> like(BlockState start) {
         Set<Block> out = new HashSet<>();
         out.add(start.getBlock());
-        Entry e = BlockIndex.get().entryOf(start);
-        if (e != null) for (Entry m : BlockIndex.get().materialSet(e)) out.add(m.block());
+        BlockIndex index = BlockIndex.get();
+        Entry e = index.entryOf(start);
+        if (e != null) for (Entry m : index.materialSet(e)) out.add(m.block());
         return out;
     }
 

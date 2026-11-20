@@ -80,9 +80,9 @@ public final class GradientLine {
     }
 
     /**
-     * The blue noise table, a cube {@link #SIZE} blocks on a side whose pattern runs on across its wrapped edges. It's made the same way on every
-     * machine when first needed, rather than shipped, by filling the cube one cell at a time, each time the cell
-     * farthest from those already filled, and numbering the cells in that order. Farthest means least crowded, with
+     * The blue noise table, a cube {@link #SIZE} blocks on a side whose pattern runs on across its wrapped edges.
+     * It's made the same way on every machine when first needed, rather than shipped, by filling the cube one cell at
+     * a time, each time the cell farthest from those already filled, and numbering the cells in that order. Farthest means least crowded, with
      * nearby filled cells counting most, as a Gaussian falls off.
      */
     private static final class Dither {
