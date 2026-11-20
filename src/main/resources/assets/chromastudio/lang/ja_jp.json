@@ -739,7 +739,7 @@
   "axiom.chromastudio.masks": "Axiom のツールマスクに従う",
   "axiom.chromastudio.masks.tip": "ツールが変更する対象を、空気だけ、既存のブロックだけのように絞るには、Axiom のメニューバーの Tool Masks でマスクを設定してください。選択範囲があるときは、その内側のブロックだけを変更します。Axiom がマスクを適用するのは、Tool Masks ウィンドウが開いている、ドッキングされている、または最小化されている間だけです。",
   "axiom.chromastudio.masks.off": "ツールマスクは適用されていません：Axiom のツールマスクウィンドウが閉じています。このツールをマスクに従わせるには開いてください。",
-  "axiom.chromastudio.preview.busy": "Axiom のテキストツールなど、別のツールのプレビューがワールドに表示されています。そのツールを片付けてから、このツールをもう一度使ってください。",
+  "axiom.chromastudio.preview.busy": "Axiom のテキストツールなど、別のツールのプレビューがワールドに表示されています。そのツールに戻って確定するかキャンセルしてから、このツールをもう一度使ってください。",
   "axiom.chromastudio.refused.world": "変更されませんでした：別のワールドまたはディメンションに移動しました。",
   "axiom.chromastudio.refused.index": "変更されませんでした：その間に Chroma Studio がブロックの色を読み込み直しました。もう一度試してください。",
   "axiom.chromastudio.refused.editor": "変更されませんでした：途中でエディターまたはツールから離れました。もう一度試してください。",

@@ -739,7 +739,7 @@
   "axiom.chromastudio.masks": "Stosuje maski narzędzi Axiom",
   "axiom.chromastudio.masks.tip": "Aby zmieniać na przykład tylko powietrze albo tylko istniejące bloki, ustaw maskę w sekcji „Tool Masks” na pasku menu Axiom. Jeśli zaznaczono obszar, narzędzie zmienia tylko bloki w jego obrębie. Axiom stosuje maski tylko wtedy, gdy okno „Tool Masks” jest otwarte, zadokowane lub zminimalizowane.",
   "axiom.chromastudio.masks.off": "Żadna maska narzędzia nie działa: okno Maski narzędzi w Axiom jest zamknięte. Otwórz je, aby to narzędzie trzymało się maski.",
-  "axiom.chromastudio.preview.busy": "W świecie widać podgląd innego narzędzia, na przykład narzędzia tekstu z Axiom. Odłóż tamto narzędzie, a potem użyj tego jeszcze raz.",
+  "axiom.chromastudio.preview.busy": "W świecie widać podgląd innego narzędzia, na przykład narzędzia tekstu z Axiom. Wróć do tamtego narzędzia, dokończ albo anuluj podgląd, a potem użyj tego jeszcze raz.",
   "axiom.chromastudio.refused.world": "Nic nie zmieniono: jesteś teraz w innym świecie lub wymiarze.",
   "axiom.chromastudio.refused.index": "Nic nie zmieniono: Chroma Studio w międzyczasie ponownie wczytało kolory bloków. Spróbuj jeszcze raz.",
   "axiom.chromastudio.refused.editor": "Nic nie zmieniono: edytor został zamknięty lub wybrano inne narzędzie przed końcem operacji. Spróbuj jeszcze raz.",

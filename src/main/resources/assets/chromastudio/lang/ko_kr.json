@@ -739,7 +739,7 @@
   "axiom.chromastudio.masks": "Axiom의 도구 마스크를 따름",
   "axiom.chromastudio.masks.tip": "도구가 바꾸는 대상을 공기만, 기존 블록만 등으로 제한하려면 Axiom 메뉴 막대의 Tool Masks에서 마스크를 설정하세요. 선택 영역이 있으면 그 안의 블록만 바꿉니다. Axiom은 Tool Masks 창이 열려 있거나 도킹되어 있거나 최소화되어 있는 동안에만 마스크를 적용합니다.",
   "axiom.chromastudio.masks.off": "적용되는 도구 마스크가 없습니다. Axiom의 도구 마스크 창이 닫혀 있습니다. 이 도구가 마스크를 따르게 하려면 창을 여세요.",
-  "axiom.chromastudio.preview.busy": "Axiom의 텍스트 도구처럼 다른 도구의 미리 보기가 월드에 표시되고 있습니다. 그 도구를 치운 뒤 이 도구를 다시 사용하세요.",
+  "axiom.chromastudio.preview.busy": "Axiom의 텍스트 도구처럼 다른 도구의 미리 보기가 월드에 표시되고 있습니다. 그 도구로 돌아가 마치거나 취소한 뒤 이 도구를 다시 사용하세요.",
   "axiom.chromastudio.refused.world": "바뀐 것이 없습니다. 이제 다른 월드나 차원에 있습니다.",
   "axiom.chromastudio.refused.index": "바뀐 것이 없습니다. 그동안 Chroma Studio가 블록 색을 다시 읽었습니다. 다시 시도하세요.",
   "axiom.chromastudio.refused.editor": "바뀐 것이 없습니다. 도중에 편집기를 닫았거나 도구를 바꿨습니다. 다시 시도하세요.",

@@ -739,7 +739,7 @@
   "axiom.chromastudio.masks": "Sigue las máscaras de herramienta de Axiom",
   "axiom.chromastudio.masks.tip": "Para limitar lo que cambia la herramienta, como solo aire o solo bloques existentes, define una máscara en Tool Masks, en la barra de menús de Axiom. Con una selección, solo cambia los bloques dentro de ella. Axiom solo aplica las máscaras mientras su ventana Tool Masks está abierta, acoplada o minimizada.",
   "axiom.chromastudio.masks.off": "No se aplica ninguna máscara de herramienta: la ventana Máscaras de herramienta de Axiom está cerrada. Ábrela para que esta herramienta respete su máscara.",
-  "axiom.chromastudio.preview.busy": "Se está mostrando en el mundo la vista previa de otra herramienta, como puede pasar con la herramienta de texto de Axiom. Guarda esa herramienta y luego vuelve a usar esta.",
+  "axiom.chromastudio.preview.busy": "Se está mostrando en el mundo la vista previa de otra herramienta, como puede pasar con la herramienta de texto de Axiom. Vuelve a esa herramienta, termínala o cancélala, y luego vuelve a usar esta.",
   "axiom.chromastudio.refused.world": "No se cambió nada: ahora estás en otro mundo o dimensión.",
   "axiom.chromastudio.refused.index": "No se cambió nada: Chroma Studio volvió a leer los colores de los bloques mientras tanto. Inténtalo de nuevo.",
   "axiom.chromastudio.refused.editor": "No se cambió nada: saliste del editor o cambiaste de herramienta antes de terminar. Inténtalo de nuevo.",

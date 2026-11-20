@@ -739,7 +739,7 @@
   "axiom.chromastudio.masks": "遵循 Axiom 的工具遮罩",
   "axiom.chromastudio.masks.tip": "要限制工具更改的范围，例如只改空气或只改已有方块，请在 Axiom 菜单栏的 Tool Masks 下设置遮罩。有选区时，只会更改选区内的方块。只有 Axiom 的 Tool Masks 窗口处于打开、停靠或最小化状态时，Axiom 才会应用遮罩。",
   "axiom.chromastudio.masks.off": "没有工具遮罩生效：Axiom 的工具遮罩窗口已关闭。打开它，此工具才会遵循遮罩。",
-  "axiom.chromastudio.preview.busy": "世界中正显示另一个工具的预览，例如 Axiom 文本工具的预览。请先收起那个工具，再重新使用此工具。",
+  "axiom.chromastudio.preview.busy": "世界中正显示另一个工具的预览，例如 Axiom 文本工具的预览。请回到那个工具完成或取消它，再重新使用此工具。",
   "axiom.chromastudio.refused.world": "未作更改：你现在在另一个世界或维度。",
   "axiom.chromastudio.refused.index": "未作更改：这期间 Chroma Studio 重新读取了方块的颜色。请重试。",
   "axiom.chromastudio.refused.editor": "未作更改：你中途离开了编辑器或该工具。请重试。",
