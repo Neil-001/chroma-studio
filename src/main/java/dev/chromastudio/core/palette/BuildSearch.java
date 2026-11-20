@@ -1,9 +1,6 @@
 package dev.chromastudio.core.palette;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Finds a build: the blocks joined to a first block through others like it, where blocks touching at a face, an edge
@@ -29,30 +26,87 @@ public final class BuildSearch {
     /** The build joined to the first block, at most {@code cap} blocks of it. Nothing when the first block isn't a member. */
     public static Found from(int x, int y, int z, Member member, int cap) {
         if (cap <= 0 || !member.test(x, y, z)) return new Found(new long[0], false);
+        // The blocks found, in the order they were found, are also the queue of those whose neighbours are still to
+        // look at, so the search is breadth first and nearest the first block first.
         long[] out = new long[Math.min(cap, 1024)];
-        int size = 0;
-        Set<Long> seen = new HashSet<>();
-        ArrayDeque<Long> queue = new ArrayDeque<>();
-        long first = pack(x, y, z);
-        seen.add(first);
-        queue.add(first);
-        while (!queue.isEmpty()) {
-            long p = queue.poll();
-            if (size == cap) return new Found(out, true);
-            if (size == out.length) out = Arrays.copyOf(out, Math.min(cap, out.length * 2));
-            out[size++] = p;
+        out[0] = pack(x, y, z);
+        int size = 1;
+        Seen seen = new Seen();
+        seen.add(x, y, z);
+        for (int next = 0; next < size; next++) {
+            long p = out[next];
             int px = x(p), py = y(p), pz = z(p);
             for (int ox = -1; ox <= 1; ox++) {
                 for (int oy = -1; oy <= 1; oy++) {
                     for (int oz = -1; oz <= 1; oz++) {
                         int nx = px + ox, ny = py + oy, nz = pz + oz;
-                        long n = pack(nx, ny, nz);
-                        if (seen.add(n) && member.test(nx, ny, nz)) queue.add(n);
+                        if (!seen.add(nx, ny, nz) || !member.test(nx, ny, nz)) continue;
+                        if (size == cap) return new Found(out, true);
+                        if (size == out.length) out = Arrays.copyOf(out, Math.min(cap, out.length * 2));
+                        out[size++] = pack(nx, ny, nz);
                     }
                 }
             }
         }
         return new Found(Arrays.copyOf(out, size), false);
+    }
+
+    /**
+     * The positions already looked at, one bit each, in sections of 16 by 16 by 16 kept in an open-addressed table.
+     * A search looks at each found block's 26 neighbours, which nearly always share its section, so this is several
+     * times quicker than a set of boxed positions, which spent most of the search's time making and hashing them.
+     */
+    private static final class Seen {
+        private long[] keys = new long[256];
+        private long[][] sections = new long[256][];
+        private int size;
+        // The section of the last position, which the next one is most likely in.
+        private long lastKey;
+        private long[] last;
+
+        /** Marks a position as looked at, and says whether it is new. */
+        boolean add(int x, int y, int z) {
+            long key = pack(x >> 4, y >> 4, z >> 4);
+            if (last == null || key != lastKey) {
+                last = section(key);
+                lastKey = key;
+            }
+            int i = (x & 15) << 8 | (y & 15) << 4 | z & 15;
+            long bit = 1L << i;
+            if ((last[i >> 6] & bit) != 0) return false;
+            last[i >> 6] |= bit;
+            return true;
+        }
+
+        private long[] section(long key) {
+            if (size * 2 >= keys.length) grow();
+            int mask = keys.length - 1;
+            for (int i = slot(key, mask); ; i = (i + 1) & mask) {
+                if (sections[i] == null) {
+                    keys[i] = key;
+                    size++;
+                    return sections[i] = new long[64];
+                }
+                if (keys[i] == key) return sections[i];
+            }
+        }
+
+        private void grow() {
+            long[] oldKeys = keys;
+            long[][] oldSections = sections;
+            keys = new long[oldKeys.length * 2];
+            sections = new long[oldKeys.length * 2][];
+            int mask = keys.length - 1;
+            for (int j = 0; j < oldKeys.length; j++) {
+                if (oldSections[j] == null) continue;
+                int i = slot(oldKeys[j], mask);
+                while (sections[i] != null) i = (i + 1) & mask;
+                keys[i] = oldKeys[j];
+                sections[i] = oldSections[j];
+            }
+        }
+
+        private static int slot(long key, int mask) { return (int) ((key * 0x9E3779B97F4A7C15L) >>> 40) & mask; }
     }
 
     // A position in one long, as the game packs its own: 26 bits each for x and z and 12 for y.

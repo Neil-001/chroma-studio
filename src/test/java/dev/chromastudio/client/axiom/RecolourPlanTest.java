@@ -1,6 +1,7 @@
 package dev.chromastudio.client.axiom;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,15 +14,25 @@ import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Recolour;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.DoorHingeSide;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.material.FluidState;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +63,9 @@ class RecolourPlanTest {
         blocks.put("oak_stairs", "block/oak_planks");
         blocks.put("white_concrete", "block/white_concrete");
         blocks.put("black_concrete", "block/black_concrete");
+        blocks.put("oak_door", "block/oak_door_bottom");
+        blocks.put("spruce_planks", "block/spruce_planks");
+        blocks.put("spruce_door", "block/spruce_door_bottom");
         TestIndex.index(blocks);
     }
 
@@ -186,5 +200,96 @@ class RecolourPlanTest {
         AxiomScript.Remap row = plan.rows().getFirst();
         assertEquals("axis=x", row.to().properties());
         assertEquals(PaletteBlocks.state(row.to()), plan.apply(TestIndex.block(row.from().replace("minecraft:", "")).defaultBlockState()));
+    }
+
+    /** A few blocks in an otherwise empty world, as the brush reads them. */
+    private static final class World implements BlockGetter {
+        final Map<BlockPos, BlockState> blocks = new HashMap<>();
+
+        World with(int x, int y, int z, BlockState state) {
+            blocks.put(new BlockPos(x, y, z), state);
+            return this;
+        }
+
+        @Override
+        public BlockState getBlockState(BlockPos pos) { return blocks.getOrDefault(pos.immutable(), Blocks.AIR.defaultBlockState()); }
+
+        @Override
+        public FluidState getFluidState(BlockPos pos) { return getBlockState(pos).getFluidState(); }
+
+        @Override
+        public BlockEntity getBlockEntity(BlockPos pos) { return null; }
+
+        @Override
+        public int getHeight() { return 384; }
+
+        @Override
+        public int getMinY() { return -64; }
+    }
+
+    /** An oak door facing east, hinged on the right, its lower half at 0 0 0 and its upper half above it. */
+    private static World door() {
+        BlockState lower = TestIndex.block("oak_door").defaultBlockState().setValue(DoorBlock.FACING, Direction.EAST)
+                .setValue(DoorBlock.HINGE, DoorHingeSide.RIGHT).setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER);
+        return new World().with(0, 0, 0, lower).with(0, 1, 0, lower.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER))
+                .with(1, 0, 0, TestIndex.block("oak_planks").defaultBlockState());
+    }
+
+    private static RecolourPlan spruce() throws AxiomBridge.Refused {
+        return RecolourPlan.of(palette("Spruce", "spruce_planks"), null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
+    }
+
+    /** What a stroke puts down where it reaches these positions, with only {@code admitted} positions let through. */
+    private static Map<BlockPos, BlockState> stroke(RecolourPlan plan, World world, RecolourPlan.Admit admit, BlockPos... reached) {
+        Map<BlockPos, BlockState> out = new HashMap<>();
+        for (BlockPos p : reached) plan.change(world, p.getX(), p.getY(), p.getZ(), admit, (x, y, z, s) -> out.put(new BlockPos(x, y, z), s));
+        return out;
+    }
+
+    @Test
+    void aStrokeThatReachesOneHalfOfADoorChangesBoth() throws Exception {
+        RecolourPlan plan = spruce();
+        World world = door();
+        Block spruceDoor = TestIndex.block("spruce_door");
+        for (BlockPos reached : List.of(new BlockPos(0, 1, 0), new BlockPos(0, 0, 0))) {
+            Map<BlockPos, BlockState> out = stroke(plan, world, (_, _, _) -> true, reached);
+            assertEquals(Set.of(new BlockPos(0, 0, 0), new BlockPos(0, 1, 0)), out.keySet(), "reaching " + reached);
+            for (Map.Entry<BlockPos, BlockState> e : out.entrySet()) {
+                BlockState was = world.getBlockState(e.getKey());
+                assertEquals(spruceDoor, e.getValue().getBlock());
+                assertEquals(was.getValue(DoorBlock.HALF), e.getValue().getValue(DoorBlock.HALF));
+                assertEquals(Direction.EAST, e.getValue().getValue(DoorBlock.FACING));
+                assertEquals(DoorHingeSide.RIGHT, e.getValue().getValue(DoorBlock.HINGE));
+                // A whole build asks each half on its own, and gets what the stroke put.
+                assertEquals(e.getValue(), plan.apply(world, e.getKey().getX(), e.getKey().getY(), e.getKey().getZ(), (_, _, _) -> true));
+            }
+        }
+        // The plank beside the door is no door, so it changes on its own.
+        assertEquals(Set.of(new BlockPos(1, 0, 0)), stroke(plan, world, (_, _, _) -> true, new BlockPos(1, 0, 0)).keySet());
+    }
+
+    @Test
+    void aDoorWhoseOtherHalfIsKeptOutStaysAsItIs() throws Exception {
+        RecolourPlan plan = spruce();
+        World world = door();
+        // A mask or the edge of a found build that lets in only the upper half.
+        RecolourPlan.Admit upperOnly = (_, y, _) -> y == 1;
+        assertEquals(Map.of(), stroke(plan, world, upperOnly, new BlockPos(0, 1, 0), new BlockPos(0, 0, 0)));
+        assertNull(plan.apply(world, 0, 1, 0, upperOnly));
+        assertNull(plan.apply(world, 0, 0, 0, upperOnly));
+        // A half with no other half, as a broken door leaves, changes as any block does.
+        World half = new World().with(0, 1, 0, world.getBlockState(new BlockPos(0, 1, 0)));
+        assertEquals(Set.of(new BlockPos(0, 1, 0)), stroke(plan, half, (_, _, _) -> true, new BlockPos(0, 1, 0)).keySet());
+        // A stair's half is top or bottom, not a door's, so the block above it is left alone.
+        assertEquals(0, RecolourPlan.otherHalf(new World(), BlockPos.ZERO, TestIndex.block("oak_stairs").defaultBlockState()));
+    }
+
+    @Test
+    void theScriptChangesADoorsOtherHalfOnlyWhenItHasADoor() throws Exception {
+        List<AxiomScript.Remap> rows = spruce().rows();
+        assertTrue(rows.stream().anyMatch(r -> r.from().equals("minecraft:oak_door") && r.twoHigh()), rows.toString());
+        assertTrue(rows.stream().filter(r -> !r.from().endsWith("_door")).noneMatch(AxiomScript.Remap::twoHigh), rows.toString());
+        assertTrue(AxiomScript.recolour("Spruce", rows).contains("setBlock(x, oy, z, put)"));
+        assertFalse(AxiomScript.recolour("Desert", plan(Recolour.Mode.SHADING).rows()).contains("setBlock"));
     }
 }
