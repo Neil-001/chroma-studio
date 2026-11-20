@@ -44,12 +44,12 @@ final class AxiomScripts {
             throw new Refused(plan.kept() == 0 ? why : why.append(" ").append(kept(plan)));
         }
         String title = from == null ? to.name : from.name + " to " + to.name;
-        MutableComponent summary = Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped());
-        // A build mostly of the palette's own blocks hardly changes, which would look like the script failing.
-        if (plan.kept() > 0) summary.append(" ").append(kept(plan));
-        return made(AxiomScript.recolour(title, plan.rows()), summary,
+        Script made = made(AxiomScript.recolour(title, plan.rows()), Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped()),
                 from == null ? "axiom.chromastudio.long.from" : "axiom.chromastudio.long.brush",
                 from == null ? "axiom.chromastudio.too_long.from" : "axiom.chromastudio.too_long");
+        // A build mostly of the palette's own blocks hardly changes, which would look like the script failing. It goes
+        // last, after the note on servers' limit, which the dialog is sized to show.
+        return plan.kept() == 0 ? made : new Script(made.text(), made.summary().copy().append(" ").append(kept(plan)));
     }
 
     /** How many kinds of block a recolour leaves as they are because the palette already has them. */
