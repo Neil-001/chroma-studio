@@ -78,7 +78,7 @@ final class ShadeBrushTool implements CustomTool {
     private static final List<Kind> CHANGEABLE = List.of(Kind.FULL, Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE, Kind.TRAPDOOR);
     private static final Set<Kind> SHAPES = EnumSet.of(Kind.SLAB, Kind.STAIRS, Kind.WALL);
 
-    /** Blocks of ore, which the Building blocks tab lists but which read as a block of coal, not as stone. */
+    /** Blocks of coal, lapis and raw ore, which the Building blocks tab lists but no builder takes for a shade of stone. */
     private static final Set<Block> STORAGE = Set.of(Blocks.COAL_BLOCK, Blocks.LAPIS_BLOCK, Blocks.RAW_IRON_BLOCK, Blocks.RAW_COPPER_BLOCK, Blocks.RAW_GOLD_BLOCK);
 
     private final BlockRegion stroke = AxiomTools.regions.createBlock();
