@@ -9,4 +9,6 @@ public final class ToolMaskWindow {
 
     /** The last error a mask's Lua script raised, until a context compiles the script afresh or the player closes it. */
     public static String luaExecutionError;
+    /** When the Scripting tab last compiled its script, or 0 before it has. Private in Axiom. */
+    private static long lastLuaCompile;
 }

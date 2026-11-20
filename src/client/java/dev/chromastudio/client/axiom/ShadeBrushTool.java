@@ -122,23 +122,36 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return false;
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
-        Plan p = plan();
-        if (p == null) return false;
-        Direction d = direction;
-        Set<Kind> k = EnumSet.copyOf(kinds);
-        double share = AxiomPanel.held(strength, 10, 100) / 100.0;
-        // Which blocks a stroke at less than full strength changes, a new choice each stroke.
+        // Which blocks a stroke at less than full strength changes, a new choice each stroke, and so part of what the
+        // stroke is, as the positions its ball reaches are.
         long seed = System.nanoTime();
-        BrushStroke.Painter painter = (x, y, z, now, _, put) -> {
-            BlockState next = WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
-            if (next != null) put.put(x, y, z, next);
-        };
-        // The shades are fixed as the stroke starts, for the index it was queued with; a rebuilt index refuses it.
+        int size = AxiomPanel.radius(radius);
         try {
-            return stroke.start(level, queue, AxiomPanel.radius(radius), _ -> painter);
+            return stroke.start(level, queue, size, _ -> painterNow(seed, size));
         } catch (Refused _) {
             return false;
         }
+    }
+
+    /**
+     * The stroke's painter as the panel is set now: the shades worked out afresh from the index, the palette's blocks
+     * and the step size, with the direction, kinds and strength as they are, and no plan kept from before. The stroke
+     * makes it as it starts, and again when it's checked before it's sent, which sends nothing unless the stroke
+     * painted again with it comes out the same. Null when no block can be a shade, or when Radius isn't
+     * {@code size}, the ball the stroke was made with, which Axiom keeps for the whole stroke.
+     */
+    private BrushStroke.@Nullable Painter painterNow(long seed, int size) {
+        if (AxiomPanel.radius(radius) != size) return null;
+        Plan.Key key = key();
+        Plan p = key == null ? null : Plan.of(key, BlockIndex.get(), PaletteBlocks.tint());
+        if (p == null || p.steps == null) return null;
+        Direction d = direction;
+        Set<Kind> k = EnumSet.copyOf(kinds);
+        double share = AxiomPanel.held(strength, 10, 100) / 100.0;
+        return (x, y, z, now, _, put) -> {
+            BlockState next = WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
+            if (next != null) put.put(x, y, z, next);
+        };
     }
 
     /** Called every client tick. */
@@ -269,16 +282,23 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
 
     /**
      * The shades for the panel's choices, made again when one of them or the index changes, as the panel asks every
-     * frame. Null while the index is building or when no block can be a shade.
+     * frame. Only the panel uses it: a stroke works its shades out afresh ({@link #painterNow}). Null while the index
+     * is building or when no block can be a shade.
      */
     private @Nullable Plan plan() {
+        Plan.Key key = key();
+        if (key == null) return null;
+        if (plan == null || !plan.key.equals(key)) plan = Plan.of(key, BlockIndex.get(), PaletteBlocks.tint());
+        return plan.steps == null ? null : plan;
+    }
+
+    /** The panel's choices that the shades depend on, as they are now, or null while the index is building. */
+    private Plan.@Nullable Key key() {
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) return null;
         Palette shades = from();
-        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[AxiomPanel.held(stepSize, 1, STEPS.length) - 1], PaletteBlocks.queryFace(),
+        return new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[AxiomPanel.held(stepSize, 1, STEPS.length) - 1], PaletteBlocks.queryFace(),
                 ModSettings.biomeMode + " " + ModSettings.biome);
-        if (plan == null || !plan.key.equals(key)) plan = Plan.of(key, index, PaletteBlocks.tint());
-        return plan.steps == null ? null : plan;
     }
 
     /** The blocks that may be shades, and what each block becomes, for one set of choices. */

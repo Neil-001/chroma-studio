@@ -197,7 +197,7 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
                 AxiomPanel.held(reach, 1, MAX_REACH), AxiomPanel.held(blend, 0, 100), BlockIndex.get().version());
         // After a refused Apply, nothing is shown until the tool is used again.
         if (refused == null && !key.equals(previewFor)) {
-            preview(level, choice);
+            preview(level);
             previewFor = key;
         }
         if (second == null) {
@@ -269,40 +269,64 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
         return new Laid(outlined.toLongArray(), covered, leftAlone, masked);
     }
 
-    /** Works out what the gradient would do to the build between the ends, and shows it in the world in place of the blocks there. */
-    private void preview(ClientLevel level, @Nullable Choice choice) {
+    /**
+     * Works out what the gradient would do to the build between the ends, and shows it in the world in place of the
+     * blocks there. Apply works it out again by the same steps, {@link #layNow}, so what it sends was made from the
+     * panel's choices as they are then, not as they were when the preview was made.
+     */
+    void preview(ClientLevel level) {
         clearPreview();
         if (first != null) ends.add(first.getX(), first.getY(), first.getZ());
         if (second != null) ends.add(second.getX(), second.getY(), second.getZ());
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
-        List<BlockState> steps = choice == null ? List.of() : states(choice);
-        if (steps.size() < 2 || first == null || second == null || seed == null || !BlockIndex.get().ready()) return;
-        BlockPos a = first, b = second, from = seed;
-        boolean like = likeFirst, back = reversed;
-        int r = AxiomPanel.held(reach, 1, MAX_REACH), mix = AxiomPanel.held(blend, 0, 100);
-        Object searchKey = Arrays.asList(level, a, b, from, like, r, BlockIndex.get().version());
-        if (searched == null || !searchKey.equals(searchedFor)) {
-            searched = search(level, a, b, from, like, r);
-            searchedFor = searchKey;
-        }
-        found = searched.found();
-        line = searched.line();
         AxiomMask.Test mask = AxiomMask.now(level);
-        Laid laid = lay(level, searched, steps, back, mix, mask, queue);
+        Made made = layNow(level, mask, queue, true);
+        if (made == null) return;
+        found = made.search().found();
+        line = made.search().line();
         // A preview the masks failed while making could show blocks they were keeping out.
         if (mask.failed()) {
             refused = AxiomMask.unavailable().orElse(AxiomChanges.refusal(QueuedChanges.Refusal.MASK_FAILED));
             return;
         }
-        covered = laid.covered();
-        leftAlone = laid.leftAlone();
-        masked = laid.masked();
-        boolean shown = preview.show(queue, laid.outlined(), again -> {
+        covered = made.laid().covered();
+        leftAlone = made.laid().leftAlone();
+        masked = made.laid().masked();
+        boolean shown = preview.show(queue, mask, made.laid().outlined(), again -> {
             QueuedChanges<BlockState> redone = new QueuedChanges<>(queue.origin());
-            lay(level, search(level, a, b, from, like, r), steps, back, mix, again, redone);
+            layNow(level, again, redone, false);
             return redone;
         });
         if (!shown) refused = Component.translatable("axiom.chromastudio.preview.busy");
+    }
+
+    /** A gradient laid across a build: the search that found it, and what laying it worked out to. */
+    private record Made(Search search, Laid laid) {}
+
+    /**
+     * Lays the gradient into {@code into} as everything it depends on is at this moment: the gradient chosen and its
+     * blocks, the ends, which way it runs, Blend, Reach and "Like the first block", read from the tool's fields and
+     * the stores now, and the build searched from the world. Nothing kept from an earlier preview stands in, but for
+     * the preview itself, which may reuse the last search made for the same ends and choices. Null when there's
+     * nothing to lay.
+     */
+    private @Nullable Made layNow(ClientLevel level, QueuedChanges.Mask mask, QueuedChanges<BlockState> into, boolean forPreview) {
+        Choice choice = current(choices());
+        List<BlockState> steps = choice == null ? List.of() : states(choice);
+        if (steps.size() < 2 || first == null || second == null || seed == null || !BlockIndex.get().ready()) return null;
+        int r = AxiomPanel.held(reach, 1, MAX_REACH), mix = AxiomPanel.held(blend, 0, 100);
+        Search s;
+        if (forPreview) {
+            Object searchKey = Arrays.asList(level, first, second, seed, likeFirst, r, BlockIndex.get().version());
+            if (searched == null || !searchKey.equals(searchedFor)) {
+                searched = search(level, first, second, seed, likeFirst, r);
+                searchedFor = searchKey;
+            }
+            s = searched;
+        } else {
+            s = search(level, first, second, seed, likeFirst, r);
+        }
+        return new Made(s, lay(level, s, steps, reversed, mix, mask, into));
     }
 
     /** Whether the gradient may change a block, or put one in, as a whole: a full cube with no block entity. */
