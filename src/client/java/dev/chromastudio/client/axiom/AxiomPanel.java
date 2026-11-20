@@ -177,7 +177,12 @@ final class AxiomPanel {
 
     /** Apply and Cancel, as a whole-build tool has them, with {@code between} drawn between the two. */
     static void applyCancel(boolean canApply, String applyWhyNot, boolean canCancel, Runnable apply, Runnable cancel, @Nullable Runnable between) {
-        if (button(tr("axiom.chromastudio.apply"), canApply, canApply ? tr("axiom.chromastudio.apply.tip") : applyWhyNot)) apply.run();
+        if (button(tr("axiom.chromastudio.apply"), canApply, canApply ? tr("axiom.chromastudio.apply.tip") : applyWhyNot)) {
+            apply.run();
+            // The panel would keep the keyboard after the click, and Axiom's undo key would go to it rather than to
+            // Axiom, when undo is the first thing a builder reaches for after Apply.
+            ImGui.setWindowFocus(null);
+        }
         if (between != null) {
             ImGui.sameLine();
             between.run();

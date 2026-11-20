@@ -117,7 +117,10 @@ final class ShadeBrushTool implements CustomTool {
         double share = strength[0] / 100.0;
         // Which blocks a stroke at less than full strength changes, a new choice each stroke.
         long seed = System.nanoTime();
-        painter = (x, y, z, now) -> WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
+        painter = (x, y, z, now, _, put) -> {
+            BlockState next = WeightedPick.unit(seed, x, y, z) < share ? p.apply(now, d, k) : null;
+            if (next != null) put.put(x, y, z, next);
+        };
         stroke.start(level, AxiomPanel.radius(radius));
         return true;
     }

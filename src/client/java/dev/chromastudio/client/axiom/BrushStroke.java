@@ -33,8 +33,11 @@ final class BrushStroke {
     /** What a brush does to one block it reaches. */
     @FunctionalInterface
     interface Painter {
-        /** What goes at {@code (x, y, z)}, which holds {@code now}, or null to leave it. */
-        @Nullable BlockState paint(int x, int y, int z, BlockState now);
+        /**
+         * Puts what goes at {@code (x, y, z)}, which holds {@code now}, through {@code put}, or nothing to leave it. A
+         * door's other half may go too, past the ball's edge, where {@code admit} lets it, so a door is never split.
+         */
+        void paint(int x, int y, int z, BlockState now, RecolourPlan.Admit admit, RecolourPlan.Put put);
     }
 
     private final BlockRegion shown = AxiomTools.regions.createBlock();
@@ -93,13 +96,15 @@ final class BrushStroke {
         }
         QueuedChanges<BlockState> q = queued;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        pather.update((x, y, z) -> {
-            if (!mask.allows(x, y, z)) return;
+        RecolourPlan.Admit admit = mask::allows;
+        RecolourPlan.Put put = (x, y, z, next) -> {
             BlockState was = now.getBlockState(pos.set(x, y, z));
-            BlockState next = painter.paint(x, y, z, was);
-            if (next == null || next == was) return;
+            if (next == was || !mask.allows(x, y, z)) return;
             q.add(x, y, z, was, next);
             shown.addBlock(x, y, z, next);
+        };
+        pather.update((x, y, z) -> {
+            if (mask.allows(x, y, z)) painter.paint(x, y, z, now.getBlockState(pos.set(x, y, z)), admit, put);
         });
         // A slow pulse, as Axiom's own brushes show a stroke that hasn't been made yet.
         float pulse = (float) Math.sin(rc.nanos() / 400_000_000.0);

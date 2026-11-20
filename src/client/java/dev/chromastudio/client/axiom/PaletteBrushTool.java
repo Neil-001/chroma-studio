@@ -181,7 +181,10 @@ final class PaletteBrushTool implements CustomTool {
             WeightedPick<ScatterBlocks.Placed> scatter = new WeightedPick<>(blocks, ScatterBlocks.Placed::weight);
             long seed = System.nanoTime();
             // Painting over one half of a door or a tall plant would leave the other half on its own.
-            painter = (x, y, z, now) -> now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF) ? null : scatter.at(seed, x, y, z).state();
+            painter = (x, y, z, now, _, put) -> {
+                // Painting over one half of a door or a tall plant would leave the other half on its own.
+                if (!now.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
+            };
         } else {
             Palette from;
             Set<Long> build = null;
@@ -210,7 +213,9 @@ final class PaletteBrushTool implements CustomTool {
                 return false;
             }
             Set<Long> inBuild = build;
-            painter = (x, y, z, now) -> inBuild != null && !inBuild.contains(BuildSearch.pack(x, y, z)) ? null : plan.apply(now);
+            // A door changes as a whole, its other half too, unless the masks or the build keep that half out.
+            painter = (x, y, z, _, admit, put) -> plan.change(level, x, y, z,
+                    (ax, ay, az) -> admit.test(ax, ay, az) && (inBuild == null || inBuild.contains(BuildSearch.pack(ax, ay, az))), put);
         }
         stroke.start(level, AxiomPanel.radius(radius));
         return true;
@@ -323,17 +328,22 @@ final class PaletteBrushTool implements CustomTool {
         masked = 0;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         Set<Block> before = new HashSet<>(), after = new HashSet<>();
+        // A door changes only when both its halves may: a capped search can hold one half without the other.
+        Set<Long> inBuild = new HashSet<>();
+        for (long p : build.blocks()) inBuild.add(p);
+        RecolourPlan.Admit admit = (x, y, z) -> preview.allows(x, y, z) && inBuild.contains(BuildSearch.pack(x, y, z));
         for (long p : build.blocks()) {
             int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
             BlockState now = level.getBlockState(pos.set(x, y, z));
-            BlockState next = whole.apply(now);
             before.add(now.getBlock());
-            boolean changes = next != null && next != now;
+            BlockState plain = whole.apply(now);
+            boolean changes = plain != null && plain != now;
             if (changes && !preview.allows(x, y, z)) {
                 masked++;
                 changes = false;
             }
-            if (!changes) {
+            BlockState next = changes ? whole.apply(level, x, y, z, admit) : null;
+            if (next == null) {
                 after.add(now.getBlock());
                 continue;
             }
