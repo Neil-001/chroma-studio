@@ -46,6 +46,10 @@ public final class HotbarWrites {
      * what went wrong, null when nothing did. A slot that couldn't be read back counts as still changed.
      */
     public record Restored<T>(List<Was<T>> left, Throwable failure) {
+        public Restored {
+            left = List.copyOf(left);
+        }
+
         public boolean done() { return left.isEmpty(); }
     }
 
@@ -107,7 +111,7 @@ public final class HotbarWrites {
             }
             left.add(w);
         }
-        return new Restored<>(List.copyOf(left), failed);
+        return new Restored<>(left, failed);
     }
 
     /** One failure carrying another, which may be null or, from a mod that reuses its exceptions, the same one. */

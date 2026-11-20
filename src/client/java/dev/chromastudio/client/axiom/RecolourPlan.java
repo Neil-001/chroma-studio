@@ -231,13 +231,14 @@ final class RecolourPlan {
      * in two. Puts nothing when the block stays as it is.
      */
     void change(BlockGetter level, int x, int y, int z, Admit admit, Put put) {
+        // Found before the first put, in case that put reaches the level this reads.
+        BlockPos pos = new BlockPos(x, y, z);
+        int dy = otherHalf(level, pos, level.getBlockState(pos));
         BlockState out = apply(level, x, y, z, admit);
         if (out == null) return;
         put.put(x, y, z, out);
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
-        int dy = otherHalf(level, pos, level.getBlockState(pos));
         if (dy == 0) return;
-        BlockState other = level.getBlockState(pos.setY(y + dy)), otherOut = apply(other);
+        BlockState other = level.getBlockState(pos.above(dy)), otherOut = apply(other);
         if (otherOut != null && otherOut != other) put.put(x, y + dy, z, otherOut);
     }
 

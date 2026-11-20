@@ -201,9 +201,9 @@ public final class Recolour {
             if (heaviest < 0) main = -1;
         }
         // best[s][k][j]: the least cost for shades 0..k with shade k on block j and s pairs of shades sharing a block;
-        // back[s][k][j] the block shade k-1 took, the first among equal costs, and one of its own only when that costs
-        // less. Shade k-1 on an earlier block is the cheapest of a running minimum, so each cell costs the same
-        // however many blocks the palette has.
+        // back[s][k][j] the block shade k-1 took: the first of the cheapest earlier blocks, or block j itself, shared,
+        // only when that costs less. The cheapest earlier block is kept as a running minimum along j, so each cell
+        // takes the same time however many blocks the palette has.
         double[][][] best = new double[shares + 1][shades][n];
         int[][][] back = new int[shares + 1][shades][n];
         for (int k = 0; k < shades; k++) {
