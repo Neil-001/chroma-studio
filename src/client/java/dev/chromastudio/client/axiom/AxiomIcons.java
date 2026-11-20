@@ -25,15 +25,17 @@ import net.minecraft.network.chat.Component;
  * loses nothing. In case another version keys an entry of ours, the swap is left undone when it would lose a lookup,
  * and undone when anything goes wrong after it: a pencil is better than a tool Axiom can't find.
  *
- * <p>The characters are ones Axiom's own tools don't use in this version, picked for what they show: a scribble and
- * pencil, a pipette, two strands twisting from one end to the other, arrows up and down for lighter and darker, and a
- * hand that takes blocks. Another version of Axiom could draw something else for them; that would show a wrong icon,
- * never break a tool.
+ * <p>The characters are ones Axiom's own tools don't use in this version, so none can be taken for one of Axiom's:
+ * a scribble and pencil for the palette brush, two strands twisting from one end to the other for the gradient, a
+ * picture for the shade brush, which changes a build's light and shade, a hand that takes blocks for the sampler, and
+ * a marker for the eyedropper. Axiom's font has no pipette, and its arrows up and down over a slope, which would
+ * suit the shade brush, look too like its own Elevation tool. Another version of Axiom could draw something else for
+ * these characters; that would show a wrong icon, never break a tool.
  */
 final class AxiomIcons {
     private AxiomIcons() {}
 
-    static final char PALETTE_BRUSH = '\ue924', EYEDROPPER = '\ue927', GRADIENT = '\ue907', SHADE_BRUSH = '\ue90e', SAMPLER = '\ue923';
+    static final char PALETTE_BRUSH = '\ue924', EYEDROPPER = '\ue927', GRADIENT = '\ue907', SHADE_BRUSH = '\ue926', SAMPLER = '\ue923';
 
     private record Handles(Class<?> tool, MethodHandle tools, MethodHandle keybinds, Method iconChar, Method name) {}
 

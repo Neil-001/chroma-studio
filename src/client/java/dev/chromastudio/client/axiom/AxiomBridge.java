@@ -44,7 +44,11 @@ public final class AxiomBridge {
 
     /** Why an Axiom control can't be used, or nothing when Axiom is here and Chroma Studio's features in it work. */
     public static Optional<Component> whyNot() {
-        if (!isPresent()) return Optional.of(Component.translatable("axiom.chromastudio.missing"));
+        if (!isPresent()) {
+            // Axiom is made for Fabric alone, so elsewhere it can't be installed at all.
+            boolean fabric = ChromaStudioClient.platform == null || ChromaStudioClient.platform.isFabric();
+            return Optional.of(Component.translatable(fabric ? "axiom.chromastudio.missing" : "axiom.chromastudio.missing.fabric_only"));
+        }
         return Optional.ofNullable(broken);
     }
 

@@ -16,6 +16,9 @@ public interface ClientPlatform {
 
     boolean isModLoaded(String id);
 
+    /** Whether this is Fabric, which some optional mods, such as Axiom, are made for alone. */
+    boolean isFabric();
+
     /**
      * A block's model parts and its particle texture, without a world. NeoForge deprecates the game's own methods for
      * these in favour of ones that take a world and a position, so each loader calls its own.

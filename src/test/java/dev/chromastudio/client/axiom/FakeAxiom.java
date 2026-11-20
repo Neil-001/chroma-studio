@@ -348,6 +348,9 @@ final class FakeAxiom {
         public boolean isModLoaded(String id) { return id.equals("axiom"); }
 
         @Override
+        public boolean isFabric() { return true; }
+
+        @Override
         public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockStateModelPart> out) {}
 
         @Override
