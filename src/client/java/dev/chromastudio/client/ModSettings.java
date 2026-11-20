@@ -38,6 +38,8 @@ public final class ModSettings {
     public static final int VIEW_FAR = 192;
     /** The longest text a setting holds. */
     public static final int TEXT_MAX = 256;
+    /** The largest radius the palette brush in Axiom's editor takes. */
+    public static final int BRUSH_MAX_RADIUS = 16;
 
     // Keys and window
     /** The window's top-left corner, or {@link #CENTRED} for either. */
@@ -174,7 +176,7 @@ public final class ModSettings {
         limit("captureCount", 1, 64);
         limit("patchSize", 1, 16);
         limit("readoutSeconds", 1, 30);
-        limit("brushRadius", 0, 16);
+        limit("brushRadius", 0, BRUSH_MAX_RADIUS);
 
         NAMES.put("metric", List.of("OKLAB", "CIEDE2000", "CIE76", "SRGB", "MAP_COLOR"));
         NAMES.put("easing", List.of("LINEAR", "SMOOTH", "EASE_IN", "EASE_OUT"));

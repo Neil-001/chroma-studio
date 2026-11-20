@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Fallable;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The blocks the palette brush's Scatter places for a palette. Scatter fills a ball, so it places whole blocks: a
@@ -51,7 +52,7 @@ record ScatterBlocks(List<Placed> blocks, List<PaletteEntry> leftOut) {
     }
 
     /** The block Scatter places for a palette block, or null to leave it out. */
-    private static BlockState placed(BlockIndex index, BlockState state) {
+    private static @Nullable BlockState placed(BlockIndex index, BlockState state) {
         Entry e = PaletteBlocks.entry(state);
         if (e == null || state.getBlock() instanceof EntityBlock || state.getBlock() instanceof Fallable) return null;
         if (WHOLE.contains(e.kind()) && (e.kind() != Kind.LIGHT || e.fullCube())) return persistent(state);

@@ -61,7 +61,6 @@ final class PaletteBrushTool implements CustomTool {
      * maps it to its own "use tool" key, so a player who rebinds that key is still followed.
      */
     private static final int USE_TOOL = 1;
-    private static final int MAX_RADIUS = 16;
     /** Our name for the world's look while a whole-build preview shows. */
     private static final String PREVIEW = "chromastudio_brush";
     /** From choices that aren't palettes: the build the tool is used on, and every block but the ground. */
@@ -125,7 +124,7 @@ final class PaletteBrushTool implements CustomTool {
     private String listedLanguage = "";
     private @Nullable Palette swatched;
     private List<PaletteEntry> swatchedEntries = List.of();
-    private int swatchedIndex = -1;
+    private int swatchedVersion = -1;
     private List<Swatch> swatches = List.of();
     private @Nullable ScatterBlocks scattered;
     private boolean anyInGame;
@@ -283,7 +282,7 @@ final class PaletteBrushTool implements CustomTool {
 
     private void renderBuild(IAxiomWorldRenderContext rc, ClientLevel level) {
         Palette to = current();
-        Palette from = fromKey.equals(FROM_BUILD) || fromKey.equals(FROM_ANY) ? null : from();
+        Palette from = from();
         Object key = picked == null || to == null ? null : Arrays.asList(picked, to, List.copyOf(to.entries), fromKey,
                 from == null ? null : List.copyOf(from.entries), match, BlockIndex.get().version());
         if (!Objects.equals(key, previewFor)) {
@@ -394,7 +393,7 @@ final class PaletteBrushTool implements CustomTool {
             ImGui.endListBox();
         }
         if (shown != null) {
-            look(shown);
+            readSwatches(shown);
             swatches(swatches, "##swatch");
             if (!anyInGame) ImGui.textWrapped(tr("axiom.chromastudio.brush.empty"));
             else if (mode == Mode.SCATTER && scattered != null && !scattered.leftOut().isEmpty()) {
@@ -425,7 +424,7 @@ final class PaletteBrushTool implements CustomTool {
         ImGui.setItemTooltip(tr(mode == Mode.RECOLOUR ? "axiom.chromastudio.brush.whole.tip" : "axiom.chromastudio.from.na"));
 
         ImGui.beginDisabled(wholeBuild());
-        ImGui.sliderInt(tr("axiom.chromastudio.brush.radius"), radius, 0, MAX_RADIUS);
+        ImGui.sliderInt(tr("axiom.chromastudio.brush.radius"), radius, 0, ModSettings.BRUSH_MAX_RADIUS);
         if (ImGui.isItemDeactivatedAfterEdit()) remember();
         ImGui.endDisabled();
         if (wholeBuild()) ImGui.setItemTooltip(tr("axiom.chromastudio.brush.radius.whole"));
@@ -433,7 +432,11 @@ final class PaletteBrushTool implements CustomTool {
         recolourOptions(all);
         if (wholeBuild()) buildActions();
         else if (mode == Mode.RECOLOUR && refused != null) ImGui.textWrapped(refused);
-        if (mode == Mode.RECOLOUR && fromKey.equals(FROM_BUILD) && found != null) foundBuild();
+        if (mode == Mode.RECOLOUR && fromKey.equals(FROM_BUILD) && found != null) {
+            // What the build the tool found holds, darkest first, as that sets the shading.
+            ImGui.textWrapped(tr("axiom.chromastudio.brush.found"));
+            swatches(foundSwatches, "##found");
+        }
         AxiomMask.unavailable().ifPresentOrElse(why -> ImGui.textWrapped(why.getString()), () -> {
             ImGui.textDisabled(tr("axiom.chromastudio.brush.masks"));
             wrappedTooltip(tr("axiom.chromastudio.brush.masks.tip"));
@@ -503,12 +506,6 @@ final class PaletteBrushTool implements CustomTool {
         }
     }
 
-    /** What the build the tool found holds, darkest first, as that sets the shading. */
-    private void foundBuild() {
-        ImGui.textWrapped(tr("axiom.chromastudio.brush.found"));
-        swatches(foundSwatches, "##found");
-    }
-
     /** A tooltip for the last item that wraps its text, as these run to a few sentences and would leave the screen. */
     private static void wrappedTooltip(String text) {
         if (!ImGui.beginItemTooltip()) return;
@@ -558,12 +555,12 @@ final class PaletteBrushTool implements CustomTool {
     }
 
     /** Reads a palette's swatches and what Scatter does with it, again only when its blocks or the index change. */
-    private void look(Palette p) {
+    private void readSwatches(Palette p) {
         int version = BlockIndex.get().ready() ? BlockIndex.get().version() : -1;
-        if (p == swatched && p.entries.equals(swatchedEntries) && version == swatchedIndex) return;
+        if (p == swatched && p.entries.equals(swatchedEntries) && version == swatchedVersion) return;
         swatched = p;
         swatchedEntries = List.copyOf(p.entries);
-        swatchedIndex = version;
+        swatchedVersion = version;
         List<Swatch> out = new ArrayList<>();
         anyInGame = false;
         for (PaletteEntry e : p.entries) {

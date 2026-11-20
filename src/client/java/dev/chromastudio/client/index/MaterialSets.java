@@ -61,11 +61,11 @@ final class MaterialSets {
         return namespace + base;
     }
 
-    /** Prefixes that make a variant of a material that a builder takes for the same stone, worn or overgrown. */
+    /** Prefixes that make a variant a builder takes for the same stone: worn, overgrown, carved or infested. */
     private static final List<String> VARIANTS = List.of("cracked_", "mossy_", "chiseled_", "infested_");
 
     /**
-     * A block's family: its {@link #base material} with a worn or overgrown variant folded into the material it varies,
+     * A block's family: its {@link #base material} with a {@link #VARIANTS variant} folded into the material it varies,
      * so {@code minecraft:mossy_stone_brick_stairs} and {@code minecraft:cracked_stone_bricks} both give
      * {@code minecraft:stone_brick}, while cobblestone, andesite and polished andesite stay three families.
      */

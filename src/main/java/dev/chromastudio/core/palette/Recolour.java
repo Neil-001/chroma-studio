@@ -166,12 +166,11 @@ public final class Recolour {
      * A block for each of a build's shades, when there are no more shades than blocks, in order from darkest to
      * lightest. The build's darkest shade takes the palette's darkest block and its lightest the lightest, so the
      * shading spans the palette, and the largest shade between them, such as a house's walls, takes the palette's
-     * heaviest block between its ends, such as a desert's sandstone. Each other shade has a place from 0 to 1: the
-     * middle of its share of the build; and
-     * each block a stretch of the same line, as long as its weight. A shade fits a block whose stretch holds its place,
-     * and less well the further outside it, by how much of the build the shade is. Of
-     * all the ways to hand out blocks in order, this takes the best fit, where two neighbouring shades share a block
-     * only when keeping them apart would put a larger one far from its place.
+     * heaviest block between its ends, such as a desert's sandstone. Each other shade has a place from 0 to 1, the
+     * middle of its share of the build, and each block a stretch of the same line, as long as its weight. A shade fits
+     * a block whose stretch holds its place, and less well the further outside it, by how much of the build the shade
+     * is. Of all the ways to hand out blocks in order, this takes the best fit, where two neighbouring shades share a
+     * block only when keeping them apart would put a larger one far from its place.
      */
     private int[] matched(int[] eligible, Shades build) {
         int n = eligible.length, shades = build.count();
@@ -251,12 +250,13 @@ public final class Recolour {
     }
 
     /**
-     * A build's colours sorted into shades, from darkest to lightest. A colour joins an earlier shade when it can't be
-     * told from where that shade starts and it is of the same family, or either family isn't known; otherwise it
-     * starts a shade of its own. Each shade also knows how much of the build it is: the weights of its looks.
+     * A build's colours sorted into shades, from darkest to lightest. A colour joins the latest shade when it can't be
+     * told from where that shade starts, unless both families are known and differ, or when it is of that shade's
+     * family and only a little further off; otherwise it starts a shade of its own. Each shade also knows how much of
+     * the build it is: the sum of the square roots of its looks' weights.
      */
     static final class Shades {
-        /** How many times further than it can be told apart a worn or overgrown variant may be and still share a shade. */
+        /** How many times further than it can be told apart a block of the same family may be and still share a shade. */
         private static final double VARIANT = 3;
 
         private record Key(Oklab colour, String family) {}
@@ -299,7 +299,7 @@ public final class Recolour {
             }
         }
 
-        /** How many shades the build holds that can be told apart, so a near-identical variant adds none. */
+        /** How many shades the build holds, so a variant that shares one adds none. */
         int count() { return starts.size(); }
 
         /** How much of the build a shade is. */
