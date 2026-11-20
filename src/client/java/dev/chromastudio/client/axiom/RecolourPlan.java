@@ -210,7 +210,17 @@ final class RecolourPlan {
         if (c == null) return null;
         BlockState out = c.state();
         for (String name : c.copied()) out = copy(here, out, name);
-        return out;
+        return keepsWater(here, out) ? out : null;
+    }
+
+    /**
+     * Whether {@code out} may take the place of {@code here} as far as water goes: a block with water in it changes
+     * only into one that keeps the water, as a player could take it out with a bucket. Every tool and script asks this.
+     */
+    static boolean keepsWater(BlockState here, BlockState out) { return !waterlogged(here) || waterlogged(out); }
+
+    private static boolean waterlogged(BlockState s) {
+        return s.hasProperty(BlockStateProperties.WATERLOGGED) && s.getValue(BlockStateProperties.WATERLOGGED);
     }
 
     /** Whether a position may change, as the tool masks and the build say. */

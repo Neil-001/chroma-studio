@@ -251,6 +251,7 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
             int at = s.line().step(x, y, z, steps.size(), blend / 100.0);
             BlockState step = steps.get(reversed ? steps.size() - 1 - at : at);
             BlockState next = shapes.shaped(now) ? shapes.apply(step, now) : paintable(level, pos, now) ? step : null;
+            if (next != null && !RecolourPlan.keepsWater(now, next)) next = null;
             if (next == null) {
                 leftAlone++;
                 into.leave(x, y, z, now);

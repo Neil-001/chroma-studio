@@ -9,6 +9,7 @@ import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.palette.QueuedChanges;
 import dev.chromastudio.core.palette.Recolour;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -182,6 +183,34 @@ class ScriptSafetyTest {
         return s.hasProperty(BlockStateProperties.WATERLOGGED) && s.getValue(BlockStateProperties.WATERLOGGED);
     }
 
+    @Test
+    void everyToolLeavesTheWaterInABlockOrKeepsIt() throws Exception {
+        // A recolour into glass, which can't hold water, leaves every waterlogged block alone, as the shade brush,
+        // which recolours through the same plan, does.
+        Palette glass = palette("Script safety glass", "glass");
+        RecolourPlan plan = RecolourPlan.of(glass, null, Recolour.Mode.SHADING);
+        List<BlockState> wrong = new ArrayList<>();
+        for (BlockState s : everyState()) {
+            BlockState out = plan.apply(s);
+            if (out != null && waterlogged(s) && !waterlogged(out)) wrong.add(s);
+        }
+        assertTrue(wrong.isEmpty(), "A recolour takes the water out of " + blocks(wrong));
+        check("glass recolour", AxiomScripts.recolour(glass, null, Recolour.Mode.SHADING).text(), s -> plan.apply(s) != null && !holdsSomething(s));
+        // The gradient tool leaves three waterlogged copper grates between its two stone ends.
+        BlockState stone = Blocks.STONE.defaultBlockState(), grate = TestIndex.block("copper_grate").defaultBlockState().setValue(BlockStateProperties.WATERLOGGED, true);
+        for (int x = 0; x <= 4; x++) axiom.level.put(x, 0, 0, x == 0 || x == 4 ? stone : grate);
+        try {
+            BlockPos first = BlockPos.ZERO, second = new BlockPos(4, 0, 0);
+            QueuedChanges<BlockState> made = AxiomChanges.queue(axiom.level);
+            GradientTool.Laid laid = GradientTool.lay(axiom.level, GradientTool.search(axiom.level, first, second, first, false, 64),
+                    List.of(Blocks.ANDESITE.defaultBlockState(), Blocks.DEEPSLATE.defaultBlockState()), false, 0, AxiomMask.now(axiom.level), made);
+            for (QueuedChanges.Change<BlockState> c : made.changes()) assertFalse(c.was() == grate, "The gradient tool paints over " + c);
+            assertTrue(laid.leftAlone() >= 3, "covered " + laid.covered() + ", left " + laid.leftAlone());
+        } finally {
+            for (int x = 0; x <= 4; x++) axiom.level.put(x, 0, 0, Blocks.AIR.defaultBlockState());
+        }
+    }
+
     /** The blocks of the states listed, each once, so a failure names every block it's about. */
     private static String blocks(List<BlockState> wrong) {
         return wrong.stream().map(s -> BuiltInRegistries.BLOCK.getKey(s.getBlock()).getPath()).distinct().toList().toString();
@@ -212,7 +241,8 @@ class ScriptSafetyTest {
                 for (Map.Entry<BlockPos, BlockState> w : writes.entrySet()) {
                     BlockState there = brush.world.get(w.getKey());
                     // With Paint air off, no air of any kind is filled, cave air included.
-                    if (!allowed.test(there) || !air && there.isAir()) wrong.add(there);
+                    // A block with water in it keeps it, whatever it becomes.
+                    if (!allowed.test(there) || !air && there.isAir() || waterlogged(there) && !waterlogged(w.getValue())) wrong.add(there);
                 }
             }
             assertTrue(replaced > 0, name + " replaced nothing, so it proves nothing");

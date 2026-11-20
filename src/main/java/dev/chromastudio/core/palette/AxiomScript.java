@@ -86,6 +86,9 @@ public final class AxiomScript {
      * 64 KiB, so the script is kept small: each block it puts down is written out once, in a list, and the rows are
      * one long string of {@code from=number} pairs that the script reads into its table.
      *
+     * <p>A block with water in it changes only into one that keeps the water, which a player could take out with a
+     * bucket; otherwise it's left alone, as every tool leaves it.
+     *
      * <p>A door changes as a whole: when the rows hold a block two high, the half the brush reaches also sets its
      * other half, which may lie past the edge of the stroke, as the palette brush does. Axiom's {@code setBlock}
      * doesn't ask the tool masks, so neither half is left behind when a mask cuts a door in two. Scripts without such
@@ -147,6 +150,7 @@ public final class AxiomScript {
                 \t\tif value ~= nil then out = withBlockProperty(out, row[i] .. "=" .. value) end
                 \tend
                 end
+                if getBlockProperty(getBlockState(x, y, z), "waterlogged") == "true" and getBlockProperty(out, "waterlogged") ~= "true" then return nil end
                 """);
         if (rows.stream().anyMatch(Remap::twoHigh)) s.append("""
                 -- A door changes as a whole: its other half takes the same block, even past the edge of the stroke or a mask.
