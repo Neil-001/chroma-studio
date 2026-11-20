@@ -65,9 +65,8 @@ final class AxiomMask {
     }
 
     /**
-     * The masks as they're set now, for one stroke or preview, in {@code level}. Every block passes when this Axiom has
-     * no masks, which the panels say. When they can't be read, or a call into them fails, this session or during the
-     * test's use, no block passes and the test says it failed.
+     * The masks as they're set now, for one stroke or preview, in {@code level}. When they can't be read, or a call
+     * into them fails, this session or during the test's use, no block passes and the test says it failed.
      */
     static Test now(Level level) {
         if (INTERNALS.reason().isPresent()) return FAILED;
