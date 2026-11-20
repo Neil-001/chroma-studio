@@ -76,7 +76,8 @@ class ShadeStepsTest {
 
     private static Block block(String id, double l, double c, double h, double spread, boolean shaped) {
         String family = id.substring(id.lastIndexOf('_') + 1);
-        return new Block(id, new Look(Color.ofOklch(new Oklch(l, c, h)), spread, family, shaped));
+        String material = id.endsWith("planks") ? "wood" : id.endsWith("wool") ? "wool" : id.equals("clay") ? "earth" : "stone";
+        return new Block(id, new Look(Color.ofOklch(new Oklch(l, c, h)), spread, family, material, shaped));
     }
 
     private static final double DEFAULT = 0.06;
@@ -190,6 +191,14 @@ class ShadeStepsTest {
     }
 
     @Test
+    void stoneNeverTurnsToWood() {
+        // Mossy stone bricks lighter, as stairs, where poplar is the only near match that comes as stairs.
+        List<Look> looks = List.of(new Look(Color.ofOklch(new Oklch(0.575, 0.020, 124.2)), 0.071, "bricks", "stone", true),
+                new Look(Color.ofOklch(new Oklch(0.644, 0.022, 65.0)), 0.063, "planks", "wood", true));
+        assertEquals(-1, new ShadeSteps(looks, DEFAULT).next(0, Direction.LIGHTER, _ -> true));
+    }
+
+    @Test
     void eachStepGoesTheWayAskedByAVisibleAmount() {
         for (double step : new double[] {ShadeSteps.MIN_STEP, DEFAULT, ShadeSteps.MAX_STEP}) {
             ShadeSteps steps = steps(step);
@@ -245,7 +254,7 @@ class ShadeStepsTest {
     void aBlockOutsideTheSetStepsToTheClosest() {
         ShadeSteps steps = steps(DEFAULT);
         // Chiseled stone bricks, which the set leaves out.
-        Look chiseled = new Look(Color.ofOklch(new Oklch(0.577, 0.002, 325.6)), 0.076, "bricks", false);
+        Look chiseled = new Look(Color.ofOklch(new Oklch(0.577, 0.002, 325.6)), 0.076, "bricks", "stone", false);
         int down = steps.next(chiseled, Direction.DARKER, _ -> true);
         assertTrue(down >= 0 && BLOCKS.get(down).id.contains("tuff"), down < 0 ? "none" : BLOCKS.get(down).id);
     }

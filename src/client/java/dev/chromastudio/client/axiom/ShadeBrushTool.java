@@ -377,7 +377,16 @@ final class ShadeBrushTool implements CustomTool {
             for (Face f : faces) spread += e.face(f, tint).spread() / faces.size();
             boolean shaped = false;
             for (Entry m : index.materialSet(e)) shaped |= SHAPES.contains(m.kind());
-            return new ShadeSteps.Look(colour.get(), spread, family(e.id()), shaped);
+            return new ShadeSteps.Look(colour.get(), spread, family(e.id()), material(e.state()), shaped);
+        }
+
+        /** What a block is made of, as the tool that mines it says: stone, wood, earth or soft growth, or none, as wool. */
+        private static String material(BlockState s) {
+            if (s.is(BlockTags.MINEABLE_WITH_PICKAXE)) return "pickaxe";
+            if (s.is(BlockTags.MINEABLE_WITH_AXE)) return "axe";
+            if (s.is(BlockTags.MINEABLE_WITH_SHOVEL)) return "shovel";
+            if (s.is(BlockTags.MINEABLE_WITH_HOE)) return "hoe";
+            return "";
         }
 
         /** The last word of a block's id, which names what it's made as: bricks, tiles, planks, terracotta. */

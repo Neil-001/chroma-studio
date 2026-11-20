@@ -2,6 +2,7 @@ package dev.chromastudio.core.palette;
 
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Oklch;
+import dev.chromastudio.core.color.Tone;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -52,10 +53,11 @@ public final class ShadeSteps {
 
     /**
      * A block as the steps see it: its colour, how busy its texture is, as {@code TextureStats.spread} gives it, and
-     * its family, such as "bricks" for stone and tuff bricks, which a step keeps to where it can, and whether its
-     * material comes in shapes, such as stairs and slabs, which a step also keeps to. An empty family matches none.
+     * its family, such as "bricks" for stone and tuff bricks, which a step keeps to where it can, what it's made of,
+     * such as stone or wood, which a step always keeps to, and whether its material comes in shapes, such as stairs
+     * and slabs, which a step also keeps to where it can. An empty family matches none.
      */
-    public record Look(Color colour, double spread, String family, boolean shaped) {}
+    public record Look(Color colour, double spread, String family, String material, boolean shaped) {}
 
     private final List<Look> blocks;
     private final Oklch[] lch;
@@ -147,6 +149,9 @@ public final class ShadeSteps {
         double hue = hueDistance(d, l), chroma = Math.abs(l.c() - d.c()), spread = Math.abs(light.spread() - dark.spread());
         double maxChroma = Math.max(MIN_CHROMA_CHANGE, CHROMA_SHARE * Math.max(d.c(), l.c()));
         if (hue > MAX_HUE || chroma > maxChroma || spread > MAX_SPREAD) return Double.POSITIVE_INFINITY;
+        // A grey stays a grey, however little colour the other has: polished blackstone bricks never darken to
+        // cracked nether bricks. And stone never turns to wood.
+        if (d.c() < Tone.MIN_CHROMA != l.c() < Tone.MIN_CHROMA || !dark.material().equals(light.material())) return Double.POSITIVE_INFINITY;
         double off = (rise - step) / step;
         boolean sameFamily = !dark.family().isEmpty() && dark.family().equals(light.family());
         return off * off + square(hue / HUE_SCALE) + square(chroma / CHROMA_SCALE) + square(spread / SPREAD_SCALE)
