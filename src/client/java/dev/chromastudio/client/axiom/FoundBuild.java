@@ -22,7 +22,7 @@ import org.jspecify.annotations.Nullable;
  * torches, don't join a build, so the search stops at the lawn rather than running on into the landscape.
  */
 record FoundBuild(long[] blocks, boolean capped, Palette kinds) {
-    /** The most blocks a search takes, as the gradient tool's, so a build that runs on can't stall the game. */
+    /** The most blocks any tool's search for a build takes, so a build that runs on into the landscape can't stall the game. */
     static final int CAP = 100_000;
 
     /** The build joined to {@code start}, or null when that block isn't part of one, as the ground isn't. */

@@ -44,9 +44,14 @@ final class AxiomEditor {
     private static boolean left;
     /** The active block when the editor was last open this session, or null. Outside it Axiom's API answers stone. */
     private static @Nullable BlockState lastActiveBlock;
+    /** Whether the player has been told this Axiom can't say whether its editor is open. */
+    private static boolean warned;
 
     /** Whether Chroma Studio can tell if the editor is open. */
     static boolean known() { return INTERNALS.reason().isEmpty(); }
+
+    /** Whether the editor is switched on, which changes as soon as it's opened or closed. False when that can't be told. */
+    static boolean enabled() { return call(h -> (boolean) h.enabled.invoke()); }
 
     /** Whether the editor is open. False when that can't be told. */
     static boolean active() { return call(h -> (boolean) h.active.invoke()); }
@@ -56,6 +61,15 @@ final class AxiomEditor {
 
     /** Leaves the editor before the window opens, when it's open. */
     static void leaveForWindow() {
+        if (!known()) {
+            // The window may open squeezed into the editor's view. Said once a session, as it may not be open at all.
+            if (!warned) {
+                warned = true;
+                Hud.readout(Component.translatable("axiom.chromastudio.editor.unknown"), Component.translatable("axiom.chromastudio.editor.unknown.how"),
+                        ModSettings.readoutSeconds);
+            }
+            return;
+        }
         // Axiom says it's active a frame late, so a player who has just pressed Axiom's own key would be counted wrongly
         // either way. Whether it's switched on changes at once.
         if (!call(h -> (boolean) h.enabled.invoke())) return;
@@ -86,9 +100,8 @@ final class AxiomEditor {
         // A pinned window stays over the world: in the editor it would be squeezed over the 3D view as the open one would.
         if (screen != null || ChromaScreen.isPinned()) return;
         left = false;
-        // A failed call has already been logged, and the editor stays closed as it is without this integration.
-        // known() is false once a call has thrown, which stays silent too.
-        if (call(h -> { h.enable.invoke(); return true; }) && !call(h -> (boolean) h.enabled.invoke()) && known())
+        // A call that threw has been logged; either way the player is told the editor stayed closed, and how to open it.
+        if (!call(h -> { h.enable.invoke(); return true; }) || !call(h -> (boolean) h.enabled.invoke()))
             Hud.readout(Component.translatable("axiom.chromastudio.editor.not_back"), Component.translatable("axiom.chromastudio.editor.not_back.how"),
                     ModSettings.readoutSeconds);
     }

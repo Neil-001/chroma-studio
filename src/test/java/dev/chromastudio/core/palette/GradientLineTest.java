@@ -207,6 +207,49 @@ class GradientLineTest {
     }
 
     @Test
+    void endsClickedInDifferentColumnsOfATowerGiveLevelBands() {
+        // The top and bottom of a 5 wide tower 31 tall, clicked two columns apart: the bands stay level, and every
+        // block of the top and bottom layers counts, the far corners included.
+        GradientLine line = GradientLine.between(0, 0, 0, 2, 30, 1);
+        assertTrue(line.straightened());
+        for (int x = -2; x <= 4; x++) {
+            for (int z = -2; z <= 4; z++) {
+                assertTrue(line.reaches(x, 0, z, 8), x + " 0 " + z);
+                assertTrue(line.reaches(x, 30, z, 8), x + " 30 " + z);
+                assertEquals(line.step(0, 15, 0, 8, 0), line.step(x, 15, z, 8, 0));
+            }
+        }
+        assertFalse(line.reaches(0, 31, 0, 8));
+        assertFalse(line.reaches(0, -1, 0, 8));
+    }
+
+    @Test
+    void aDiagonalThePlayerMeantIsKept() {
+        // From one corner of a wall to the other, 8 high over 20 long, leans too far to be straightened.
+        GradientLine wall = GradientLine.between(0, 0, 0, 20, 8, 0);
+        assertFalse(wall.straightened());
+        assertTrue(wall.slanted());
+        assertFalse(GradientLine.between(0, 0, 0, 20, 20, 0).straightened());
+        // The top and bottom of a 5 wide tower 16 high, clicked at opposite corners, leans a quarter: straightened.
+        GradientLine tower = GradientLine.between(0, 0, 0, 4, 15, 0);
+        assertTrue(tower.straightened());
+        assertFalse(tower.slanted());
+        // A line already on an axis has nothing to straighten.
+        GradientLine along = GradientLine.between(0, 0, 0, 0, 20, 0);
+        assertFalse(along.straightened());
+        assertFalse(along.slanted());
+    }
+
+    @Test
+    void swappedEndsCoverTheSameLayersRunningTheOtherWay() {
+        GradientLine up = GradientLine.between(0, 0, 0, 2, 30, 1), down = GradientLine.between(2, 30, 1, 0, 0, 0);
+        assertTrue(down.straightened());
+        for (int y = -1; y <= 31; y++) assertEquals(up.reaches(1, y, 1, 8), down.reaches(1, y, 1, 8), "y " + y);
+        assertEquals(0, up.step(1, 0, 1, 8, 0));
+        assertEquals(7, down.step(1, 0, 1, 8, 0));
+    }
+
+    @Test
     void twoEndsMustDiffer() {
         assertThrows(IllegalArgumentException.class, () -> new GradientLine(1, 2, 3, 1, 2, 3));
     }

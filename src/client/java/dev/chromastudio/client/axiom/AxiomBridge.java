@@ -1,7 +1,9 @@
 package dev.chromastudio.client.axiom;
 
 import dev.chromastudio.client.ChromaStudioClient;
+import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteStore;
+import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
@@ -32,16 +34,35 @@ public final class AxiomBridge {
         return ChromaStudioClient.platform != null && ChromaStudioClient.platform.isModLoaded(MOD_ID);
     }
 
-    /** Why an Axiom control can't be used, or nothing when Axiom is here. */
+    /**
+     * Why Axiom's features couldn't be set up, or null. Once set, nothing in this package runs again this session:
+     * a class or service another Axiom version lacks would fail the same way on every call.
+     */
+    private static @Nullable Component broken;
+    /** Whether the player has been told that Axiom's features are off. */
+    private static boolean told;
+
+    /** Why an Axiom control can't be used, or nothing when Axiom is here and Chroma Studio's features in it work. */
     public static Optional<Component> whyNot() {
-        return isPresent() ? Optional.empty() : Optional.of(Component.translatable("axiom.chromastudio.missing"));
+        if (!isPresent()) return Optional.of(Component.translatable("axiom.chromastudio.missing"));
+        return Optional.ofNullable(broken);
+    }
+
+    /** Whether Axiom is here and Chroma Studio's features in it work. */
+    private static boolean usable() { return whyNot().isEmpty(); }
+
+    /** Throws for a call that would reach Axiom once its features are off, as the hotbar calls' callers expect. */
+    private static void live() {
+        whyNot().ifPresent(why -> {
+            throw new IllegalStateException(why.getString());
+        });
     }
 
     /**
      * Adds {@code /chroma axiom}, on every client, and the tools to Axiom's editor when Axiom is here. Call once while
      * the client starts, after Axiom's own entrypoint, so its tool list is there to add to. Anything that goes wrong
-     * with the tools, a missing class or service from another Axiom version included, is logged and leaves the rest
-     * of the mod as it was.
+     * with the tools, a missing class or service from another Axiom version included, is logged, turns every Axiom
+     * feature off for the session with a reason the controls show, and leaves the rest of the mod as it was.
      */
     public static void register() {
         AxiomCommand.install();
@@ -49,7 +70,17 @@ public final class AxiomBridge {
         try {
             AxiomTools.register();
         } catch (Throwable t) {
-            ChromaStudioClient.LOGGER.warn("Couldn't add Chroma Studio's tools to Axiom", t);
+            fail(t);
+        }
+    }
+
+    private static void fail(Throwable t) {
+        ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
+        broken = Component.translatable("axiom.chromastudio.incompatible");
+        try {
+            AxiomTools.shutDown();
+        } catch (Throwable _) {
+            // Axiom's classes may be what's missing, before any tool could be put away; then there's none to put away.
         }
     }
 
@@ -57,17 +88,29 @@ public final class AxiomBridge {
 
     /** Call before the window opens: leaves Axiom's editor when it's open, to go back once the window has closed. */
     public static void leaveEditorForWindow() {
-        if (isPresent()) AxiomEditor.leaveForWindow();
+        if (usable()) AxiomEditor.leaveForWindow();
     }
 
     /** Whether Axiom's editor is open. False without Axiom, or when this version of it can't say. */
-    public static boolean editorOpen() { return isPresent() && AxiomEditor.active(); }
+    public static boolean editorOpen() { return usable() && AxiomEditor.active(); }
 
     /** Call at the end of every client tick, for the tools and the window's trips out of the editor. */
     public static void tick(Minecraft mc) {
         if (!isPresent()) return;
-        AxiomTools.tick();
-        AxiomEditor.tick(mc);
+        if (broken != null) {
+            // Said once, in the world, as the game starts before there's anywhere to say it.
+            if (!told && mc.player != null) {
+                told = true;
+                Hud.readout(Component.translatable("axiom.chromastudio.incompatible.title"), broken, ModSettings.readoutSeconds);
+            }
+            return;
+        }
+        try {
+            AxiomTools.tick();
+            AxiomEditor.tick(mc);
+        } catch (LinkageError e) {
+            fail(e);
+        }
     }
 
     /** The block under the mouse in Axiom's editor, or null when there's none or the editor isn't open. */
@@ -118,13 +161,23 @@ public final class AxiomBridge {
     public static void hotbarsFailed(Throwable t) { AxiomHotbars.failed(t); }
 
     /** The hotbar the player holds now. */
-    public static int activeHotbar() throws Throwable { return AxiomHotbars.active(); }
+    public static int activeHotbar() throws Throwable {
+        // Only read, through the hotbars' own guard, and still needed with the tools off: a fill must know which
+        // hotbar it went into, or its Undo could put the slots back into another one the player has switched to.
+        return AxiomHotbars.active();
+    }
 
     /** A copy of what one slot of a hotbar holds, the active one included. */
-    public static ItemStack hotbarItem(int hotbar, int slot) throws Throwable { return AxiomHotbars.get(hotbar, slot); }
+    public static ItemStack hotbarItem(int hotbar, int slot) throws Throwable {
+        live();
+        return AxiomHotbars.get(hotbar, slot);
+    }
 
     /** Sets one slot of a hotbar other than the active one, which callers write as the player's own hotbar. */
-    public static void setHotbarItem(int hotbar, int slot, ItemStack stack) throws Throwable { AxiomHotbars.set(hotbar, slot, stack); }
+    public static void setHotbarItem(int hotbar, int slot, ItemStack stack) throws Throwable {
+        live();
+        AxiomHotbars.set(hotbar, slot, stack);
+    }
 
     /** The key that opens Axiom's menu of hotbars, as the player has it bound, or Left Alt, its default. */
     public static Component hotbarKey() { return AxiomHotbars.switchKey(); }

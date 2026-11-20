@@ -737,7 +737,8 @@ final class PaletteDialogs {
             Component axiom = tr("palettes.chromastudio.hotbar.axiom");
             int axiomW = Math.min(in.w(), Math.max(Widgets.buttonWidth(CommonComponents.optionNameValue(axiom, CommonComponents.OPTION_ON)),
                     Widgets.buttonWidth(CommonComponents.optionNameValue(axiom, CommonComponents.OPTION_OFF))));
-            CycleButton<Boolean> axiomButton = widgets.toggle(in.x(), y - Widgets.H - PanelTab.GAP, axiomW, axiom, ModSettings.hotbarAxiom, v -> {
+            // It reads what the fill does now: greyed out, Axiom's hotbars take nothing, whatever the setting says.
+            CycleButton<Boolean> axiomButton = widgets.toggle(in.x(), y - Widgets.H - PanelTab.GAP, axiomW, axiom, HotbarFill.usesAxiom(), v -> {
                 ModSettings.hotbarAxiom = v;
                 ModSettings.save();
                 result = null;

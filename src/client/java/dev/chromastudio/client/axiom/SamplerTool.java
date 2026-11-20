@@ -18,7 +18,6 @@ import dev.chromastudio.core.palette.BuildSearch;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import imgui.moulberry92.ImGui;
-import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import imgui.moulberry92.type.ImString;
 import java.lang.ref.WeakReference;
 import java.util.List;
@@ -38,11 +37,6 @@ import net.minecraft.world.phys.Vec3;
  * material, the ground and plants only when asked for, and air, liquids and chests never.
  */
 final class SamplerTool implements CustomTool {
-    /** As in {@link PaletteBrushTool}: Axiom's use-tool button in ImGui's order, in which 1 is the right button. */
-    private static final int USE_TOOL = 1;
-    private static final int MAX_RADIUS = 16;
-    /** The most blocks one use of the tool on a build takes, as for the gradient tool. */
-    private static final int CAP = 100_000;
     /** Past this many kinds the panel says a palette is getting hard to build with. Nothing is left out. */
     private static final int MANY = 24;
     /** The rows the list shows before it scrolls, so a long sample can't push the buttons off the screen. */
@@ -90,9 +84,10 @@ final class SamplerTool implements CustomTool {
 
     @Override
     public boolean callUseTool() {
+        if (AxiomTools.off()) return false;
         pather = null;
         if (!BlockIndex.get().ready()) {
-            said = tr("axiom.chromastudio.sampler.not_ready");
+            said = tr("axiom.chromastudio.not_ready");
             return false;
         }
         ClientLevel level = Minecraft.getInstance().level;
@@ -100,7 +95,7 @@ final class SamplerTool implements CustomTool {
         said = null;
         if (mode == Mode.BRUSH) {
             strokeIn = level;
-            pather = AxiomTools.pathers.createUnique(radius[0], BallShape.SPHERE);
+            pather = AxiomTools.pathers.createUnique(AxiomPanel.radius(radius), BallShape.SPHERE);
             return true;
         }
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
@@ -108,13 +103,13 @@ final class SamplerTool implements CustomTool {
         BlockPos at = hit.getBlockPos();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         // The search never spreads into the ground or plants, whatever the setting, or one use would take the landscape.
-        BuildSearch.Found found = BuildSearch.from(at.getX(), at.getY(), at.getZ(), (x, y, z) -> SampleKind.member(level.getBlockState(pos.set(x, y, z))), CAP);
+        BuildSearch.Found found = BuildSearch.from(at.getX(), at.getY(), at.getZ(), (x, y, z) -> SampleKind.member(level.getBlockState(pos.set(x, y, z))), FoundBuild.CAP);
         // In a new world the sample starts over only at the first block that counts, so the old one counts as none.
         int before = sampledIn.get() == level ? sample.total() : 0;
         for (long p : found.blocks()) add(level, pos, BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
         int added = sampledIn.get() == level ? sample.total() - before : 0;
-        String result = found.blocks().length == 0 ? tr("axiom.chromastudio.sampler.not_build")
-                : found.capped() ? tr("axiom.chromastudio.sampler.capped", CAP)
+        String result = found.blocks().length == 0 ? tr("axiom.chromastudio.not_build")
+                : found.capped() ? tr("axiom.chromastudio.capped", FoundBuild.CAP) + " " + tr("axiom.chromastudio.sampler.capped")
                 : tr("axiom.chromastudio.sampler.added", added);
         // Keeps the word that the sample started over, when it did.
         said = said == null ? result : said + " " + result;
@@ -123,10 +118,11 @@ final class SamplerTool implements CustomTool {
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
+        if (AxiomTools.off()) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (pather != null && level != null) {
             // A stroke ends where the world does, as when the player changes dimension with the button held.
-            if (AxiomTools.tools.isMouseDown(USE_TOOL) && level == strokeIn) {
+            if (AxiomTools.tools.isMouseDown(BrushStroke.USE_TOOL) && level == strokeIn) {
                 BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
                 pather.update((x, y, z) -> add(level, pos, x, y, z));
             } else {
@@ -147,7 +143,7 @@ final class SamplerTool implements CustomTool {
             one.render(rc, corner, Effects.BLUE | Effects.OUTLINE);
             return;
         }
-        if (ballRadius != radius[0]) {
+        if (ballRadius != AxiomPanel.radius(radius)) {
             ballRadius = radius[0];
             ball.clear();
             BallShape.SPHERE.fillRegion(ball, ballRadius);
@@ -185,64 +181,50 @@ final class SamplerTool implements CustomTool {
     }
 
     @Override
-    public void displayImguiOptions() {
+    public void displayImguiOptions() { AxiomPanel.draw(this::panel); }
+
+    private void panel() {
         if (name == null) name = new ImString(tr("axiom.chromastudio.sampler.default_name"), 64);
-        boolean ready = BlockIndex.get().ready();
-        if (!ready) wrapped(tr("axiom.chromastudio.sampler.not_ready"));
+        boolean brush = mode == Mode.BRUSH;
+        if (AxiomPanel.radio(tr("axiom.chromastudio.sampler.brush"), brush, true, tr("axiom.chromastudio.sampler.brush.tip"))) mode = Mode.BRUSH;
+        AxiomPanel.besideChoice(tr("axiom.chromastudio.whole_build"));
+        if (AxiomPanel.radio(tr("axiom.chromastudio.whole_build"), !brush, true, tr("axiom.chromastudio.sampler.build.tip"))) mode = Mode.BUILD;
+        AxiomPanel.radius(radius, brush, tr(brush ? "axiom.chromastudio.radius.tip" : "axiom.chromastudio.radius.whole"));
+        if (AxiomPanel.checkbox(tr("axiom.chromastudio.sampler.ground"), ground && brush, brush,
+                tr(brush ? "axiom.chromastudio.sampler.ground.tip" : "axiom.chromastudio.sampler.ground.build"))) ground = !ground;
 
-        if (ImGui.radioButton(tr("axiom.chromastudio.sampler.brush"), mode == Mode.BRUSH)) mode = Mode.BRUSH;
-        tip(tr("axiom.chromastudio.sampler.brush.tip"));
-        ImGui.sameLine();
-        if (ImGui.radioButton(tr("axiom.chromastudio.sampler.build"), mode == Mode.BUILD)) mode = Mode.BUILD;
-        tip(tr("axiom.chromastudio.sampler.build.tip"));
-        ImGui.beginDisabled(mode != Mode.BRUSH);
-        ImGui.sliderInt(tr("axiom.chromastudio.sampler.radius"), radius, 0, MAX_RADIUS);
-        ImGui.endDisabled();
-        if (mode != Mode.BRUSH) tip(tr("axiom.chromastudio.sampler.radius.build"));
-        ImGui.beginDisabled(mode != Mode.BRUSH);
-        if (ImGui.checkbox(tr("axiom.chromastudio.sampler.ground"), ground && mode == Mode.BRUSH)) ground = !ground;
-        ImGui.endDisabled();
-        tip(tr(mode == Mode.BRUSH ? "axiom.chromastudio.sampler.ground.tip" : "axiom.chromastudio.sampler.ground.build"));
-
-        ImGui.separator();
+        AxiomPanel.separator();
         List<BuildSample.Row> rows = sample.rows();
-        if (sample.isEmpty()) wrapped(tr("axiom.chromastudio.sampler.how"));
-        else list(rows);
-        removed();
-        if (rows.size() > MANY) wrapped(tr("axiom.chromastudio.sampler.many", rows.size()));
-
-        ImGui.separator();
-        ImGui.inputText(tr("axiom.chromastudio.sampler.name"), name);
         boolean empty = rows.isEmpty(), saved = savedAs != null && PaletteStore.get().own().contains(savedAs);
-        ImGui.beginDisabled(empty || saved);
-        if (ImGui.button(tr("axiom.chromastudio.sampler.save"))) save();
-        ImGui.endDisabled();
-        tip(empty ? tr("axiom.chromastudio.sampler.save.empty")
-                : saved ? tr("axiom.chromastudio.sampler.save.done", savedAs.name) : tr("axiom.chromastudio.sampler.save.tip", BuildSample.MAX_WEIGHT));
-        ImGui.sameLine();
-        ImGui.beginDisabled(empty);
-        if (ImGui.button(tr("axiom.chromastudio.sampler.open")) && (saved || save())) {
+        ImGui.inputText(tr("axiom.chromastudio.sampler.name"), name);
+        if (AxiomPanel.button(tr("axiom.chromastudio.sampler.save"), !empty && !saved, empty ? tr("axiom.chromastudio.sampler.save.empty")
+                : saved ? tr("axiom.chromastudio.sampler.save.done", savedAs.name) : tr("axiom.chromastudio.sampler.save.tip", BuildSample.MAX_WEIGHT))) save();
+        AxiomPanel.besideButton(tr("axiom.chromastudio.sampler.open"));
+        if (AxiomPanel.button(tr("axiom.chromastudio.sampler.open"), !empty, tr(empty ? "axiom.chromastudio.sampler.save.empty" : "axiom.chromastudio.sampler.open.tip"))
+                && (saved || save())) {
             PaletteStore.get().select(savedAs);
             // The window opens at the next tick, after Axiom has finished drawing its panels this frame.
             ChromaStudioClient.openWindowSoon("palettes");
         }
-        ImGui.endDisabled();
-        tip(tr(empty ? "axiom.chromastudio.sampler.save.empty" : "axiom.chromastudio.sampler.open.tip"));
-        if (said != null) wrapped(said);
+        if (said != null) AxiomPanel.wrapped(said);
+        if (!BlockIndex.get().ready()) AxiomPanel.wrapped(tr("axiom.chromastudio.not_ready"));
+        if (sample.isEmpty()) AxiomPanel.note(tr("axiom.chromastudio.sampler.how"));
+        else list(rows);
+        removed();
+        if (rows.size() > MANY) AxiomPanel.note(tr("axiom.chromastudio.sampler.many", rows.size()));
     }
 
     /** The sample's kinds, most common first, each with its colour, name, count and share, and a button to leave it out. */
     private void list(List<BuildSample.Row> rows) {
         int total = sample.total();
         ImGui.alignTextToFramePadding();
-        ImGui.textUnformatted(tr("axiom.chromastudio.sampler.total", total, rows.size()));
-        ImGui.sameLine();
-        if (ImGui.button(tr("axiom.chromastudio.sampler.clear"))) {
+        AxiomPanel.text(tr("axiom.chromastudio.sampler.total", total, rows.size()));
+        AxiomPanel.besideButton(tr("axiom.chromastudio.sampler.clear"));
+        if (AxiomPanel.button(tr("axiom.chromastudio.sampler.clear"), true, tr("axiom.chromastudio.sampler.clear.tip"))) {
             sample.clear();
             changed();
             said = null;
         }
-        tip(tr("axiom.chromastudio.sampler.clear.tip"));
         if (rows.isEmpty()) return;
         float height = Math.min(rows.size(), ROWS) * ImGui.getFrameHeightWithSpacing() + ImGui.getStyle().getWindowPaddingY() * 2;
         if (ImGui.beginChild("##sample", -1, height, true)) {
@@ -254,18 +236,18 @@ final class SamplerTool implements CustomTool {
                     sample.remove(r.id());
                     changed();
                 }
-                tip(tr("axiom.chromastudio.sampler.remove.tip", shown));
-                ImGui.sameLine();
+                AxiomPanel.tip(tr("axiom.chromastudio.sampler.remove.tip", shown));
+                AxiomPanel.sameLine();
                 Color c = PaletteBlocks.colour(e);
                 // A block whose colour can't be read still has its row, so it can be seen and removed.
-                if (c != null) ImGui.colorButton("##swatch" + i, c.red() / 255f, c.green() / 255f, c.blue() / 255f, 1f, ImGuiColorEditFlags.NoTooltip);
+                if (c != null) AxiomPanel.swatch("swatch" + i, new AxiomPanel.Swatch(c, shown));
                 else ImGui.dummy(ImGui.getFrameHeight(), ImGui.getFrameHeight());
-                ImGui.sameLine();
+                AxiomPanel.sameLine();
                 ImGui.alignTextToFramePadding();
-                ImGui.textUnformatted(shown);
-                ImGui.sameLine();
+                AxiomPanel.text(shown);
+                AxiomPanel.sameLine();
                 ImGui.beginDisabled();
-                ImGui.textUnformatted(tr("axiom.chromastudio.sampler.count", r.count(), share(r.count(), total)));
+                AxiomPanel.text(tr("axiom.chromastudio.sampler.count", r.count(), share(r.count(), total)));
                 ImGui.endDisabled();
             }
         }
@@ -276,7 +258,7 @@ final class SamplerTool implements CustomTool {
     private void removed() {
         List<String> removed = sample.removed();
         if (removed.isEmpty()) return;
-        wrapped(tr("axiom.chromastudio.sampler.removed"));
+        AxiomPanel.note(tr("axiom.chromastudio.sampler.removed"));
         float line = ImGui.getContentRegionAvailX(), left = line, gap = ImGui.getStyle().getItemSpacingX();
         for (int i = 0; i < removed.size(); i++) {
             String id = removed.get(i), shown = shown(id);
@@ -291,27 +273,8 @@ final class SamplerTool implements CustomTool {
                 sample.putBack(id);
                 changed();
             }
-            tip(tr("axiom.chromastudio.sampler.put_back.tip", shown));
+            AxiomPanel.tip(tr("axiom.chromastudio.sampler.put_back.tip", shown));
         }
-    }
-
-    /**
-     * A tooltip for the last item, shown as it is and wrapped: ImGui's own would read a % in a palette's or block's
-     * name as a format, and these run to a few sentences.
-     */
-    private static void tip(String text) {
-        if (!ImGui.beginItemTooltip()) return;
-        ImGui.pushTextWrapPos(ImGui.getFontSize() * 30f);
-        ImGui.textUnformatted(text);
-        ImGui.popTextWrapPos();
-        ImGui.endTooltip();
-    }
-
-    /** Text that wraps at the panel's edge, shown as it is: ImGui's own wrapped text would read a % in a name as a format. */
-    private static void wrapped(String text) {
-        ImGui.pushTextWrapPos(0f);
-        ImGui.textUnformatted(text);
-        ImGui.popTextWrapPos();
     }
 
     /** A share as a whole percentage, or "<1" for a few blocks among many, which rounding would show as none. */
