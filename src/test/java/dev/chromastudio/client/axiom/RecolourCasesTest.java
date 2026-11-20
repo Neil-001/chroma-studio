@@ -163,10 +163,9 @@ class RecolourCasesTest {
             String what = from.name;
             assertEquals("stone_bricks", id(after(plan, "stone_bricks")), what);
             assertEquals("stone_brick_stairs", id(after(plan, "stone_brick_stairs")), what);
-            // Polished andesite is a grey a little lighter than the walls: it takes the palette's andesite.
-            assertEquals("andesite", id(after(plan, "polished_andesite")), what);
-            // Cobblestone and smooth stone are greys too; neither turns to wood or terracotta.
-            for (String grey : List.of("cobblestone", "smooth_stone")) {
+            // Polished andesite, cobblestone and smooth stone are greys a little lighter than the walls; none turns to
+            // wood or terracotta.
+            for (String grey : List.of("polished_andesite", "cobblestone", "smooth_stone")) {
                 Block to = after(plan, grey);
                 assertTrue(!id(to).contains("terracotta") && !id(to).contains("planks"), what + ": " + grey + " to " + id(to));
             }

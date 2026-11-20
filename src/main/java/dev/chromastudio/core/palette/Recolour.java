@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,18 +18,30 @@ import java.util.function.IntPredicate;
  * Axiom's Script Brush scripts and the palette brush both ask this, so the two give the same blocks.
  *
  * <p>Picking each block's closest colour alone makes most of a build one block when the palette is small or far
- * from the build's colours, and its shading is lost. {@link Mode#SHADING} keeps the shading. It sorts the build's
- * colours from darkest to lightest into shades, and hands the shades out in order to the palette's blocks, sorted the
- * same way, so a darker block never becomes a lighter one than a lighter block does. A variant that can't be told from
- * a block of its own material, such as cracked stone bricks beside stone bricks, joins that block's shade; different
- * materials of nearly one colour, such as cobblestone and andesite, which a builder mixes on purpose, stay apart.
+ * from the build's colours, and its shading is lost. {@link Mode#SHADING} keeps the shading, by this rule:
+ * <ol>
+ * <li>A block the palette already has stays as it is.
+ * <li>The build's main material becomes the palette's main block: the heaviest that leaves the materials lighter and
+ *     darker than it a block each, unless the palette already has it. The main material is the one there is most of,
+ *     but the build's darkest or lightest only when it is most of the build, so the walls, not a dark roof, are a
+ *     house's main material.
+ * <li>When the palette has the main material, every other material keeps its difference from it: as much lighter or
+ *     darker, and as much warmer or cooler, landing on the palette's block closest to that, so a grey trim on a
+ *     stone brick wall takes the palette's next grey rather than its yellow accent.
+ * <li>Otherwise every other material keeps its place from darkest to lightest: lay the build's shades along a line,
+ *     each as long as the share of the build it covers, and the palette's blocks along another, each as long as its
+ *     weight; each shade takes the block at the same place on the palette's line, and the build's darkest and
+ *     lightest take the palette's, so the build's shading spans the palette. While the palette has blocks enough,
+ *     every shade takes a block of its own; when there are more shades than blocks, every block still takes one.
+ * <li>The order from darkest to lightest never turns round, and materials you can tell apart keep blocks of their
+ *     own unless the palette has nothing near enough for one of them.
+ * </ol>
+ * Without counts to say which material is the main one, as when every block in the game may change, the largest
+ * shade between the darkest and lightest is taken for it.
  *
- * <p>How the shades are handed out goes by how much of each there is. Lay the build's shades along a line, each as
- * long as the share of the build it covers, and the palette's blocks along another, each as long as its weight; each
- * shade takes the block at the same place on the palette's line. So the build's main material takes one of the
- * palette's main blocks, such as a desert's sandstone, and a small accent an accent. While the palette has blocks
- * enough, every shade takes a block of its own, moved along as little as that needs. When there are more shades than
- * blocks, every block still takes at least one, and the rest go by weight.
+ * <p>A variant that can't be told from a block of its own material, such as cracked stone bricks beside stone bricks,
+ * joins that block's shade; different materials of nearly one colour, such as cobblestone and andesite, which a
+ * builder mixes on purpose, stay apart.
  *
  * <p>Glass and other blocks you can see through are kept apart from solid ones: a solid block only becomes a
  * see-through one when the palette has nothing else it may become, and a see-through block only ever becomes another
@@ -39,7 +52,7 @@ import java.util.function.IntPredicate;
 public final class Recolour {
     /** How a block's new block is picked. */
     public enum Mode {
-        /** By its shade's place between the build's darkest and lightest, so the build's shading survives. */
+        /** By the rule above, so the build's shading survives. */
         SHADING,
         /** The palette's block closest in colour. */
         CLOSEST
@@ -50,20 +63,32 @@ public final class Recolour {
      * palette's block how much of a build the palette means it to cover, and for a build's how much of the build it
      * is, such as how many of it there are. {@code family} names its material with variants folded in, so cracked
      * and mossy stone bricks share stone bricks' family; null when it isn't known, and then a block that can't be told
-     * from another by colour shares its shade.
+     * from another by colour shares its shade. {@code block} says which block it is, by its full block's id for a
+     * shape, so a build's block the palette has is known; null when it isn't known.
      */
-    public record Look(Color colour, boolean seeThrough, int weight, String family) {
-        /** A look of no known family. */
-        public Look(Color colour, boolean seeThrough, int weight) { this(colour, seeThrough, weight, null); }
+    public record Look(Color colour, boolean seeThrough, int weight, String family, String block) {
+        /** A look of no known block. */
+        public Look(Color colour, boolean seeThrough, int weight, String family) { this(colour, seeThrough, weight, family, null); }
 
-        /** A look with a weight of 1 and no known family. */
+        /** A look of no known family or block. */
+        public Look(Color colour, boolean seeThrough, int weight) { this(colour, seeThrough, weight, null, null); }
+
+        /** A look with a weight of 1 and no known family or block. */
         public Look(Color colour, boolean seeThrough) { this(colour, seeThrough, 1); }
     }
+
+    /**
+     * What two materials sharing one block costs beyond the difference between them, in OKLab, times the smaller one's
+     * amount: about two just-noticeable steps, so materials a builder mixed on purpose keep blocks of their own unless
+     * the palette's next block is that much further off than the one they'd share.
+     */
+    private static final double SHARE = 0.05;
 
     private final Mode mode;
     private final Oklab[] palette;
     private final boolean[] paletteClear;
     private final int[] weights;
+    private final String[] blocks;
     // The palette's blocks from darkest to lightest, and in the palette's order among equals.
     private final int[] byLightness;
     private final Shades buildSolid, buildClear;
@@ -72,8 +97,8 @@ public final class Recolour {
 
     /**
      * @param palette the blocks a build may become, in the palette's order, which breaks ties
-     * @param build   the blocks of the build being recoloured, which set its darkest and lightest and how much of
-     *                it each shade is; ignored when picking the closest colour
+     * @param build   the blocks of the build being recoloured, with how much of the build each is; ignored when
+     *                picking the closest colour
      */
     public Recolour(List<Look> palette, List<Look> build, Mode mode) {
         this.mode = mode;
@@ -81,11 +106,13 @@ public final class Recolour {
         this.palette = new Oklab[n];
         this.paletteClear = new boolean[n];
         this.weights = new int[n];
+        this.blocks = new String[n];
         for (int i = 0; i < n; i++) {
             this.palette[i] = palette.get(i).colour().oklab();
             this.paletteClear[i] = palette.get(i).seeThrough();
             // A weight below 1 counts as 1, so every block keeps a share.
             this.weights[i] = Math.max(1, palette.get(i).weight());
+            this.blocks[i] = palette.get(i).block();
         }
         List<Integer> order = new ArrayList<>();
         for (int i = 0; i < n; i++) order.add(i);
@@ -117,6 +144,9 @@ public final class Recolour {
             }
             return best;
         }
+        // A block the palette has stays itself.
+        int own = own(block.block(), clear, allowed);
+        if (own >= 0) return own;
         // Only the blocks this one may become count, so one it may not, such as a block without its shape, takes
         // nothing from the others.
         int[] eligible = Arrays.stream(byLightness).filter(i -> paletteClear[i] == clear && allowed.test(i)).toArray();
@@ -126,10 +156,96 @@ public final class Recolour {
         return table[build.of(c, block.family())];
     }
 
-    /** Which of {@code eligible}, sorted from darkest to lightest, each of a build's shades takes. */
+    /** The palette's index of a block by its id, among those of a class that are allowed, or -1. */
+    private int own(String block, boolean clear, IntPredicate allowed) {
+        if (block == null) return -1;
+        for (int i = 0; i < palette.length; i++) if (block.equals(blocks[i]) && paletteClear[i] == clear && allowed.test(i)) return i;
+        return -1;
+    }
+
+    /**
+     * Which of {@code eligible}, sorted from darkest to lightest, each of a build's shades takes, by the rule at the
+     * top. Of all the ways to hand out blocks in order from darkest to lightest, with the blocks the palette has and
+     * the main material pinned, this takes the one that lands each shade closest to its difference from the main
+     * material, by how much of the build it is, counting what two shades lose by sharing a block.
+     */
     private int[] table(int[] eligible, Shades build) {
         int n = eligible.length, shades = build.count();
-        if (shades <= n) return matched(eligible, build);
+        if (shades == 0) return new int[] {eligible[(n - 1) / 2]};
+        int main = build.main();
+        if (main < 0) return byPlace(eligible, build, main);
+        double[] amount = new double[shades];
+        Oklab[] colour = new Oklab[shades];
+        for (int k = 0; k < shades; k++) {
+            amount[k] = build.amount(k);
+            colour[k] = build.colour(k);
+        }
+        // The blocks the palette has, each pinned to its shade, kept only while they stay in order.
+        int[] pin = new int[shades];
+        Arrays.fill(pin, -1);
+        for (int k = 0, last = -1; k < shades; k++) {
+            for (String id : build.blocks(k)) {
+                for (int j = last + 1; j < n; j++) {
+                    if (!id.equals(blocks[eligible[j]])) continue;
+                    pin[k] = j;
+                    break;
+                }
+                if (pin[k] >= 0) break;
+            }
+            if (pin[k] >= 0) last = pin[k];
+        }
+        // When the palette lacks the main material, there's nothing to measure differences from that the builder
+        // chose, so each shade keeps its place from darkest to lightest instead, the main one on the palette's main block.
+        if (pin[main] < 0) return byPlace(eligible, build, main);
+        Oklab m = palette[eligible[pin[main]]];
+        Oklab shift = new Oklab(m.l() - colour[main].l(), m.a() - colour[main].a(), m.b() - colour[main].b());
+
+        // best[k][j]: the least cost for shades 0..k with shade k on block j; back[k][j] the block shade k-1 took. The
+        // earlier block wins a tie, and a block of its own wins a tie with sharing.
+        double[][] best = new double[shades][n];
+        int[][] back = new int[shades][n];
+        for (int k = 0; k < shades; k++) {
+            Oklab target = new Oklab(colour[k].l() + shift.l(), colour[k].a() + shift.a(), colour[k].b() + shift.b());
+            double share = k == 0 ? 0 : Math.min(amount[k], amount[k - 1]) * (colour[k].distance(colour[k - 1]) + SHARE);
+            int least = -1;
+            for (int j = 0; j < n; j++) {
+                if (k > 0 && j > 0 && best[k - 1][j - 1] < Double.POSITIVE_INFINITY && (least < 0 || best[k - 1][j - 1] < best[k - 1][least])) least = j - 1;
+                best[k][j] = Double.POSITIVE_INFINITY;
+                if (pin[k] >= 0 && j != pin[k]) continue;
+                double fit = Math.max(amount[k], Double.MIN_NORMAL) * target.distance(palette[eligible[j]]);
+                if (k == 0) {
+                    best[k][j] = fit;
+                    continue;
+                }
+                if (least >= 0) {
+                    best[k][j] = best[k - 1][least] + fit;
+                    back[k][j] = least;
+                }
+                if (best[k - 1][j] + share + fit < best[k][j]) {
+                    best[k][j] = best[k - 1][j] + share + fit;
+                    back[k][j] = j;
+                }
+            }
+        }
+        int last = 0;
+        for (int j = 1; j < n; j++) if (best[shades - 1][j] < best[shades - 1][last]) last = j;
+        int[] out = new int[shades];
+        for (int k = shades - 1, j = last; k >= 0; k--) {
+            out[k] = eligible[j];
+            j = back[k][j];
+        }
+        return out;
+    }
+
+    /**
+     * Which of {@code eligible}, sorted from darkest to lightest, each of a build's shades takes when the build's
+     * palette lacks its main material, or its weights don't say which that is, as when every block in the game may
+     * change: each shade takes the block at its place from darkest to lightest, and the main one, given or else the
+     * largest between the ends, one of the palette's main blocks.
+     */
+    private int[] byPlace(int[] eligible, Shades build, int main) {
+        int n = eligible.length, shades = build.count();
+        if (shades <= n) return matched(eligible, build, main);
         int[] out = new int[shades];
         // More shades than blocks, so some must share. Every block takes one shade, and the rest go by weight, by
         // largest remainder. Weights count in full once the build has twice as many shades as there are blocks, and
@@ -165,7 +281,7 @@ public final class Recolour {
      * is. Of all the ways to hand out blocks in order, each shade its own, this takes the best fit. Two neighbouring
      * shades share a block only where the main shade's pin, below, makes room for it.
      */
-    private int[] matched(int[] eligible, Shades build) {
+    private int[] matched(int[] eligible, Shades build, int main) {
         int n = eligible.length, shades = build.count();
         if (shades == 0) return new int[] {eligible[(n - 1) / 2]};
         double[] at = new double[shades];
@@ -183,10 +299,12 @@ public final class Recolour {
             upTo += weights[eligible[j]];
             to[j] = upTo / weight;
         }
-        // The largest shade between the ends, and the heaviest block between them, nearest its place among equals.
-        int main = -1, heaviest = -1, shares = 0;
-        if (shades >= 3 && n >= 3) {
-            for (int k = 1; k < shades - 1; k++) if (main < 0 || build.amount(k) > build.amount(main)) main = k;
+        // The main shade, given or else the largest between the ends, and the heaviest block for it, nearest its place
+        // among equals: between the palette's ends for a shade between the build's, anywhere for an end shade.
+        int heaviest = -1, shares = 0;
+        if (main < 0 && shades >= 3) for (int k = 1; k < shades - 1; k++) if (main < 0 || build.amount(k) > build.amount(main)) main = k;
+        boolean end = main == 0 || main == shades - 1;
+        if (main >= 0 && n >= (end ? 2 : 3)) {
             // A block that leaves room for every shade on either side of it, so no two shades share. Only when the
             // palette has blocks to spare and a heavier block lies one place beyond that room may two neighbouring
             // shades share to put the walls on it, as a builder would: stone walls on stone bricks, not on planks.
@@ -224,7 +342,7 @@ public final class Recolour {
                         }
                     }
                     best[s][k][j] = Double.POSITIVE_INFINITY;
-                    boolean pinned = shades > 1 && (k == 0 && j != 0 || k == shades - 1 && j != n - 1) || k == main && j != heaviest;
+                    boolean pinned = shades > 1 && k != main && (k == 0 && j != 0 || k == shades - 1 && j != n - 1) || k == main && j != heaviest;
                     if (pinned) continue;
                     double fit = share * away(at[k], from[j], to[j]);
                     if (k == 0) {
@@ -267,7 +385,8 @@ public final class Recolour {
      */
     private int heaviest(int[] eligible, double at, double[] from, double[] to, int main, int shades, int crowded) {
         int n = eligible.length, best = -1;
-        for (int j = 1; j < n - 1; j++) {
+        boolean end = main == 0 || main == shades - 1;
+        for (int j = end ? 0 : 1; j < (end ? n : n - 1); j++) {
             if (Math.max(0, main - j) + Math.max(0, shades - 1 - main - (n - 1 - j)) > crowded) continue;
             if (best < 0 || weights[eligible[j]] > weights[eligible[best]]
                     || weights[eligible[j]] == weights[eligible[best]] && away(at, from[j], to[j]) < away(at, from[best], to[best])) {
@@ -292,7 +411,8 @@ public final class Recolour {
      * A build's colours sorted into shades, from darkest to lightest. A colour joins the latest shade when it can't be
      * told from where that shade starts, unless both families are known and differ, or when it is of that shade's
      * family and only a little further off; otherwise it starts a shade of its own. Each shade also knows how much of
-     * the build it is: the square root of its looks' weights together.
+     * the build it is: the square root of its looks' weights together; its colour: that of its heaviest look; and
+     * the blocks it holds, heaviest first.
      */
     static final class Shades {
         /** How many times further than it can be told apart a block of the same family may be and still share a shade. */
@@ -300,17 +420,23 @@ public final class Recolour {
 
         private record Key(Oklab colour, String family) {}
 
-        // The colour and family each shade starts at, darkest first, how much of the build each shade is, and the
-        // shade each of the build's colours belongs to.
+        // The colour and family each shade starts at, darkest first, how much of the build each shade is, its
+        // heaviest look's colour and weight, the blocks it holds by weight, and the shade each of the build's colours
+        // belongs to.
         private final List<Oklab> starts = new ArrayList<>();
         private final List<String> families = new ArrayList<>();
         private final List<Double> amounts = new ArrayList<>();
+        private final List<Oklab> colours = new ArrayList<>();
+        private final List<Integer> heaviest = new ArrayList<>();
+        private final List<Map<String, Integer>> blocks = new ArrayList<>();
         private final Map<Key, Integer> shadeOf = new HashMap<>();
         private double total;
+        private final int main;
 
         Shades(List<Look> looks) {
             List<Look> sorted = new ArrayList<>(looks);
             sorted.sort(Comparator.comparingDouble(l -> l.colour().oklab().l()));
+            int fewest = Integer.MAX_VALUE, most = 0;
             for (Look l : sorted) {
                 Oklab c = l.colour().oklab();
                 Key key = new Key(c, l.family());
@@ -330,16 +456,52 @@ public final class Recolour {
                     starts.add(c);
                     families.add(l.family());
                     amounts.add(0.0);
+                    colours.add(c);
+                    heaviest.add(-1);
+                    blocks.add(new LinkedHashMap<>());
                 }
                 shadeOf.putIfAbsent(key, shade);
-                amounts.set(shade, amounts.get(shade) + Math.max(1, l.weight()));
+                // A weight of 0 says the look is in the build without adding to how much there is, as a stair is
+                // when its material's full block already counts it.
+                int w = Math.max(0, l.weight());
+                if (w > 0) {
+                    fewest = Math.min(fewest, w);
+                    most = Math.max(most, w);
+                }
+                amounts.set(shade, amounts.get(shade) + w);
+                if (w > heaviest.get(shade)) {
+                    heaviest.set(shade, w);
+                    colours.set(shade, c);
+                }
+                if (l.block() != null) blocks.get(shade).merge(l.block(), w, Integer::sum);
             }
-            // Counted as square roots, so a build's bulk material pulls its shade toward the palette's main block
-            // without squeezing the rest of the build's shades into a sliver of the palette.
-            for (int s = 0; s < amounts.size(); s++) {
+            // The largest shade, and the largest between the darkest and the lightest, by how many blocks.
+            int shades = starts.size(), largest = -1, inner = -1;
+            boolean tied = false;
+            double all = 0;
+            for (int s = 0; s < shades; s++) {
+                double a = amounts.get(s);
+                all += a;
+                if (s > 0 && s < shades - 1 && (inner < 0 || a > amounts.get(inner))) inner = s;
+                if (largest < 0 || a > amounts.get(largest)) {
+                    largest = s;
+                    tied = false;
+                } else if (a == amounts.get(largest)) {
+                    tied = true;
+                }
+            }
+            // A main material only when the weights are counts that tell one apart: with every block weighed alike,
+            // as when every block in the game may change, there is none, unless the build is all one shade. The
+            // darkest or lightest shade is the main one only when it's most of the build, as a wall of one stone is;
+            // a dark roof that is merely the largest part leaves the walls, the largest between the ends, the main one.
+            int counted = most > fewest && !tied ? largest : -1;
+            if (counted >= 0 && (counted == 0 || counted == shades - 1)) counted = amounts.get(counted) * 2 > all ? counted : inner;
+            // Counted as square roots, so a build's bulk material counts for more without the rest counting for nothing.
+            for (int s = 0; s < shades; s++) {
                 amounts.set(s, Math.sqrt(amounts.get(s)));
                 total += amounts.get(s);
             }
+            main = shades == 1 ? 0 : counted;
         }
 
         /** How many shades the build holds, so a variant that shares one adds none. */
@@ -350,6 +512,19 @@ public final class Recolour {
 
         /** How much there is of the whole build. */
         double total() { return total; }
+
+        /** A shade's colour: its heaviest look's. */
+        Oklab colour(int shade) { return colours.get(shade); }
+
+        /** The blocks a shade holds, heaviest first. */
+        List<String> blocks(int shade) {
+            List<Map.Entry<String, Integer>> out = new ArrayList<>(blocks.get(shade).entrySet());
+            out.sort(Map.Entry.<String, Integer>comparingByValue().reversed());
+            return out.stream().map(Map.Entry::getKey).toList();
+        }
+
+        /** The shade of the build's main material, the one there is most of, or -1 when the weights don't say. */
+        int main() { return main; }
 
         /**
          * Which shade a colour belongs to, from 0 for the darkest: its own for one of the build's looks, else the

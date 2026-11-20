@@ -82,7 +82,8 @@ class RecolourTest {
         // Without a From palette the brush can't know the build, so every block in the game sets the darkest and
         // lightest. Here a wider set of blocks stands in for them: the spread is smaller, and still far from one block.
         List<Recolour.Look> wider = new ArrayList<>();
-        for (Map<String, String> m : List.of(CONCRETE, HOUSE, DESERT, NETHER)) wider.addAll(looks(m));
+        // Every block counts once, as the brush counts them, so no one of them is the build's main material.
+        for (Map<String, String> m : List.of(CONCRETE, HOUSE, DESERT, NETHER)) for (String hex : m.values()) wider.add(solid(hex));
         Recolour r = new Recolour(looks(DESERT), wider, Recolour.Mode.SHADING);
         Set<Integer> picked = new HashSet<>();
         for (Recolour.Look l : looks(CONCRETE)) picked.add(r.pick(l));
@@ -316,16 +317,110 @@ class RecolourTest {
     }
 
     @Test
-    void costsThatRoundToATieKeepTheEarlierBlock() {
-        // Two ways to hand out these shades cost the same once rounded; the earlier blocks win, as they always have.
-        int[] buildWeights = {9, 1, 1, 1, 16, 64}, paletteWeights = {4, 1, 1, 3, 3, 6, 4, 5, 5, 2, 7, 6, 5};
-        List<Recolour.Look> build = new ArrayList<>(), palette = new ArrayList<>();
-        for (int i = 0; i < buildWeights.length; i++)
-            build.add(new Recolour.Look(Color.of(new Oklab(0.1 + 0.5 * i / buildWeights.length, 0, 0)), false, buildWeights[i], "build " + i));
-        for (int i = 0; i < paletteWeights.length; i++)
-            palette.add(new Recolour.Look(Color.of(new Oklab(0.1 + 0.5 * i / paletteWeights.length, 0, 0)), false, paletteWeights[i], "palette " + i));
-        Recolour recolour = new Recolour(palette, build, Recolour.Mode.SHADING);
-        assertEquals(List.of(0, 3, 4, 5, 10, 12), build.stream().map(recolour::pick).toList());
+    void aHouseWithMoreRoofThanWallStillPutsItsWallsOnAMainBlock() {
+        // The palette brush's stone house as it stands, its dark roof the largest part at 98 blocks against the walls' 63.
+        Map<String, Integer> counts = Map.of("deepslate_tiles", 98, "deepslate_bricks", 20, "cobbled_deepslate", 1, "mossy_stone_bricks", 1,
+                "cracked_stone_bricks", 10, "stone_bricks", 53, "cobblestone", 30, "polished_andesite", 63, "andesite", 9, "smooth_stone", 28);
+        List<Recolour.Look> build = new ArrayList<>();
+        for (var e : HOUSE.entrySet()) {
+            build.add(new Recolour.Look(Color.fromHex(e.getValue()), false, counts.get(e.getKey()), HOUSE_FAMILIES.getOrDefault(e.getKey(), e.getKey())));
+        }
+        for (Map<String, String> palette : List.of(DESERT, NETHER)) {
+            Recolour r = new Recolour(looks(palette), build, Recolour.Mode.SHADING);
+            List<String> names = List.copyOf(palette.keySet()), kinds = List.copyOf(HOUSE.keySet());
+            Map<String, String> out = new LinkedHashMap<>();
+            for (int i = 0; i < build.size(); i++) out.put(kinds.get(i), names.get(r.pick(build.get(i))));
+            assertTrue(WEIGHTS.getOrDefault(out.get("stone_bricks"), 1) >= 2, out.toString());
+            assertTrue(new HashSet<>(out.values()).size() >= 6, out.toString());
+        }
+    }
+
+    /** Greys of these OKLab lightnesses, each weighted as given, of a family of its own and no known block. */
+    private static List<Recolour.Look> greys(double[] lightness, int[] weights) {
+        List<Recolour.Look> out = new ArrayList<>();
+        for (int i = 0; i < lightness.length; i++) out.add(new Recolour.Look(Color.of(new Oklab(lightness[i], 0, 0)), false, weights[i], "m" + lightness[i]));
+        return out;
+    }
+
+    private static List<Integer> picks(Recolour r, List<Recolour.Look> build) { return build.stream().map(r::pick).toList(); }
+
+    private static void inOrder(List<Recolour.Look> palette, List<Recolour.Look> build, List<Integer> picked) {
+        for (int i = 0; i < build.size(); i++) for (int j = 0; j < build.size(); j++) {
+            if (build.get(i).colour().oklab().l() < build.get(j).colour().oklab().l()) {
+                assertTrue(palette.get(picked.get(i)).colour().oklab().l() <= palette.get(picked.get(j)).colour().oklab().l(), picked.toString());
+            }
+        }
+    }
+
+    @Test
+    void theMainMaterialTakesThePalettesMainBlockWhereverItSitsInTheBuild() {
+        // Five greys, the middle two weighted to cover most of a build.
+        List<Recolour.Look> palette = greys(new double[] {0.2, 0.35, 0.5, 0.65, 0.8}, new int[] {1, 1, 6, 5, 1});
+        double[][] builds = {{0.4}, {0.4, 0.6}, {0.4, 0.6}, {0.3, 0.45, 0.6}, {0.3, 0.45, 0.6}, {0.3, 0.45, 0.6}, {0.25, 0.4, 0.55, 0.7}};
+        int[][] counts = {{900}, {900, 20}, {20, 900}, {900, 20, 20}, {20, 900, 20}, {20, 20, 900}, {5, 30, 30, 900}};
+        for (int b = 0; b < builds.length; b++) {
+            List<Recolour.Look> build = greys(builds[b], counts[b]);
+            List<Integer> picked = picks(new Recolour(palette, build, Recolour.Mode.SHADING), build);
+            int main = 0;
+            for (int k = 1; k < counts[b].length; k++) if (counts[b][k] > counts[b][main]) main = k;
+            // One of the two heaviest blocks.
+            assertTrue(palette.get(picked.get(main)).weight() >= 5, b + ": " + picked);
+            inOrder(palette, build, picked);
+            // Three or fewer shades around a middle block always have room for a block each.
+            if (build.size() <= 3) assertEquals(build.size(), new HashSet<>(picked).size(), b + ": " + picked);
+            // The build's darkest and lightest still span the palette, unless they're the main material.
+            if (main != 0) assertEquals(0, picked.getFirst(), b + ": " + picked);
+            if (main != build.size() - 1) assertEquals(4, picked.getLast(), b + ": " + picked);
+        }
+    }
+
+    @Test
+    void aBlockThePaletteHasStaysAsItIs() {
+        // A palette of three greys, the darkest its main block, and a build of the light two and a block nearer the middle one.
+        List<Recolour.Look> palette = List.of(new Recolour.Look(Color.of(new Oklab(0.3, 0, 0)), false, 5, "a", "a"),
+                new Recolour.Look(Color.of(new Oklab(0.5, 0, 0)), false, 1, "b", "b"), new Recolour.Look(Color.of(new Oklab(0.7, 0, 0)), false, 1, "c", "c"));
+        List<Recolour.Look> build = List.of(new Recolour.Look(Color.of(new Oklab(0.5, 0, 0)), false, 900, "b", "b"),
+                new Recolour.Look(Color.of(new Oklab(0.56, 0, 0)), false, 20, "x", "x"), new Recolour.Look(Color.of(new Oklab(0.7, 0, 0)), false, 30, "c", "c"));
+        Recolour r = new Recolour(palette, build, Recolour.Mode.SHADING);
+        // The build's main material is in the palette, so it stays, though the palette's main block is another.
+        assertEquals(List.of(1, 1, 2), picks(r, build));
+        // As does a block of the palette that the build doesn't list, such as a shape of a listed material.
+        assertEquals(0, r.pick(new Recolour.Look(Color.of(new Oklab(0.3, 0, 0)), false, 1, "a", "a")));
+        // Unless its shape is one the block may not take.
+        assertEquals(1, r.pick(new Recolour.Look(Color.of(new Oklab(0.7, 0, 0)), false, 30, "c", "c"), i -> i != 2));
+    }
+
+    @Test
+    void otherMaterialsKeepTheirDifferenceFromTheMainOne() {
+        // A grey palette with a yellow accent, mostly the build's own main grey, and a build a little lighter than
+        // that grey in places: the lighter part takes the next grey, not the accent between them in lightness, nor
+        // the palette's lightest.
+        List<Recolour.Look> palette = List.of(new Recolour.Look(Color.of(new Oklab(0.4, 0, 0)), false, 1),
+                new Recolour.Look(Color.of(new Oklab(0.5, 0, 0)), false, 5, null, "wall"), new Recolour.Look(Color.of(new Oklab(0.6, 0.02, 0.12)), false, 1),
+                new Recolour.Look(Color.of(new Oklab(0.63, 0, 0)), false, 1), new Recolour.Look(Color.of(new Oklab(0.85, 0, 0)), false, 1));
+        List<Recolour.Look> build = List.of(new Recolour.Look(Color.of(new Oklab(0.5, 0, 0)), false, 900, "wall", "wall"),
+                new Recolour.Look(Color.of(new Oklab(0.6, 0, 0)), false, 60, "trim", "trim"));
+        assertEquals(List.of(1, 3), picks(new Recolour(palette, build, Recolour.Mode.SHADING), build));
+        // A sandy palette that lacks the build's grey: the walls take its main block, sandstone, and the rest keep their
+        // places from darkest to lightest around it.
+        List<Recolour.Look> desert = looks(DESERT);
+        List<Recolour.Look> house = greys(new double[] {0.35, 0.6, 0.7}, new int[] {40, 900, 40});
+        List<String> names = List.copyOf(DESERT.keySet());
+        List<Integer> picked = picks(new Recolour(desert, house, Recolour.Mode.SHADING), house);
+        assertEquals("sandstone", names.get(picked.get(1)), picked.toString());
+        assertTrue(lightness(DESERT.get(names.get(picked.get(0)))) < lightness(DESERT.get("sandstone")) - 0.1, picked.toString());
+        assertTrue(lightness(DESERT.get(names.get(picked.get(2)))) > lightness(DESERT.get("sandstone")), picked.toString());
+    }
+
+    @Test
+    void countsScaledAlikeGiveTheSameBlocks() {
+        // A build's counts and a palette sampled from it, whose weights are the same counts scaled down.
+        for (long seed = 1; seed <= 20; seed++) {
+            List<Recolour.Look> build = randomLooks(12, seed), palette = randomLooks(9, seed + 100);
+            List<Recolour.Look> scaled = build.stream().map(l -> new Recolour.Look(l.colour(), false, l.weight() * 7, l.family())).toList();
+            Recolour r = new Recolour(palette, build, Recolour.Mode.SHADING), s = new Recolour(palette, scaled, Recolour.Mode.SHADING);
+            assertEquals(picks(r, build), picks(s, scaled), "seed " + seed);
+        }
     }
 
     /** {@code count} looks of random colours, each of a family of its own so that none share a shade. */
