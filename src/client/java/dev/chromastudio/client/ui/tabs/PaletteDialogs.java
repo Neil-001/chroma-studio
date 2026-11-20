@@ -481,7 +481,7 @@ final class PaletteDialogs {
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
             // Axiom's File > Import Schematic reads .litematic files, but not .nbt ones.
-            if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.isPresent()) hint = tr("palettes.chromastudio.export.axiom");
+            if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty()) hint = tr("palettes.chromastudio.export.axiom");
             // A path has no spaces to wrap at. The name is what tells two exports apart, and its end holds the layout and the number.
             status(tr("command.chromastudio.export.done", middle(shortPath(result.file()), box.w() - 10)), Theme.GOOD);
             if (!place) return;

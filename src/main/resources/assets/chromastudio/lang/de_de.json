@@ -752,7 +752,6 @@
   "axiom.chromastudio.brush.recolour": "Umfärben",
   "axiom.chromastudio.brush.recolour.tip": "Färbt jeden Block so um wie das Axiom-Skript für diese Palette. Luft, Flüssigkeiten und der Boden bleiben, wie sie sind.",
   "axiom.chromastudio.brush.empty": "Keiner der Blöcke dieser Palette ist in diesem Spiel.",
-  "axiom.chromastudio.mask.changed": "Diese Axiom-Version hat keine Werkzeugmasken, deshalb ändern die Werkzeuge von Chroma Studio jeden Block, den sie erreichen.",
   "axiom.chromastudio.mask.unknown": "Axioms Werkzeugmasken sind nicht so, wie diese Version von Chroma Studio sie kennt, deshalb ändern seine Werkzeuge nichts. Ein neueres Chroma Studio unterstützt sie vielleicht.",
   "axiom.chromastudio.mask.failed": "Axioms Werkzeugmasken antworten nicht mehr, deshalb ändern die Werkzeuge von Chroma Studio nichts, bis das Spiel neu startet. Das Protokoll nennt den Grund.",
   "axiom.chromastudio.mask.lua": "Das Skript einer Werkzeugmaske hat einen Fehler, deshalb ändern die Werkzeuge von Chroma Studio nichts: %s. Korrigiere das Skript oder schließe den Fehler unter Werkzeugmasken.",

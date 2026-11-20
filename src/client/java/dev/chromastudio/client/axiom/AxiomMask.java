@@ -19,9 +19,9 @@ import org.jspecify.annotations.Nullable;
  * one, or every block when neither is set. That's how a player limits a brush to air, or to existing blocks, as with
  * any Axiom brush. It's internal to Axiom, so it goes through {@link AxiomInternals}.
  *
- * <p>Only an Axiom with no {@code MaskManager} at all counts as having no masks: the tools then change every block they
- * reach, and their panels say so before the player starts. When it's there but not as this version knows it, or a call
- * into it has failed, the masks can't be read, so the tools change nothing until the game restarts. A mask whose Lua
+ * <p>When the masks aren't as this version knows them, missing or moved included, or a call into them has failed, they
+ * can't be read, so the tools change nothing until the game restarts, and their panels say so before the player
+ * starts; no version of Axiom counts as having none. A mask whose Lua
  * script has an error answers no from then on, and Axiom says so only in its own error message, which stays until a
  * fresh run of the script compiles or the player closes it. While it's there the masks count as failed, so a stroke or
  * Apply sends nothing ({@link QueuedChanges#check}), and the panels say why. A mask that can't be read never lets
@@ -43,7 +43,7 @@ final class AxiomMask {
         public boolean allows(int x, int y, int z) { return allows; }
     }
 
-    private static final Test EVERY_BLOCK = new Fixed(true, false), FAILED = new Fixed(false, true);
+    private static final Test FAILED = new Fixed(false, true);
 
     /** @param luaError Axiom's last Lua mask error, which is the only sign that a mask's script failed */
     private record Handles(MethodHandle destMask, MethodHandle context, MethodHandle setPosition, MethodHandle test, MethodHandle luaError) {}
@@ -51,7 +51,7 @@ final class AxiomMask {
     private static final String MANAGER = "com.moulberry.axiom.mask.MaskManager";
 
     static final AxiomInternals<Handles> INTERNALS = new AxiomInternals<>("Axiom's tool masks",
-            Component.translatable("axiom.chromastudio.mask.changed"), () -> {
+            Component.translatable("axiom.chromastudio.mask.unknown"), () -> {
                 MethodHandles.Lookup lookup = MethodHandles.publicLookup();
                 Class<?> manager = Class.forName(MANAGER);
                 Class<?> element = Class.forName("com.moulberry.axiom.mask.MaskElement");
@@ -91,31 +91,17 @@ final class AxiomMask {
         }
     }
 
-    /** Whether this Axiom has no tool masks at all, as an older one might not, rather than masks this version can't read. */
-    private static boolean none() {
-        if (INTERNALS.found()) return false;
-        try {
-            Class.forName(MANAGER, false, AxiomMask.class.getClassLoader());
-            return false;
-        } catch (ClassNotFoundException _) {
-            return true;
-        } catch (LinkageError _) {
-            return false;
-        }
-    }
-
     /**
-     * Why the masks aren't followed, or nothing when they are: this Axiom has none, so the tools change every block
-     * they reach; they can't be read, so the tools change nothing until the game restarts; or a mask's script has an
-     * error, so the tools change nothing until it's fixed or closed.
+     * Why the masks can't be followed, or nothing when they can: they aren't as this version knows them, or a call into
+     * them failed, so the tools change nothing until the game restarts; or a mask's script has an error, so the tools
+     * change nothing until it's fixed or closed.
      */
     static Optional<Component> unavailable() {
         if (INTERNALS.reason().isEmpty()) {
             String error = luaError();
             return error == null ? Optional.empty() : Optional.of(Component.translatable("axiom.chromastudio.mask.lua", error));
         }
-        return Optional.of(Component.translatable(INTERNALS.found() ? "axiom.chromastudio.mask.failed"
-                : none() ? "axiom.chromastudio.mask.changed" : "axiom.chromastudio.mask.unknown"));
+        return Optional.of(Component.translatable(INTERNALS.found() ? "axiom.chromastudio.mask.failed" : "axiom.chromastudio.mask.unknown"));
     }
 
     /** Axiom's Lua mask error as it is now, or null when there's none or the masks can't be read. */
@@ -131,12 +117,11 @@ final class AxiomMask {
 
     /**
      * The masks as they're set now, for one stroke, preview or check, in {@code level}. Each test has a context of its
-     * own, as each of Axiom's brushes does, so a mask's script runs afresh. Every block passes when this Axiom has no
-     * masks, which the panels say. When they can't be read, or a call into them fails, no block passes and the test
-     * says it failed, as it does while Axiom's Lua mask error is set.
+     * own, as each of Axiom's brushes does, so a mask's script runs afresh. When they can't be read, or a call into them
+     * fails, no block passes and the test says it failed, as it does while Axiom's Lua mask error is set.
      */
     static Test now(Level level) {
-        if (INTERNALS.reason().isPresent()) return none() ? EVERY_BLOCK : FAILED;
+        if (INTERNALS.reason().isPresent()) return FAILED;
         Handles h = INTERNALS.handles();
         Object mask, context;
         try {

@@ -751,7 +751,6 @@
   "axiom.chromastudio.brush.recolour": "Recolour",
   "axiom.chromastudio.brush.recolour.tip": "Recolours each block as the Axiom script into this palette would. Air, liquids and the ground stay as they are.",
   "axiom.chromastudio.brush.empty": "None of this palette's blocks are in this game.",
-  "axiom.chromastudio.mask.changed": "This version of Axiom has no tool masks, so Chroma Studio's tools change every block they reach.",
   "axiom.chromastudio.mask.unknown": "Axiom's tool masks aren't as this version of Chroma Studio knows them, so its tools change nothing. A newer Chroma Studio may support them.",
   "axiom.chromastudio.mask.failed": "Axiom's tool masks stopped answering, so Chroma Studio's tools change nothing until the game restarts. The log says why.",
   "axiom.chromastudio.mask.lua": "A tool mask's script has an error, so Chroma Studio's tools change nothing: %s. Fix the script, or close the error under Tool Masks.",

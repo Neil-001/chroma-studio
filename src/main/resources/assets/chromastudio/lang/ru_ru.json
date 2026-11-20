@@ -752,7 +752,6 @@
   "axiom.chromastudio.brush.recolour": "Перекрасить",
   "axiom.chromastudio.brush.recolour.tip": "Перекрашивает каждый блок так же, как скрипт Axiom для этой палитры. Воздух, жидкости и земля остаются без изменений.",
   "axiom.chromastudio.brush.empty": "Ни одного блока этой палитры нет в этой игре.",
-  "axiom.chromastudio.mask.changed": "В этой версии Axiom нет масок инструментов, поэтому инструменты Chroma Studio меняют каждый блок, до которого достают.",
   "axiom.chromastudio.mask.unknown": "Маски инструментов Axiom устроены не так, как знает эта версия Chroma Studio, поэтому её инструменты ничего не меняют. Более новая Chroma Studio может их поддерживать.",
   "axiom.chromastudio.mask.failed": "Маски инструментов Axiom перестали отвечать, поэтому инструменты Chroma Studio ничего не меняют до перезапуска игры. Причина в журнале.",
   "axiom.chromastudio.mask.lua": "В скрипте маски инструмента ошибка, поэтому инструменты Chroma Studio ничего не меняют: %s. Исправьте скрипт или закройте ошибку в масках инструментов.",
