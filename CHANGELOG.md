@@ -1,23 +1,23 @@
 # 1.3.0
 
-Chroma Studio now works with Axiom, the building editor, on Fabric. In Axiom's editor, Chroma's tools recolour a build into one of your palettes while keeping its shading, lay a gradient across it, shade it lighter or darker, and sample it into a new palette. Those tools change blocks only when you use them, and only through Axiom, so Axiom's undo and permissions apply, and each stroke or Apply is one step in its history. The rest of Chroma Studio still places nothing. Palettes and gradients also copy as Axiom Script Brush scripts, and a hotbar fill can put the blocks past the ninth into Axiom's hotbars. Without Axiom, nothing changes but a few Axiom controls that are greyed out with the reason. This release is for Minecraft 26.3 on Fabric and NeoForge. The Axiom features need Fabric, and were made with Axiom 6.1.5.
+Chroma Studio now works with Axiom, the building editor, on Fabric. In Axiom's editor, its tools can recolour, shade or lay a gradient across a build, and sample one into a palette. They change blocks only when you use them, and only through Axiom, so Axiom's undo and permissions apply. The rest of Chroma Studio still places nothing, and without Axiom the Axiom controls are greyed out with the reason. This release is for Minecraft 26.3 on Fabric and NeoForge. The Axiom features need Fabric, and were made with Axiom 6.1.5.
 
 ## Features
 
 - Copy a palette or gradient as a script for Axiom's Script Brush, from the Palettes and Gradient tabs or with `/chroma axiom`. Match Axiom's active block from the Match tab, and pick colours with the Chroma eyedropper in Axiom's editor (#52)
-- A hotbar fill can put the blocks past the ninth into Axiom's hotbars. The dialog says which hotbars and how many of their slots it replaces, and Undo puts every hotbar back (#53)
+- A hotbar fill can put the blocks past the ninth into Axiom's hotbars. The dialog says which hotbars and how many of their slots it replaces, and Undo puts back what it replaced, even after you switch hotbars (#53)
 - Lay a gradient across a build with the Chroma gradient tool in Axiom's editor: right-click where it starts and where it ends, see the result in the world, then Apply (#54)
-- Opened in Axiom's editor, Chroma Studio's window steps out of the editor and goes back when it closes. The eyedropper reads the block under the mouse there, and exported schematics say how to import them into Axiom (#55)
-- Recolour a build into a palette with the Chroma palette brush or a script, keeping its shading. Stairs, slabs and walls keep their shape, windows stay windows and the ground is left alone (#56)
+- Opened in Axiom's editor, Chroma Studio's window steps out of the editor and goes back when it closes. The eyedropper reads the block under the mouse there, and the export dialog says how to import a `.litematic` into Axiom (#55)
+- Recolour a build into a palette with the Chroma palette brush or a script, keeping its shading. Stairs, slabs and walls keep their shape, windows stay windows, and grass, dirt, sand and gravel are left alone unless you recolour from a palette that has them (#56)
 - Recolour a whole build at once, shaded by its own blocks, and limit the palette brush with Axiom's tool masks. Scatter places only whole blocks that stay put, and the brush remembers its choices (#57)
 - Set how far the gradient tool blends its steps into each other, from hard bands to a fade across each step. Stairs, slabs, walls and fences take their step's block in the same shape (#58)
-- Shade a build lighter or darker with the Chroma shade brush, which turns each block into the next shade of its own material (#59)
+- Shade a build lighter or darker with the Chroma shade brush, which turns each block into a near shade, close in hue and texture (#59)
 - Sample a build into a weighted palette with the Chroma build sampler, by brushing over it or taking the whole build (#60)
 - TODO(P): the consistency PR
 
 ## Fixes
 
-- Copying a very large text, such as a long share string or palette notes, no longer crashes the game. It says the text is too large instead (#55)
+- Copying very long text, such as a long share string or palette notes, no longer crashes the game. It says the text is too long to copy instead (#55)
 
 # 1.2.1
 
