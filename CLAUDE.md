@@ -65,7 +65,7 @@ The mod never places or changes blocks in the world itself. It acts only through
 - Commands go through `ClientPlatform.sendChatCommand`, as if the player had typed them.
 - Exported files are never silently overwritten.
 
-The one exception is a tool the player is using in Axiom's editor. It hands its blocks through `AxiomChanges` to Axiom's `pushBlockRegionChange`, so Axiom's permissions, server checks and undo apply, and each stroke is one entry in Axiom's history. Nothing else changes the world, and nothing does so without the player's own click.
+The one exception is a tool the player is using in Axiom's editor. It hands its blocks to Axiom's `pushBlockRegionChange`, so Axiom's permissions, server checks and undo apply, and each stroke is one entry in Axiom's history. Nothing else changes the world, and nothing does so without the player's own click.
 
 ## Limits
 
