@@ -27,7 +27,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.AbstractCauldronBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CandleCakeBlock;
+import net.minecraft.world.level.block.ComposterBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.FlowerPotBlock;
@@ -163,9 +166,15 @@ class ScriptSafetyTest {
         }
     }
 
-    /** Whether a block keeps items or other data of its own, such as a chest or a potted plant, which a replacement would lose. */
+    /**
+     * Whether a block keeps items or other data of its own, which a replacement would lose: a block entity, such as a
+     * chest, or what a player put in a block, as a plant in a pot, a candle on a cake, water, lava or powder snow in a
+     * cauldron, or compost in a composter.
+     */
     private static boolean holdsSomething(BlockState s) {
-        return s.getBlock() instanceof EntityBlock || s.getBlock() instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR;
+        Block b = s.getBlock();
+        return b instanceof EntityBlock || b instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR || b instanceof CandleCakeBlock
+                || b instanceof AbstractCauldronBlock && b != Blocks.CAULDRON || b instanceof ComposterBlock && s.getValue(ComposterBlock.LEVEL) > 0;
     }
 
     /** The blocks of the states listed, each once, so a failure names every block it's about. */
