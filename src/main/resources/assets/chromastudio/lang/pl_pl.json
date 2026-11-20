@@ -752,7 +752,6 @@
   "axiom.chromastudio.brush.recolour": "Przekoloruj",
   "axiom.chromastudio.brush.recolour.tip": "Przekolorowuje każdy blok tak samo jak skrypt Axiom dla tej palety. Powietrze, ciecze i grunt zostają bez zmian.",
   "axiom.chromastudio.brush.empty": "Żadnego z bloków tej palety nie ma w tej grze.",
-  "axiom.chromastudio.mask.changed": "Ta wersja Axiom nie ma masek narzędzi, więc narzędzia Chroma Studio zmieniają każdy blok, do którego sięgną.",
   "axiom.chromastudio.mask.unknown": "Maski narzędzi Axiom nie są takie, jakie zna ta wersja Chroma Studio, więc jego narzędzia niczego nie zmieniają. Nowsze Chroma Studio może je obsługiwać.",
   "axiom.chromastudio.mask.failed": "Maski narzędzi Axiom przestały odpowiadać, więc narzędzia Chroma Studio niczego nie zmieniają do czasu ponownego uruchomienia gry. Powód jest w dzienniku.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
