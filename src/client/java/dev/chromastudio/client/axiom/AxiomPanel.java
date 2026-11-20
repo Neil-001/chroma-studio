@@ -6,12 +6,15 @@ import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.palette.PaletteEntry;
+import dev.chromastudio.core.text.LineBreaks;
 import imgui.moulberry92.ImGui;
 import imgui.moulberry92.flag.ImGuiCol;
 import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import imgui.moulberry92.flag.ImGuiSliderFlags;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
@@ -22,9 +25,16 @@ import org.jspecify.annotations.Nullable;
  * {@code textWrapped} as a printf format, so a % in a palette's or block's name would show as garbage; everything here
  * goes through {@code textUnformatted}. A control's own label, as on a button or checkbox, is drawn as it is.
  *
- * <p>Each tool's panel runs in {@link #draw}, which gives it its own scrolling area: Axiom's panel shows no scrollbar,
- * so a panel taller than the space left would hide its last lines without a sign. The order is the same in every tool:
- * what it paints with, how, its options, the masks line, then a separator, its buttons and what it has to say.
+ * <p>Each tool's panel is drawn through its {@link Layout}, in two parts. Its options scroll in their own area, as
+ * Axiom's panel shows no scrollbar and a panel taller than the space left would hide its last lines without a sign.
+ * Under them, held to the bottom of the panel, is what the player must read before acting and the buttons to act
+ * with, so neither is ever scrolled out of sight. The order is the same in every tool: what it paints with, how, its
+ * options and the masks line, scrolling; then a separator, what it has to say, and its buttons at the very bottom.
+ * A line that comes and goes with a mode or a result belongs in the bottom part, so the options never move.
+ *
+ * <p>ImGui wraps text only at spaces. Chinese and Japanese have none between words, and their translations space only
+ * around numbers, so ImGui would leave a number on one line and its counter on the next, or a full stop alone; their
+ * text is broken into lines here by {@link LineBreaks} instead.
  */
 final class AxiomPanel {
     private AxiomPanel() {}
@@ -44,22 +54,46 @@ final class AxiomPanel {
 
     /** The most rows a list shows before it scrolls, so it leaves room for the controls below it. */
     private static final int LIST_ROWS = 5;
+    /** The fewest rows of options a panel keeps on show, however much its bottom part has to say. */
+    private static final int OPTIONS_ROWS = 3;
     /** How wide a tooltip runs before it wraps, in the font's size. */
     private static final float TIP_WIDTH = 30f;
 
-    /** Draws a tool's panel in a scrolling area the size of the space Axiom gives it. */
-    static void draw(Runnable panel) {
-        // A tool Axiom still holds after Chroma Studio's features were turned off says why, and shows nothing else.
-        Optional<Component> off = AxiomBridge.whyNot();
-        if (off.isPresent()) {
-            wrapped(off.get());
-            return;
+    /**
+     * Where a tool's panel draws its two parts. It keeps how tall the bottom part was last frame, as ImGui lays a
+     * window out top to bottom and the options' area has to know where the bottom part starts before it is drawn.
+     */
+    static final class Layout {
+        /** The height the bottom part needed last frame. */
+        private float bottom;
+
+        /** Draws the options, scrolling, and under them {@code bottom}, held to the panel's bottom edge. */
+        void draw(Runnable options, Runnable bottom) {
+            // A tool Axiom still holds after Chroma Studio's features were turned off says why, and shows nothing else.
+            Optional<Component> off = AxiomBridge.whyNot();
+            if (off.isPresent()) {
+                wrapped(off.get());
+                return;
+            }
+            float gap = ImGui.getStyle().getItemSpacingY();
+            // The options keep a few lines however much there is to say; the bottom part then scrolls rather than hide them.
+            float room = ImGui.getContentRegionAvailY() - OPTIONS_ROWS * ImGui.getFrameHeightWithSpacing() - gap;
+            float fixed = Math.max(0, Math.min(this.bottom, room));
+            child("##options", -(fixed + gap), options);
+            child("##bottom", 0, () -> {
+                separator();
+                bottom.run();
+                this.bottom = ImGui.getCursorPosY();
+            });
         }
-        // Closed whatever the panel throws, as ImGui left with an open child would fail on Axiom's next call into it.
-        try {
-            if (ImGui.beginChild("##chromastudio", 0, 0, false)) panel.run();
-        } finally {
-            ImGui.endChild();
+
+        /** A scrolling area, closed whatever {@code body} throws, as ImGui left with an open child would fail on Axiom's next call into it. */
+        private static void child(String id, float height, Runnable body) {
+            try {
+                if (ImGui.beginChild(id, 0, height, false)) body.run();
+            } finally {
+                ImGui.endChild();
+            }
         }
     }
 
@@ -67,10 +101,32 @@ final class AxiomPanel {
     static void text(String text) { ImGui.textUnformatted(text); }
 
     /** Text as it is, wrapped at the panel's edge. */
-    static void wrapped(String text) {
-        ImGui.pushTextWrapPos(0f);
-        ImGui.textUnformatted(text);
-        ImGui.popTextWrapPos();
+    static void wrapped(String text) { wrapped(text, ImGui.getContentRegionAvailX(), 0f); }
+
+    /**
+     * Text wrapped {@code width} wide, which ImGui's own wrapping does at {@code wrapAt} unless the text is Chinese or
+     * Japanese. As one item, so a tooltip set after it belongs to all of its lines.
+     */
+    private static void wrapped(String text, float width, float wrapAt) {
+        if (!LineBreaks.needed(text)) {
+            ImGui.pushTextWrapPos(wrapAt);
+            ImGui.textUnformatted(text);
+            ImGui.popTextWrapPos();
+            return;
+        }
+        ImGui.beginGroup();
+        for (String line : lines(text, width)) ImGui.textUnformatted(line);
+        ImGui.endGroup();
+    }
+
+    /** Lines broken lately, by text, width and font size, as a panel is drawn every frame and says the same for a while. */
+    private static final Map<List<Object>, List<String>> BROKEN = new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<List<Object>, List<String>> eldest) { return size() > 64; }
+    };
+
+    private static List<String> lines(String text, float width) {
+        return BROKEN.computeIfAbsent(List.of(text, width, ImGui.getFontSize()), _ -> LineBreaks.split(text, width, ImGui::calcTextSizeX));
     }
 
     static void wrapped(Component text) { wrapped(text.getString()); }
@@ -85,9 +141,8 @@ final class AxiomPanel {
     /** A tooltip for the last item, shown as it is and wrapped. It shows on a greyed-out item too, to say why. */
     static void tip(String text) {
         if (!ImGui.beginItemTooltip()) return;
-        ImGui.pushTextWrapPos(ImGui.getFontSize() * TIP_WIDTH);
-        ImGui.textUnformatted(text);
-        ImGui.popTextWrapPos();
+        float width = ImGui.getFontSize() * TIP_WIDTH;
+        wrapped(text, width, width);
         ImGui.endTooltip();
     }
 
@@ -158,7 +213,12 @@ final class AxiomPanel {
         float rows = Math.min(Math.max(labels.size(), 1), LIST_ROWS) * ImGui.getTextLineHeightWithSpacing() + ImGui.getStyle().getFramePaddingY() * 2;
         if (ImGui.beginListBox(id, -1, rows)) {
             // A label is also ImGui's id for its row, so each gets its place in the list as well.
-            for (int i = 0; i < labels.size(); i++) if (ImGui.selectable(labels.get(i) + "##" + i, i == selected)) clicked = i;
+            for (int i = 0; i < labels.size(); i++) {
+                String label = labels.get(i);
+                if (ImGui.selectable(label + "##" + i, i == selected)) clicked = i;
+                // A label too long for the list, as a long translation or palette name can be, is shown whole when hovered.
+                if (ImGui.calcTextSizeX(label) > ImGui.getItemRectMaxX() - ImGui.getItemRectMinX()) tip(label);
+            }
             ImGui.endListBox();
         }
         return clicked;

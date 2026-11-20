@@ -24,9 +24,11 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An Axiom tool that turns a build into a Chroma palette. The player brushes over blocks, or uses the tool on a build
@@ -57,12 +59,17 @@ final class SamplerTool implements CustomTool {
     private boolean ground;
     /** The name to save under, filled with the default the first time the panel shows. */
     private ImString name;
+    /** The default name as last shown, to tell whether the player has typed their own. */
+    private String defaultName = "";
     /** The palette the sample as it stands was saved as, so Open doesn't save it twice. Null once the sample changes. */
     private Palette savedAs;
     /** The world the sample's positions are in, as a position means nothing in another dimension or world. */
     private WeakReference<ClientLevel> sampledIn = new WeakReference<>(null);
-    /** What the last use or button did, shown in the panel until the next. */
-    private String said;
+    /** What the last use or button did, shown in the panel until the next. Kept as what to say, so it follows a change of language. */
+    private @Nullable Component said;
+    /** The name the player asked to save under, when the palette had to take another, for the line that says so. */
+    private @Nullable String askedName;
+    private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
 
     /** The brush's path through the world while the button is held, and the world the stroke began in. */
     private ToolPatherUnique pather;
@@ -87,7 +94,7 @@ final class SamplerTool implements CustomTool {
         if (AxiomTools.off()) return false;
         pather = null;
         if (!BlockIndex.get().ready()) {
-            said = tr("axiom.chromastudio.not_ready");
+            said = Component.translatable("axiom.chromastudio.not_ready");
             return false;
         }
         ClientLevel level = Minecraft.getInstance().level;
@@ -108,11 +115,11 @@ final class SamplerTool implements CustomTool {
         int before = sampledIn.get() == level ? sample.total() : 0;
         for (long p : found.blocks()) add(level, pos, BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
         int added = sampledIn.get() == level ? sample.total() - before : 0;
-        String result = found.blocks().length == 0 ? tr("axiom.chromastudio.not_build")
-                : found.capped() ? tr("axiom.chromastudio.capped", FoundBuild.CAP) + " " + tr("axiom.chromastudio.sampler.capped")
-                : tr("axiom.chromastudio.sampler.added", added);
+        Component result = found.blocks().length == 0 ? Component.translatable("axiom.chromastudio.not_build")
+                : found.capped() ? Component.translatable("axiom.chromastudio.capped", FoundBuild.CAP).append(" ").append(Component.translatable("axiom.chromastudio.sampler.capped"))
+                : Component.translatable(added == 1 ? "axiom.chromastudio.sampler.added.one" : "axiom.chromastudio.sampler.added", added);
         // Keeps the word that the sample started over, when it did.
-        said = said == null ? result : said + " " + result;
+        said = said == null ? result : said.copy().append(" ").append(result);
         return true;
     }
 
@@ -160,7 +167,7 @@ final class SamplerTool implements CustomTool {
         if (!sample.isEmpty()) {
             sample.clear();
             changed();
-            said = tr("axiom.chromastudio.sampler.new_world");
+            said = Component.translatable("axiom.chromastudio.sampler.new_world");
         }
         // Weak, so the tool doesn't keep a world the player has left in memory.
         sampledIn = new WeakReference<>(level);
@@ -181,10 +188,10 @@ final class SamplerTool implements CustomTool {
     }
 
     @Override
-    public void displayImguiOptions() { AxiomPanel.draw(this::panel); }
+    public void displayImguiOptions() { layout.draw(this::options, this::bottom); }
 
-    private void panel() {
-        if (name == null) name = new ImString(tr("axiom.chromastudio.sampler.default_name"), 64);
+    /** How the tool samples, and the sample itself. */
+    private void options() {
         boolean brush = mode == Mode.BRUSH;
         if (AxiomPanel.radio(tr("axiom.chromastudio.sampler.brush"), brush, true, tr("axiom.chromastudio.sampler.brush.tip"))) mode = Mode.BRUSH;
         AxiomPanel.besideChoice(tr("axiom.chromastudio.whole_build"));
@@ -192,10 +199,42 @@ final class SamplerTool implements CustomTool {
         AxiomPanel.radius(radius, brush, tr(brush ? "axiom.chromastudio.radius.tip" : "axiom.chromastudio.radius.whole"));
         if (AxiomPanel.checkbox(tr("axiom.chromastudio.sampler.ground"), ground && brush, brush,
                 tr(brush ? "axiom.chromastudio.sampler.ground.tip" : "axiom.chromastudio.sampler.ground.build"))) ground = !ground;
-
-        AxiomPanel.separator();
         List<BuildSample.Row> rows = sample.rows();
+        if (sample.isEmpty()) AxiomPanel.note(tr("axiom.chromastudio.sampler.how"));
+        else list(rows);
+        removed();
+        if (rows.size() > MANY) AxiomPanel.note(tr("axiom.chromastudio.sampler.many", rows.size()));
+    }
+
+    /**
+     * What the last use or button did, the sample's size, and the name and buttons to save it, held to the panel's
+     * bottom. The lines sit above the buttons, so the tooltip a button shows under the pointer never covers them.
+     */
+    private void bottom() {
+        // The default name follows the language until the player types their own.
+        String byDefault = tr("axiom.chromastudio.sampler.default_name");
+        if (name == null) name = new ImString(byDefault, 64);
+        else if (name.get().equals(defaultName)) name.set(byDefault);
+        defaultName = byDefault;
+        List<BuildSample.Row> rows = sample.rows();
+        // Read every frame, so the line goes once the palette is deleted on the Palettes tab, and Save can be used again.
         boolean empty = rows.isEmpty(), saved = savedAs != null && PaletteStore.get().own().contains(savedAs);
+        if (said != null) AxiomPanel.wrapped(said);
+        if (saved) AxiomPanel.wrapped(askedName == null ? tr("axiom.chromastudio.sampler.saved", savedAs.name)
+                : tr("axiom.chromastudio.sampler.saved.renamed", savedAs.name, askedName));
+        if (!BlockIndex.get().ready()) AxiomPanel.wrapped(tr("axiom.chromastudio.not_ready"));
+        if (!empty) {
+            int total = sample.total(), kinds = rows.size();
+            ImGui.alignTextToFramePadding();
+            AxiomPanel.text(total == 1 ? tr("axiom.chromastudio.sampler.total.one")
+                    : kinds == 1 ? tr("axiom.chromastudio.sampler.total.one_kind", total) : tr("axiom.chromastudio.sampler.total", total, kinds));
+            AxiomPanel.besideButton(tr("axiom.chromastudio.sampler.clear"));
+            if (AxiomPanel.button(tr("axiom.chromastudio.sampler.clear"), true, tr("axiom.chromastudio.sampler.clear.tip"))) {
+                sample.clear();
+                changed();
+                said = null;
+            }
+        }
         ImGui.inputText(tr("axiom.chromastudio.sampler.name"), name);
         if (AxiomPanel.button(tr("axiom.chromastudio.sampler.save"), !empty && !saved, empty ? tr("axiom.chromastudio.sampler.save.empty")
                 : saved ? tr("axiom.chromastudio.sampler.save.done", savedAs.name) : tr("axiom.chromastudio.sampler.save.tip", BuildSample.MAX_WEIGHT))) save();
@@ -206,25 +245,11 @@ final class SamplerTool implements CustomTool {
             // The window opens at the next tick, after Axiom has finished drawing its panels this frame.
             ChromaStudioClient.openWindowSoon("palettes");
         }
-        if (said != null) AxiomPanel.wrapped(said);
-        if (!BlockIndex.get().ready()) AxiomPanel.wrapped(tr("axiom.chromastudio.not_ready"));
-        if (sample.isEmpty()) AxiomPanel.note(tr("axiom.chromastudio.sampler.how"));
-        else list(rows);
-        removed();
-        if (rows.size() > MANY) AxiomPanel.note(tr("axiom.chromastudio.sampler.many", rows.size()));
     }
 
     /** The sample's kinds, most common first, each with its colour, name, count and share, and a button to leave it out. */
     private void list(List<BuildSample.Row> rows) {
         int total = sample.total();
-        ImGui.alignTextToFramePadding();
-        AxiomPanel.text(tr("axiom.chromastudio.sampler.total", total, rows.size()));
-        AxiomPanel.besideButton(tr("axiom.chromastudio.sampler.clear"));
-        if (AxiomPanel.button(tr("axiom.chromastudio.sampler.clear"), true, tr("axiom.chromastudio.sampler.clear.tip"))) {
-            sample.clear();
-            changed();
-            said = null;
-        }
         if (rows.isEmpty()) return;
         float height = Math.min(rows.size(), ROWS) * ImGui.getFrameHeightWithSpacing() + ImGui.getStyle().getWindowPaddingY() * 2;
         try {
@@ -307,12 +332,12 @@ final class SamplerTool implements CustomTool {
             // The store keeps a palette it couldn't write, which a second try would add to under another name.
             store.delete(p);
             store.select(was);
-            said = tr("axiom.chromastudio.sampler.save.failed");
+            said = Component.translatable("axiom.chromastudio.sampler.save.failed");
             return false;
         }
         savedAs = p;
-        said = asked.isEmpty() || p.name.equalsIgnoreCase(asked) ? tr("axiom.chromastudio.sampler.saved", p.name)
-                : tr("axiom.chromastudio.sampler.saved.renamed", p.name, asked);
+        askedName = asked.isEmpty() || p.name.equalsIgnoreCase(asked) ? null : asked;
+        said = null;
         return true;
     }
 }
