@@ -169,7 +169,9 @@ final class RecolourPlan {
                 }
                 BlockState target = PaletteBlocks.state(shaped.get(picked));
                 if (target == null) continue;
-                if (target == source.entry.block().defaultBlockState()) {
+                // The same block in another state, such as a log the palette lists lying on its side, becomes itself,
+                // as it keeps its own properties.
+                if (target.getBlock() == source.entry.block()) {
                     kept.add(source.entry.block());
                     continue;
                 }

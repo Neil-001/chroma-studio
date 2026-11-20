@@ -472,10 +472,17 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             return null;
         }
 
-        /** Whether a palette's block may be a shade: a solid full block that stays put and has nothing inside. */
+        /**
+         * Whether a palette's block may be a shade: a solid full block that stays put, has nothing inside, and looks
+         * the same whichever way it's placed. A log or glazed terracotta shows another face once turned, so a step
+         * judged by one face could make a turned one darker when asked for lighter.
+         */
         private static boolean paletteShade(Entry e) {
             Block b = e.block();
-            return e.kind() == Kind.FULL && e.opaque() && !(b instanceof EntityBlock) && !(b instanceof Fallable);
+            BlockState s = e.state();
+            return e.kind() == Kind.FULL && e.opaque() && !(b instanceof EntityBlock) && !(b instanceof Fallable)
+                    && !s.hasProperty(BlockStateProperties.AXIS) && !s.hasProperty(BlockStateProperties.HORIZONTAL_FACING)
+                    && !s.hasProperty(BlockStateProperties.FACING);
         }
 
         /**
@@ -489,9 +496,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             BlockState s = e.state();
             return paletteShade(e) && !e.technical() && !e.creativeOnly() && !e.lightSource() && !RecolourPlan.ground(s)
                     && !(b instanceof WeatheringCopper) && !s.isSignalSource() && !s.is(BlockTags.BEACON_BASE_BLOCKS) && !STORAGE.contains(b)
-                    && s.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) >= 0
-                    && !s.hasProperty(BlockStateProperties.AXIS) && !s.hasProperty(BlockStateProperties.HORIZONTAL_FACING)
-                    && !s.hasProperty(BlockStateProperties.FACING) && !e.id().contains("chiseled");
+                    && s.getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) >= 0 && !e.id().contains("chiseled");
         }
 
         /**

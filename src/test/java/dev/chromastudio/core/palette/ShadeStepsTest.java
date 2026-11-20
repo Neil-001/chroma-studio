@@ -355,7 +355,8 @@ class ShadeStepsTest {
             assertEquals("sandstone", nextIn(DESERT, steps, "smooth_sandstone", Direction.DARKER), at);
             assertEquals("smooth_sandstone", nextIn(DESERT, steps, "sandstone", Direction.LIGHTER), at);
             assertEquals("orange_terracotta", nextIn(DESERT, steps, "red_sandstone", Direction.DARKER), at);
-            assertTrue(nextIn(DESERT, steps, "yellow_terracotta", Direction.DARKER) != null, at);
+            // On down the palette, through the nearer red sandstone rather than skipping it for another terracotta.
+            assertEquals("cut_red_sandstone", nextIn(DESERT, steps, "yellow_terracotta", Direction.DARKER), at);
             for (Block b : DESERT) {
                 for (Direction d : Direction.values()) {
                     String there = nextIn(DESERT, steps, b.id, d);

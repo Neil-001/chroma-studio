@@ -26,7 +26,7 @@ import java.util.function.IntPredicate;
  * <p>Steps among a palette's blocks reach further. Choosing a palette tells the brush which blocks to use, and a
  * palette rarely has a block one small step from each of its others: Desert's next block darker than sandstone is
  * yellow terracotta, a long step that is flatter and more orange. So among a palette's blocks a step may be as long as
- * it takes, as short as can be seen, of any texture, and stray twice as far in hue and chroma. It still never turns a
+ * it takes, as short as can be seen, of any texture or family, and stray twice as far in hue and chroma. It still never turns a
  * grey to a colour, stone to wood, or a plain block to a decorated one.
  *
  * <p>What it answers never changes after it is made, so any number of threads may ask it at once.
@@ -203,7 +203,7 @@ public final class ShadeSteps {
         double off = (rise - step) / step;
         boolean sameFamily = !dark.family().isEmpty() && dark.family().equals(light.family());
         return off * off + square(hue / HUE_SCALE) + square(chroma / CHROMA_SCALE) + square(spread / SPREAD_SCALE)
-                + (sameFamily ? 0 : OTHER_FAMILY) + (dark.shaped() == light.shaped() ? 0 : OTHER_SHAPES);
+                + (sameFamily || palette ? 0 : OTHER_FAMILY) + (dark.shaped() == light.shaped() ? 0 : OTHER_SHAPES);
     }
 
     /** How far apart two colours' hues put them, as ΔE 2000's ΔH does: by the angle, scaled by both chromas. */

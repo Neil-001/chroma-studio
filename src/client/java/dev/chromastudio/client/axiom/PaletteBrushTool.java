@@ -513,7 +513,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (!wholeBuild()) {
             AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
             // A stroke over blocks the palette already has changes nothing, which would look like the brush failing.
-            if (recolour) AxiomPanel.note(tr("axiom.chromastudio.brush.keeps"));
+            // Closest colour may still swap a block for one of the same colour listed first, so it says nothing.
+            if (recolour && match == Recolour.Mode.SHADING) AxiomPanel.note(tr("axiom.chromastudio.brush.keeps"));
         } else if (picked != null && found != null && said == null && refused == null) AxiomPanel.note(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
         if (recolour && fromKey.equals(FROM_BUILD) && found != null) {
             // What the build the tool found holds, darkest first, as that sets the shading.

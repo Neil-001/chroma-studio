@@ -204,6 +204,24 @@ class RecolourPlanTest {
         assertEquals(PaletteBlocks.state(row.to()), plan.apply(TestIndex.block(row.from().replace("minecraft:", "")).defaultBlockState()));
     }
 
+    /** The blocks the palette already has stay, and are counted as kept, in whatever state the palette lists them. */
+    @Test
+    void blocksThePaletteHasAreKept() throws Exception {
+        Palette logs = new Palette("Logs");
+        logs.entries.add(new PaletteEntry("minecraft:oak_log", "axis=x"));
+        logs.entries.add(new PaletteEntry("minecraft:stone_bricks", ""));
+        RecolourPlan plan = RecolourPlan.of(logs, null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
+        for (String path : List.of("oak_log", "stone_bricks", "stone_brick_stairs")) {
+            for (BlockState here : TestIndex.block(path).getStateDefinition().getPossibleStates()) {
+                assertTrue(plan.keeps(here), path);
+                BlockState out = plan.apply(here);
+                assertTrue(out == null || out == here, here + " to " + out);
+            }
+        }
+        assertTrue(!plan.keeps(TestIndex.block("cobblestone").defaultBlockState()));
+        assertTrue(plan.rows().stream().noneMatch(r -> r.from().equals("minecraft:oak_log") || r.from().equals("minecraft:stone_bricks")));
+    }
+
     /** A few blocks in an otherwise empty world, as the brush reads them. */
     private static final class World implements BlockGetter {
         final Map<BlockPos, BlockState> blocks = new HashMap<>();
