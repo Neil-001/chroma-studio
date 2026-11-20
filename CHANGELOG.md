@@ -21,6 +21,7 @@ Chroma Studio now works with Axiom, the building editor, on Fabric. In Axiom's e
 - Among Chroma's tools in Axiom's grid, the ones that change blocks come first, the shade brush has a clearer icon, and the panels keep their main buttons at the bottom (#67)
 - Recolour keeps the blocks the palette already has and puts the build's main material on one of the palette's main blocks. A From palette also changes the stairs and slabs of its blocks. The shade brush never turns a plain block mossy, cracked, chiseled or infested, the scatter script places the same blocks as the brush's Scatter, and the gradient script leaves out steps that aren't full blocks (#68)
 - A recolour says how many blocks stay as they are because the palette already has them, in the palette brush and in the script's summary. With Shades set to a palette, the shade brush steps to that palette's next block darker or lighter, so a wall recoloured to Desert can be darkened from sandstone to yellow terracotta (#70)
+- Scatter, in the palette brush and as a script, leaves chests, signs, brewing stands and every other block that holds items or text as they are, and the gradient script leaves alone every block the gradient tool does, such as a brewing stand, a head or a flower pot (#71)
 
 ## Fixes
 
