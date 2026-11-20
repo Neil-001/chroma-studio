@@ -213,6 +213,10 @@ final class PaletteBrushTool implements CustomTool {
                 for (long b : found.blocks()) strokeBuild.add(b);
             } else {
                 from = from();
+                if (fromGone()) {
+                    refused = tr("axiom.chromastudio.brush.from_gone");
+                    return false;
+                }
             }
             try {
                 plan = RecolourPlan.of(to, from, match);
@@ -295,7 +299,8 @@ final class PaletteBrushTool implements CustomTool {
             return;
         }
         if (!AxiomTools.tools.isMouseDown(USE_TOOL)) {
-            if (!stroke.isEmpty()) AxiomTools.tools.pushBlockRegionChange(stroke);
+            // A stroke during which the tool masks stopped answering is dropped: some of it may lie where they kept out.
+            if (!stroke.isEmpty() && !AxiomMask.failed()) AxiomTools.tools.pushBlockRegionChange(stroke);
             endStroke();
             return;
         }
@@ -346,6 +351,10 @@ final class PaletteBrushTool implements CustomTool {
             return;
         }
         showFound(build);
+        if (fromGone()) {
+            refused = tr("axiom.chromastudio.brush.from_gone");
+            return;
+        }
         RecolourPlan whole;
         try {
             whole = RecolourPlan.of(to, fromKey.equals(FROM_BUILD) ? build.kinds() : from, match);
@@ -467,6 +476,7 @@ final class PaletteBrushTool implements CustomTool {
 
         recolourOptions(all);
         if (wholeBuild()) buildActions();
+        else if (mode == Mode.RECOLOUR && fromGone()) ImGui.textWrapped(tr("axiom.chromastudio.brush.from_gone"));
         else if (mode == Mode.RECOLOUR && refused != null) ImGui.textWrapped(refused);
         if (mode == Mode.RECOLOUR && fromKey.equals(FROM_BUILD) && found != null) {
             // What the build the tool found holds, darkest first, as that sets the shading.
@@ -492,7 +502,7 @@ final class PaletteBrushTool implements CustomTool {
         boolean recolour = mode == Mode.RECOLOUR;
         ImGui.beginDisabled(!recolour);
         Palette chosen = from();
-        String preview = fromKey.equals(FROM_BUILD) ? tr("axiom.chromastudio.from.build") : chosen == null ? tr("axiom.chromastudio.from.any") : fromLabels.get(all.indexOf(chosen));
+        String preview = fromKey.equals(FROM_BUILD) ? tr("axiom.chromastudio.from.build") : fromKey.equals(FROM_ANY) ? tr("axiom.chromastudio.from.any") : chosen == null ? tr("axiom.chromastudio.brush.from_choose") : fromLabels.get(all.indexOf(chosen));
         if (ImGui.beginCombo(tr("axiom.chromastudio.from") + "##from", preview)) {
             if (ImGui.selectable(tr("axiom.chromastudio.from.build") + "##build", fromKey.equals(FROM_BUILD))) setFrom(FROM_BUILD);
             if (ImGui.selectable(tr("axiom.chromastudio.from.any") + "##any", fromKey.equals(FROM_ANY))) setFrom(FROM_ANY);
@@ -620,6 +630,12 @@ final class PaletteBrushTool implements CustomTool {
         return selected != null ? selected : all.isEmpty() ? null : all.getFirst();
     }
 
+    /**
+     * Whether the From choice is a palette that's no longer there, as after it was deleted or renamed. The brush then
+     * changes nothing until the player chooses again, rather than every block but the ground in its place.
+     */
+    private boolean fromGone() { return !fromKey.equals(FROM_BUILD) && !fromKey.equals(FROM_ANY) && from() == null; }
+
     /** The From palette, while it's still in the list, or null for the build or every block but the ground. */
     private @Nullable Palette from() {
         List<Palette> all = palettes();
@@ -629,13 +645,14 @@ final class PaletteBrushTool implements CustomTool {
 
     /**
      * How the panel's choices name each palette in the settings file: a preset by its id, and the player's own by its
-     * file, which no other palette shares and which stays put across restarts, or by its name before it has one.
+     * file and name together. No two palettes share a file, and a file freed by a rename can only be taken by a palette
+     * of another name, so a key never comes to mean a different palette; a renamed one is simply chosen again.
      */
     private static List<String> keys(List<Palette> all) {
         List<String> out = new ArrayList<>();
         for (Palette p : all) {
             String preset = PaletteStore.get().presetId(p), file = PaletteStore.get().fileName(p);
-            out.add(preset != null ? "preset:" + preset : file != null ? "file:" + file : "own:" + p.name);
+            out.add(preset != null ? "preset:" + preset : file != null ? "file:" + file + ":" + p.name : "own:" + p.name);
         }
         return out;
     }

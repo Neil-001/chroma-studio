@@ -735,6 +735,8 @@
   "axiom.chromastudio.brush.kinds": "지금은 블록이 %1$s종류이고, 바뀐 뒤에는 %2$s종류가 됩니다.",
   "axiom.chromastudio.brush.capped": "건물이 너무 커서 도구를 쓴 곳에서 가장 가까운 블록 %s개만 보여 줍니다.",
   "axiom.chromastudio.brush.changed": "미리보기 이후 건물이나 Axiom의 도구 마스크가 바뀌어 아무것도 바꾸지 않았습니다. 미리보기를 확인한 뒤 다시 적용을 누르세요.",
+  "axiom.chromastudio.brush.from_gone": "대상 팔레트의 이름이 바뀌었거나 삭제되었습니다. 다시 칠하기 전에 대상을 다시 고르세요.",
+  "axiom.chromastudio.brush.from_choose": "대상 팔레트 선택",
   "axiom.chromastudio.brush.apply.none": "아직 바꿀 것이 없습니다. 먼저 건물에 도구를 쓰세요.",
   "axiom.chromastudio.brush.cancel.tip": "미리보기를 지우며 아무것도 바꾸지 않습니다.",
   "axiom.chromastudio.brush.found": "음영을 정하는 건물의 블록, 어두운 것부터 밝은 것 순서:",

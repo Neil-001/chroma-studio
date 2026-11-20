@@ -735,6 +735,8 @@
   "axiom.chromastudio.brush.kinds": "Elle a maintenant %s sortes de blocs, et en aura %s.",
   "axiom.chromastudio.brush.capped": "La construction est trop grande, donc seuls les %s blocs les plus proches de l'endroit où tu as utilisé l'outil sont montrés.",
   "axiom.chromastudio.brush.changed": "La construction ou les masques d'outil d'Axiom ont changé depuis l'aperçu, donc rien n'a été modifié. Vérifie l'aperçu, puis appuie de nouveau sur Appliquer.",
+  "axiom.chromastudio.brush.from_gone": "La palette de départ a été renommée ou supprimée. Choisis-en une autre avant de recolorer.",
+  "axiom.chromastudio.brush.from_choose": "Choisis une palette de départ",
   "axiom.chromastudio.brush.apply.none": "Rien à changer pour l'instant. Utilise d'abord l'outil sur une construction.",
   "axiom.chromastudio.brush.cancel.tip": "Efface l'aperçu, sans rien changer.",
   "axiom.chromastudio.brush.found": "Les blocs de la construction, qui fixent l'ombrage, du plus sombre au plus clair :",

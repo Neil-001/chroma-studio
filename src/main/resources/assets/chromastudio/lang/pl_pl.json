@@ -735,6 +735,8 @@
   "axiom.chromastudio.brush.kinds": "Ma teraz %s rodzajów bloków, a będzie mieć %s.",
   "axiom.chromastudio.brush.capped": "Budowla jest za duża, więc pokazano tylko %s bloków najbliżej miejsca, w którym użyto narzędzia.",
   "axiom.chromastudio.brush.changed": "Budowla lub maski narzędzi Axiom zmieniły się od podglądu, więc niczego nie zmieniono. Sprawdź podgląd i naciśnij Zastosuj ponownie.",
+  "axiom.chromastudio.brush.from_gone": "Paleta źródłowa zmieniła nazwę lub została usunięta. Wybierz ją ponownie przed przekolorowaniem.",
+  "axiom.chromastudio.brush.from_choose": "Wybierz paletę źródłową",
   "axiom.chromastudio.brush.apply.none": "Na razie nie ma nic do zmiany. Najpierw użyj narzędzia na budowli.",
   "axiom.chromastudio.brush.cancel.tip": "Czyści podgląd, niczego nie zmieniając.",
   "axiom.chromastudio.brush.found": "Bloki budowli, które wyznaczają cieniowanie, od najciemniejszego do najjaśniejszego:",

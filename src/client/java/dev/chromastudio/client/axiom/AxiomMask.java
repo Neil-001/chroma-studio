@@ -40,6 +40,9 @@ final class AxiomMask {
                         lookup.findVirtual(element, "test", MethodType.methodType(boolean.class, context)));
             });
 
+    /** Whether a call into the masks has failed this session, so the tool must change nothing. */
+    static boolean failed() { return INTERNALS.reason().isPresent() && INTERNALS.found(); }
+
     /**
      * Why the masks aren't followed, or nothing when they are: this version of Axiom doesn't share them, so the tool
      * changes every block it reaches, or a call into them failed, so it changes nothing until the game restarts.

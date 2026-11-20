@@ -735,6 +735,8 @@
   "axiom.chromastudio.brush.kinds": "現在のブロックの種類は %1$s 種類で、変更後は %2$s 種類になります。",
   "axiom.chromastudio.brush.capped": "建物が大きすぎるため、ツールを使った場所に近い %s ブロックだけを表示しています。",
   "axiom.chromastudio.brush.changed": "プレビュー後に建物または Axiom のツールマスクが変わったため、何も変更しませんでした。プレビューを確認してから、もう一度「適用」を押してください。",
+  "axiom.chromastudio.brush.from_gone": "対象のパレットは名前が変わったか削除されました。色を置き換える前に対象を選び直してください。",
+  "axiom.chromastudio.brush.from_choose": "対象のパレットを選択",
   "axiom.chromastudio.brush.apply.none": "まだ変更するものがありません。先に建物にツールを使ってください。",
   "axiom.chromastudio.brush.cancel.tip": "プレビューを消します。何も変更しません。",
   "axiom.chromastudio.brush.found": "陰影を決める建物のブロック（暗い順）:",
