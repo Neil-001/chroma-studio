@@ -721,6 +721,7 @@
   "axiom.chromastudio.brush.not_ready": "Chroma Studio is still reading the blocks' colours.",
   "axiom.chromastudio.brush.empty": "None of this palette's blocks are in this game.",
   "axiom.chromastudio.mask.changed": "Axiom's tool masks don't apply to this tool on this version of Axiom, so it changes every block it reaches.",
+  "axiom.chromastudio.mask.failed": "Axiom's tool masks stopped answering, so this tool changes nothing until the game restarts. The log says why.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Scatter places whole blocks that stay put, so stairs and slabs go in as their full block, and these are left out: %s",
   "axiom.chromastudio.brush.whole": "Whole build",

@@ -12,8 +12,8 @@ import net.minecraft.world.level.Level;
  * doesn't apply them to a tool's changes, so the palette brush asks Axiom's {@code MaskManager} for the destination
  * mask as the Script Brush does: the mask set under Tool Masks, kept within the selection when there is one, or every
  * block when neither is set. That's how a player limits Scatter to air, or to existing blocks, as with any Axiom brush.
- * It's internal to Axiom, so it goes through {@link AxiomInternals}; when it fails, the brush changes every block it
- * reaches and its panel says the masks aren't followed.
+ * It's internal to Axiom, so it goes through {@link AxiomInternals}. When this version of Axiom lacks it, the brush
+ * changes every block it reaches; when a call into it fails, the brush changes nothing; either way its panel says so.
  */
 final class AxiomMask {
     private AxiomMask() {}
@@ -40,17 +40,23 @@ final class AxiomMask {
                         lookup.findVirtual(element, "test", MethodType.methodType(boolean.class, context)));
             });
 
-    /** Why the masks aren't followed, or nothing when they are. */
-    static Optional<Component> unavailable() { return INTERNALS.reason(); }
+    /**
+     * Why the masks aren't followed, or nothing when they are: this version of Axiom doesn't share them, so the tool
+     * changes every block it reaches, or a call into them failed, so it changes nothing until the game restarts.
+     */
+    static Optional<Component> unavailable() {
+        if (INTERNALS.reason().isEmpty()) return Optional.empty();
+        return Optional.of(Component.translatable(INTERNALS.found() ? "axiom.chromastudio.mask.failed" : "axiom.chromastudio.mask.changed"));
+    }
 
     /**
      * The masks as they're set now, for one stroke or preview, in {@code level}. Every block passes when this version
-     * of Axiom doesn't share them, which the panel says. When a call into them fails partway, no block passes for the
-     * rest of that stroke or preview, so a mask that stopped working never lets through what it was keeping out.
+     * of Axiom doesn't share them, which the panel says. Once a call into them has failed, no block passes, for the
+     * rest of the session, so a mask that stopped working never lets through what it was keeping out.
      * Ask it on the client thread, as Axiom does.
      */
     static Test now(Level level) {
-        if (INTERNALS.reason().isPresent()) return EVERY_BLOCK;
+        if (INTERNALS.reason().isPresent()) return INTERNALS.found() ? NO_BLOCK : EVERY_BLOCK;
         Handles h = INTERNALS.handles();
         try {
             Object mask = h.destMask.invoke();

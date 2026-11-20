@@ -722,6 +722,7 @@
   "axiom.chromastudio.brush.not_ready": "Chroma Studio はまだブロックの色を読み込んでいます。",
   "axiom.chromastudio.brush.empty": "このパレットのブロックはこのゲームにありません。",
   "axiom.chromastudio.mask.changed": "このバージョンの Axiom では、Axiom のツールマスクはこのツールに適用されません。届くすべてのブロックを変更します。",
+  "axiom.chromastudio.mask.failed": "Axiom のツールマスクが応答しなくなったため、ゲームを再起動するまでこのツールは何も変更しません。理由はログにあります。",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "散布は落ちたり壊れたりしないブロック全体を置くため、階段やハーフブロックは元のフルブロックとして入り、次は除外されます: %s",
   "axiom.chromastudio.brush.whole": "建物全体",

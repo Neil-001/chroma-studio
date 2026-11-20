@@ -26,11 +26,9 @@ import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -74,6 +72,25 @@ final class PaletteBrushTool implements CustomTool {
 
     /** One block a preview changes: where it is, what was there when the preview was made, and what goes there. */
     private record Planned(int x, int y, int z, BlockState was, BlockState next) {}
+
+    /**
+     * Counts the edits to a palette's blocks: a copy is kept and compared each frame, which allocates nothing, and is
+     * made again only when the blocks differ, as after an edit in Chroma Studio's window.
+     */
+    private static final class Edits {
+        private Palette palette;
+        private List<PaletteEntry> copy = List.of();
+        private int count;
+
+        int of(Palette p) {
+            if (p != palette || !p.entries.equals(copy)) {
+                palette = p;
+                copy = List.copyOf(p.entries);
+                count++;
+            }
+            return count;
+        }
+    }
 
     /** A palette block as a swatch: its colour, and what hovering it says. */
     private record Swatch(Color colour, String tip) {}
@@ -120,6 +137,8 @@ final class PaletteBrushTool implements CustomTool {
     private boolean overriding;
     /** When Axiom last drew this tool, as {@link System#nanoTime}. */
     private long drawn;
+    /** Count edits to the palettes the preview is made from, so it's made again when one is. */
+    private final Edits toEdits = new Edits(), fromEdits = new Edits();
     /** How many kinds of block the previewed build has now, and will have once recoloured. */
     private int kindsBefore, kindsAfter;
 
@@ -297,9 +316,8 @@ final class PaletteBrushTool implements CustomTool {
         if (picked != null && pickedIn != level) reset();
         Palette to = current();
         Palette from = from();
-        // The palettes' blocks by their hash, which changes with any edit, rather than a copy of them every frame.
-        Object key = picked == null || to == null ? null : Arrays.asList(picked, to, to.entries.hashCode(), fromKey,
-                from == null ? 0 : from.entries.hashCode(), match, BlockIndex.get().version());
+        Object key = picked == null || to == null ? null : Arrays.asList(picked, to, toEdits.of(to), fromKey,
+                from == null ? 0 : fromEdits.of(from), match, BlockIndex.get().version());
         if (!Objects.equals(key, previewFor)) {
             preview(level, to, from);
             previewFor = key;
@@ -610,20 +628,14 @@ final class PaletteBrushTool implements CustomTool {
     }
 
     /**
-     * How the panel's choices name each palette in the settings file: a preset by its id, the player's own by its
-     * name, and a second palette of the player's with the same name by its name and how many came before it.
+     * How the panel's choices name each palette in the settings file: a preset by its id, and the player's own by its
+     * file, which no other palette shares and which stays put across restarts, or by its name before it has one.
      */
     private static List<String> keys(List<Palette> all) {
         List<String> out = new ArrayList<>();
-        Map<String, Integer> seen = new HashMap<>();
         for (Palette p : all) {
-            String preset = PaletteStore.get().presetId(p);
-            if (preset != null) {
-                out.add("preset:" + preset);
-                continue;
-            }
-            int before = seen.merge(p.name, 1, Integer::sum) - 1;
-            out.add("own:" + p.name + (before == 0 ? "" : "#" + before));
+            String preset = PaletteStore.get().presetId(p), file = PaletteStore.get().fileName(p);
+            out.add(preset != null ? "preset:" + preset : file != null ? "file:" + file : "own:" + p.name);
         }
         return out;
     }

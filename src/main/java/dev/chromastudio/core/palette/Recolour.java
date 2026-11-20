@@ -156,21 +156,14 @@ public final class Recolour {
     }
 
     /**
-     * What two neighbouring shades sharing a block costs, as if the smaller sat this far along the line from its
-     * place: enough that shades stay apart wherever the palette has room, not so much that the build's main material
-     * is pushed off the palette's main block to make room for its accents.
-     */
-    private static final double SHARING = 2;
-
-    /**
      * A block for each of a build's shades, when there are no more shades than blocks, in order from darkest to
      * lightest. The build's darkest shade takes the palette's darkest block and its lightest the lightest, so the
      * shading spans the palette, and the largest shade between them, such as a house's walls, takes the palette's
      * heaviest block between its ends, such as a desert's sandstone. Each other shade has a place from 0 to 1, the
      * middle of its share of the build, and each block a stretch of the same line, as long as its weight. A shade fits
      * a block whose stretch holds its place, and less well the further outside it, by how much of the build the shade
-     * is. Of all the ways to hand out blocks in order, this takes the best fit, where two neighbouring shades share a
-     * block only when keeping them apart would put a larger one far from its place.
+     * is. Of all the ways to hand out blocks in order, each shade its own, this takes the best fit. Two neighbouring
+     * shades share a block only where the main shade's pin, below, makes room for it.
      */
     private int[] matched(int[] eligible, Shades build) {
         int n = eligible.length, shades = build.count();
@@ -191,7 +184,7 @@ public final class Recolour {
             to[j] = upTo / weight;
         }
         // The largest shade between the ends, and the heaviest block between them, nearest its place among equals.
-        int main = -1, heaviest = -1;
+        int main = -1, heaviest = -1, shares = 0;
         if (shades >= 3 && n >= 3) {
             for (int k = 1; k < shades - 1; k++) if (main < 0 || build.amount(k) > build.amount(main)) main = k;
             // A block that leaves room for every shade on either side of it, so no two shades share. Only when the
@@ -199,38 +192,51 @@ public final class Recolour {
             // neighbouring shades share to put the walls on it, as a builder would rather than on an accent.
             int roomy = heaviest(eligible, at[main], from, to, main, shades, 0);
             int crowded = n > shades ? heaviest(eligible, at[main], from, to, main, shades, 1) : -1;
-            heaviest = crowded >= 0 && (roomy < 0 || weights[eligible[crowded]] >= 2 * weights[eligible[roomy]]) ? crowded : roomy;
+            if (crowded >= 0 && crowded != roomy && (roomy < 0 || weights[eligible[crowded]] >= 2L * weights[eligible[roomy]])) {
+                heaviest = crowded;
+                shares = 1;
+            } else {
+                heaviest = roomy;
+            }
             if (heaviest < 0) main = -1;
         }
-        // best[k][j]: the least cost for shades 0..k with shade k on block j; back[k][j] the block shade k-1 took.
-        double[][] best = new double[shades][n];
-        int[][] back = new int[shades][n];
+        // best[s][k][j]: the least cost for shades 0..k with shade k on block j and s pairs of shades sharing a block;
+        // back[s][k][j] the block shade k-1 took.
+        double[][][] best = new double[shares + 1][shades][n];
+        int[][][] back = new int[shares + 1][shades][n];
         for (int k = 0; k < shades; k++) {
             double share = build.amount(k) / build.total();
             for (int j = 0; j < n; j++) {
                 boolean pinned = shades > 1 && (k == 0 && j != 0 || k == shades - 1 && j != n - 1) || k == main && j != heaviest;
-                best[k][j] = Double.POSITIVE_INFINITY;
-                if (pinned) continue;
                 double fit = share * away(at[k], from[j], to[j]);
-                if (k == 0) {
-                    best[k][j] = fit;
-                    continue;
-                }
-                for (int i = 0; i <= j; i++) {
-                    if (best[k - 1][i] == Double.POSITIVE_INFINITY) continue;
-                    double shared = i == j ? SHARING * Math.min(share, build.amount(k - 1) / build.total()) : 0;
-                    double cost = best[k - 1][i] + fit + shared;
-                    if (cost < best[k][j]) {
-                        best[k][j] = cost;
-                        back[k][j] = i;
+                for (int s = 0; s <= shares; s++) {
+                    best[s][k][j] = Double.POSITIVE_INFINITY;
+                    if (pinned) continue;
+                    if (k == 0) {
+                        if (s == 0) best[s][k][j] = fit;
+                        continue;
+                    }
+                    for (int i = 0; i <= j; i++) {
+                        int had = i == j ? s - 1 : s;
+                        if (had < 0 || best[had][k - 1][i] == Double.POSITIVE_INFINITY) continue;
+                        double cost = best[had][k - 1][i] + fit;
+                        if (cost < best[s][k][j]) {
+                            best[s][k][j] = cost;
+                            back[s][k][j] = i;
+                        }
                     }
                 }
             }
         }
         int last = 0;
-        for (int j = 1; j < n; j++) if (best[shades - 1][j] < best[shades - 1][last]) last = j;
+        for (int j = 1; j < n; j++) if (best[shares][shades - 1][j] < best[shares][shades - 1][last]) last = j;
         int[] out = new int[shades];
-        for (int k = shades - 1, j = last; k >= 0; j = back[k][j], k--) out[k] = eligible[j];
+        for (int k = shades - 1, j = last, s = shares; k >= 0; k--) {
+            out[k] = eligible[j];
+            int i = back[s][k][j];
+            if (k > 0 && i == j) s--;
+            j = i;
+        }
         return out;
     }
 

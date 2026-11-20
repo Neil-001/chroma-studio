@@ -722,6 +722,7 @@
   "axiom.chromastudio.brush.not_ready": "Chroma Studio wciąż odczytuje kolory bloków.",
   "axiom.chromastudio.brush.empty": "Żadnego z bloków tej palety nie ma w tej grze.",
   "axiom.chromastudio.mask.changed": "Maski narzędzi Axiom nie działają dla tego narzędzia w tej wersji Axiom, więc zmienia ono każdy blok, do którego sięga.",
+  "axiom.chromastudio.mask.failed": "Maski narzędzi Axiom przestały odpowiadać, więc to narzędzie niczego nie zmienia do ponownego uruchomienia gry. Powód jest w logu.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Rozsyp stawia całe bloki, które zostają na miejscu, więc schody i półbloki trafiają jako ich pełny blok, a te zostają pominięte: %s",
   "axiom.chromastudio.brush.whole": "Cała budowla",

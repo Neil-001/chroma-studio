@@ -268,6 +268,15 @@ class RecolourTest {
         for (int i = 0; i < 5; i++) build.add(new Recolour.Look(Color.of(new Oklab(0.2 + 0.17 * i, 0, 0)), false, counts[i], "m" + i));
         Recolour r = new Recolour(palette, build, Recolour.Mode.SHADING);
         assertEquals(List.of(0, 1, 2, 3, 4), build.stream().map(r::pick).toList());
+        // Nor when the pin leaves room but the weights would pull two shades onto one block.
+        int[] otherWeights = {2, 16, 64, 1, 2}, otherCounts = {1, 64, 1, 32, 32};
+        List<Recolour.Look> otherPalette = new ArrayList<>(), otherBuild = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            otherPalette.add(new Recolour.Look(Color.of(new Oklab(0.15 + 0.18 * i, 0, 0)), false, otherWeights[i]));
+            otherBuild.add(new Recolour.Look(Color.of(new Oklab(0.2 + 0.17 * i, 0, 0)), false, otherCounts[i], "m" + i));
+        }
+        Recolour o = new Recolour(otherPalette, otherBuild, Recolour.Mode.SHADING);
+        assertEquals(List.of(0, 1, 2, 3, 4), otherBuild.stream().map(o::pick).toList());
     }
 
     @Test

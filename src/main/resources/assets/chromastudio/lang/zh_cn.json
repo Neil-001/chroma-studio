@@ -722,6 +722,7 @@
   "axiom.chromastudio.brush.not_ready": "Chroma Studio 仍在读取方块的颜色。",
   "axiom.chromastudio.brush.empty": "此调色板中的方块在本游戏中都不存在。",
   "axiom.chromastudio.mask.changed": "在此版本的 Axiom 上，Axiom 的工具遮罩不适用于此工具，因此它会更改触及的每个方块。",
+  "axiom.chromastudio.mask.failed": "Axiom 的工具遮罩已停止响应，因此在游戏重启前此工具不会更改任何内容。原因见日志。",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "散布只放置不会掉落或损坏的完整方块，因此楼梯和台阶会以其完整方块放入，以下方块被略过：%s",
   "axiom.chromastudio.brush.whole": "整个建筑",
