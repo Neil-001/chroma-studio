@@ -60,6 +60,13 @@ final class AxiomInternals<T> {
         return handles;
     }
 
+    /** Forgets the handles and any failure, as if the game had restarted. Only tests call this. */
+    synchronized void forget() {
+        handles = null;
+        looked = false;
+        broken = false;
+    }
+
     /** Turns the feature off after a call through the handles threw, logging it the first time. */
     synchronized void failed(Throwable t) {
         if (broken) return;

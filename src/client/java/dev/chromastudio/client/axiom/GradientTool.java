@@ -17,6 +17,7 @@ import dev.chromastudio.core.palette.GradientLine;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.QueuedChanges;
 import dev.chromastudio.core.palette.StoredGradient;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -49,7 +50,7 @@ import org.jspecify.annotations.Nullable;
  * and Apply sends the whole change to Axiom as one entry in its history. Every change keeps to the player's tool
  * masks in Axiom ({@link AxiomMask}).
  */
-final class GradientTool implements CustomTool {
+final class GradientTool implements CustomTool, GuardedTool.PutAway {
     private static final int MAX_REACH = 64;
     /** The key for the gradient on the Gradient tab, which no saved gradient's name can be, as names are never blank. */
     private static final String ON_TAB = "";
@@ -91,8 +92,17 @@ final class GradientTool implements CustomTool {
     private @Nullable Object previewFor;
     /** What the preview found: the blocks it covers, those it leaves as they are, and those the tool masks keep out. */
     private int covered, leftAlone, masked;
-    /** Why the last Apply didn't go, until the next use or Apply. */
+    /**
+     * Why the last Apply didn't go. Until the tool is used again, no new preview is made, so a second Apply has
+     * nothing to send.
+     */
     private @Nullable Component refused;
+    /**
+     * The last search for the build and what it was made for, so a preview made again for a choice the search doesn't
+     * depend on, such as Blend while it's dragged, doesn't search again. Apply always searches afresh.
+     */
+    private @Nullable Search searched;
+    private @Nullable Object searchedFor;
 
     GradientTool() {
         one.add(0, 0, 0);
@@ -109,7 +119,16 @@ final class GradientTool implements CustomTool {
         endsIn = null;
         reversed = false;
         refused = null;
+        searched = null;
+        searchedFor = null;
         clearPreview();
+    }
+
+    /** The ends are kept, so the preview comes back with the tool. */
+    @Override
+    public void putAway() {
+        preview.clear();
+        previewFor = null;
     }
 
     private void clearPreview() {
@@ -130,6 +149,8 @@ final class GradientTool implements CustomTool {
         if (endsIn != level) reset();
         endsIn = level;
         refused = null;
+        // Using the tool again finds the build afresh, so a retry after a refused Apply sees what was built meanwhile.
+        searched = null;
         // The preview for the old ends goes at once, so Apply can't send it before the new one has been made.
         clearPreview();
         BlockPos at = hit.getBlockPos().immutable();
@@ -159,8 +180,8 @@ final class GradientTool implements CustomTool {
     }
 
     /** Called every client tick. The ends are kept when the preview is dropped, so it comes back with the tool. */
-    void tick(boolean closed) {
-        if (preview.tick(closed)) previewFor = null;
+    void tick() {
+        if (preview.tick()) previewFor = null;
     }
 
     @Override
@@ -173,7 +194,8 @@ final class GradientTool implements CustomTool {
         Choice choice = current(choices());
         Object key = Arrays.asList(choice == null ? null : choice.steps(), first, second, seed, reversed, likeFirst,
                 AxiomPanel.held(reach, 1, MAX_REACH), AxiomPanel.held(blend, 0, 100), BlockIndex.get().version());
-        if (!key.equals(previewFor)) {
+        // After a refused Apply, nothing is shown until the tool is used again.
+        if (refused == null && !key.equals(previewFor)) {
             preview(level, choice);
             previewFor = key;
         }
@@ -186,66 +208,100 @@ final class GradientTool implements CustomTool {
         if (first != null) ends.render(rc, Vec3.ZERO, Effects.BLUE | Effects.OUTLINE);
     }
 
+    /** The build between the ends, and the line through them. */
+    record Search(BuildSearch.Found found, GradientLine line) {}
+
     /**
      * Finds the build between the ends: only blocks of the build change, never air or liquid, and with
-     * {@link #likeFirst} only those of the first block's material. It's found afresh with each preview, so a preview
-     * never covers blocks that joined or left the build since.
+     * {@code likeFirst} only those of the seed block's material.
      */
-    private void find(ClientLevel level) {
-        found = null;
-        line = null;
-        if (first == null || second == null || seed == null || !BlockIndex.get().ready()) return;
+    static Search search(BlockGetter level, BlockPos first, BlockPos second, BlockPos seed, boolean likeFirst, int reach) {
         GradientLine l = GradientLine.between(first.getX(), first.getY(), first.getZ(), second.getX(), second.getY(), second.getZ());
         Set<Block> like = like(level.getBlockState(seed));
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        found = BuildSearch.from(seed.getX(), seed.getY(), seed.getZ(), (x, y, z) -> {
+        BuildSearch.Found found = BuildSearch.from(seed.getX(), seed.getY(), seed.getZ(), (x, y, z) -> {
             BlockState s = level.getBlockState(pos.set(x, y, z));
             if (s.isAir() || s.getBlock() instanceof LiquidBlock) return false;
-            return (!likeFirst || like.contains(s.getBlock())) && l.reaches(x, y, z, reach[0]);
+            return (!likeFirst || like.contains(s.getBlock())) && l.reaches(x, y, z, reach);
         }, FoundBuild.CAP);
-        line = l;
+        return new Search(found, l);
     }
 
+    /** What a gradient across a build works out to: the blocks outlined, and what the panel says of it. */
+    record Laid(long[] outlined, int covered, int leftAlone, int masked) {}
+
     /**
-     * Works out what the gradient would do to the build found and shows it in the world in place of the blocks
-     * there. A block that holds items or other data, such as a barrel, which the change would empty, stays as it is.
-     * A block that isn't a full cube keeps its shape, or stays as it is when it has none a step can take.
+     * Works out what laying {@code steps} across the build {@code s} found does, with these masks, into {@code into}:
+     * every block of the build is asked about and recorded, changed or left as it is, as each one decides which blocks
+     * are joined to it. The same steps make the preview and check it at Apply. A block that holds items or other data,
+     * such as a barrel, which the change would empty, stays as it is. A block that isn't a full cube keeps its shape,
+     * or stays as it is when it has none a step can take.
      */
+    static Laid lay(BlockGetter level, Search s, List<BlockState> steps, boolean reversed, int blend, QueuedChanges.Mask mask,
+                    QueuedChanges<BlockState> into) {
+        GradientShapes shapes = new GradientShapes();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        LongArrayList outlined = new LongArrayList();
+        int covered = 0, leftAlone = 0, masked = 0;
+        for (long p : s.found().blocks()) {
+            int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
+            BlockState now = level.getBlockState(pos.set(x, y, z));
+            boolean allowed = mask.allows(x, y, z);
+            int at = s.line().step(x, y, z, steps.size(), blend / 100.0);
+            BlockState step = steps.get(reversed ? steps.size() - 1 - at : at);
+            BlockState next = shapes.shaped(now) ? shapes.apply(step, now) : paintable(level, pos, now) ? step : null;
+            if (next == null) {
+                leftAlone++;
+                into.leave(x, y, z, now);
+                continue;
+            }
+            if (!allowed) {
+                masked++;
+                into.leave(x, y, z, now);
+                continue;
+            }
+            covered++;
+            outlined.add(p);
+            if (next != now) into.add(x, y, z, now, next);
+            else into.leave(x, y, z, now);
+        }
+        return new Laid(outlined.toLongArray(), covered, leftAlone, masked);
+    }
+
+    /** Works out what the gradient would do to the build between the ends, and shows it in the world in place of the blocks there. */
     private void preview(ClientLevel level, @Nullable Choice choice) {
         clearPreview();
         if (first != null) ends.add(first.getX(), first.getY(), first.getZ());
         if (second != null) ends.add(second.getX(), second.getY(), second.getZ());
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
         List<BlockState> steps = choice == null ? List.of() : states(choice);
-        if (steps.size() < 2) return;
-        find(level);
-        if (found == null || line == null) return;
-        preview.begin(level, queue);
-        GradientShapes shapes = new GradientShapes();
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (long p : found.blocks()) {
-            int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
-            BlockState now = level.getBlockState(pos.set(x, y, z));
-            int at = line.step(x, y, z, steps.size(), blend[0] / 100.0);
-            BlockState step = steps.get(reversed ? steps.size() - 1 - at : at);
-            BlockState next = shapes.shaped(now) ? shapes.apply(step, now) : paintable(level, pos, now) ? step : null;
-            // Every block of the build is either changed or watched, as each one decides which blocks are joined to it.
-            if (next == null) {
-                leftAlone++;
-                preview.watch(x, y, z, now);
-                continue;
-            }
-            if (!preview.allows(x, y, z)) {
-                masked++;
-                preview.watch(x, y, z, now);
-                continue;
-            }
-            covered++;
-            preview.outline(x, y, z);
-            if (next != now) preview.change(x, y, z, now, next);
-            else preview.watch(x, y, z, now);
+        if (steps.size() < 2 || first == null || second == null || seed == null || !BlockIndex.get().ready()) return;
+        BlockPos a = first, b = second, from = seed;
+        boolean like = likeFirst, back = reversed;
+        int r = AxiomPanel.held(reach, 1, MAX_REACH), mix = AxiomPanel.held(blend, 0, 100);
+        Object searchKey = Arrays.asList(level, a, b, from, like, r, BlockIndex.get().version());
+        if (searched == null || !searchKey.equals(searchedFor)) {
+            searched = search(level, a, b, from, like, r);
+            searchedFor = searchKey;
         }
-        preview.made();
+        found = searched.found();
+        line = searched.line();
+        AxiomMask.Test mask = AxiomMask.now(level);
+        Laid laid = lay(level, searched, steps, back, mix, mask, queue);
+        // A preview the masks failed while making could show blocks they were keeping out.
+        if (mask.failed()) {
+            refused = AxiomMask.unavailable().orElse(AxiomChanges.refusal(QueuedChanges.Refusal.MASK_FAILED));
+            return;
+        }
+        covered = laid.covered();
+        leftAlone = laid.leftAlone();
+        masked = laid.masked();
+        boolean shown = preview.show(queue, laid.outlined(), again -> {
+            QueuedChanges<BlockState> redone = new QueuedChanges<>(queue.origin());
+            lay(level, search(level, a, b, from, like, r), steps, back, mix, again, redone);
+            return redone;
+        });
+        if (!shown) refused = Component.translatable("axiom.chromastudio.preview.busy");
     }
 
     /** Whether the gradient may change a block, or put one in, as a whole: a full cube with no block entity. */
@@ -254,16 +310,15 @@ final class GradientTool implements CustomTool {
     }
 
     /**
-     * Sends the change to Axiom as one entry in its history, and starts over. When anything has changed since the
-     * preview was made, nothing is sent: the preview is made again from the world as it is now, for the player to
-     * check, and the panel says why. False when nothing was sent.
+     * Sends the change to Axiom as one entry in its history, and starts over. When working it out again now doesn't
+     * give what the preview shows, nothing is sent, the preview goes, and the panel says why and to use the tool again.
+     * False when nothing was sent.
      */
     private boolean apply() {
         if (preview.isEmpty()) return false;
         Optional<Component> why = preview.apply();
         if (why.isPresent()) {
             refused = why.get();
-            previewFor = null;
             return false;
         }
         reset();
@@ -309,7 +364,7 @@ final class GradientTool implements CustomTool {
         if (first == null) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.start"));
         else if (second == null) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.end"));
         else if (!ready) AxiomPanel.wrapped(tr("axiom.chromastudio.not_ready"));
-        else if (line != null && shown != null) {
+        else if (refused == null && line != null && shown != null) {
             int steps = states(shown).size();
             double length = Math.sqrt(first.distSqr(second)) + 1;
             if (steps >= 2) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.length", Math.round(length), String.format("%.1f", length / steps)));

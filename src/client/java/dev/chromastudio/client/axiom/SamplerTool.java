@@ -227,31 +227,37 @@ final class SamplerTool implements CustomTool {
         }
         if (rows.isEmpty()) return;
         float height = Math.min(rows.size(), ROWS) * ImGui.getFrameHeightWithSpacing() + ImGui.getStyle().getWindowPaddingY() * 2;
-        if (ImGui.beginChild("##sample", -1, height, true)) {
-            for (int i = 0; i < rows.size(); i++) {
-                BuildSample.Row r = rows.get(i);
-                PaletteEntry e = new PaletteEntry(r.id(), "");
-                String shown = shown(r.id());
-                if (ImGui.smallButton(tr("axiom.chromastudio.sampler.remove") + "##remove" + i)) {
-                    sample.remove(r.id());
-                    changed();
-                }
-                AxiomPanel.tip(tr("axiom.chromastudio.sampler.remove.tip", shown));
-                AxiomPanel.sameLine();
-                Color c = PaletteBlocks.colour(e);
-                // A block whose colour can't be read still has its row, so it can be seen and removed.
-                if (c != null) AxiomPanel.swatch("swatch" + i, new AxiomPanel.Swatch(c, shown));
-                else ImGui.dummy(ImGui.getFrameHeight(), ImGui.getFrameHeight());
-                AxiomPanel.sameLine();
-                ImGui.alignTextToFramePadding();
-                AxiomPanel.text(shown);
-                AxiomPanel.sameLine();
-                ImGui.beginDisabled();
-                AxiomPanel.text(tr("axiom.chromastudio.sampler.count", r.count(), share(r.count(), total)));
-                ImGui.endDisabled();
-            }
+        try {
+            if (ImGui.beginChild("##sample", -1, height, true)) rows(rows, total);
+        } finally {
+            ImGui.endChild();
         }
-        ImGui.endChild();
+    }
+
+    /** One row a kind, in the list's own scrolling child. */
+    private void rows(List<BuildSample.Row> rows, int total) {
+        for (int i = 0; i < rows.size(); i++) {
+            BuildSample.Row r = rows.get(i);
+            PaletteEntry e = new PaletteEntry(r.id(), "");
+            String shown = shown(r.id());
+            if (ImGui.smallButton(tr("axiom.chromastudio.sampler.remove") + "##remove" + i)) {
+                sample.remove(r.id());
+                changed();
+            }
+            AxiomPanel.tip(tr("axiom.chromastudio.sampler.remove.tip", shown));
+            AxiomPanel.sameLine();
+            Color c = PaletteBlocks.colour(e);
+            // A block whose colour can't be read still has its row, so it can be seen and removed.
+            if (c != null) AxiomPanel.swatch("swatch" + i, new AxiomPanel.Swatch(c, shown));
+            else ImGui.dummy(ImGui.getFrameHeight(), ImGui.getFrameHeight());
+            AxiomPanel.sameLine();
+            ImGui.alignTextToFramePadding();
+            AxiomPanel.text(shown);
+            AxiomPanel.sameLine();
+            ImGui.beginDisabled();
+            AxiomPanel.text(tr("axiom.chromastudio.sampler.count", r.count(), share(r.count(), total)));
+            ImGui.endDisabled();
+        }
     }
 
     /** The kinds left out, each a button that puts it back, as many to a line as fit. */

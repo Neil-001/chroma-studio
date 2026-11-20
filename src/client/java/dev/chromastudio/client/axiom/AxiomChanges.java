@@ -5,17 +5,16 @@ import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.core.palette.QueuedChanges;
 import java.util.Locale;
 import java.util.Optional;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * The one way Chroma Studio's tools change the world: queued changes go to Axiom as one entry in its history, so
  * Axiom's undo takes them back in one step and its permissions decide whether they're allowed. Before anything is
- * sent, {@link QueuedChanges#check} must pass against the world, the index, the player's visit to the editor and
- * the tool masks as they are now; otherwise nothing is sent, and the tool tells the player why.
+ * sent, the tool's plan is worked out again from the world, the index, the editor and the tool masks as they are at
+ * that moment ({@link QueuedChanges#check}), and only exactly what the player saw is sent; otherwise nothing is, and
+ * the tool tells the player why.
  */
 final class AxiomChanges {
     private AxiomChanges() {}
@@ -32,26 +31,25 @@ final class AxiomChanges {
     static QueuedChanges<BlockState> queue(ClientLevel level) { return new QueuedChanges<>(origin(level)); }
 
     /**
-     * Sends the changes when the check passes. Returns why not otherwise, or nothing when they were sent or there was
-     * nothing to send.
+     * Sends the changes when {@code again}, the steps that made them, makes the same again now. Returns why not
+     * otherwise, or nothing when they were sent or there was nothing to send. A call into Axiom that throws reaches the
+     * tool's caller, {@link GuardedTool}, which turns the features off.
      */
-    static Optional<Component> send(QueuedChanges<BlockState> changes) {
-        ClientLevel level = Minecraft.getInstance().level;
+    static Optional<Component> send(QueuedChanges<BlockState> changes, QueuedChanges.Plan<BlockState> again) {
         if (changes.isEmpty()) return Optional.empty();
         // Once Axiom's features are off for the session, as when a tool couldn't be added, nothing reaches the world.
         Optional<Component> off = AxiomBridge.whyNot();
         if (off.isPresent()) return off;
+        ClientLevel level = AxiomTools.level.get();
         if (level == null) return Optional.of(refusal(QueuedChanges.Refusal.WORLD));
         // Without knowing whether the editor closed since the changes were queued, they can't be vouched for.
         if (!AxiomEditor.known()) return Optional.of(Component.translatable("axiom.chromastudio.editor.unknown.tools"));
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        QueuedChanges.Origin now = origin(level);
-        QueuedChanges.Refusal why = changes.check(now, (x, y, z) -> level.getBlockState(pos.set(x, y, z)), AxiomMask.now(level));
-        // The index is rebuilt on its own thread, so one published while the blocks were checked refuses them too.
-        if (why == QueuedChanges.Refusal.NONE && BlockIndex.get().version() != now.index()) why = QueuedChanges.Refusal.INDEX;
+        QueuedChanges.Refusal why = changes.check(() -> origin(level), AxiomTools::editorOn, () -> AxiomMask.now(level), again);
         if (why != QueuedChanges.Refusal.NONE) return Optional.of(refusal(why));
         BlockRegion region = AxiomTools.regions.createBlock();
         for (QueuedChanges.Change<BlockState> c : changes.changes()) region.addBlock(c.x(), c.y(), c.z(), c.next());
+        // The index is rebuilt on its own thread; one published since the check counts, as near the send as can be.
+        if (BlockIndex.get().version() != changes.origin().index()) return Optional.of(refusal(QueuedChanges.Refusal.INDEX));
         AxiomTools.tools.pushBlockRegionChange(region);
         return Optional.empty();
     }

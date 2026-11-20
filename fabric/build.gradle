@@ -116,6 +116,8 @@ dependencies {
 	compileOnly("com.github.moulberry.imgui-java:imgui-java-binding:${project.axiom_imgui_version}") { transitive = false }
 
 	// Tests cover the pure-Java core (dev.chromastudio.core), the settings file, and the block index against the game's own assets.
+	// The Axiom tools' commit rules are tested against Axiom's client API, with Axiom's own internals stubbed.
+	testImplementation("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
 	testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
