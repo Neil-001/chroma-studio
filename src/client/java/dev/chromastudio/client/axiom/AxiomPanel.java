@@ -54,8 +54,6 @@ final class AxiomPanel {
 
     /** The most rows a list shows before it scrolls, so it leaves room for the controls below it. */
     private static final int LIST_ROWS = 5;
-    /** The fewest rows of options a panel keeps on show, however much its bottom part has to say. */
-    private static final int OPTIONS_ROWS = 3;
     /** How wide a tooltip runs before it wraps, in the font's size. */
     private static final float TIP_WIDTH = 30f;
 
@@ -64,8 +62,8 @@ final class AxiomPanel {
      * window out top to bottom and the options' area has to know where the bottom part starts before it is drawn.
      */
     static final class Layout {
-        /** The height the bottom part needed last frame. */
-        private float bottom;
+        /** The height the bottom part needed last frame, or -1 before it has been drawn. */
+        private float bottom = -1;
 
         /** Draws the options, scrolling, and under them {@code bottom}, held to the panel's bottom edge. */
         void draw(Runnable options, Runnable bottom) {
@@ -75,11 +73,12 @@ final class AxiomPanel {
                 wrapped(off.get());
                 return;
             }
-            float gap = ImGui.getStyle().getItemSpacingY();
-            // The options keep a few lines however much there is to say; the bottom part then scrolls rather than hide them.
-            float room = ImGui.getContentRegionAvailY() - OPTIONS_ROWS * ImGui.getFrameHeightWithSpacing() - gap;
-            float fixed = Math.max(0, Math.min(this.bottom, room));
-            child("##options", -(fixed + gap), options);
+            // The bottom part has the first claim on the space, as it holds what must be read before acting; the options
+            // scroll in what's left. Until it has been measured, it takes the whole panel for that one frame.
+            float room = ImGui.getContentRegionAvailY();
+            float fixed = this.bottom < 0 ? room : Math.min(this.bottom, room);
+            float above = room - fixed - ImGui.getStyle().getItemSpacingY();
+            if (above >= 1) child("##options", above, options);
             child("##bottom", 0, () -> {
                 ImGui.separator();
                 bottom.run();
@@ -212,12 +211,14 @@ final class AxiomPanel {
         int clicked = -1;
         float rows = Math.min(Math.max(labels.size(), 1), LIST_ROWS) * ImGui.getTextLineHeightWithSpacing() + ImGui.getStyle().getFramePaddingY() * 2;
         if (ImGui.beginListBox(id, -1, rows)) {
+            // A selectable's own width grows to fit its label, so a label is measured against the list's.
+            float width = ImGui.getContentRegionAvailX();
             // A label is also ImGui's id for its row, so each gets its place in the list as well.
             for (int i = 0; i < labels.size(); i++) {
                 String label = labels.get(i);
                 if (ImGui.selectable(label + "##" + i, i == selected)) clicked = i;
                 // A label too long for the list, as a long translation or palette name can be, is shown whole when hovered.
-                if (ImGui.calcTextSizeX(label) > ImGui.getItemRectMaxX() - ImGui.getItemRectMinX()) tip(label);
+                if (ImGui.calcTextSizeX(label) > width) tip(label);
             }
             ImGui.endListBox();
         }

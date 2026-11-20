@@ -70,6 +70,13 @@ class LineBreaksTest {
     }
 
     @Test
+    void charactersOfTwoCodeUnitsBreakWholeBetweenThemselves() {
+        String text = "𠮷𠮷𠮷𠮷𠮷";
+        assertTrue(LineBreaks.needed(text));
+        assertEquals(List.of("𠮷", "𠮷", "𠮷", "𠮷", "𠮷"), split(text, 2));
+    }
+
+    @Test
     void lineFeedsAlwaysBreak() {
         assertEquals(List.of("一行目", "二行目"), split("一行目\n二行目", 20));
     }

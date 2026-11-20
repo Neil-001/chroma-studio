@@ -149,6 +149,8 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         if (AxiomTools.off()) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (stroke.active()) {
+            // Cleared here, as Axiom draws the tool every frame but its panel only while Tool Options is open.
+            dropped = false;
             hovered = null;
             stroke.render(rc);
             return;
@@ -207,13 +209,13 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
                 if (!kinds.remove(k)) kinds.add(k);
             }
         }
-        AxiomPanel.masks();
         AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
     }
 
     /** Why the last stroke wasn't made, and what the brush would do to the block under the cursor, held to the panel's bottom. */
     private void bottom() {
-        if (stroke.active()) dropped = false;
+        // Whether the masks bind the change is read before it's made, so it's never scrolled out of sight.
+        AxiomPanel.masks();
         Component why = stroke.refused();
         if (why == null && dropped) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
         if (why != null) AxiomPanel.wrapped(why);

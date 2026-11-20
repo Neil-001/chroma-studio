@@ -337,12 +337,21 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
         } else {
             int clicked = AxiomPanel.list(tr("axiom.chromastudio.gradient_tool.gradient"), "##gradients", all.stream().map(Choice::label).toList(), all.indexOf(shown));
             if (clicked >= 0) picked = all.get(clicked).key();
-            if (shown != null) {
-                AxiomPanel.swatches("step", AxiomPanel.Swatch.of(shown.steps()));
-                int usable = states(shown).size(), left = shown.steps().size() - usable;
-                if (usable < 2) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.missing"));
-                else if (left > 0) AxiomPanel.note(AxiomTools.count("axiom.chromastudio.gradient_tool.skipped", left, left));
-            }
+            if (shown != null) AxiomPanel.swatches("step", AxiomPanel.Swatch.of(shown.steps()));
+        }
+
+        AxiomPanel.slider(tr("axiom.chromastudio.gradient_tool.blend"), blend, 0, 100, "%d%%", true, tr("axiom.chromastudio.gradient_tool.blend.tip"));
+        AxiomPanel.slider(tr("axiom.chromastudio.gradient_tool.reach"), reach, 1, MAX_REACH, "%d", true, tr("axiom.chromastudio.gradient_tool.reach.tip"));
+        if (AxiomPanel.checkbox(tr("axiom.chromastudio.gradient_tool.like_first"), likeFirst, true, tr("axiom.chromastudio.gradient_tool.like_first.tip"))) likeFirst = !likeFirst;
+        notes(shown);
+    }
+
+    /** What the preview found, and how to adjust it, under every control so none moves as they come and go. */
+    private void notes(@Nullable Choice shown) {
+        if (shown != null) {
+            int usable = states(shown).size(), left = shown.steps().size() - usable;
+            if (usable < 2) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.missing"));
+            else if (left > 0) AxiomPanel.note(AxiomTools.count("axiom.chromastudio.gradient_tool.skipped", left, left));
         }
         // The Gradient tab works its gradient out only once it has been shown, so until then this says how to bring it here.
         if (GradientTab.stepsOnShow().isEmpty()) {
@@ -350,16 +359,6 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
             // The window opens at the next tick, after Axiom has finished drawing its panels this frame.
             if (AxiomPanel.button(tr("key.chromastudio.open"), true, tr("axiom.chromastudio.open.tip"))) ChromaStudioClient.openWindowSoon("gradient");
         }
-
-        AxiomPanel.slider(tr("axiom.chromastudio.gradient_tool.blend"), blend, 0, 100, "%d%%", true, tr("axiom.chromastudio.gradient_tool.blend.tip"));
-        AxiomPanel.slider(tr("axiom.chromastudio.gradient_tool.reach"), reach, 1, MAX_REACH, "%d", true, tr("axiom.chromastudio.gradient_tool.reach.tip"));
-        if (AxiomPanel.checkbox(tr("axiom.chromastudio.gradient_tool.like_first"), likeFirst, true, tr("axiom.chromastudio.gradient_tool.like_first.tip"))) likeFirst = !likeFirst;
-        AxiomPanel.masks();
-        notes(shown);
-    }
-
-    /** What the preview found, and how to adjust it, under every control so none moves as they come and go. */
-    private void notes(@Nullable Choice shown) {
         // Started on a pane, a stair or the like, the gradient keeps to blocks of that kind, which would look like nothing happening.
         ClientLevel level = Minecraft.getInstance().level;
         if (likeFirst && seed != null && level != null && level == endsIn) {
@@ -380,6 +379,8 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
     private void bottom() {
         Choice shown = current(choices());
         boolean ready = BlockIndex.get().ready();
+        // Whether the masks bind the change is read before it's made, so it's never scrolled out of sight.
+        AxiomPanel.masks();
         if (refused != null) AxiomPanel.wrapped(refused);
         if (first == null) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.start"));
         else if (second == null) AxiomPanel.wrapped(tr("axiom.chromastudio.gradient_tool.end"));

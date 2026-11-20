@@ -23,8 +23,7 @@ public final class LineBreaks {
 
     /** Whether the text holds Chinese or Japanese, which {@link #split} knows how to break. */
     public static boolean needed(String text) {
-        for (int i = 0; i < text.length(); i++) if (closeSet(text.charAt(i))) return true;
-        return false;
+        return text.codePoints().anyMatch(LineBreaks::closeSet);
     }
 
     /**
@@ -59,13 +58,15 @@ public final class LineBreaks {
 
     /** Whether a line may break before the character at {@code i}. */
     static boolean breaksBefore(String text, int i) {
-        char before = text.charAt(i - 1), at = text.charAt(i);
+        // Never inside a character that takes two code units, as the rarer Chinese characters do.
+        if (Character.isLowSurrogate(text.charAt(i)) && Character.isHighSurrogate(text.charAt(i - 1))) return false;
+        int before = text.codePointBefore(i), at = text.codePointAt(i);
         if (before == ' ') {
             // A space breaks only between two words of a language that spaces them.
             if (at == ' ') return false;
             int j = i - 1;
             while (j > 0 && text.charAt(j - 1) == ' ') j--;
-            return j > 0 && !closeSet(text.charAt(j - 1)) && !closeSet(at);
+            return j > 0 && !closeSet(text.codePointBefore(j)) && !closeSet(at);
         }
         if (at == ' ') return false;
         if (!closeSet(before) && !closeSet(at)) return false;
@@ -73,7 +74,8 @@ public final class LineBreaks {
     }
 
     /** Whether a character is Chinese or Japanese, written without spaces between words: Han, kana, or their punctuation. */
-    private static boolean closeSet(char c) {
+    private static boolean closeSet(int c) {
+        if (Character.UnicodeScript.of(c) == Character.UnicodeScript.HAN) return true;
         Character.UnicodeBlock b = Character.UnicodeBlock.of(c);
         return b == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS || b == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A
                 || b == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS || b == Character.UnicodeBlock.HIRAGANA

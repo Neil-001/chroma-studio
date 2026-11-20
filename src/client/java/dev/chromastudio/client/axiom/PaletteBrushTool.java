@@ -284,6 +284,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             return;
         }
         if (stroke.active()) {
+            // Cleared here, as Axiom draws the tool every frame but its panel only while Tool Options is open.
+            dropped = false;
             stroke.render(rc);
             return;
         }
@@ -443,7 +445,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (shown != null) {
             readSwatches(shown);
             AxiomPanel.swatches("swatch", swatches);
-            if (!anyInGame) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.empty"));
         }
 
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.scatter"), mode == Mode.SCATTER, ready,
@@ -460,8 +461,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         if (AxiomPanel.radius(radius, !wholeBuild(), tr(wholeBuild() ? "axiom.chromastudio.radius.whole" : "axiom.chromastudio.radius.tip"))) remember();
         recolourOptions(all, recolour);
-        AxiomPanel.masks();
         // Notes that come and go, under every control so none moves; the bottom part keeps what must be read before acting.
+        if (shown != null && !anyInGame) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.empty"));
         if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
             AxiomPanel.note(tr("axiom.chromastudio.brush.left_out",
                     scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "))));
@@ -479,7 +480,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     /** What the player must read before painting or pressing Apply, and the buttons, held to the panel's bottom. */
     private void bottom() {
         boolean recolour = mode == Mode.RECOLOUR;
-        if (stroke.active()) dropped = false;
+        // Whether the masks bind the change is read before it's made, so it's never scrolled out of sight.
+        AxiomPanel.masks();
         Component why = wholeBuild() ? refused : stroke.refused();
         if (why == null && dropped && !wholeBuild()) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
         if (why != null) AxiomPanel.wrapped(why);
