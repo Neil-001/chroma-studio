@@ -12,10 +12,38 @@ public final class GradientLine {
      */
     private static final double EDGE = 1e-6;
 
+    /**
+     * How far off an axis a line may lean, as the sideways distance over the distance along the axis, and still be
+     * straightened onto it: about 20 degrees. Clicking the top and bottom of a tower, or the two ends of a wall, rarely
+     * hits the same column or row: on a tower 16 high, clicking the top at one corner and the bottom at the other leans
+     * a quarter. A leaning line tilts the planes between steps, which cuts the build's corners off at the ends. A line
+     * leaning further than this is a diagonal the player meant, as builders draw them at 30 degrees or more.
+     */
+    static final double STRAIGHTEN = 0.36;
+
     private final int ax, ay, az;
     private final double dx, dy, dz, length;
+    private final boolean straightened;
 
-    public GradientLine(int ax, int ay, int az, int bx, int by, int bz) {
+    /**
+     * The line from the first end to the second, straightened onto the axis it runs nearly along, so that its steps
+     * lie square to the build: it keeps the first end, and the second moves sideways onto the axis through it. Its
+     * end planes then pass through both ends' blocks along that axis, as the player clicked them.
+     */
+    public static GradientLine between(int ax, int ay, int az, int bx, int by, int bz) {
+        long x = Math.abs((long) bx - ax), y = Math.abs((long) by - ay), z = Math.abs((long) bz - az);
+        long main = Math.max(x, Math.max(y, z));
+        double sideways = Math.sqrt((double) x * x + (double) y * y + (double) z * z - (double) main * main);
+        if (main == 0 || sideways == 0 || sideways > STRAIGHTEN * main) return new GradientLine(ax, ay, az, bx, by, bz, false);
+        if (main == y) return new GradientLine(ax, ay, az, ax, by, az, true);
+        if (main == x) return new GradientLine(ax, ay, az, bx, ay, az, true);
+        return new GradientLine(ax, ay, az, ax, ay, bz, true);
+    }
+
+    public GradientLine(int ax, int ay, int az, int bx, int by, int bz) { this(ax, ay, az, bx, by, bz, false); }
+
+    private GradientLine(int ax, int ay, int az, int bx, int by, int bz, boolean straightened) {
+        this.straightened = straightened;
         if (ax == bx && ay == by && az == bz) throw new IllegalArgumentException("A gradient needs two different ends");
         this.ax = ax;
         this.ay = ay;
@@ -25,6 +53,12 @@ public final class GradientLine {
         dy = (by - ay) / length;
         dz = (bz - az) / length;
     }
+
+    /** Whether {@link #between} straightened the line onto an axis. */
+    public boolean straightened() { return straightened; }
+
+    /** Whether the line runs on a slant, rather than along an axis, so its end planes cut across the build. */
+    public boolean slanted() { return (dx != 0 ? 1 : 0) + (dy != 0 ? 1 : 0) + (dz != 0 ? 1 : 0) > 1; }
 
     /** How far along the line from the first end a block sits, in blocks: 0 at the first end and {@code length} at the second. */
     private double along(int x, int y, int z) { return (x - ax) * dx + (y - ay) * dy + (z - az) * dz; }

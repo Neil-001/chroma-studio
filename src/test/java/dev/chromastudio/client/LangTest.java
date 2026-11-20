@@ -11,6 +11,7 @@ import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.core.color.Harmony;
 import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.palette.Analyzer;
+import dev.chromastudio.core.palette.QueuedChanges;
 import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.ShadeSteps;
 import dev.chromastudio.core.palette.WorldEditPattern;
@@ -89,6 +90,10 @@ class LangTest {
             keys.add("axiom.chromastudio.shade." + way);
             keys.add("axiom.chromastudio.shade." + way + ".tip");
             keys.add("axiom.chromastudio.shade.left." + way);
+        }
+        for (QueuedChanges.Refusal r : QueuedChanges.Refusal.values()) {
+            // Nothing to send, or nothing wrong, is never said.
+            if (r != QueuedChanges.Refusal.NONE && r != QueuedChanges.Refusal.EMPTY) keys.add("axiom.chromastudio.refused." + r.name().toLowerCase(Locale.ROOT));
         }
         for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) {
             keys.add("palettes.chromastudio.tool." + tool);
