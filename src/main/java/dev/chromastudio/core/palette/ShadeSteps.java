@@ -19,6 +19,10 @@ import java.util.function.IntPredicate;
  * taken, or isn't allowed, steps to the closest block that is instead, so it isn't left alone while it has a good
  * neighbour, though that step may not undo exactly. A block with no block close enough in that direction stays.
  *
+ * <p>A shade is a plainer or darker material, not a decorated one: a mossy, cracked, chiseled or infested block is
+ * only ever a step from another such block, so a wall brushed lighter never grows moss. A decorated block may still
+ * step to a plain one.
+ *
  * <p>What it answers never changes after it is made, so any number of threads may ask it at once.
  */
 public final class ShadeSteps {
@@ -55,9 +59,29 @@ public final class ShadeSteps {
      * A block as the steps see it: its colour, how busy its texture is, as {@code TextureStats.spread} gives it, and
      * its family, such as "bricks" for stone and tuff bricks, which a step keeps to where it can, what it's made of,
      * such as stone or wood, which a step always keeps to, and whether its material comes in shapes, such as stairs
-     * and slabs, which a step also keeps to where it can. An empty family matches none.
+     * and slabs, which a step also keeps to where it can. An empty family matches none. {@code decorated} marks a worn,
+     * overgrown, carved or infested variant, such as mossy stone bricks, which is no shade of a plain block.
      */
-    public record Look(Color colour, double spread, String family, String material, boolean shaped) {}
+    public record Look(Color colour, double spread, String family, String material, boolean shaped, boolean decorated) {
+        /** A plain block's look. */
+        public Look(Color colour, double spread, String family, String material, boolean shaped) {
+            this(colour, spread, family, material, shaped, false);
+        }
+    }
+
+    /** Prefixes of the variants a step never reaches from a plain block. */
+    private static final List<String> DECORATIONS = List.of("mossy_", "cracked_", "chiseled_", "infested_");
+
+    /**
+     * Whether a block id names a decorated variant: mossy, cracked, chiseled or infested, such as
+     * {@code minecraft:mossy_stone_bricks}. A shade is a plainer or darker material, so stone bricks brushed lighter
+     * never grow moss, and brushed darker then lighter come back to stone bricks.
+     */
+    public static boolean decorated(String id) {
+        String path = id.substring(id.indexOf(':') + 1);
+        for (String d : DECORATIONS) if (path.startsWith(d)) return true;
+        return false;
+    }
 
     private final List<Look> blocks;
     private final Oklch[] lch;
@@ -83,7 +107,8 @@ public final class ShadeSteps {
         List<Pair> pairs = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                if (lch[j].l() <= lch[i].l()) continue;
+                // A plain block and a decorated one never pair, so each plain block's ladder is all plain blocks.
+                if (lch[j].l() <= lch[i].l() || blocks.get(i).decorated() != blocks.get(j).decorated()) continue;
                 double cost = cost(blocks.get(i), lch[i], blocks.get(j), lch[j]);
                 if (cost < Double.POSITIVE_INFINITY) pairs.add(new Pair(i, j, cost));
             }
@@ -106,7 +131,7 @@ public final class ShadeSteps {
      */
     public int next(int from, Direction d, IntPredicate allowed) {
         int partner = (d == Direction.LIGHTER ? lighter : darker)[from];
-        int closest = closest(blocks.get(from), lch[from], d, i -> i != from && allowed.test(i));
+        int closest = closest(blocks.get(from), lch[from], d, i -> i != from && allowed.test(i) && reaches(blocks.get(from), i));
         if (partner < 0 || !allowed.test(partner) || closest < 0) return closest;
         // A partner the closest step beats by far was what was left once better pairs were made, as when two blocks
         // both suit the same lighter one, and the step to it would look wrong.
@@ -115,8 +140,11 @@ public final class ShadeSteps {
 
     /** The index of the closest allowed step from a block that isn't one of these, or -1 for none. */
     public int next(Look from, Direction d, IntPredicate allowed) {
-        return closest(from, from.colour().oklch(), d, allowed);
+        return closest(from, from.colour().oklch(), d, i -> allowed.test(i) && reaches(from, i));
     }
+
+    /** Whether a step from a block may land on block {@code to}: a decorated block only from one decorated itself. */
+    private boolean reaches(Look from, int to) { return from.decorated() || !blocks.get(to).decorated(); }
 
     private int closest(Look from, Oklch at, Direction d, IntPredicate allowed) {
         int best = -1;
