@@ -6,8 +6,6 @@ import com.moulberry.axiomclientapi.CustomTool;
 import com.moulberry.axiomclientapi.Effects;
 import com.moulberry.axiomclientapi.IAxiomWorldRenderContext;
 import com.moulberry.axiomclientapi.pathers.BallShape;
-import com.moulberry.axiomclientapi.pathers.ToolPatherUnique;
-import com.moulberry.axiomclientapi.regions.BlockRegion;
 import com.moulberry.axiomclientapi.regions.BooleanRegion;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteStore;
@@ -26,11 +24,9 @@ import dev.chromastudio.core.palette.ShadeSteps;
 import dev.chromastudio.core.palette.ShadeSteps.Direction;
 import dev.chromastudio.core.palette.WeightedPick;
 import imgui.moulberry92.ImGui;
-import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -69,12 +65,10 @@ import org.jspecify.annotations.Nullable;
  * contents stay as they are, as does a block with no shade close enough that way.
  *
  * <p>The shades come from any building block, or only from a palette's, so the shading keeps to a build's materials.
- * The stroke shows while the button is held and goes to Axiom as one change when it's let go, so one undo takes it back.
+ * A stroke ({@link BrushStroke}) shows while the button is held and goes to Axiom as one change when it's let go, so
+ * one undo takes it back. Every change keeps to the player's tool masks in Axiom ({@link AxiomMask}).
  */
 final class ShadeBrushTool implements CustomTool {
-    /** The button that uses a tool, as Axiom numbers them: ImGui's order from 0, in which 1 is the right button. */
-    private static final int USE_TOOL = 1;
-    private static final int MAX_RADIUS = 16;
     /** The lightness of a step at each size the slider offers, in OKLab. Small is about one shade a builder can see. */
     private static final double[] STEPS = {0.03, 0.045, 0.06, 0.08, 0.1};
     /**
@@ -87,7 +81,7 @@ final class ShadeBrushTool implements CustomTool {
     /** Blocks of coal, lapis and raw ore, which the Building blocks tab lists but no builder takes for a shade of stone. */
     private static final Set<Block> STORAGE = Set.of(Blocks.COAL_BLOCK, Blocks.LAPIS_BLOCK, Blocks.RAW_IRON_BLOCK, Blocks.RAW_COPPER_BLOCK, Blocks.RAW_GOLD_BLOCK);
 
-    private final BlockRegion stroke = AxiomTools.regions.createBlock();
+    private final BrushStroke stroke = new BrushStroke();
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private final int[] radius = {3};
     private int outlineRadius = -1;
@@ -102,119 +96,64 @@ final class ShadeBrushTool implements CustomTool {
     private @Nullable BlockState hovered;
     private @Nullable Plan plan;
 
-    // Set for the length of one stroke.
-    private ToolPatherUnique pather;
-    /** The shades and choices as the stroke started, so a choice changed mid-stroke doesn't split it. */
-    private @Nullable Plan strokePlan;
-    /** The world the stroke began in. A stroke still held when the player changes world is dropped. */
-    private @Nullable ClientLevel strokeLevel;
-    private Direction strokeDirection;
-    private Set<Kind> strokeKinds;
-    private double strokeShare;
-    /** Which blocks a stroke at less than full strength changes, a new choice each stroke. */
-    private long seed;
-    /**
-     * Each queued change by its position, {@link BlockPos#asLong}, so a block that changes
-     * before the stroke is let go, as one another player fills with a chest, is left out of the change.
-     */
-    private final Map<Long, Queued> queued = new HashMap<>();
-
-    /** A queued change: what the position held when the stroke reached it, and what it becomes. */
-    private record Queued(BlockState was, BlockState next) {}
+    /** What the stroke on now does to each block, fixed as it started, so a choice changed mid-stroke doesn't split it. */
+    private BrushStroke.Painter painter;
 
     @Override
     public String name() { return tr("axiom.chromastudio.shade"); }
 
     @Override
-    public void reset() {
-        stroke.clear();
-        queued.clear();
-        pather = null;
-        strokePlan = null;
-        strokeLevel = null;
-    }
+    public void reset() { stroke.cancel(); }
 
     @Override
     public boolean callUseTool() {
-        reset();
-        strokePlan = plan();
-        if (strokePlan == null) return false;
-        pather = AxiomTools.pathers.createUnique(radius[0], BallShape.SPHERE);
-        strokeLevel = Minecraft.getInstance().level;
-        strokeDirection = direction;
-        strokeKinds = EnumSet.copyOf(kinds);
-        strokeShare = strength[0] / 100.0;
-        seed = System.nanoTime();
+        stroke.cancel();
+        stroke.say(null);
+        Plan p = plan();
+        ClientLevel level = Minecraft.getInstance().level;
+        if (p == null || level == null) return false;
+        Direction d = direction;
+        Set<Kind> k = EnumSet.copyOf(kinds);
+        double share = Math.clamp(strength[0], 10, 100) / 100.0;
+        // Which blocks a stroke at less than full strength changes, a new choice each stroke.
+        long seed = System.nanoTime();
+        painter = (x, y, z, now, put) -> {
+            if (WeightedPick.unit(seed, x, y, z) >= share) return;
+            BlockState next = p.apply(now, d, k);
+            if (next != null) put.put(x, y, z, next);
+        };
+        stroke.start(level, AxiomPanel.radius(radius));
         return true;
     }
+
+    /** Called every client tick. */
+    void tick() { stroke.tick(); }
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
         ClientLevel level = Minecraft.getInstance().level;
-        if (pather == null) {
-            BlockHitResult hit = AxiomTools.tools.raycastBlock();
-            boolean onBlock = hit != null && hit.getType() == HitResult.Type.BLOCK && level != null;
-            hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : null;
-            if (!onBlock) return;
-            if (outlineRadius != radius[0]) {
-                outlineRadius = radius[0];
-                outline.clear();
-                BallShape.SPHERE.fillRegion(outline, outlineRadius);
-            }
-            outline.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.BLUE | Effects.OUTLINE);
+        if (stroke.active()) {
+            hovered = null;
+            stroke.render(rc, painter);
             return;
         }
-        Plan p = strokePlan;
-        // The plan reads the index as it goes, so a stroke that outlives the index it began with is dropped whole
-        // rather than mixing two.
-        if (level == null || level != strokeLevel || p == null || p.key.version() != BlockIndex.get().version()) {
-            reset();
-            return;
+        BlockHitResult hit = AxiomTools.tools.raycastBlock();
+        boolean onBlock = hit != null && hit.getType() == HitResult.Type.BLOCK && level != null;
+        hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : null;
+        if (!onBlock) return;
+        int r = AxiomPanel.radius(radius);
+        if (outlineRadius != r) {
+            outlineRadius = r;
+            outline.clear();
+            BallShape.SPHERE.fillRegion(outline, outlineRadius);
         }
-        if (!AxiomTools.tools.isMouseDown(USE_TOOL)) {
-            BlockRegion change = unchanged(level);
-            if (!change.isEmpty()) AxiomTools.tools.pushBlockRegionChange(change);
-            reset();
-            return;
-        }
-        pather.update((x, y, z) -> {
-            if (WeightedPick.unit(seed, x, y, z) >= strokeShare) return;
-            BlockPos pos = new BlockPos(x, y, z);
-            BlockState now = level.getBlockState(pos);
-            BlockState next = p.apply(now, strokeDirection, strokeKinds);
-            if (next == null || next == now) return;
-            stroke.addBlock(x, y, z, next);
-            queued.put(pos.asLong(), new Queued(now, next));
-        });
-        // A slow pulse, as Axiom's own brushes show a stroke that hasn't been committed yet.
-        float pulse = (float) Math.sin(rc.nanos() / 400_000_000.0);
-        stroke.render(rc, Vec3.ZERO, 0.75f + pulse * 0.25f, 0.3f - pulse * 0.2f);
-    }
-
-    /** The stroke's changes at the positions that still hold what they held when the stroke reached them. */
-    private BlockRegion unchanged(ClientLevel level) {
-        BlockRegion out = AxiomTools.regions.createBlock();
-        queued.forEach((at, q) -> {
-            BlockPos pos = BlockPos.of(at);
-            if (level.getBlockState(pos) == q.was) out.addBlock(pos.getX(), pos.getY(), pos.getZ(), q.next);
-        });
-        return out;
+        outline.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.BLUE | Effects.OUTLINE);
     }
 
     @Override
-    public void displayImguiOptions() {
-        for (Direction d : List.of(Direction.DARKER, Direction.LIGHTER)) {
-            String key = "axiom.chromastudio.shade." + d.name().toLowerCase(Locale.ROOT);
-            if (d == Direction.LIGHTER) ImGui.sameLine();
-            if (ImGui.radioButton(tr(key), direction == d)) direction = d;
-            ImGui.setItemTooltip(tr(key + ".tip"));
-        }
-        ImGui.sliderInt(tr("axiom.chromastudio.shade.step"), stepSize, 1, STEPS.length);
-        ImGui.setItemTooltip(tr("axiom.chromastudio.shade.step.tip"));
-        ImGui.sliderInt(tr("axiom.chromastudio.shade.strength"), strength, 10, 100, "%d%%");
-        ImGui.setItemTooltip(tr("axiom.chromastudio.shade.strength.tip"));
-        ImGui.sliderInt(tr("axiom.chromastudio.brush.radius"), radius, 0, MAX_RADIUS);
+    public void displayImguiOptions() { AxiomPanel.draw(this::panel); }
 
+    private void panel() {
         List<Palette> all = PaletteStore.get().all();
         Palette chosen = from();
         String any = tr("axiom.chromastudio.shade.any");
@@ -226,73 +165,77 @@ final class ShadeBrushTool implements CustomTool {
             }
             ImGui.endCombo();
         }
-        wrappedTooltip(tr("axiom.chromastudio.shade.from.tip"));
+        AxiomPanel.tip(tr("axiom.chromastudio.shade.from.tip"));
 
-        ImGui.text(tr("axiom.chromastudio.shade.kinds"));
-        ImGui.setItemTooltip(tr("axiom.chromastudio.shade.kinds.tip"));
+        for (Direction d : List.of(Direction.DARKER, Direction.LIGHTER)) {
+            String key = "axiom.chromastudio.shade." + d.name().toLowerCase(Locale.ROOT);
+            if (d == Direction.LIGHTER) AxiomPanel.sameLine();
+            if (AxiomPanel.radio(tr(key), direction == d, true, tr(key + ".tip"))) direction = d;
+        }
+        AxiomPanel.radius(radius, true, tr("axiom.chromastudio.radius.tip"));
+        AxiomPanel.slider(tr("axiom.chromastudio.shade.step"), stepSize, 1, STEPS.length, "%d", true, tr("axiom.chromastudio.shade.step.tip"));
+        AxiomPanel.slider(tr("axiom.chromastudio.shade.strength"), strength, 10, 100, "%d%%", true, tr("axiom.chromastudio.shade.strength.tip"));
+
+        AxiomPanel.text(tr("axiom.chromastudio.shade.kinds"));
+        AxiomPanel.tip(tr("axiom.chromastudio.shade.kinds.tip"));
         for (int i = 0; i < CHANGEABLE.size(); i++) {
             Kind k = CHANGEABLE.get(i);
             String label = tr("kind.chromastudio." + k.name().toLowerCase(Locale.ROOT));
             // As many to a row as the panel is wide: a box, the gap after it and the label.
             float width = ImGui.getFrameHeight() + ImGui.getStyle().getItemInnerSpacingX() + ImGui.calcTextSize(label).x;
             if (i > 0) {
-                ImGui.sameLine();
+                AxiomPanel.sameLine();
                 if (ImGui.getContentRegionAvailX() < width) ImGui.newLine();
             }
             if (ImGui.checkbox(label + "##kind", kinds.contains(k))) {
                 if (!kinds.remove(k)) kinds.add(k);
             }
         }
+        AxiomPanel.masks();
 
-        ImGui.separator();
+        AxiomPanel.separator();
+        if (stroke.refused() != null) AxiomPanel.wrapped(stroke.refused());
+        AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
         preview();
     }
 
     /** What the brush would make of the block under the cursor, or why it would leave it. */
     private void preview() {
         if (!BlockIndex.get().ready()) {
-            ImGui.textWrapped(tr("axiom.chromastudio.brush.not_ready"));
+            AxiomPanel.wrapped(tr("axiom.chromastudio.not_ready"));
             return;
         }
         Plan p = plan();
         if (p == null) {
-            ImGui.textWrapped(tr("axiom.chromastudio.shade.no_shades"));
+            AxiomPanel.wrapped(tr("axiom.chromastudio.shade.no_shades"));
             return;
         }
         BlockState here = hovered;
         if (here == null) {
-            ImGui.textWrapped(tr("axiom.chromastudio.shade.point"));
+            AxiomPanel.note(tr("axiom.chromastudio.shade.point"));
             return;
         }
         swatch("here", here);
-        ImGui.sameLine();
-        ImGui.text(here.getBlock().getName().getString());
         BlockState next = p.apply(here, direction, kinds);
         if (next == null) {
-            ImGui.textWrapped(tr(p.whyLeft(here, direction, kinds)));
+            AxiomPanel.wrapped(tr(p.whyLeft(here, direction, kinds)));
             return;
         }
-        ImGui.text(tr("axiom.chromastudio.shade.becomes"));
-        ImGui.sameLine();
+        AxiomPanel.text(tr("axiom.chromastudio.shade.becomes"));
+        AxiomPanel.sameLine();
         swatch("next", next);
-        ImGui.sameLine();
-        ImGui.text(next.getBlock().getName().getString());
     }
 
-    /** A block's colour as a small square. */
+    /** A block as a swatch and its name, on one line. */
     private static void swatch(String id, BlockState state) {
+        String name = state.getBlock().getName().getString();
         Optional<Color> c = BlockIndex.get().colourOf(state, PaletteBlocks.queryFace(), PaletteBlocks.tint());
-        if (c.isEmpty()) return;
-        ImGui.colorButton("##" + id, c.get().red() / 255f, c.get().green() / 255f, c.get().blue() / 255f, 1f, ImGuiColorEditFlags.NoTooltip);
-    }
-
-    /** A tooltip for the last item that wraps its text, as these run to a few sentences and would leave the screen. */
-    private static void wrappedTooltip(String text) {
-        if (!ImGui.beginItemTooltip()) return;
-        ImGui.pushTextWrapPos(ImGui.getFontSize() * 30f);
-        ImGui.textUnformatted(text);
-        ImGui.popTextWrapPos();
-        ImGui.endTooltip();
+        if (c.isPresent()) {
+            AxiomPanel.swatch(id, new AxiomPanel.Swatch(c.get(), name));
+            AxiomPanel.sameLine();
+        }
+        ImGui.alignTextToFramePadding();
+        AxiomPanel.text(name);
     }
 
     /** The chosen palette, while it's still in the list, or null for any building block. */
@@ -309,7 +252,9 @@ final class ShadeBrushTool implements CustomTool {
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) return null;
         Palette shades = from();
-        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[stepSize[0] - 1], PaletteBlocks.queryFace(),
+        // Held to the slider's range here too, as a number typed into it could be anything.
+        int step = stepSize[0] = Math.clamp(stepSize[0], 1, STEPS.length);
+        Plan.Key key = new Plan.Key(index.version(), shades, shades == null ? 0 : shades.entries.hashCode(), STEPS[step - 1], PaletteBlocks.queryFace(),
                 ModSettings.biomeMode + " " + ModSettings.biome);
         if (plan == null || !plan.key.equals(key)) plan = Plan.of(key, index, PaletteBlocks.tint());
         return plan.steps == null ? null : plan;

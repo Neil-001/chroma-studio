@@ -5,7 +5,6 @@ import static dev.chromastudio.client.axiom.AxiomTools.tr;
 import com.moulberry.axiomclientapi.CustomTool;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.action.Eyedropper;
-import imgui.moulberry92.ImGui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.BlockHitResult;
@@ -34,10 +33,13 @@ final class EyedropperTool implements CustomTool {
     }
 
     @Override
-    public void displayImguiOptions() {
-        ImGui.textWrapped(tr("axiom.chromastudio.eyedropper.how"));
-        if (last != null) ImGui.text(tr("axiom.chromastudio.eyedropper.last", last));
+    public void displayImguiOptions() { AxiomPanel.draw(this::panel); }
+
+    private void panel() {
         // The window opens at the next tick, after Axiom has finished drawing its panels this frame.
-        if (ImGui.button(tr("key.chromastudio.open"))) ChromaStudioClient.openWindowSoon("match");
+        if (AxiomPanel.button(tr("key.chromastudio.open"), true, tr("axiom.chromastudio.open.tip"))) ChromaStudioClient.openWindowSoon("match");
+        AxiomPanel.separator();
+        if (last != null) AxiomPanel.wrapped(tr("axiom.chromastudio.eyedropper.last", last));
+        AxiomPanel.note(tr("axiom.chromastudio.eyedropper.how"));
     }
 }
