@@ -413,6 +413,14 @@ class RecolourTest {
     }
 
     @Test
+    void looksThatWeighNothingCountAsOneEach() {
+        // Only shapes, which add nothing as their full block already counts them: the build still spans the palette.
+        List<Recolour.Look> palette = greys(new double[] {0.2, 0.5, 0.9}, new int[] {1, 1, 1});
+        List<Recolour.Look> build = greys(new double[] {0.25, 0.85}, new int[] {0, 0});
+        assertEquals(List.of(0, 2), picks(new Recolour(palette, build, Recolour.Mode.SHADING), build));
+    }
+
+    @Test
     void countsScaledAlikeGiveTheSameBlocks() {
         // A build's counts and a palette sampled from it, whose weights are the same counts scaled down.
         for (long seed = 1; seed <= 20; seed++) {

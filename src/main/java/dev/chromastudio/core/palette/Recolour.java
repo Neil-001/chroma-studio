@@ -172,15 +172,8 @@ public final class Recolour {
      */
     private int[] table(int[] eligible, Shades build) {
         int n = eligible.length, shades = build.count();
-        if (shades == 0) return new int[] {eligible[(n - 1) / 2]};
         int main = build.main();
         if (main < 0) return byPlace(eligible, build, main);
-        double[] amount = new double[shades];
-        Oklab[] colour = new Oklab[shades];
-        for (int k = 0; k < shades; k++) {
-            amount[k] = build.amount(k);
-            colour[k] = build.colour(k);
-        }
         // The blocks the palette has, each pinned to its shade, kept only while they stay in order.
         int[] pin = new int[shades];
         Arrays.fill(pin, -1);
@@ -199,21 +192,26 @@ public final class Recolour {
         // chose, so each shade keeps its place from darkest to lightest instead, the main one on the palette's main block.
         if (pin[main] < 0) return byPlace(eligible, build, main);
         Oklab m = palette[eligible[pin[main]]];
-        Oklab shift = new Oklab(m.l() - colour[main].l(), m.a() - colour[main].a(), m.b() - colour[main].b());
+        Oklab c = build.colour(main);
+        Oklab shift = new Oklab(m.l() - c.l(), m.a() - c.a(), m.b() - c.b());
 
         // best[k][j]: the least cost for shades 0..k with shade k on block j; back[k][j] the block shade k-1 took. The
         // earlier block wins a tie, and a block of its own wins a tie with sharing.
         double[][] best = new double[shades][n];
         int[][] back = new int[shades][n];
         for (int k = 0; k < shades; k++) {
-            Oklab target = new Oklab(colour[k].l() + shift.l(), colour[k].a() + shift.a(), colour[k].b() + shift.b());
-            double share = k == 0 ? 0 : Math.min(amount[k], amount[k - 1]) * (colour[k].distance(colour[k - 1]) + SHARE);
+            Oklab colour = build.colour(k);
+            Oklab target = new Oklab(colour.l() + shift.l(), colour.a() + shift.a(), colour.b() + shift.b());
+            double share = k == 0 ? 0 : Math.min(build.amount(k), build.amount(k - 1)) * (colour.distance(build.colour(k - 1)) + SHARE);
+            // A shade that adds nothing to the build, as one of only shapes, still weighs a little, so where nothing
+            // else decides, the block nearest its target wins a tie rather than the darkest.
+            double amount = Math.max(build.amount(k), Double.MIN_NORMAL);
             int least = -1;
             for (int j = 0; j < n; j++) {
                 if (k > 0 && j > 0 && best[k - 1][j - 1] < Double.POSITIVE_INFINITY && (least < 0 || best[k - 1][j - 1] < best[k - 1][least])) least = j - 1;
                 best[k][j] = Double.POSITIVE_INFINITY;
                 if (pin[k] >= 0 && j != pin[k]) continue;
-                double fit = Math.max(amount[k], Double.MIN_NORMAL) * target.distance(palette[eligible[j]]);
+                double fit = amount * target.distance(palette[eligible[j]]);
                 if (k == 0) {
                     best[k][j] = fit;
                     continue;
@@ -241,8 +239,8 @@ public final class Recolour {
     /**
      * Which of {@code eligible}, sorted from darkest to lightest, each of a build's shades takes when the build's
      * palette lacks its main material, or its weights don't say which that is, as when every block in the game may
-     * change: each shade takes the block at its place from darkest to lightest, and the main one, given or else the
-     * largest between the ends, one of the palette's main blocks.
+     * change: each shade takes the block at its place from darkest to lightest, and, while there are no more shades
+     * than blocks, the main one, given or else the largest between the ends, one of the palette's main blocks.
      */
     private int[] byPlace(int[] eligible, Shades build, int main) {
         int n = eligible.length, shades = build.count();
@@ -275,12 +273,13 @@ public final class Recolour {
     /**
      * A block for each of a build's shades, when there are no more shades than blocks, in order from darkest to
      * lightest. The build's darkest shade takes the palette's darkest block and its lightest the lightest, so the
-     * shading spans the palette, and the largest shade between them, such as a house's walls, takes the palette's
-     * heaviest block between its ends, such as a desert's sandstone. Each other shade has a place from 0 to 1, the
-     * middle of its share of the build, and each block a stretch of the same line, as long as its weight. A shade fits
-     * a block whose stretch holds its place, and less well the further outside it, by how much of the build the shade
-     * is. Of all the ways to hand out blocks in order, each shade its own, this takes the best fit. Two neighbouring
-     * shades share a block only where the main shade's pin, below, makes room for it.
+     * shading spans the palette, and the main shade, given or else the largest between them, such as a house's walls,
+     * takes the palette's heaviest block between its ends, such as a desert's sandstone. A main shade that is the
+     * build's darkest or lightest may take any block instead of the palette's end. Each other shade has a place from
+     * 0 to 1, the middle of its share of the build, and each block a stretch of the same line, as long as its weight.
+     * A shade fits a block whose stretch holds its place, and less well the further outside it, by how much of the
+     * build the shade is. Of all the ways to hand out blocks in order, each shade its own, this takes the best fit.
+     * Two neighbouring shades share a block only where the main shade's pin, below, makes room for it.
      */
     private int[] matched(int[] eligible, Shades build, int main) {
         int n = eligible.length, shades = build.count();
@@ -381,8 +380,9 @@ public final class Recolour {
     }
 
     /**
-     * The heaviest of {@code eligible} between the ends that the main shade may take, leaving all but {@code crowded}
-     * of the other shades a block of their own, and the nearest its place among equals; -1 when there's none.
+     * The heaviest of {@code eligible} that the main shade may take, between the ends unless it is an end shade
+     * itself, leaving all but {@code crowded} of the other shades a block of their own, and the nearest its place
+     * among equals; -1 when there's none.
      */
     private int heaviest(int[] eligible, double at, double[] from, double[] to, int main, int shades, int crowded) {
         int n = eligible.length, best = -1;
@@ -438,6 +438,9 @@ public final class Recolour {
             List<Look> sorted = new ArrayList<>(looks);
             sorted.sort(Comparator.comparingDouble(l -> l.colour().oklab().l()));
             int fewest = Integer.MAX_VALUE, most = 0;
+            // When no look weighs anything, as when every block of a class is a shape another block counts, each
+            // counts as one, so the build still has an amount to spread.
+            boolean weighed = looks.stream().anyMatch(l -> l.weight() > 0);
             for (Look l : sorted) {
                 Oklab c = l.colour().oklab();
                 Key key = new Key(c, l.family());
@@ -464,7 +467,7 @@ public final class Recolour {
                 shadeOf.putIfAbsent(key, shade);
                 // A weight of 0 says the look is in the build without adding to how much there is, as a stair is
                 // when its material's full block already counts it.
-                int w = Math.max(0, l.weight());
+                int w = weighed ? Math.max(0, l.weight()) : 1;
                 if (w > 0) {
                     fewest = Math.min(fewest, w);
                     most = Math.max(most, w);
