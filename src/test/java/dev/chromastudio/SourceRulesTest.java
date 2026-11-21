@@ -84,11 +84,12 @@ class SourceRulesTest {
                 "}");
         assertEquals(List.of(7, 9, 10, 12, 13), commentLines(source, false));
         assertEquals(List.of(7, 9, 12, 13), commentLines(source, true));
+        assertEquals(List.of(1, 2), commentLines(slash + slash + " a" + backslash + "u000d" + slash + star + " b " + star + slash, false));
         assertEquals(List.of(1, 3), commentLines(slash + slash + " a\rint x;\r" + slash + slash + " b\r", false));
     }
 
     private static List<Integer> commentLines(String raw, boolean javadocAllowed) {
-        String source = unescape(raw.replace("\r\n", "\n").replace('\r', '\n'));
+        String source = unescape(raw).replace("\r\n", "\n").replace('\r', '\n');
         List<Integer> starts = new ArrayList<>();
         int line = 1, lastLineComment = -1, lastLineCommentEnd = -1;
         int i = 0, n = source.length();

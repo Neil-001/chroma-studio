@@ -111,10 +111,16 @@ dependencies {
 test {
 	useJUnitPlatform()
 	systemProperty 'chroma.timing', System.getProperty('chroma.timing', 'false')
-	inputs.files(fileTree(rootDir) {
+	def sourceRules = fileTree(rootDir) {
 		include '**/*.java', '**/CLAUDE.md', '**/AGENTS.md'
-		exclude '**/build/**', 'run/**', '.gradle/**'
-	}).withPropertyName('sourceRules')
+		exclude '.git/**', '.gradle/**', 'build/**', 'run/**', '*/build/**', '*/run/**', '*/logs/**'
+	}
+	inputs.files(sourceRules).withPropertyName('sourceRules')
+	inputs.property('sourceRuleLinks', providers.provider {
+		sourceRules.matching { include '**/AGENTS.md' }.files
+				.findAll { java.nio.file.Files.isSymbolicLink(it.toPath()) }
+				.collect { rootDir.toPath().relativize(it.toPath()).toString() }.sort()
+	})
 	testLogging {
 		events "failed"
 		exceptionFormat = "full"
