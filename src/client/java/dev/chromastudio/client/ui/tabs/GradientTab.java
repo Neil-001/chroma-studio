@@ -160,7 +160,7 @@ public final class GradientTab extends PanelTab {
         StoredGradient asked = Handoff.gradientLoad;
         Handoff.gradientLoad = null;
         boolean loaded = asked != null && !restore(asked);
-        if (asked == null && result.isEmpty() && !solving && restored != null && pinKey().equals(restoredFor) && BlockIndex.get().version() == restoredBuild) show(restored);
+        if (asked == null && result.isEmpty() && !solving && restored != null && pinKey().equals(restoredFor) && BlockIndex.get().version() == restoredBuild) show(restored, restoredBuild);
         selectedStop = Math.clamp(selectedStop, 0, STOPS.size() - 1);
 
         int x = b.x() + PAD, y = b.y() + PAD;
@@ -366,13 +366,16 @@ public final class GradientTab extends PanelTab {
     }
 
     private boolean restore(StoredGradient g) {
-        apply(g);
-        return show(g);
+        while (true) {
+            int build = BlockIndex.get().version();
+            apply(g, build);
+            boolean shown = show(g, build);
+            if (BlockIndex.get().version() == build) return shown;
+        }
     }
 
-    private boolean show(StoredGradient g) {
+    private boolean show(StoredGradient g, int build) {
         restored = null;
-        int build = BlockIndex.get().version();
         if (!BlockIndex.get().ready() || g.blocks().size() != steps) return false;
         Scale scale = PaletteBlocks.scale();
         List<Step> shown = new ArrayList<>();
@@ -405,8 +408,7 @@ public final class GradientTab extends PanelTab {
         return true;
     }
 
-    private static void apply(StoredGradient g) {
-        int build = BlockIndex.get().version();
+    private static void apply(StoredGradient g, int build) {
         STOPS.clear();
         for (StoredGradient.Stop stop : g.stops()) {
             Entry e = stop.isBlock() ? PaletteBlocks.entry(stop.block()) : null;
