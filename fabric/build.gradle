@@ -113,13 +113,14 @@ test {
 	systemProperty 'chroma.timing', System.getProperty('chroma.timing', 'false')
 	def sourceRules = fileTree(rootDir) {
 		include '**/*.java', '**/CLAUDE.md', '**/AGENTS.md'
-		exclude '.git/**', '.gradle/**', 'build/**', 'run/**', '*/build/**', '*/run/**', '*/logs/**'
+		exclude '**/.git/**', '**/.gradle/**', '**/.idea/**'
+		['', 'fabric/', 'neoforge/'].each { dir -> ['bin', 'build', 'logs', 'out', 'run'].each { exclude "${dir}${it}/**" } }
 	}
 	inputs.files(sourceRules).withPropertyName('sourceRules')
 	inputs.property('sourceRuleLinks', providers.provider {
 		sourceRules.matching { include '**/AGENTS.md' }.files
 				.findAll { java.nio.file.Files.isSymbolicLink(it.toPath()) }
-				.collect { rootDir.toPath().relativize(it.toPath()).toString() }.sort()
+				.collect { "${rootDir.toPath().relativize(it.toPath())} ${java.nio.file.Files.readSymbolicLink(it.toPath())}".toString() }.sort()
 	})
 	testLogging {
 		events "failed"
