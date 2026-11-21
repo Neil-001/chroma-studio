@@ -98,6 +98,16 @@ final class AxiomMask {
         }
     }
 
+    static boolean scripted() {
+        if (SCRIPT.reason().isPresent()) return true;
+        try {
+            return (boolean) SCRIPT.handles().inUse.invoke();
+        } catch (Throwable t) {
+            SCRIPT.failed(t);
+            return true;
+        }
+    }
+
     private record Window(Object toolMasks, MethodHandle isOpen) {}
 
     static final AxiomInternals<Window> WINDOW = new AxiomInternals<>("Axiom's Tool Masks window", Component.empty(), () -> {
@@ -127,7 +137,11 @@ final class AxiomMask {
         return Optional.of(Component.translatable(INTERNALS.found() ? "axiom.chromastudio.mask.failed" : "axiom.chromastudio.mask.unknown"));
     }
 
-    static Optional<String> detail() { return Optional.ofNullable(luaError()); }
+    static Optional<String> detail() {
+        String error = luaError();
+        if (error != null) return Optional.of(error);
+        return scriptInvalid() ? Optional.of(Component.translatable("axiom.chromastudio.mask.lua_invalid.tip").getString()) : Optional.empty();
+    }
 
     private static @Nullable String luaError() {
         if (INTERNALS.reason().isPresent()) return null;

@@ -325,7 +325,7 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
         AxiomPanel.Status status = status();
         AxiomPanel.status(status);
         boolean ready = BlockIndex.get().ready();
-        String applyWhy = status != null && preview.isEmpty() ? status.text() : tr(second != null && !ready ? "axiom.chromastudio.not_ready" : "axiom.chromastudio.gradient_tool.apply.none");
+        String applyWhy = status != null && preview.isEmpty() && !(receipt > 0 && first == null) ? status.text() : tr(second != null && !ready ? "axiom.chromastudio.not_ready" : "axiom.chromastudio.gradient_tool.apply.none");
         AxiomPanel.applyCancel(!preview.isEmpty(), applyWhy, first != null, this::apply, () -> layout.later(this::cancel), () -> {
             AxiomPanel.besideButton(tr("axiom.chromastudio.gradient_tool.swap"));
             if (AxiomPanel.button(tr("axiom.chromastudio.gradient_tool.swap"), second != null,

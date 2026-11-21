@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "Die Werkzeugmasken antworten nicht mehr. Starte das Spiel neu, um die Werkzeuge zu nutzen.",
   "axiom.chromastudio.mask.lua": "Das Skript der Maske hat einen Fehler. Behebe ihn oder schließe den Fehler unter „Tool Masks“.",
   "axiom.chromastudio.mask.lua_invalid": "Das Skript der Maske lässt sich nicht kompilieren. Behebe es oder nutze den Tab „Maske“.",
+  "axiom.chromastudio.mask.lua_invalid.tip": "Der Skript-Tab von Axiom markiert den Fehler.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Beim „Streuen“ ausgelassen: %s",
   "axiom.chromastudio.brush.left_out.tip": "„Streuen“ setzt volle Blöcke: Treppen und Stufen kommen als voller Block, Blöcke, die nicht allein stehen können, werden ausgelassen.",

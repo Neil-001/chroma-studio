@@ -85,6 +85,8 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private @Nullable BlockPos maskedAsked;
     private int maskedFrame;
     private boolean masked;
+    private int receiptOf;
+    private @Nullable BlockPos receiptAt;
     private @Nullable Plan plan;
 
     @Override
@@ -139,6 +141,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         if (stroke.active()) {
             dropped = false;
             hovered = null;
+            receiptOf = 0;
             stroke.render(rc);
             return;
         }
@@ -147,11 +150,17 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : overPanel ? hovered : null;
         if (!onBlock) return;
         BlockPos at = hit.getBlockPos();
+        if (stroke.sent() != receiptOf) {
+            receiptOf = stroke.sent();
+            receiptAt = at.immutable();
+        } else if (receiptAt != null && !receiptAt.equals(at)) {
+            receiptAt = null;
+        }
         int frame = AxiomTools.frame();
         if (!at.equals(maskedAsked) || frame - maskedFrame >= MASK_FRAMES || frame < maskedFrame) {
             maskedAsked = at.immutable();
             maskedFrame = frame;
-            masked = !AxiomMask.now(level).allows(at.getX(), at.getY(), at.getZ());
+            masked = !AxiomMask.scripted() && !AxiomMask.now(level).allows(at.getX(), at.getY(), at.getZ());
         }
         int r = AxiomPanel.radius(radius);
         if (outlineRadius != r) {
@@ -226,11 +235,14 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.no_shades")).withTip(tr("axiom.chromastudio.shade.no_shades.tip")));
             return;
         }
+        int sent = stroke.sent();
+        if (sent > 0 && (receiptAt != null || sent != receiptOf)) {
+            AxiomPanel.status(AxiomPanel.Status.of(AxiomTools.count("axiom.chromastudio.changed", sent, sent)));
+            return;
+        }
         BlockState here = hovered;
         if (here == null) {
-            int sent = stroke.sent();
-            AxiomPanel.status(sent > 0 ? AxiomPanel.Status.of(AxiomTools.count("axiom.chromastudio.changed", sent, sent))
-                    : AxiomPanel.Status.of(tr("axiom.chromastudio.shade.point")));
+            AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.point")));
             return;
         }
         if (masked) {

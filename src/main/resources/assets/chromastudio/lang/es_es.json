@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "Las máscaras de herramienta dejaron de responder. Reinicia el juego para usar las herramientas.",
   "axiom.chromastudio.mask.lua": "El script de la máscara tiene un error. Corrígelo o cierra el error en Tool Masks.",
   "axiom.chromastudio.mask.lua_invalid": "El script de la máscara no compila. Corrígelo o usa la pestaña Máscara.",
+  "axiom.chromastudio.mask.lua_invalid.tip": "La pestaña de scripts de Axiom marca el error.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Excluidos de «Esparcir»: %s",
   "axiom.chromastudio.brush.left_out.tip": "«Esparcir» coloca bloques completos: las escaleras y las losas entran como su bloque completo y los bloques que no se sostienen solos se omiten.",

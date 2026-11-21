@@ -775,6 +775,7 @@
   "axiom.chromastudio.mask.failed": "The tool masks stopped answering. Restart the game to use the tools.",
   "axiom.chromastudio.mask.lua": "The mask's script has an error. Fix it, or close the error under Tool Masks.",
   "axiom.chromastudio.mask.lua_invalid": "The mask's script doesn't compile. Fix it, or use the Mask tab.",
+  "axiom.chromastudio.mask.lua_invalid.tip": "Axiom's Scripting tab marks the error.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Left out of Scatter: %s",
   "axiom.chromastudio.brush.left_out.tip": "Scatter places full blocks, so stairs and slabs go in as their full block and blocks that can't stand alone are left out.",

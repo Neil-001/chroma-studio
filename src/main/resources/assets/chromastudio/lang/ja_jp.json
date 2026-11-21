@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "ツールマスクが応答しなくなりました。ツールを使うにはゲームを再起動してください。",
   "axiom.chromastudio.mask.lua": "マスクのスクリプトにエラーがあります。直すか、Tool Masks でエラーを閉じてください。",
   "axiom.chromastudio.mask.lua_invalid": "マスクのスクリプトをコンパイルできません。直すか、マスクタブを使ってください。",
+  "axiom.chromastudio.mask.lua_invalid.tip": "Axiom のスクリプトタブにエラーが表示されます。",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "散布から除外：%s",
   "axiom.chromastudio.brush.left_out.tip": "「散布」は通常ブロックを置くため、階段やハーフブロックは通常ブロックとして入り、単体で置けないブロックは除かれます。",

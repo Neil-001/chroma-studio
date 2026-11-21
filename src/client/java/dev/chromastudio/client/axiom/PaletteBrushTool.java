@@ -225,6 +225,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     void tick() {
         stroke.tick();
         if (preview.tick()) previewFor = null;
+        current();
+        from();
     }
 
     private boolean wholeBuild() { return mode == Mode.RECOLOUR && wholeBuild; }
@@ -396,8 +398,10 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         int clicked = AxiomPanel.list(layout, "##palettes", labels, all.indexOf(shown));
         if (clicked >= 0) {
             String key = keys.get(clicked);
+            Palette p = all.get(clicked);
             layout.later(() -> {
                 paletteKey = key;
+                paletteBound.choose(p, key);
                 remember();
             });
         }
@@ -444,7 +448,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         AxiomPanel.Status status = status();
         AxiomPanel.status(status);
         if (!wholeBuild()) return;
-        AxiomPanel.applyCancel(!preview.isEmpty(), status != null && preview.isEmpty() ? status.text() : tr("axiom.chromastudio.brush.apply.none"),
+        boolean receipt = this.receipt > 0 && picked == null;
+        AxiomPanel.applyCancel(!preview.isEmpty(), status != null && preview.isEmpty() && !receipt ? status.text() : tr("axiom.chromastudio.brush.apply.none"),
                 picked != null, this::apply, () -> layout.later(this::cancel), null);
     }
 
@@ -502,7 +507,10 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             for (int i = 0; i < all.size(); i++) {
                 Palette p = all.get(i);
                 String key = keys.get(i);
-                if (ImGui.selectable(fromLabels.get(i) + "##from" + i, p == chosen)) layout.later(() -> setFrom(key));
+                if (ImGui.selectable(fromLabels.get(i) + "##from" + i, p == chosen)) layout.later(() -> {
+                    fromBound.choose(p, key);
+                    setFrom(key);
+                });
             }
             ImGui.endCombo();
         }
@@ -612,6 +620,11 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
                 }
             }
             return null;
+        }
+
+        void choose(Palette p, String chosen) {
+            key = chosen;
+            palette = p;
         }
 
         String key() { return Objects.requireNonNull(key); }

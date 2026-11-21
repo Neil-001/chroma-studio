@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "As máscaras de ferramenta pararam de responder. Reinicie o jogo para usar as ferramentas.",
   "axiom.chromastudio.mask.lua": "O script da máscara tem um erro. Corrija-o ou feche o erro em Tool Masks.",
   "axiom.chromastudio.mask.lua_invalid": "O script da máscara não compila. Corrija-o ou use a aba Máscara.",
+  "axiom.chromastudio.mask.lua_invalid.tip": "A aba de scripts do Axiom marca o erro.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "De fora de “Espalhar”: %s",
   "axiom.chromastudio.brush.left_out.tip": "“Espalhar” coloca blocos inteiros: escadas e lajes entram como o bloco inteiro e blocos que não ficam sozinhos são deixados de fora.",

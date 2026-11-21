@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "Maski narzędzi przestały odpowiadać. Uruchom grę ponownie, aby używać narzędzi.",
   "axiom.chromastudio.mask.lua": "Skrypt maski ma błąd. Popraw go lub zamknij błąd w Tool Masks.",
   "axiom.chromastudio.mask.lua_invalid": "Skrypt maski się nie kompiluje. Popraw go lub użyj karty Maska.",
+  "axiom.chromastudio.mask.lua_invalid.tip": "Zakładka skryptów w Axiom zaznacza błąd.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Pominięte w trybie „Rozsyp”: %s",
   "axiom.chromastudio.brush.left_out.tip": "„Rozsyp” stawia pełne bloki, więc schody i płyty trafiają jako pełny blok, a bloki, które nie utrzymają się same, są pomijane.",

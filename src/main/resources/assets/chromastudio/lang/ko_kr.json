@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "도구 마스크가 응답하지 않습니다. 도구를 쓰려면 게임을 다시 시작하세요.",
   "axiom.chromastudio.mask.lua": "마스크 스크립트에 오류가 있습니다. 고치거나 Tool Masks에서 오류를 닫으세요.",
   "axiom.chromastudio.mask.lua_invalid": "마스크 스크립트가 컴파일되지 않습니다. 고치거나 마스크 탭을 쓰세요.",
+  "axiom.chromastudio.mask.lua_invalid.tip": "Axiom의 스크립트 탭에 오류가 표시됩니다.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "흩뿌리기에서 제외: %s",
   "axiom.chromastudio.brush.left_out.tip": "‘흩뿌리기’는 전체 블록을 놓으므로 계단과 반 블록은 전체 블록으로 들어가고, 혼자 놓일 수 없는 블록은 제외됩니다.",

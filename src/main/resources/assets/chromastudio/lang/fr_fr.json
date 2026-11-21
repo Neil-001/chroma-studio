@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "Les masques d'outil ne répondent plus. Redémarre le jeu pour utiliser les outils.",
   "axiom.chromastudio.mask.lua": "Le script du masque contient une erreur. Corrige-le ou ferme l'erreur sous Tool Masks.",
   "axiom.chromastudio.mask.lua_invalid": "Le script du masque ne compile pas. Corrige-le ou utilise l'onglet Masque.",
+  "axiom.chromastudio.mask.lua_invalid.tip": "L'onglet des scripts d'Axiom signale l'erreur.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Exclus du mode « Disperser » : %s",
   "axiom.chromastudio.brush.left_out.tip": "« Disperser » place des blocs entiers : les escaliers et les dalles passent en bloc entier, et les blocs qui ne tiennent pas seuls sont écartés.",

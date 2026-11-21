@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "工具遮罩不再响应。重启游戏后才能使用这些工具。",
   "axiom.chromastudio.mask.lua": "遮罩的脚本有错误。请修正，或在 Tool Masks 中关闭该错误。",
   "axiom.chromastudio.mask.lua_invalid": "遮罩的脚本无法编译。请修正，或使用遮罩标签页。",
+  "axiom.chromastudio.mask.lua_invalid.tip": "Axiom 的脚本标签页会标出错误。",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "未纳入散布：%s",
   "axiom.chromastudio.brush.left_out.tip": "“散布”放置完整方块，所以楼梯和台阶会按完整方块放置，无法单独放置的方块会被排除。",

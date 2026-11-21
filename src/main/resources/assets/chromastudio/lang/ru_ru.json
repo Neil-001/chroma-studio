@@ -776,6 +776,7 @@
   "axiom.chromastudio.mask.failed": "Маски инструментов перестали отвечать. Перезапустите игру, чтобы пользоваться инструментами.",
   "axiom.chromastudio.mask.lua": "В скрипте маски ошибка. Исправьте его или закройте ошибку в Tool Masks.",
   "axiom.chromastudio.mask.lua_invalid": "Скрипт маски не компилируется. Исправьте его или используйте вкладку «Маска».",
+  "axiom.chromastudio.mask.lua_invalid.tip": "Вкладка скриптов Axiom отмечает ошибку.",
   "axiom.chromastudio.brush.weight": "%s ×%s",
   "axiom.chromastudio.brush.left_out": "Не вошли в «Разбросать»: %s",
   "axiom.chromastudio.brush.left_out.tip": "«Разбросать» ставит целые блоки: лестницы и плиты идут как целый блок, а блоки, которые не стоят сами, пропускаются.",
