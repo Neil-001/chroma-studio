@@ -33,7 +33,6 @@ class ExportCommandTest {
     @Test
     void aNameKeepsItsSpaces() {
         assertEquals(new Request("chroma1:stone/Warm  grey stone", Layout.DITHER, null, false), ExportCommand.parse("chroma1:stone/Warm  grey stone dither"));
-        // Only one layout is an option, so the word before it belongs to the name.
         assertEquals(new Request("chroma1:stone/Castle wall", Layout.STRIP, null, false), ExportCommand.parse("chroma1:stone/Castle wall strip"));
     }
 
@@ -45,7 +44,6 @@ class ExportCommandTest {
         assertInstanceOf(Component.class, ExportCommand.parse("\"chroma1:stone/Castle wall"));
     }
 
-    /** The option a problem names, or what else {@code parse} gave. */
     private static Object unknownOption(String text) {
         Object parsed = ExportCommand.parse(text);
         if (!(parsed instanceof Component c) || !(c.getContents() instanceof TranslatableContents t)) return parsed;
@@ -59,10 +57,8 @@ class ExportCommandTest {
         assertEquals("tall thin", unknownOption("chroma1:stone,andesite*3 tall thin place"));
         assertEquals("tall", unknownOption("chroma1:stone, andesite tall wall"));
         assertEquals("tall", unknownOption("\"chroma1:stone/Castle wall\" tall nbt"));
-        // A name takes any words, and entries may have spaces after their commas.
         assertEquals(new Request("chroma1:stone/Castle tall", null, Format.NBT, false), ExportCommand.parse("chroma1:stone/Castle tall nbt"));
         assertEquals(new Request("chroma1:stone, andesite", Layout.WALL, null, false), ExportCommand.parse("chroma1:stone, andesite wall"));
-        // A share string that can't be read at any length is left for the export to explain.
         assertEquals(new Request("stone tall", null, Format.NBT, false), ExportCommand.parse("stone tall nbt"));
     }
 

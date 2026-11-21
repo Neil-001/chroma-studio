@@ -7,22 +7,10 @@ import java.util.stream.Collectors;
 import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** The textures on one face of one block state, and how they combine into what the face looks like. */
 final class FaceLayers {
-    /**
-     * One texture on the face.
-     *
-     * @param sprite the texture's name, such as {@code minecraft:block/stone}
-     * @param plain the texture without tint
-     * @param tintIndex the model's tint index, or -1
-     * @param source what gives the tint, or null when the texture isn't tinted
-     * @param area how much of the face its quads cover, in blocks squared
-     */
     record Layer(String sprite, Sampled plain, int tintIndex, BlockTintSource source, double area) {}
 
-    // A quad this close to a whole face is an overlay on the ones before it.
     private static final double WHOLE = 0.99;
-    // How many tints of one face are kept. Walking between biomes makes a new one every few blocks.
     private static final int KEPT = 16;
 
     final List<Layer> layers;
@@ -38,7 +26,6 @@ final class FaceLayers {
         this.untinted = layers.size() == 1 ? layers.getFirst().plain : combine(null);
     }
 
-    /** The names and tint indexes, which is what makes two faces the same texture. */
     String key() {
         return layers.stream().map(l -> l.tintIndex < 0 ? l.sprite : l.sprite + "#" + l.tintIndex).collect(Collectors.joining("+"));
     }
@@ -47,7 +34,6 @@ final class FaceLayers {
 
     boolean animated() { return untinted.animated; }
 
-    /** The first tinted texture's colour in a context, or {@link TintContext#NO_TINT}. */
     int firstTint(TintContext tint, BlockState state) {
         for (Layer l : layers) if (l.source != null) return tint.colour(l.source, state);
         return TintContext.NO_TINT;
@@ -68,10 +54,6 @@ final class FaceLayers {
         return s;
     }
 
-    /**
-     * Several textures as one. Whole-face textures are laid over each other in the model's order, as a grass
-     * block's green fringe lies over its dirt. Otherwise they are averaged by the area each covers.
-     */
     private Sampled combine(List<Integer> tints) {
         double[][] cells = new double[Textures.SIDE * Textures.SIDE][4];
         double totalArea = layers.stream().mapToDouble(Layer::area).sum();
@@ -105,7 +87,6 @@ final class FaceLayers {
         return new Sampled(Textures.Frame.of(cells, animated));
     }
 
-    /** A channel in linear light after the tint, which the game multiplies into the stored value. */
     private static double channel(int value, int tintChannel, int tint) {
         return Textures.linear(tint == TintContext.NO_TINT ? value : (value * tintChannel + 127) / 255);
     }
