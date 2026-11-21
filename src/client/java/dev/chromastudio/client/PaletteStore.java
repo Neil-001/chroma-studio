@@ -15,6 +15,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 import net.minecraft.network.chat.Component;
 
@@ -163,6 +164,24 @@ public final class PaletteStore implements PaletteSink {
         Palette p = new Palette(unique(name));
         p.entries.addAll(entries);
         return adopt(p);
+    }
+
+    public Optional<Palette> createSaved(String name, List<PaletteEntry> entries) {
+        load();
+        Palette p = new Palette(unique(name));
+        p.entries.addAll(entries);
+        try {
+            Path file = free(p.name, null);
+            write(file, PaletteCodec.toJson(p));
+            files.put(p, file);
+        } catch (IOException e) {
+            ChromaStudioClient.LOGGER.warn("Couldn't save the palette {}", p.name, e);
+            return Optional.empty();
+        }
+        own.add(p);
+        sort();
+        selected = p;
+        return Optional.of(p);
     }
 
     /** A preset, or any palette, as a new one of the player's own. */
