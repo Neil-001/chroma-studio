@@ -25,6 +25,7 @@ The window's tabs and the state they share.
 ## Gradient
 
 - `GradientTab.restore` shows the blocks a gradient was saved with, whatever the filters and settings would choose now, and keeps them across windows until something changes. `GradientTab.show` returns false when a saved block is gone or the index isn't built, and the caller solves instead.
+- The index can publish a new build on its own thread at any moment. `GradientTab.restore` reads the version once, stores it as the build of the pins and steps it resolves, and starts again if a new build landed meanwhile, so it never keeps blocks from two builds.
 - `GradientTab.solve` adds each pinned block to the candidates even when the filters now leave it out or offer another state of it, because the player chose that exact state.
 - `GradientTab`'s quality badge measures ΔE in OKLab whatever metric chose the blocks, because `GOOD_UP_TO` and `FAIR_UP_TO` are OKLab bands.
 - `GradientTab.clicked` clears the stop press and drag first. A press whose release was lost when the window closed would otherwise turn the next drag into a stop drag.

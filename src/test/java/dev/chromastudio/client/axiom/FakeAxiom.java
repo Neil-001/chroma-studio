@@ -213,6 +213,8 @@ final class FakeAxiom {
         final List<Map<BlockPos, BlockState>> pushed = new ArrayList<>();
         Throwable failPush;
         Throwable failRelease;
+        RuntimeException failActiveBlock;
+        BlockState activeBlock = Blocks.STONE.defaultBlockState();
         BlockPos hit;
         final Set<String> overriding = new HashSet<>();
         final Map<BlockPos, BlockState> overrides = new HashMap<>();
@@ -228,7 +230,10 @@ final class FakeAxiom {
         public BlockHitResult raycastBlock() { return hit == null ? null : new BlockHitResult(Vec3.atCenterOf(hit), net.minecraft.core.Direction.UP, hit, false); }
 
         @Override
-        public BlockState getActiveBlock() { return Blocks.STONE.defaultBlockState(); }
+        public BlockState getActiveBlock() {
+            if (failActiveBlock != null) throw failActiveBlock;
+            return activeBlock;
+        }
 
         @Override
         public Vec3 getLookDirection() { return Vec3.ZERO; }

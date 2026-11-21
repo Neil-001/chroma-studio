@@ -15,6 +15,15 @@ Colour maths for the block index and the tools: colour spaces, distances, harmon
 - `Kmeans` uses a fixed seed, so one image always gives the same clusters and a cached index matches a rebuilt one.
 - `FlatNearest` must answer as `Distribution.emd` in OKLab does. Against a single colour that is the weighted mean distance to the texture's colours, which is why it can keep them as plain numbers.
 
+## Transport
+
+- `Distribution.transport` finds each augmenting path with Dijkstra over costs reduced by potentials, with exact comparisons and rounding below zero clamped to zero. A node's predecessor is always settled before it, so the walk back along a path ends even when costs differ by less than rounding. Comparing costs with a tolerance would let nearly tied costs leave a cycle in the predecessors.
+- `Distribution.transport` ships until a supply or a demand is exactly empty, and any flow above zero can be sent back, however small. An input weight can be far below rounding, and a floor on either would leave it moved the wrong way or not at all. A path's bottleneck becomes exactly zero, so each path empties something.
+- `Distribution.transport` throws after `(n + m) · n · m` paths, 1,024 for eight by eight, rather than return a plan it hasn't finished. No proof bounds the paths for real-valued weights. Four million fuzzed inputs, among them near-tied costs, tied costs and weights down to 2⁻⁶⁰, needed at most 29.
+- Before `Distribution.transport` answers, it checks the plan against its potentials as a proof of optimality. It throws if a supply or demand doesn't balance with its flows, by more than `OPTIMAL_SLACK` of the total weight, or if a reduced cost is negative, or positive on a cell with flow, by more than `OPTIMAL_SLACK` of the largest cost.
+- When `transport` throws, `Distribution.emd` passes the failure to the `whenUnsolved` handler and returns the cost of the independent plan, which spreads each colour over the other's by weight. That cost is finite and never below the true distance, so one block ranks lower instead of breaking a search, a tooltip or a gradient. Infinity would not do: `Gradient.assign` turns a row of infinite costs into NaN prices and never ends. The default handler rethrows, so tests see the failure. `ChromaStudioClient.init` installs one that logs the first failure of the session.
+- The answer is optimal for the weights as doubles hold them. A weight below half a unit in the last place of a large weight vanishes when subtracted from it, so two inputs that differ by that much can get the same answer. The error is then about a unit in the last place of the largest cost.
+
 ## Threads
 
 - `FlatNearest` never changes after it is made, so any number of threads may ask it at once.

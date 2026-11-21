@@ -14,19 +14,15 @@ TARGET = LISTING / "curseforge.html"
 CENTRE = '<p style="text-align: center;">'
 FOR_CURSEFORGE = (
     (r"https://modrinth\.com/mod/fabric-api", "https://www.curseforge.com/minecraft/mc-mods/fabric-api"),
-    # devins-badges as PNG instead of SVG, which not every place CurseForge shows a description is sure to draw.
     (r"(/devins-badges@[^\"]*)_vector\.svg", r"\1_64h.png"),
 )
 
 
 def md(text):
-    # Modrinth nests a list item indented by two spaces; Python-Markdown wants to be told so.
     return markdown.markdown(text, extensions=["tables"], output_format="html", tab_length=2).strip("\n")
 
 
 def render(text):
-    # Python-Markdown treats everything from <center> to </center> as one raw HTML block and leaves the markdown
-    # inside alone, so each block's inside is rendered on its own, with its paragraphs centred.
     parts, end = [], 0
     for block in re.finditer(r"^<center>[ \t]*\n(.*?)^</center>[ \t]*\n", text, flags=re.S | re.M):
         parts.append(md(text[end:block.start()]))
