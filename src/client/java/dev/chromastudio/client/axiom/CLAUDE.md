@@ -2,11 +2,13 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 ## Entry and failure
 
-- `AxiomBridge` and `AxiomCommand` name no Axiom or ImGui class, in signatures or bodies, because they load on NeoForge and on clients without Axiom. They enter the other classes only once `AxiomBridge.isPresent` is true. The UI asks `AxiomBridge.whyNot` and greys a control out with its answer, rather than checking the mod id.
+- `AxiomBridge` and `AxiomCommand` name no Axiom or ImGui class, in signatures or bodies, because they load on NeoForge and on clients without Axiom. The bridge's paths that need Axiom enter the other classes only once `AxiomBridge.isPresent` is true.
+- The UI asks `AxiomBridge.whyNot` and greys a control out with its answer, rather than checking the mod id. The bridge's script makers call `AxiomScripts` without that guard, as scripts are only text, and the controls that offer them check `whyNot` instead.
 - Brigadier merges literals of the same name, so `AxiomCommand` builds the whole `/chroma axiom` tree, and a new subcommand is one more child of `axiom`.
 - `AxiomBridge.register` runs after Axiom's own entrypoint, so Axiom's tool list is there to add to. `AxiomTools.register` makes every tool before it adds any, so a tool this Axiom can't make leaves none behind.
 - Axiom registers its service implementations in its own jar, so `AxiomTools.service` loads each with the API class's own class loader.
-- Any throw from Axiom, a missing class or method included, turns every Axiom feature off for the session through `AxiomBridge.fail`, with a reason the controls show, because another Axiom version would fail the same way on every call. `GuardedTool` catches every call Axiom makes into a tool and `AxiomBridge.tick` catches the tick, so nothing reaches the game loop. Code inside a tool doesn't catch Axiom's throws, and lets them reach `GuardedTool`.
+- A throw from Axiom that reaches `AxiomBridge.fail`, a missing class or method included, turns every Axiom feature off for the session, with a reason the controls show, because another Axiom version would fail the same way on every call. `GuardedTool` catches every call Axiom makes into a tool, and `AxiomBridge.tick` catches the tick, so nothing reaches the game loop.
+- Code inside a tool doesn't catch Axiom's throws, and lets them reach `GuardedTool`. A few reads handle their own failure, such as `AxiomBlock.live`, which logs it and gives no block.
 - Once the features are off, a throw while putting the tools away is dropped (`GuardedTool.failed`, `AxiomTools.shutDown`, `AxiomBridge.fail`): the first failure is already logged, and Axiom's classes may be what's missing before any tool exists.
 - Once the features are off, a tool Axiom still holds does nothing, but its panel is still drawn and says why (`GuardedTool.displayImguiOptions`, `AxiomPanel.Layout.draw`).
 
@@ -20,7 +22,9 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 - Axiom's API can't say whether its editor is open, so `AxiomEditor` asks Axiom's `EditorUI`. When that fails, the editor counts as closed and the tools send nothing (`AxiomChanges.send` refuses while `AxiomEditor.known` is false).
 - `EditorUI.isActive` answers a frame late. `EditorUI.isEnabled` changes as soon as the editor opens or closes, so code that must notice the player's own toggle reads it (`AxiomTools.editorOn`, `AxiomEditor.leaveForWindow`, `AxiomEditor.tick`).
-- While its editor is open, Axiom tells the game that the window is only the editor's 3D view, and moves the mouse and takes the first click to match. No screen can be bigger than that view, so Chroma Studio's window leaves the editor when it opens there, as Axiom's own key would. `AxiomEditor.tick` takes the player back once they're in the world again, or once a pinned window is put away. Axiom keeps its selection, tool, views and camera through this, as it does for its key.
+- While its editor is open, Axiom tells the game that the window is only the editor's 3D view, and moves the mouse and takes the first click to match. No screen can be bigger than that view, so `AxiomEditor.leaveForWindow` leaves the editor before Chroma Studio's window opens, as Axiom's own key would.
+- `AxiomEditor.tick` takes the player back into the editor once they're in the world again, or once a pinned window is put away. Axiom keeps its selection, tool, views and camera through the trip, as it does for its key.
+- When this Axiom can't say whether its editor is open, or a call to leave it throws, the window may open squeezed into the 3D view, so `AxiomEditor.leaveForWindow` warns the player: once a session when the editor can't be told, at once when the call threw.
 - `AxiomEditor.tick` goes back into the editor only when the player hasn't left the world, opened the editor themselves, gone to another mod's screen or changed game mode, so it never opens the editor for a player who wasn't in it.
 - Outside the editor, and until the editor counts as active, Axiom's API answers stone for the active block. `AxiomEditor` remembers the block while the editor is active, and `AxiomBlock` takes the remembered one, as Chroma Studio's window is never open inside the editor. When this Axiom can't say whether its editor is open, `AxiomBlock` takes the API's answer and adds a note when it's stone.
 - Outside Axiom's own drawing, the current ImGui context may be none, and asking it then crashes the game in native code, past any catch. `AxiomEditor.frame` makes the editor's context current around the one question, as Axiom does, and asks only once `isImGuiContextActive` says there is one. `pushImGuiContext` returns the context it replaced, for `popImGuiContext`.
@@ -33,11 +37,12 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - Axiom resets a tool before it says another was picked, so a stroke dropped in `reset` is the one left partway. Axiom also resets a tool when the player only switches to another for a moment, so `SamplerTool.reset` keeps the sample.
 - Axiom draws a tool every frame, but its panel only while Tool Options is open, so state the panel shows is cleared in `render`.
 - Within one frame, Axiom draws Tool Options before it calls the tool's `callConfirm`, so a click in the panel can change the choices between the preview and Apply.
-- Axiom gives the world's look (`acquireChunkRenderOverrider`) to one tool at a time, and the next tool may take it at once. Its Text tool keeps it while put away with "Clear tool when swapping" off. `acquireChunkRenderOverrider` throws when another tool holds the look, so `BuildPreview.show` shows nothing then, but it rethrows a `LinkageError` or `VirtualMachineError`, which mean this Axiom or the game is failing.
-- `BuildPreview.clear` drops the preview before it lets go of the world's look, so nothing is left to send whatever Axiom does, and counts the hold as let go only once Axiom has taken it back, so `GuardedTool`'s reset tries again when Axiom throws. `GuardedTool.PutAway.putAway` lets go of the look but keeps what the tool was used on, so the preview comes back with the tool.
+- Axiom gives the chunk render override (`acquireChunkRenderOverrider`) to one tool at a time, and the next tool may take it at once. Its Text tool keeps it while put away with "Clear tool when swapping" off. `acquireChunkRenderOverrider` throws when another tool holds the override, so `BuildPreview.show` shows nothing then, but it rethrows a `LinkageError` or `VirtualMachineError`, which mean this Axiom or the game is failing.
+- `BuildPreview.clear` drops the preview before it releases the chunk render override, so nothing is left to send whatever Axiom does, and counts the override as released only once Axiom has taken it back, so `GuardedTool`'s reset tries again when Axiom throws. `GuardedTool.PutAway.putAway` releases the override but keeps what the tool was used on, so the preview comes back with the tool.
 - Axiom maps button 1 of `ToolService.isMouseDown` to its own "use tool" key, so `BrushStroke.USE_TOOL` follows a player who rebinds that key.
 - Axiom keeps a brush ball's radius for the whole stroke, so a stroke whose Radius was changed after it started has nothing to paint with at the check (`painterNow`).
 - Axiom's `BooleanRegion` can't drop a block, so `SamplerTool` rebuilds its outline from the sample when a block leaves it.
+- `BrushStroke` shows a stroke not yet sent with a slow pulse, as Axiom's own brushes show theirs.
 
 ## Sending changes
 
@@ -52,12 +57,12 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 ## Tool masks
 
 - Axiom's API doesn't apply the tool masks to a tool's changes, so the tools ask Axiom's `MaskManager.getDestMask` for the destination mask, as Axiom's Script Brush does: the mask set under Tool Masks, kept within the selection when there is one, or every block when neither is set.
-- Axiom applies the masks only while its Tool Masks window is open, docked or minimised. Closed, every block passes, or the selection's when there is one. The tools follow Axiom in that, as its own brushes do, and the panels say which it is (`AxiomMask.windowClosed`). Opening or closing the window between a stroke and its sending changes the plan, so nothing is sent.
+- Axiom applies the masks only while its Tool Masks window is open, docked or minimised. Closed, every block passes, or the selection's when there is one. The tools follow Axiom in that, as its own brushes do, and the panels say which it is (`AxiomMask.windowClosed`). When opening or closing the window between a stroke and its sending changes the plan, nothing is sent.
 - Ask the masks on the client thread, as Axiom does.
 - Masks that can't be read, or a call into them that fails, let no block through, and the tools change nothing until the game restarts. No version of Axiom counts as having no masks.
 - A mask whose Lua script fails answers no from then on. Axiom says so only in `ToolMaskWindow.luaExecutionError`, which stays until a fresh context compiles the script or the player closes the message. Axiom makes a new message object for each failure, so `AxiomMask.now` compares the error by identity to tell an error its own answer raised from one left earlier.
 - A test that saw its own Lua error stays failed for good, because the check's fresh context compiles the script and so clears Axiom's error. A stroke or preview whose masks failed at any point is never sent or shown (`BrushStroke.render`, `GradientTool.preview`, `PaletteBrushTool.makePreview`).
-- With the Scripting tab in use and a script that doesn't compile, Axiom keeps no script and applies no mask at all, quietly, so `AxiomMask.scriptInvalid` stops the tools until it's fixed. Before the tab has compiled anything, `lastLuaCompile` is 0 and there's no script either, which isn't an error.
+- With the Scripting tab in use and a script that doesn't compile, Axiom keeps no script and applies no mask at all, quietly. So while the masks apply, or the window's state can't be told, `AxiomMask.scriptInvalid` stops the tools until the script is fixed. Before the tab has compiled anything, `lastLuaCompile` is 0 and there's no script either, which isn't an error.
 - Each `AxiomMask.Test` has a context of its own, as each of Axiom's brushes does, and a context compiles the script on first use. Axiom gives each context a random seed for a script's `getSimplexNoise` and `getVoronoiEdgeNoise`, so a script that gives its noise no seed answers differently each time. Reusing one context would run a script edited since as it was, so the tools tell the player to seed it.
 - A test keeps each position's first answer, because a script may answer differently each time it's asked, and one stroke or preview must give a position one answer, or a door could be let through by halves.
 
@@ -86,15 +91,17 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - The index keeps a glass and its pane in separate materials, as their ids differ by more than a shape's suffix, so `GradientShapes.glassPair` pairs them by id. The index counts iron bars as panes, and they never take part.
 - `GradientShapes` never borrows a shape from copper that isn't waxed, which would weather to another colour after it was placed. It caches what a step does by the step's state, not its block, as two states of one block, such as a lit and an unlit lamp, differ in colour.
 - `GradientTool.ON_TAB` is the empty string, which no saved gradient's name can be, as names are never blank.
+- Swap ends sets `GradientTool.reversed` and leaves the ends and `seed` where they are. `GradientLine.between` anchors a straightened line on the first end, and Like the first block keeps to the seed's material, so swapping the ends could move the line or change the material, where Swap ends should only turn the steps round.
 - Blend starts at 75, which fades steps into each other on a tower a few blocks a step as on a long wall, while each step still shows pure along its middle.
 - The Gradient tab works its gradient out only once it has been shown, so until then the gradient tool's panel offers to open it.
 
 ## Scripts
 
-- Each script works out its blocks with the code its tool uses (`RecolourPlan`, `ScatterBlocks`, `GradientTool.paintable`), so it changes and leaves the same blocks. The gradient script, like the tool, paints only full cubes with nothing inside, as a chain or a slab would leave holes in a wall and a chest would come empty. A script names blocks as the game writes them, and copies properties by value name, as Axiom's `getBlockProperty` gives them and `withBlockProperty` sets them.
+- Each script works out its blocks with the code its tool uses (`RecolourPlan`, `ScatterBlocks`, `GradientTool.paintable`), so it never changes a block its tool would leave alone. A script names blocks as the game writes them, and copies properties by value name, as Axiom's `getBlockProperty` gives them and `withBlockProperty` sets them.
+- The gradient script paints only full cubes with nothing inside, as a chain or a slab would leave holes in a wall and a chest would come empty. Where the gradient tool gives a stair or slab its step's shape, the script can't reshape a block and leaves it alone. The script fills air only with its Paint air box ticked, which the tool never does.
 - What a script leaves alone rests only on block names and properties. A tag is a world's data, which its data packs may change, and a script may run in another world than the one it was made in.
 - Servers limit how long a script a player without import rights may run. So a script keeps whole blocks, and where a property belongs only to blocks the tool leaves in every state, such as a turtle egg's `hatch`, it asks for that property in place of the blocks' names when that's shorter.
-- Axiom's `isSolid` asks about a block's default state, whatever state stands there.
+- Axiom's `isSolid`, given the block id `getBlock` returns, asks about that block's default state, whatever state stands there.
 
 ## Hotbars
 
@@ -116,7 +123,10 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 - ImGui reads the text of its tooltips and of `text` and `textWrapped` as a printf format, so a `%` in a palette's or block's name would show as garbage. `AxiomPanel` sends all text through `textUnformatted`. A control's own label is drawn as it is.
 - ImGui wraps text only at spaces, which Chinese and Japanese don't have between words, so `AxiomPanel` breaks their text into lines with `LineBreaks`.
-- Axiom's panel shows no scrollbar, so `AxiomPanel.Layout` scrolls a tool's options in their own area and holds a bottom part to the panel's bottom edge. The bottom part has the first claim on the space. It holds the masks line, then what the player must read before acting, then the buttons, with the lines above the buttons so a button's tooltip never covers them. A line that comes and goes with a mode or a result sits below every control, so no control moves.
+- `AxiomPanel.wrapped` draws broken lines as one ImGui group, so a tooltip set after it belongs to all of them.
+- An ImGui label is also its id, and palettes may share a name, as a player's palette may share a preset's, so `AxiomPanel.list` adds each row's place to its id. A selectable grows to fit its label, so `list` measures a label against the list's width to know when to show it whole in a tooltip.
+- Axiom's panel shows no scrollbar, so `AxiomPanel.Layout` scrolls a tool's options in their own area and holds a bottom part to the panel's bottom edge. The bottom part has the first claim on the space, and holds what the player must read before acting, the masks line first in the tools that change blocks, then the buttons.
+- In the options part, a line that comes and goes with a mode or a result sits below every control, so no control moves. In the bottom part, the lines sit above the buttons, so a button's tooltip never covers them.
 - ImGui lays a window out top to bottom, so `AxiomPanel.Layout` keeps the bottom part's height from the last frame. In a panel too short for both parts, the two scroll together.
 - `AxiomPanel` closes an ImGui child in `finally`, as ImGui left with an open child fails on Axiom's next call into it.
 - A tool reads a slider's value through `AxiomPanel.held` or `AxiomPanel.radius`, as the panel may not have been drawn since the value was set, and a value typed in or remembered could be anything.
@@ -141,4 +151,3 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 ## Palette brush
 
 - A From palette that's no longer there, after a delete or a rename, makes the brush change nothing until the player chooses again, rather than every block but the ground.
-- `PaletteBrushTool.keys` names a preset by its id and the player's own palette by its file and name together. No two palettes share a file, and a file freed by a rename can only be taken by a palette of another name, so a key never comes to mean a different palette.
