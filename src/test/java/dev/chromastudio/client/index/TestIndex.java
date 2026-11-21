@@ -48,6 +48,11 @@ public final class TestIndex {
         resources = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, List.of(vanilla()));
     }
 
+    public static ResourceManager resources() {
+        loadGame();
+        return resources;
+    }
+
     private static PackResources vanilla() {
         return new VanillaPackResourcesBuilder().exposeNamespace("minecraft").pushJarResources()
                 .build(new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty())).fullResources();

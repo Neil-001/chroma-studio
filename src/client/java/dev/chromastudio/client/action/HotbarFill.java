@@ -39,7 +39,8 @@ import net.minecraft.world.item.component.ItemContainerContents;
 public final class HotbarFill {
     private HotbarFill() {}
 
-    private static final int HOTBAR = 9, INVENTORY = 36;
+    public static final int HOTBAR = 9;
+    private static final int INVENTORY = 36;
     /** The off hand, as the inventory menu numbers its slots. */
     private static final int MENU_OFFHAND = 45;
 
@@ -141,17 +142,13 @@ public final class HotbarFill {
         LocalPlayer player = Minecraft.getInstance().player;
         Inventory inventory = player.getInventory();
         List<ItemStack> stacks = new ArrayList<>();
-        // Each block's place in the palette, from 1, which is how the player finds it there.
-        List<Integer> places = new ArrayList<>();
-        for (int i = 0; i < entries.size(); i++) {
-            ItemStack stack = PaletteBlocks.icon(entries.get(i));
-            if (stack.isEmpty()) continue;
-            stacks.add(stack);
-            places.add(i + 1);
+        for (PaletteEntry e : entries) {
+            ItemStack stack = PaletteBlocks.icon(e);
+            if (!stack.isEmpty()) stacks.add(stack);
         }
         if (stacks.isEmpty()) return Component.translatable("hotbar.chromastudio.nothing");
         if (stacks.size() > HOTBAR && axiom != intoAxiom) return Component.translatable("hotbar.chromastudio.axiom.moved");
-        if (stacks.size() > HOTBAR && axiom) return fillAxiom(stacks, places);
+        if (stacks.size() > HOTBAR && axiom) return fillAxiom(stacks);
         int hotbar = heldHotbar();
 
         // The inventory as it will be once the commands sent so far have run, which is what /give goes by.
@@ -218,7 +215,7 @@ public final class HotbarFill {
      * Puts the first nine blocks in the hotbar and the rest, nine to each, in the Axiom hotbars after the one held,
      * replacing what was there, all or nothing. Axiom saves those hotbars itself a few seconds later.
      */
-    private static Component fillAxiom(List<ItemStack> stacks, List<Integer> places) {
+    private static Component fillAxiom(List<ItemStack> stacks) {
         LocalPlayer player = Minecraft.getInstance().player;
         // Checked before anything is written, so a block the world has turned off never leaves a fill half done.
         for (ItemStack stack : stacks)
@@ -247,24 +244,7 @@ public final class HotbarFill {
         }
         rememberAxiom(result.undo());
         Hud.strip(stacks.subList(0, HOTBAR), Component.translatable("hotbar.chromastudio.mode.axiom", axiomHotbarNames(active, rest)));
-        // Which blocks went to which hotbar, by their place in the palette, so the player knows where to look for one.
-        // Past two hotbars a list would crowd out the rest of the message, so it names the run of hotbars instead.
-        int hotbars = HotbarPlan.axiomHotbars(rest);
-        MutableComponent parts = Component.empty();
-        // Only when the blocks are one run of the palette, as a skipped entry such as water would shift the boundaries.
-        if (hotbars > 2 && places.getLast() - places.get(HOTBAR) == rest - 1) {
-            parts.append(Component.translatable("hotbar.chromastudio.rest.axiom.blocks", places.get(HOTBAR), places.getLast(), axiomHotbarNames(active, rest)));
-        } else {
-            for (int h = 0; h < hotbars; h++) {
-                int from = HOTBAR + 9 * h, to = Math.min(HOTBAR + rest, from + 9) - 1;
-                Component hotbar = Component.translatable("hotbar.chromastudio.axiom.hotbar", active + h + 2);
-                if (h > 0) parts.append(", ");
-                parts.append(from == to ? Component.translatable("hotbar.chromastudio.rest.axiom.block", places.get(from), hotbar)
-                        : Component.translatable("hotbar.chromastudio.rest.axiom.blocks", places.get(from), places.get(to), hotbar));
-            }
-        }
-        return Component.translatable("hotbar.chromastudio.filled", HOTBAR).append(" ")
-                .append(Component.translatable("hotbar.chromastudio.rest.axiom", rest, parts, AxiomBridge.hotbarKey()));
+        return Component.translatable("hotbar.chromastudio.filled.axiom", axiomHotbarNames(active, rest), AxiomBridge.hotbarKey());
     }
 
     /**

@@ -11,6 +11,7 @@ import dev.chromastudio.core.palette.Recolour;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
@@ -141,7 +142,7 @@ public final class AxiomBridge {
 
     public static Component hotbarKey() { return AxiomHotbars.switchKey(); }
 
-    public record Script(String text, Component summary) {}
+    public record Script(String text, Component scope, Component size, @Nullable Component warning, @Nullable Component nextStep, List<Component> details) {}
 
     public static final class Refused extends Exception {
         private static final long serialVersionUID = 1L;
@@ -161,8 +162,8 @@ public final class AxiomBridge {
 
     public static Script scatterScript(Palette p) throws Refused { return AxiomScripts.scatter(p); }
 
-    public static Script gradientScript(String name, List<PaletteEntry> steps, AxiomScript.Axis axis) throws Refused {
-        return AxiomScripts.gradient(name, steps, axis);
+    public static Script gradientScript(String name, List<PaletteEntry> steps, AxiomScript.Axis axis, BlockPos at) throws Refused {
+        return AxiomScripts.gradient(name, steps, axis, at);
     }
 
     public static String fromName(Palette p) {

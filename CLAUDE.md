@@ -50,6 +50,9 @@ Most classes say what they do in a comment at the top, and their fields and meth
 - Take colours from `Theme`, never a hex literal, apart from a colour that is data, such as a swatch, and the black and white marks drawn over one. The game's own tooltips and text fields stay dark on every theme, so text in them uses `Theme.TIP_*` and `Theme.FIELD_BAD`. Centre text with `Widgets.centred`.
 - A tool's panel in Axiom's editor is drawn by ImGui, not with `Widgets`. Draw it through `AxiomPanel`, which keeps these conventions there.
 - Use plain, sentence case UI copy without jargon.
+- A tooltip says only what a control's label and place don't: an icon's name, a greyed control's reason and what turns it on, or what a button does that the player can't see, such as changing the world, in one sentence.
+- A field's tooltip names its value and range, such as "Hex, like #FF8800". A swatch or list entry shows its datum. Never explain ordinary interface behaviour.
+- A status line says what happened and what to do next. A count line states the count. Each thing has one name across the mod.
 - Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
 - Visual fixes must preserve other behaviour. Prove it, for example by comparing pixels.
 - Test new core logic. Change a test's reference numbers only on purpose.
