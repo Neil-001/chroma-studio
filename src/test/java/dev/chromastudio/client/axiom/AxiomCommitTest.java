@@ -572,6 +572,82 @@ class AxiomCommitTest {
         assertNull(ToolMaskWindow.luaExecutionError);
     }
 
+    @Test
+    void aLuaErrorLeftWhileTheToolMasksWindowIsClosedDoesntStopAStroke() throws Exception {
+        axiom.level.put(0, 0, 0, STONE);
+        ToolMaskWindow.luaExecutionError = "attempt to index a nil value";
+        EditorWindowType.TOOL_MASKS.open = false;
+        assertTrue(AxiomMask.unavailable().isEmpty());
+        BrushStroke stroke = bricks();
+        frame(stroke, true, at(0));
+        frame(stroke, false);
+        assertEquals(List.of(Map.of(at(0), BRICKS)), axiom.tools.pushed);
+        assertNull(stroke.refused());
+    }
+
+    @Test
+    void aLuaErrorLeftStillStopsAStrokeWhenTheToolMasksWindowCantBeTold() throws Exception {
+        axiom.level.put(0, 0, 0, STONE);
+        ToolMaskWindow.luaExecutionError = "attempt to index a nil value";
+        EditorWindowType.TOOL_MASKS.open = false;
+        AxiomMask.WINDOW.failed(new IllegalStateException("window"));
+        assertEquals(java.util.Optional.empty(), AxiomMask.windowClosed());
+        BrushStroke stroke = bricks();
+        frame(stroke, true, at(0));
+        frame(stroke, false);
+        assertEquals(List.of(), axiom.tools.pushed);
+        assertNotNull(stroke.refused());
+    }
+
+    @Test
+    void reopeningTheToolMasksWindowOverALuaErrorLeftRefusesAPreviewMadeWhileItWasClosed() {
+        axiom.level.put(0, 0, 0, STONE);
+        ToolMaskWindow.luaExecutionError = "attempt to index a nil value";
+        EditorWindowType.TOOL_MASKS.open = false;
+        BuildPreview preview = preview(row());
+        assertEquals(1, preview.count());
+        EditorWindowType.TOOL_MASKS.open = true;
+        assertEquals(FakeAxiom.refusal("mask_failed"), preview.apply().orElse(null));
+        assertEquals(List.of(), axiom.tools.pushed);
+    }
+
+    private GradientTool gradientAcrossAStripedWall() {
+        axiom.client();
+        BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState(), gravel = Blocks.GRAVEL.defaultBlockState();
+        for (int x = -1; x <= 7; x++) for (int z = -1; z <= 1; z++) axiom.level.put(x, -1, z, gravel);
+        for (int x = 0; x <= 6; x++) for (int y = 0; y <= 1; y++) axiom.level.put(x, y, 0, x == 3 ? tuff : BRICKS);
+        saveGradient("Commit test", "minecraft:spruce_planks", "minecraft:oak_planks");
+        GradientTool tool = new GradientTool();
+        FakeAxiom.set(GradientTool.class, tool, "picked", "Commit test");
+        axiom.tools.hit = at(0);
+        assertTrue(tool.callUseTool());
+        axiom.tools.hit = at(6);
+        assertTrue(tool.callUseTool());
+        axiom.frame++;
+        tool.render(axiom.rc);
+        return tool;
+    }
+
+    @Test
+    void onlyBlocksLikeTheFirstReachesPastAStripeOfAnotherMaterialAndLeavesTheStripeAndGround() {
+        GradientTool tool = gradientAcrossAStripedWall();
+        Map<BlockPos, BlockState> shown = new LinkedHashMap<>(axiom.tools.overrides);
+        assertEquals(TestIndex.block("oak_planks").defaultBlockState(), shown.get(at(6)));
+        assertEquals(12, shown.size());
+        assertTrue(shown.keySet().stream().noneMatch(p -> p.getX() == 3 || p.getY() < 0));
+        assertTrue(tool.callConfirm());
+        assertEquals(List.of(shown), axiom.tools.pushed);
+    }
+
+    @Test
+    void aStripeBlockChangedAfterTheGradientsPreviewRefusesApply() {
+        GradientTool tool = gradientAcrossAStripedWall();
+        axiom.level.put(3, 1, 0, Blocks.ANDESITE.defaultBlockState());
+        assertFalse(tool.callConfirm());
+        assertEquals(List.of(), axiom.tools.pushed);
+        assertEquals(FakeAxiom.refusal("changed"), FakeAxiom.get(GradientTool.class, tool, "refused"));
+    }
+
     private static final class PreviewTool implements CustomTool, GuardedTool.PutAway {
         final BuildPreview preview = new BuildPreview("test");
 

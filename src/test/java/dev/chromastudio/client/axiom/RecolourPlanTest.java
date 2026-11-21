@@ -66,6 +66,7 @@ class RecolourPlanTest {
         blocks.put("oak_door", "block/oak_door_bottom");
         blocks.put("spruce_planks", "block/spruce_planks");
         blocks.put("spruce_door", "block/spruce_door_bottom");
+        blocks.put("bedrock", "block/bedrock");
         TestIndex.index(blocks);
     }
 
@@ -163,6 +164,17 @@ class RecolourPlanTest {
         assertNull(from.apply(TestIndex.block("cobblestone").defaultBlockState()));
         assertNotNull(from.apply(TestIndex.block("stone_brick_stairs").defaultBlockState()));
         assertEquals(4, from.size(), from.rows().toString());
+    }
+
+    @Test
+    void bedrockIsTheGroundSoOnlyAFromPaletteChangesIt() throws Exception {
+        BlockState bedrock = TestIndex.block("bedrock").defaultBlockState();
+        for (Recolour.Mode mode : Recolour.Mode.values()) {
+            RecolourPlan plan = plan(mode);
+            assertNull(plan.apply(bedrock), mode.toString());
+            assertTrue(plan.rows().stream().noneMatch(r -> r.from().equals("minecraft:bedrock")), mode.toString());
+        }
+        assertNotNull(RecolourPlan.of(desert(), palette("Floor", "bedrock"), Recolour.Mode.SHADING, Face.NORTH, TintContext.none()).apply(bedrock));
     }
 
     @Test

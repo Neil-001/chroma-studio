@@ -203,7 +203,7 @@ public final class AxiomScript {
         s.append("end\n\n");
         s.append("""
                 local b = getBlock(x, y, z)
-                if b == blocks.air then
+                if b == blocks.air or b == blocks.cave_air or b == blocks.void_air then
                 \tif not paint_air then return nil end
                 elseif chroma_kept[b] or not isSolid(b) then
                 \treturn nil
