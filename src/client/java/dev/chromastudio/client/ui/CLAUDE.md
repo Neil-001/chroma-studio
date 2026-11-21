@@ -21,6 +21,7 @@ The window, its tabs and widgets, the HUD and the settings screen.
 - `ChromaScreen` sends a tab the release and the drags of a click the tab took, even outside the tab's area.
 - `Tab.closed` also runs when the window only makes way for the settings screen, and `Tab.init` follows when the settings screen hands back.
 - A `Handoff` field's consumer sets it back to null after acting on it, so a handoff is applied once. `Handoff.exploreHighlight` is the exception: the Explore tab keeps it until a new list arrives or the player clears it.
+- The game builds an item's tooltip every frame it is shown. `Tooltips.add` keeps one block's failure out of the tooltip so it can't break every frame, and warns once per block so the failure is still seen.
 
 ## Widgets and settings
 
