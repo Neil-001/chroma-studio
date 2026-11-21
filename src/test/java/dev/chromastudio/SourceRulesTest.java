@@ -24,8 +24,7 @@ class SourceRulesTest {
     private static final Map<String, Integer> ALLOWED = Map.of(
             "src/client/java/dev/chromastudio/api/ChromaStudioApi.java", 2,
             "src/client/java/dev/chromastudio/client/axiom/SamplerTool.java", 1,
-            "src/client/java/dev/chromastudio/client/ui/tabs/PaletteDialogs.java", 1,
-            "src/main/java/dev/chromastudio/core/color/Distribution.java", 1);
+            "src/client/java/dev/chromastudio/client/ui/tabs/PaletteDialogs.java", 1);
 
     @Test
     void everyClaudeMdHasAnAgentsMdLinkBesideIt() throws IOException {

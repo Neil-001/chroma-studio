@@ -10,6 +10,8 @@ import dev.chromastudio.client.ui.tabs.ExploreTab;
 import dev.chromastudio.client.ui.tabs.GradientTab;
 import dev.chromastudio.client.ui.tabs.MatchTab;
 import dev.chromastudio.client.ui.tabs.PalettesTab;
+import dev.chromastudio.core.color.Distribution;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +26,10 @@ public final class ChromaStudioClient {
 
     public static void init(ClientPlatform loader) {
         platform = loader;
+        AtomicBoolean told = new AtomicBoolean();
+        Distribution.whenUnsolved(e -> {
+            if (told.compareAndSet(false, true)) LOGGER.warn("A colour distance couldn't be worked out exactly, so a rougher one ranks the block", e);
+        });
         ModSettings.load();
         Keys.create();
         ExportCommand.register();
