@@ -57,6 +57,6 @@ The window's tabs and the state they share.
 - The GUI's y runs down the screen, so `DioramaPip.renderToTexture` turns the wall 180 degrees about z before tilting it.
 - `DioramaPip.lookThroughALens` replaces the flat projection the game has just set with a perspective one. Near and far are swapped because the game's depth runs from far to near.
 - `DioramaPip.FIT` is 0.85 because perspective draws a turned wall's near end bigger than its middle, so at full size the wall would run out of the picture.
-- The game starts a tooltip 12 pixels right of the cursor, `ExploreTab.TIP_OFFSET`, and moves it to the cursor's left near the screen's right edge. `ExploreTab.render` puts the block icon up and to the left of the cursor and changes sides with the tooltip, so the tooltip never covers it.
+- The game starts a tooltip 12 pixels right of the cursor, `ExploreTab.TIP_OFFSET`, and moves it to the cursor's left near the screen's right edge. `ExploreTab.render` puts the block icon up and to the left of the cursor, clear of a tooltip on the right. It moves the icon to the right when the cursor's x plus `TIP_OFFSET`, the tooltip's width and `TIP_MARGIN` passes the screen's width, which is 4 pixels sooner than the game moves the tooltip.
 - `Thumbnails.draw` paints every pixel at or above `TextureStats.ALPHA_CUTOFF` as solid. Glass drawn at its own alpha over the dark list looks far darker than the colour it is matched by.
 - The game has no greyed-out item drawing, so `ToolButton` lays a veil over an inactive button's icon.
