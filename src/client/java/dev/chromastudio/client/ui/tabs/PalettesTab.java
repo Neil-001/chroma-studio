@@ -23,6 +23,7 @@ import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.export.Layout;
+import dev.chromastudio.core.palette.BuildSample;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
@@ -294,7 +295,7 @@ public final class PalettesTab extends PanelTab {
             int index = i, y = entriesArea.y() + i * ENTRY_ROW;
             PaletteEntry e = p.entries.get(i);
             rows.add(new EntryCell(x, y, spinX - 3 - x, ENTRY_ROW - 1, e));
-            EditBox weight = rows.spin(spinX, y + 1, WEIGHT_W, e.weight(), 1, 1, 999, true, v -> {
+            EditBox weight = rows.spin(spinX, y + 1, WEIGHT_W, e.weight(), 1, 1, BuildSample.MAX_WEIGHT, true, v -> {
                 p.entries.set(index, p.entries.get(index).withWeight((int) v));
                 touch();
             });

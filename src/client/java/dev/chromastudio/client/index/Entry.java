@@ -128,12 +128,6 @@ public final class Entry {
         return null;
     }
 
-    String textureKey() {
-        StringBuilder key = new StringBuilder();
-        for (FaceLayers f : faces) key.append(f.key()).append('|');
-        return key.toString();
-    }
-
     @Override
     public String toString() { return properties.isEmpty() ? id : id + "[" + properties + "]"; }
 }

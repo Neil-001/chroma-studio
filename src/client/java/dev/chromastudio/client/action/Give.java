@@ -54,7 +54,7 @@ public final class Give {
         return Optional.empty();
     }
 
-    private static String commandItem(ItemStack stack) {
+    static String commandItem(ItemStack stack) {
         String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         Minecraft mc = Minecraft.getInstance();
         if (stack.getComponentsPatch().isEmpty() || mc.level == null) return id;
