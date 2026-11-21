@@ -235,7 +235,7 @@ final class SamplerTool implements CustomTool {
             try {
                 ImGui.tableSetupColumn("##remove", ImGuiTableColumnFlags.WidthFixed, ImGui.calcTextSizeX(remove) + ImGui.getStyle().getFramePaddingX() * 2);
                 ImGui.tableSetupColumn("##swatch", ImGuiTableColumnFlags.WidthFixed, ImGui.getFrameHeight());
-                ImGui.tableSetupColumn("##name", ImGuiTableColumnFlags.WidthStretch, 1);
+                ImGui.tableSetupColumn("##name", ImGuiTableColumnFlags.WidthStretch, 1f);
                 ImGui.tableSetupColumn("##count", ImGuiTableColumnFlags.WidthFixed, countWidth);
                 ImGui.tableSetupColumn("##share", ImGuiTableColumnFlags.WidthFixed, shareWidth);
                 for (int i = 0; i < rows.size(); i++) row(rows.get(i), i, total, remove);
