@@ -14,17 +14,12 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
-/**
- * Picks a colour as the Match tab's target is picked: a square with a hue bar, and hex, RGB and HSL fields that all
- * follow each other. Every change goes to {@code onChange} straight away, so what the colour is for shows it at once.
- */
 final class ColourDialog extends Popup {
     private static final int LABEL_W = 26, ROW = Widgets.H + 2;
 
     private final ColourPicker picker;
     private final Consumer<Color> onChange;
     private EditBox hex, rgb, hsl;
-    /** Set while the dialog writes the fields itself, so it doesn't read them back: a rounded colour taken again would drift. */
     private boolean filling;
 
     ColourDialog(Component title, Color start, Consumer<Color> onChange, Runnable onClose) {
@@ -56,7 +51,6 @@ final class ColourDialog extends Popup {
     }
 
 
-    /** A field's text changed. Text that isn't a colour shows red and changes nothing. */
     private void typed(EditBox field, String text, Predicate<String> take) {
         if (filling || field == null) return;
         boolean valid = take.test(text);
@@ -64,7 +58,6 @@ final class ColourDialog extends Popup {
         if (valid) picked(field);
     }
 
-    /** The colour changed. The fields follow, but for the one being typed in. */
     private void picked(EditBox except) {
         TargetModel model = picker.model;
         filling = true;
@@ -80,7 +73,6 @@ final class ColourDialog extends Popup {
     protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
         Font font = Minecraft.getInstance().font;
         picker.render(g, font, 1);
-        // Drawn here rather than as controls, because the colour they're drawn in changes as the player picks.
         String[] names = {"hex", "rgb", "hsl"};
         for (int i = 0; i < names.length; i++)
             g.text(font, Component.translatable("settings.chromastudio.colour." + names[i]), hex.getX() - LABEL_W, in.y() + i * ROW + 4, Theme.SOFT, false);

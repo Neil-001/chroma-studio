@@ -17,7 +17,6 @@ class FlowTest {
 
     @Test
     void oneThatWouldPassTheEdgeStartsTheNextRow() {
-        // 3 + 40 + 2 + 50 + 2 = 97, and 97 + 30 passes 120.
         Flow.Spot[] spots = Flow.place(new int[] {40, 50, 30, 20, 80}, 3, 120, 2);
         assertArrayEquals(new Flow.Spot[] {at(3, 0), at(45, 0), at(3, 1), at(35, 1), at(3, 2)}, spots);
         assertEquals(3, Flow.rows(spots));

@@ -32,7 +32,6 @@ class PanelTabTest {
         }
     }
 
-    /** The window asks the tab first when Escape is pressed, and closes only when the tab had nothing open. */
     @Test
     void escapeClosesAnOpenDialogBeforeTheWindow() {
         Plain tab = new Plain();
@@ -44,7 +43,6 @@ class PanelTabTest {
         assertFalse(tab.showing());
         assertFalse(tab.dismiss());
 
-        // A panel that took the tab's place goes after the dialog over it, and before the window.
         tab.panel = true;
         tab.show();
         assertTrue(tab.dismiss());

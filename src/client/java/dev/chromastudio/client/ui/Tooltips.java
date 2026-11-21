@@ -22,13 +22,11 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 
-/** The mod's lines in item tooltips. Each loader calls {@link #append} from its item tooltip event. */
 public final class Tooltips {
     private Tooltips() {}
 
     private static final int GREY = 0xA8A8A8;
 
-    /** Adds the mod's lines for {@code stack} to {@code lines}, when the tooltip setting says to show them now. */
     public static void append(ItemStack stack, List<Component> lines) {
         if (!wanted() || !(stack.getItem() instanceof BlockItem item)) return;
         BlockIndex index = BlockIndex.get();
@@ -42,7 +40,6 @@ public final class Tooltips {
         }
     }
 
-    /** A block's lines, each behind its setting: the swatch and hex, the kind and texture badge, and how far it is from the target. */
     static List<Component> lines(Entry entry) {
         List<Component> out = new ArrayList<>();
         MatchState.follow();

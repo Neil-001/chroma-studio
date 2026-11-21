@@ -48,7 +48,6 @@ class TargetModelTest {
         assertEquals(Color.ofOklch(inside), m.colour());
         assertEquals(m.colour().hex(), m.hex(), "the hex field follows the slider");
 
-        // More chroma than sRGB has at this lightness and hue: the colour is clipped, the handle stays put.
         Oklch outside = new Oklch(0.7, 0.39, 150);
         assertFalse(outside.inGamut());
         m.setLch(outside);

@@ -30,39 +30,28 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.level.block.state.BlockState;
 
-/**
- * A wall built from the palette, in place of its entries: flat, as tiled face textures, or in 3D with the game's
- * block models, turned by dragging. It is laid out by {@link Arrangement} with the export's own sizes, so exporting
- * from here writes the wall that shows.
- */
 final class DioramaPanel implements AutoCloseable {
     private static final List<Layout> LAYOUTS = List.of(Layout.NOISE_CLUSTERS, Layout.HEIGHT_GRADIENT, Layout.DITHER);
     private static final int TEXELS = 16;
-    /** A block the index has no texture for, such as one from a mod that's gone. */
     private static final int NO_TEXTURE = 0xFF2A2E35;
     private static int nextId;
 
-    /** The choices outlive the panel, so opening it again shows what was last looked at. */
     private static boolean threeD;
     private static Layout layout = Layout.NOISE_CLUSTERS;
 
     private final List<PaletteEntry> kept = new ArrayList<>();
     private final List<BlockState> states = new ArrayList<>();
-    /** Each kept entry's face, or null for a block the index has no texture for. */
     private final List<TextureStats> looks = new ArrayList<>();
     private long seed = System.nanoTime();
     private Arrangement arrangement;
     private DynamicTexture texture;
     private Identifier textureId;
     private boolean painted;
-    /** The theme's well colour the flat wall was painted over. The picture holds it, so another theme needs it painted again. */
     private int paintedOver;
-    /** How far the wall's front is turned to the right and its top tipped forward, in degrees. It starts seen from above its right end. */
     private float yaw = -25, pitch = 15;
     private Bounds area, view;
     private boolean orbiting;
 
-    /** Only the entries this game has blocks for are arranged, as the export does. */
     DioramaPanel(Palette palette) {
         for (PaletteEntry e : palette.entries) {
             BlockState state = PaletteBlocks.state(e);
@@ -88,7 +77,6 @@ final class DioramaPanel implements AutoCloseable {
 
     private static Component name(Layout l) { return Component.translatable("option.chromastudio.layoutchoice." + l.name().toLowerCase(Locale.ROOT)); }
 
-    /** {@code export} opens the export dialog on a layout and seed. */
     void layout(Widgets widgets, Bounds area, Runnable close, BiConsumer<Layout, Long> export) {
         this.area = area;
         int x = area.x(), y = area.y();
@@ -121,7 +109,6 @@ final class DioramaPanel implements AutoCloseable {
                     int entry = arrangement.at(x, y, 0);
                     if (entry >= 0) cells[y * w + x] = states.get(entry);
                 }
-            // Room for the corners as the wall turns.
             float scale = Math.min(view.w() / (w * 1.3f), view.h() / (h * 1.4f));
             DioramaPip.submit(view.x(), view.y(), view.w(), view.h(), scale, w, h, cells, yaw, pitch, ModSettings.dioramaPerspective);
             g.text(PanelTab.font(), Component.translatable("palettes.chromastudio.diorama.orbit"), view.x() + 3, view.bottom() - 10, Theme.DIM, false);
@@ -137,7 +124,6 @@ final class DioramaPanel implements AutoCloseable {
         }
     }
 
-    /** Paints the wall into the texture, a block's face to each cell, see-through texels over the panel's dark. */
     private void paint() {
         int w = arrangement.sizeX(), h = arrangement.sizeY();
         if (texture == null || texture.getPixels().getWidth() != w * TEXELS || texture.getPixels().getHeight() != h * TEXELS) {
@@ -180,7 +166,6 @@ final class DioramaPanel implements AutoCloseable {
 
     boolean dragged(double dx, double dy) {
         if (!orbiting) return false;
-        // The wall follows the cursor, as a model does when it is orbited: dragging down brings its top into view.
         yaw += (float) dx;
         pitch = Math.clamp(pitch + (float) dy, -80, 80);
         return true;

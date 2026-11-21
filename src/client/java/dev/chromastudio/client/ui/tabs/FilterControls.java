@@ -16,10 +16,6 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
-/**
- * The filters behind "More…", as rows of controls. The Match tab and the Gradient tab both open them, and both on
- * {@link MatchState#filters()}, so a filter set in one is set in the other.
- */
 final class FilterControls {
     private FilterControls() {}
 
@@ -32,18 +28,12 @@ final class FilterControls {
         return Component.translatable(prefix + value.name().toLowerCase(Locale.ROOT));
     }
 
-    /** A filter's name, cut to the room left of its control. A translation can be twice the English, and the tooltip then has the whole of it. */
     private static void filterLabel(Widgets w, int x, int y, int room, Component name) {
         String fitted = MatchTab.ellipsis(Minecraft.getInstance().font, name.getString(), room);
         AbstractWidget label = w.label(x, y + 4, Component.literal(fitted), TEXT);
         if (!fitted.equals(name.getString())) label.setTooltip(Tooltip.create(name));
     }
 
-    /**
-     * Adds the filters to a group, which then scrolls inside {@code body}. With {@code basics} the three the Match
-     * tab keeps on its filter row lead, for a tab that has no such row. {@code afterReset} runs after "Reset filters",
-     * for the caller to lay out what else shows a filter.
-     */
     static void build(Widgets w, Bounds body, boolean basics, Runnable afterReset) {
         MatchFilters f = MatchState.filters();
         int x = body.x() + 4, cw = Math.min(120, body.w() / 2), cx = body.right() - cw - 8, y = body.y() + 2;
