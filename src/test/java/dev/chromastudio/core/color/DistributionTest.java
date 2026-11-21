@@ -137,6 +137,17 @@ class DistributionTest {
         assertEquals(best, found, 5e-14);
     }
 
+    @Test
+    void transportShipsEvenATinyDifferenceInWeight() {
+        Color black = Color.ofRgb(0), white = Color.ofRgb(0xFFFFFF);
+        double tiny = Math.scalb(1.0, -41);
+        Distribution even = Distribution.of(List.of(black, white), List.of(0.5, 0.5));
+        Distribution uneven = Distribution.of(List.of(black, white), List.of(0.5 + tiny, 0.5 - tiny));
+        double expected = tiny * Metric.SRGB.distance(black, white);
+        assertEquals(expected, even.emd(uneven, Metric.SRGB), expected * 1e-6);
+        assertEquals(expected, uneven.emd(even, Metric.SRGB), expected * 1e-6);
+    }
+
     private static List<int[]> orders(int[] a, int k, List<int[]> out) {
         if (k == a.length) {
             out.add(a.clone());

@@ -6,7 +6,7 @@ import java.util.List;
 public final class Distribution {
     public static final int MAX_ENTRIES = 8;
     private static final int PIXEL_CLUSTERS = 4;
-    private static final double EMPTY = 1e-12;
+    private static final double EMPTY = 1e-15;
     private static final double OPTIMAL_SLACK = 1e-9;
 
     private final Color[] colours;
@@ -131,11 +131,11 @@ public final class Distribution {
         while (true) {
             double highest = Double.NEGATIVE_INFINITY;
             for (int i = 0; i < n; i++) {
-                if (left[i] > EMPTY) highest = Math.max(highest, potential[i]);
+                if (left[i] > 0) highest = Math.max(highest, potential[i]);
             }
             if (highest == Double.NEGATIVE_INFINITY) break;
             for (int v = 0; v < n + m; v++) {
-                dist[v] = v < n && left[v] > EMPTY ? highest - potential[v] : Double.POSITIVE_INFINITY;
+                dist[v] = v < n && left[v] > 0 ? highest - potential[v] : Double.POSITIVE_INFINITY;
                 from[v] = -1;
                 settled[v] = false;
             }
@@ -148,7 +148,7 @@ public final class Distribution {
                 }
                 if (u < 0) break;
                 settled[u] = true;
-                if (u >= n && wanted[u - n] > EMPTY) {
+                if (u >= n && wanted[u - n] > 0) {
                     double toSink = dist[u] + Math.max(0, potential[u] - sinkPotential);
                     if (toSink < reach) {
                         reach = toSink;
