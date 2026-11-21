@@ -14,7 +14,6 @@ repositories {
 		url = 'https://masa.dy.fi/maven/sakura-ryoko'
 		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
 	}
-	// Each of these groups is asked for from its own Maven alone, so another repository's outage can't fail the build.
 	exclusiveContent {
 		forRepository {
 			maven {
@@ -92,7 +91,6 @@ dependencies {
 	localRuntime("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
 	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
 	compileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:${project.rei_version}") { transitive = false }
-	// REI's API names Architectury's types in the methods used.
 	compileOnly("dev.architectury:architectury-fabric:${project.architectury_version}") { transitive = false }
 	if (findProperty('viewer') == 'jei') {
 		localRuntime("mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}") { transitive = false }
