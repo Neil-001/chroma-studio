@@ -19,10 +19,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
-/**
- * The plans the whole-build tools make, checked by the same steps at Apply: whole-build recolour and the gradient
- * tool, against a stand-in Axiom. Also how long that takes on a big build.
- */
 class AxiomPlanTest {
     private FakeAxiom axiom;
     private BlockState oak, spruce;
@@ -54,12 +50,10 @@ class AxiomPlanTest {
         return p;
     }
 
-    /** Fills a box of oak planks from 0 0 0, {@code x} by {@code y} by {@code z}. */
     private void box(int x, int y, int z) {
         for (int i = 0; i < x; i++) for (int j = 0; j < y; j++) for (int k = 0; k < z; k++) axiom.level.put(i, j, k, oak);
     }
 
-    /** Shows what recolouring the build at 0 0 0 into {@code to} does, as the palette brush makes it. */
     private BuildPreview recolour(Palette to) throws Exception {
         QueuedChanges<BlockState> made = AxiomChanges.queue(axiom.level);
         PaletteBrushTool.WholeBuild w = PaletteBrushTool.wholeBuild(axiom.level, BlockPos.ZERO, to, null, true, Recolour.Mode.CLOSEST,
@@ -70,7 +64,6 @@ class AxiomPlanTest {
             try {
                 PaletteBrushTool.wholeBuild(axiom.level, BlockPos.ZERO, to, null, true, Recolour.Mode.CLOSEST, mask, redone);
             } catch (AxiomBridge.Refused _) {
-                // Nothing to recolour, which is never the same.
             }
             return redone;
         });
@@ -97,7 +90,6 @@ class AxiomPlanTest {
         assertTrue(axiom.tools.pushed.getFirst().values().stream().allMatch(s -> s == spruce));
     }
 
-    /** Shows a gradient from 0 0 0 to the far end of the box along x, as the gradient tool makes it. */
     private BuildPreview gradient(int length) {
         BlockPos first = BlockPos.ZERO, second = new BlockPos(length - 1, 0, 0);
         List<BlockState> steps = List.of(oak, spruce, TestIndex.block("dark_oak_planks").defaultBlockState());
@@ -126,10 +118,6 @@ class AxiomPlanTest {
         assertEquals(1, axiom.tools.pushed.size());
     }
 
-    /**
-     * How long making a whole-build plan and checking it at Apply take on a build of 50,000 blocks, with the tool masks
-     * asked about every block. Prints the times; run with {@code -Dchroma.timing=true}.
-     */
     @Test
     @EnabledIfSystemProperty(named = "chroma.timing", matches = "true")
     void timeABigBuild() throws Exception {

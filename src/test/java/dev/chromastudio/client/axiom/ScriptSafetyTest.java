@@ -53,19 +53,6 @@ import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.JsePlatform;
 
-/**
- * Every script Chroma Studio exports, run as Axiom's Script Brush runs it on every state of every block in the game,
- * against the decision the script's own tool makes about the same block: no script replaces a block its tool would
- * leave alone, and so none replaces a block that holds items or data. The tool's side is each tool's own code, so the
- * two can't share a wrong assumption.
- *
- * <p>The Lua is real, the way Axiom 6.1.5 runs it: compiled once, then called for each position with {@code x},
- * {@code y} and {@code z} set and every other global kept. Only Axiom's functions are stood in for, each as its
- * bytecode has it: {@code getBlock} gives the block's registry id and {@code getBlockState} the state's id, negated
- * less one; {@code isSolid} asks whether the state that id names, a block's default state, has any collision shape;
- * {@code getBlockProperty} gives a property's value by name, as a string, or nil when the block hasn't it; and
- * {@code isBlockTagged} raises an error for a tag the game doesn't know.
- */
 class ScriptSafetyTest {
     private static final Pattern CONTROL = Pattern.compile("\\$(int|float|boolean)\\(([^,]+), ([^,)]+)[^)]*\\)\\$");
 
@@ -76,7 +63,6 @@ class ScriptSafetyTest {
     static void loadGame() {
         axiom = FakeAxiom.install();
         axiom.client();
-        // Every block in the index, with a few textures between them so recolours have colours to choose from.
         String[] sprites = {"block/stone", "block/oak_planks", "block/red_wool", "block/blue_wool", "block/yellow_concrete", "block/deepslate",
                 "block/glass", "block/white_wool", "block/sandstone", "block/terracotta"};
         Map<String, String> all = new LinkedHashMap<>();
@@ -94,7 +80,6 @@ class ScriptSafetyTest {
         FakeAxiom.uninstall();
     }
 
-    /** Every state of every block, each with the world around it that its script may read. */
     private static List<BlockState> everyState() {
         List<BlockState> out = new ArrayList<>();
         for (Block b : BuiltInRegistries.BLOCK) out.addAll(b.getStateDefinition().getPossibleStates());
@@ -113,8 +98,6 @@ class ScriptSafetyTest {
     void theGradientScriptLeavesEveryBlockTheGradientToolWouldLeave() throws Exception {
         Method paintable = GradientTool.class.getDeclaredMethod("paintable", BlockGetter.class, BlockPos.class, BlockState.class);
         paintable.setAccessible(true);
-        // The tool changes a block of the build, which is no air, liquid or ground, as a whole only when it's a full
-        // cube with nothing inside; any other shape it reshapes, which the script can't, so it must leave it.
         Predicate<BlockState> toolPaints = s -> {
             try {
                 return FoundBuild.member(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s) && (boolean) paintable.invoke(null, EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s);
@@ -124,7 +107,6 @@ class ScriptSafetyTest {
         };
         String script = AxiomScripts.gradient("Walls", List.of(new PaletteEntry("minecraft:stone", ""), new PaletteEntry("minecraft:andesite", ""),
                 new PaletteEntry("minecraft:deepslate", "")), AxiomScript.Axis.Y, BlockPos.ZERO).text();
-        // Air is the one block the script may fill that the tool doesn't, and only with its Paint air box ticked.
         check("gradient", script, s -> s.isAir() || toolPaints.test(s));
     }
 
@@ -167,26 +149,18 @@ class ScriptSafetyTest {
         }
     }
 
-    /**
-     * Whether a block keeps items or other data of its own, which a replacement would lose: a block entity, such as a
-     * chest, or what a player put in a block, as a plant in a pot, a candle on a cake, water, lava or powder snow in a
-     * cauldron, or compost in a composter.
-     */
     private static boolean holdsSomething(BlockState s) {
         Block b = s.getBlock();
         return b instanceof EntityBlock || b instanceof FlowerPotBlock pot && pot.getPotted() != Blocks.AIR || b instanceof CandleCakeBlock
                 || b instanceof AbstractCauldronBlock && b != Blocks.CAULDRON || b instanceof ComposterBlock && s.getValue(ComposterBlock.LEVEL) > 0;
     }
 
-    /** Whether a block has water in it, which Scatter's block would take away; a recolour keeps it. */
     private static boolean waterlogged(BlockState s) {
         return s.hasProperty(BlockStateProperties.WATERLOGGED) && s.getValue(BlockStateProperties.WATERLOGGED);
     }
 
     @Test
     void everyToolLeavesTheWaterInABlockOrKeepsIt() throws Exception {
-        // A recolour into glass, which can't hold water, leaves every waterlogged block alone, as the shade brush,
-        // which recolours through the same plan, does.
         Palette glass = palette("Script safety glass", "glass");
         RecolourPlan plan = RecolourPlan.of(glass, null, Recolour.Mode.SHADING);
         List<BlockState> wrong = new ArrayList<>();
@@ -196,7 +170,6 @@ class ScriptSafetyTest {
         }
         assertTrue(wrong.isEmpty(), "A recolour takes the water out of " + blocks(wrong));
         check("glass recolour", AxiomScripts.recolour(glass, null, Recolour.Mode.SHADING).text(), s -> plan.apply(s) != null && !holdsSomething(s));
-        // The gradient tool leaves three waterlogged copper grates between its two stone ends.
         BlockState stone = Blocks.STONE.defaultBlockState(), grate = TestIndex.block("copper_grate").defaultBlockState().setValue(BlockStateProperties.WATERLOGGED, true);
         for (int x = 0; x <= 4; x++) axiom.level.put(x, 0, 0, x == 0 || x == 4 ? stone : grate);
         try {
@@ -211,25 +184,18 @@ class ScriptSafetyTest {
         }
     }
 
-    /** The blocks of the states listed, each once, so a failure names every block it's about. */
     private static String blocks(List<BlockState> wrong) {
         return wrong.stream().map(s -> BuiltInRegistries.BLOCK.getKey(s.getBlock()).getPath()).distinct().toList().toString();
     }
 
     @Test
     void noScriptAsksABlockTag() throws Exception {
-        // A tag is a world's data, which its data packs may change, and a script may be run in another world than the
-        // one it was made in; so what a script leaves alone rests only on block names and properties, the game's own.
         Palette p = palette("Script safety tags", "stone_bricks", "oak_planks");
         List<String> scripts = List.of(AxiomScripts.scatter(p).text(), AxiomScripts.gradient("Walls", List.of(new PaletteEntry("minecraft:stone", ""),
                 new PaletteEntry("minecraft:deepslate", "")), AxiomScript.Axis.Y, BlockPos.ZERO).text(), AxiomScripts.recolour(p, null, Recolour.Mode.SHADING).text());
         for (String script : scripts) assertFalse(script.contains("isBlockTagged"), script);
     }
 
-    /**
-     * Runs a script on every state of every block, with its Paint air box either way, and fails naming each state it
-     * replaces, or writes over with {@code setBlock}, that {@code allowed} says its tool would leave.
-     */
     private static void check(String name, String script, Predicate<BlockState> allowed) {
         for (boolean air : new boolean[] {false, true}) {
             Brush brush = new Brush(script, air);
@@ -240,8 +206,6 @@ class ScriptSafetyTest {
                 replaced += writes.size();
                 for (Map.Entry<BlockPos, BlockState> w : writes.entrySet()) {
                     BlockState there = brush.world.get(w.getKey());
-                    // With Paint air off, no air of any kind is filled, cave air included.
-                    // A block with water in it keeps it, whatever it becomes.
                     if (!allowed.test(there) || !air && there.isAir() || waterlogged(there) && !waterlogged(w.getValue())) wrong.add(there);
                 }
             }
@@ -251,7 +215,6 @@ class ScriptSafetyTest {
         }
     }
 
-    /** Axiom's Script Brush, as far as a script can tell, on a world of one block at the origin, and its other half for a door. */
     private static final class Brush {
         final Globals g = JsePlatform.standardGlobals();
         final LuaValue chunk;
@@ -325,12 +288,10 @@ class ScriptSafetyTest {
             chunk = g.load(resolved.toString(), "script");
         }
 
-        /** What the script does at the origin, with {@code s} there: each position it writes, and what it writes. */
         Map<BlockPos, BlockState> run(BlockState s) {
             world.clear();
             writes.clear();
             world.put(BlockPos.ZERO, s);
-            // A door's or tall plant's other half, which a recolour changes with it.
             if (s.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) {
                 boolean lower = s.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.LOWER;
                 world.put(new BlockPos(0, lower ? 1 : -1, 0), s.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, lower ? DoubleBlockHalf.UPPER : DoubleBlockHalf.LOWER));
@@ -349,7 +310,6 @@ class ScriptSafetyTest {
 
         private static int id(BlockState s) { return -Block.BLOCK_STATE_REGISTRY.getId(s) - 1; }
 
-        /** The state an id names, as Axiom reads one: a block's default state, or the state a negative id names. */
         private static BlockState state(LuaValue v) {
             int id = v.checkint();
             return id >= 0 ? BuiltInRegistries.BLOCK.byId(id).defaultBlockState() : Block.BLOCK_STATE_REGISTRY.byId(-id - 1);
