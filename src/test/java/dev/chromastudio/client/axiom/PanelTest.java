@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.moulberry.axiom.mask.MaskManager;
 import dev.chromastudio.client.GradientStore;
+import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.core.palette.Palette;
@@ -87,24 +88,45 @@ class PanelTest {
     void theFromPaletteFollowsARenameAndNeverBecomesAnother() throws Exception {
         PaletteStore store = PaletteStore.get();
         Palette bricks = store.create("Panel test from", List.of(new PaletteEntry("minecraft:stone_bricks", "")));
-        Palette same = null;
+        Palette same = null, again = null;
+        String was = ModSettings.brushFrom;
         try {
+            ModSettings.brushFrom = (String) ((List<?>) keys().invoke(null, List.of(bricks))).getFirst();
             PaletteBrushTool tool = new PaletteBrushTool();
-            Method keys = PaletteBrushTool.class.getDeclaredMethod("keys", List.class);
-            keys.setAccessible(true);
-            FakeAxiom.set(PaletteBrushTool.class, tool, "fromKey", ((List<?>) keys.invoke(null, List.of(bricks))).getFirst());
-            Method from = PaletteBrushTool.class.getDeclaredMethod("from");
-            from.setAccessible(true);
-            assertSame(bricks, from.invoke(tool));
+            tool.tick();
             store.rename(bricks, "Panel test from, renamed");
             same = store.create("Panel test from", List.of(new PaletteEntry("minecraft:oak_planks", "")));
-            assertSame(bricks, from.invoke(tool), "a new palette with the old name doesn't become From");
+            tool.tick();
+            assertSame(bricks, from(tool), "a new palette with the old name doesn't become From");
+            assertEquals(((List<?>) keys().invoke(null, List.of(bricks))).getFirst(), ModSettings.brushFrom, "the renamed palette's key is saved");
             store.delete(bricks);
-            assertNull(from.invoke(tool), "a deleted From stays gone");
+            tool.tick();
+            assertNull(from(tool), "a deleted From stays gone");
+            again = store.create("Panel test from, renamed", List.of(new PaletteEntry("minecraft:oak_planks", "")));
+            assertNull(from(tool), "a palette made under the deleted one's name doesn't take its place");
+            Object bound = FakeAxiom.get(PaletteBrushTool.class, tool, "fromBound");
+            Method choose = bound.getClass().getDeclaredMethod("choose", Palette.class, String.class);
+            choose.setAccessible(true);
+            choose.invoke(bound, again, ModSettings.brushFrom);
+            assertSame(again, from(tool), "choosing it in From takes it");
         } finally {
             store.delete(bricks);
             if (same != null) store.delete(same);
+            if (again != null) store.delete(again);
+            ModSettings.brushFrom = was;
         }
+    }
+
+    private static Method keys() throws Exception {
+        Method keys = PaletteBrushTool.class.getDeclaredMethod("keys", List.class);
+        keys.setAccessible(true);
+        return keys;
+    }
+
+    private static Object from(PaletteBrushTool tool) throws Exception {
+        Method from = PaletteBrushTool.class.getDeclaredMethod("from");
+        from.setAccessible(true);
+        return from.invoke(tool);
     }
 
     @Test
