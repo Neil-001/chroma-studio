@@ -642,6 +642,24 @@ class AxiomCommitTest {
     }
 
     @Test
+    void onlyBlocksLikeTheFirstDoesntJumpAGapInTheLineToAnotherBuild() {
+        axiom.client();
+        for (int x : new int[] {0, 1, 4, 5, 8, 9}) axiom.level.put(x, 0, 0, BRICKS);
+        gradientAlong(9);
+        assertEquals(java.util.Set.of(at(0), at(1)), axiom.tools.overrides.keySet());
+    }
+
+    @Test
+    void theLineAGradientStartsFromStopsAtTheCap() {
+        BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState();
+        axiom.level.put(0, 0, 0, BRICKS);
+        for (int x = 1; x <= FoundBuild.CAP + 10; x++) axiom.level.put(x, 0, 0, tuff);
+        axiom.level.put(FoundBuild.CAP + 5, 0, 0, BRICKS);
+        GradientTool.Search s = GradientTool.search(axiom.level, at(0), at(250_000), at(0), true, 64);
+        assertEquals(1, s.found().blocks().length);
+    }
+
+    @Test
     void onlyBlocksLikeTheFirstDoesntCrossAFootingToTheSameMaterialBelow() {
         axiom.client();
         BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState();

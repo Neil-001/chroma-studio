@@ -170,7 +170,7 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
         GradientLine l = GradientLine.between(first.getX(), first.getY(), first.getZ(), second.getX(), second.getY(), second.getZ());
         Set<Block> like = like(level.getBlockState(seed));
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        BuildSearch.Found found = BuildSearch.from(likeFirst ? starts(seed, first, second) : new long[] {BuildSearch.pack(seed.getX(), seed.getY(), seed.getZ())},
+        BuildSearch.Found found = BuildSearch.from(likeFirst ? starts(level, seed, seed.equals(first) ? second : first) : new long[] {BuildSearch.pack(seed.getX(), seed.getY(), seed.getZ())},
                 (x, y, z) -> {
                     BlockState s = level.getBlockState(pos.set(x, y, z));
                     if (s.isAir() || s.getBlock() instanceof LiquidBlock) return false;
@@ -179,16 +179,19 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
         return new Search(found, l);
     }
 
-    private static long[] starts(BlockPos seed, BlockPos first, BlockPos second) {
-        int dx = second.getX() - first.getX(), dy = second.getY() - first.getY(), dz = second.getZ() - first.getZ();
+    private static long[] starts(BlockGetter level, BlockPos from, BlockPos to) {
+        int dx = to.getX() - from.getX(), dy = to.getY() - from.getY(), dz = to.getZ() - from.getZ();
         int n = Math.max(Math.abs(dx), Math.max(Math.abs(dy), Math.abs(dz)));
-        long[] out = new long[n + 2];
-        out[0] = BuildSearch.pack(seed.getX(), seed.getY(), seed.getZ());
-        for (int i = 0; i <= n; i++) {
-            out[i + 1] = BuildSearch.pack(first.getX() + Math.round((float) dx * i / n), first.getY() + Math.round((float) dy * i / n),
-                    first.getZ() + Math.round((float) dz * i / n));
+        LongArrayList out = new LongArrayList();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int i = 0; i <= Math.min(n, FoundBuild.CAP); i++) {
+            pos.set(from.getX() + (int) Math.round((double) dx * i / n), from.getY() + (int) Math.round((double) dy * i / n),
+                    from.getZ() + (int) Math.round((double) dz * i / n));
+            BlockState s = level.getBlockState(pos);
+            if (s.isAir() || s.getBlock() instanceof LiquidBlock) break;
+            out.add(BuildSearch.pack(pos.getX(), pos.getY(), pos.getZ()));
         }
-        return out;
+        return out.toLongArray();
     }
 
     record Laid(long[] outlined, int covered, int leftAlone, int masked) {}
