@@ -47,9 +47,6 @@ public final class ChromaStudioClient {
         }
         while (Keys.OPEN.consumeClick()) if (mc.gui.screen() == null) openWindow();
         while (Keys.PIN.consumeClick()) if (mc.gui.screen() == null) ChromaScreen.togglePin();
-        // The fullscreen and recipe keys only mean something inside the window, which sees the key press itself.
-        while (Keys.FULLSCREEN.consumeClick()) { }
-        while (Keys.RECIPE.consumeClick()) { }
         while (Keys.EYEDROPPER.consumeClick()) if (mc.gui.screen() == null) Keys.onEyedropper.run();
         while (Keys.CAPTURE.consumeClick()) if (mc.gui.screen() == null) Keys.onCapture.run();
         Capture.tick(mc);

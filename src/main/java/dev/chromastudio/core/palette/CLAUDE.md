@@ -70,7 +70,6 @@ What a script leaves alone:
 
 ## Build sampling and search
 
-- `BuildSample.MAX_WEIGHT` is also the most the Palettes tab's weight field takes, which `PalettesTab` writes as its own 999.
 - A kind the player removes from a `BuildSample` stays out until it is put back or the sample is cleared, so sampling on doesn't bring it back unasked. Once it stands nowhere sampled it is forgotten, so it can't stay out unseen, and sampling it later counts it again.
 - `BuildSearch` counts blocks touching at an edge or a corner as joined, so a staircase of blocks or a thin diagonal spire holds together. It stops at a cap so a build that runs on into the landscape can't hold up the game.
 - `BuildSearch` marks positions in a bit set of 16 by 16 by 16 sections. A set of boxed positions spends most of the search's time making and hashing them, and this is several times quicker.

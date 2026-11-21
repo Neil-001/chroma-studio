@@ -1,6 +1,5 @@
 package dev.chromastudio.client.action;
 
-import com.mojang.serialization.DynamicOps;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.OverflowMode;
@@ -16,9 +15,6 @@ import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -312,7 +308,7 @@ public final class HotbarFill {
             if (before.stream().noneMatch(was -> was.slot == slot)) before.add(new Was(slot, now.get(slot).copy()));
             now.get(slot).grow(stack.getCount());
         }
-        ChromaStudioClient.platform.sendChatCommand("give @s " + commandItem(stack));
+        ChromaStudioClient.platform.sendChatCommand("give @s " + Give.commandItem(stack));
         REPLIES.sent();
         return slot >= 0 ? Dropped.ONTO_A_STACK : Dropped.ON_THE_GROUND;
     }
@@ -375,28 +371,8 @@ public final class HotbarFill {
             return;
         }
         String where = offhand ? "weapon.offhand" : slot < HOTBAR ? "hotbar." + slot : "inventory." + (slot - HOTBAR);
-        String what = stack.isEmpty() ? "minecraft:air" : commandItem(stack) + (stack.getCount() == 1 ? "" : " " + stack.getCount());
+        String what = stack.isEmpty() ? "minecraft:air" : Give.commandItem(stack) + (stack.getCount() == 1 ? "" : " " + stack.getCount());
         ChromaStudioClient.platform.sendChatCommand("item replace entity @s " + where + " with " + what);
         REPLIES.sent();
-    }
-
-    /**
-     * A stack as commands take one: its id, then any components it has of its own in brackets, which is how the
-     * shulker box carries its contents. {@link Give} only promises whole stacks into the hotbar or the next free
-     * slot, so what goes to a slot of its own that Undo can empty again is written out here.
-     */
-    private static String commandItem(ItemStack stack) {
-        String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-        Minecraft mc = Minecraft.getInstance();
-        if (stack.getComponentsPatch().isEmpty() || mc.level == null) return id;
-        DynamicOps<Tag> ops = mc.level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
-        List<String> parts = new ArrayList<>();
-        var patch = stack.getComponentsPatch().split();
-        for (var added : patch.added()) {
-            if (added.type().codec() == null) continue;
-            added.encodeValue(ops).result().ifPresent(value -> parts.add(BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(added.type()) + "=" + value));
-        }
-        for (var removed : patch.removed()) parts.add("!" + BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(removed));
-        return parts.isEmpty() ? id : id + "[" + String.join(",", parts) + "]";
     }
 }
