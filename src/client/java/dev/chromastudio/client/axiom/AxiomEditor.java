@@ -1,5 +1,6 @@
 package dev.chromastudio.client.axiom;
 
+import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Hud;
@@ -37,6 +38,7 @@ final class AxiomEditor {
     private static boolean left;
     private static @Nullable BlockState lastActiveBlock;
     private static boolean warned;
+    private static boolean unread;
 
     static boolean known() { return INTERNALS.reason().isEmpty(); }
 
@@ -69,6 +71,8 @@ final class AxiomEditor {
     }
 
     static @Nullable BlockState lastActiveBlock() { return lastActiveBlock; }
+
+    static boolean lastReadFailed() { return unread; }
 
     static void leaveForWindow() {
         if (!known()) {
@@ -110,8 +114,11 @@ final class AxiomEditor {
     private static void remember() {
         try {
             lastActiveBlock = AxiomTools.tools.getActiveBlock();
-        } catch (Throwable _) {
-            // AxiomBlock reports a failure when the player asks for the block.
+            unread = false;
+        } catch (Throwable t) {
+            if (!unread) ChromaStudioClient.LOGGER.warn("Axiom didn't give its active block", t);
+            lastActiveBlock = null;
+            unread = true;
         }
     }
 

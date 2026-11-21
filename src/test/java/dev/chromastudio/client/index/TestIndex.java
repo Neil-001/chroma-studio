@@ -24,19 +24,11 @@ import net.minecraft.tags.TagLoader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
-/**
- * Fills the block index from the game's own textures, for tests outside this package, as {@link GameIndexTest} does
- * inside it: each block's faces are given by texture name, as no models are baked without a client.
- */
 public final class TestIndex {
     private TestIndex() {}
 
     private static ResourceManager resources;
 
-    /**
-     * Loads the game's registries with the vanilla block tags bound, as a world has them, and its vanilla textures,
-     * once. Without the tags, a check such as whether a block is sand would say no to every block.
-     */
     public static void loadGame() {
         if (resources != null) return;
         SharedConstants.tryDetectVersion();
@@ -58,12 +50,10 @@ public final class TestIndex {
                 .build(new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty())).fullResources();
     }
 
-    /** A vanilla block by its id's path. */
     public static Block block(String path) {
         return BuiltInRegistries.BLOCK.getOptional(Identifier.withDefaultNamespace(path)).orElseThrow(() -> new AssertionError("No block " + path));
     }
 
-    /** Puts these blocks in the index, each one entry, its default state, with one texture on all six faces. */
     public static BlockIndex index(Map<String, String> blocksAndTextures) {
         List<List<Entry>> blocks = new ArrayList<>();
         Map<BlockState, Entry> byState = new IdentityHashMap<>();

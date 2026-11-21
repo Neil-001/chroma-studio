@@ -37,10 +37,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 
-/**
- * Writes a palette as a schematic: a Litematica {@code .litematic} or a vanilla {@code .nbt} structure, laid out by
- * {@link Arrangement}. The layout stands upright, with x running east and y up. A file is never written over another.
- */
 public final class SchematicExporter {
     private SchematicExporter() {}
 
@@ -52,13 +48,8 @@ public final class SchematicExporter {
         Format(String extension) { this.extension = extension; }
     }
 
-    /**
-     * The file written, and the entries left out of it, each as its id with properties. An entry is left out when
-     * this game has no such block, property or value, or when the layout was full before its turn came.
-     */
     public record Result(Path file, List<String> skippedIds) {}
 
-    /** No entry of the palette could be exported, so no file was written. */
     public static final class NoBlocksException extends IOException {
         private static final long serialVersionUID = 1L;
 
@@ -72,12 +63,10 @@ public final class SchematicExporter {
         public List<String> skippedIds() { return List.copyOf(skippedIds); }
     }
 
-    /** Litematica reads older schematic versions and upgrades them, so version 6 is the safe choice. */
     private static final int SCHEMATIC_VERSION = 6, SUB_VERSION = 1;
     private static final String REGION = "Main";
     private static final int MAX_NAME_LENGTH = 60;
 
-    /** A {@code .litematic} in the folder from {@link #directory()}, with the player as its author. */
     public static Result export(Palette p, LayoutOptions o) throws IOException {
         return export(p, o, Format.LITEMATIC);
     }
@@ -105,7 +94,6 @@ public final class SchematicExporter {
         }
         if (states.isEmpty()) throw new NoBlocksException(skipped);
         Arrangement a = Arrangement.of(kept.stream().map(PaletteEntry::weight).toList(), o);
-        // The layout only ever drops entries off the end, so the skipped list stays in the palette's order.
         for (int i = a.placed(); i < states.size(); i++) skipped.add(kept.get(i).idWithProperties());
 
         String name = p.name == null || p.name.isBlank() ? fileName(p, o) : p.name;
@@ -113,10 +101,6 @@ public final class SchematicExporter {
         return new Result(write(root, dir, fileName(p, o), format.extension), List.copyOf(skipped));
     }
 
-    /**
-     * Where exports go: the folder in the settings when there is one, taken from the game's folder unless it's a full
-     * path; else Litematica's own schematics folder, or the game's {@code schematics} without Litematica.
-     */
     public static Path directory() throws IOException {
         String folder = ModSettings.exportFolder.strip();
         if (folder.isEmpty()) return LitematicaBridge.schematicsDir();
@@ -127,10 +111,6 @@ public final class SchematicExporter {
         }
     }
 
-    /**
-     * The entry's block state: the block's default with each named property set. Null when the game has no such
-     * block, property or value, so a palette from a modded game never comes out with a different block in its place.
-     */
     public static BlockState stateFor(PaletteEntry e) {
         Identifier id = Identifier.tryParse(e.blockId());
         Block block = id == null ? null : BuiltInRegistries.BLOCK.getOptional(id).orElse(null);
@@ -150,10 +130,6 @@ public final class SchematicExporter {
         return property.getValue(value).map(v -> state.setValue(property, v)).orElse(null);
     }
 
-    /**
-     * {@code chroma-<palette>-<layout>}: the palette's name in lower case with everything but letters, digits and
-     * hyphens turned into hyphens, runs of them closed up, so it's safe as a file name anywhere.
-     */
     static String fileName(Palette p, LayoutOptions o) {
         StringBuilder safe = new StringBuilder();
         String name = p.name == null ? "" : p.name.toLowerCase(Locale.ROOT);
@@ -168,12 +144,6 @@ public final class SchematicExporter {
         return "chroma-" + safe + "-" + o.layout().name().toLowerCase(Locale.ROOT).replace('_', '-');
     }
 
-    /**
-     * Writes under the first free name of {@code base}, {@code base-2}, {@code base-3} and so on. The name is
-     * claimed by creating it empty, which fails when something else has it. The blocks go to a temporary file
-     * that is also newly created, and that then takes the claimed name's place in one move, so neither another file
-     * nor half a file is ever at that name.
-     */
     private static Path write(CompoundTag root, Path dir, String base, String extension) throws IOException {
         Files.createDirectories(dir);
         Path file = null;
@@ -182,7 +152,6 @@ public final class SchematicExporter {
             try {
                 file = Files.createFile(candidate);
             } catch (FileAlreadyExistsException _) {
-                // Taken: try the next number.
             }
         }
         Path temp = null;
@@ -197,11 +166,6 @@ public final class SchematicExporter {
         return file;
     }
 
-    /**
-     * Writes to a new file of its own, so a leftover or a link at a guessable name is never written through. It is
-     * made as any file the player saves is, where {@link Files#createTempFile} would let only its owner read it, and
-     * the move would carry that over to the schematic.
-     */
     private static Path writeNew(CompoundTag root, Path dir, String base) throws IOException {
         while (true) {
             Path temp = dir.resolve(base + "-" + Long.toHexString(ThreadLocalRandom.current().nextLong()) + ".tmp");
@@ -209,7 +173,6 @@ public final class SchematicExporter {
                 NbtIo.writeCompressed(root, out);
                 return temp;
             } catch (FileAlreadyExistsException _) {
-                // Somebody else's: leave it and try another name.
             } catch (IOException | RuntimeException e) {
                 Files.deleteIfExists(temp);
                 throw e;
@@ -217,7 +180,6 @@ public final class SchematicExporter {
         }
     }
 
-    /** One region, with its blocks as palette indices in Litematica's order: x fastest, then z, then y. */
     private static CompoundTag litematic(Arrangement a, List<BlockState> states, String name, String author, String description) {
         int sx = a.sizeX(), sy = a.sizeY(), sz = a.sizeZ();
         List<BlockState> palette = new ArrayList<>(List.of(Blocks.AIR.defaultBlockState()));
@@ -271,10 +233,6 @@ public final class SchematicExporter {
         return root;
     }
 
-    /**
-     * The game's own structure format, as a structure block saves it. The gaps are left out rather than written as
-     * air, so loading the structure into a world doesn't clear what stands in them.
-     */
     private static CompoundTag structure(Arrangement a, List<BlockState> states) {
         ListTag palette = new ListTag(), blocks = new ListTag();
         Map<BlockState, Integer> index = new HashMap<>();
