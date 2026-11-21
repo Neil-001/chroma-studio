@@ -15,6 +15,11 @@ Colour maths for the block index and the tools: colour spaces, distances, harmon
 - `Kmeans` uses a fixed seed, so one image always gives the same clusters and a cached index matches a rebuilt one.
 - `FlatNearest` must answer as `Distribution.emd` in OKLab does. Against a single colour that is the weighted mean distance to the texture's colours, which is why it can keep them as plain numbers.
 
+## Transport
+
+- `Distribution.transport` finds each augmenting path with Dijkstra over costs reduced by potentials, with exact comparisons and rounding below zero clamped to zero. A node's predecessor is always settled before it, so the walk back along a path ends even when costs differ by less than rounding. Comparing costs with a tolerance would let nearly tied costs leave a cycle in the predecessors.
+- Every path in `Distribution.transport` carries more than `EMPTY` of supply, so the loop ends after at most the total supply over `EMPTY` paths. Before it answers, it checks the potentials against the flow as a proof of optimality and throws if they disagree by more than `OPTIMAL_SLACK` of the largest cost.
+
 ## Threads
 
 - `FlatNearest` never changes after it is made, so any number of threads may ask it at once.
