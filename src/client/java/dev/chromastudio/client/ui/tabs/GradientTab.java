@@ -64,7 +64,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Blocks;
 
 public final class GradientTab extends PanelTab {
     private static final int MAX_STOPS = 8, CHIP = 18, CELL_MIN = 18, CELL_MAX = 40, IDEAL_H = 10, BLOCK_H = 7, CELL_H = IDEAL_H + 16 + BLOCK_H + 4;
@@ -82,9 +81,11 @@ public final class GradientTab extends PanelTab {
     private static boolean spread = ModSettings.spreadMatching;
     private static String hex = "";
     private static final Map<Integer, Entry> PINS = new HashMap<>();
-    private static Object pinsFor, pinsBuild;
+    private static Object pinsFor;
+    private static int pinsBuild;
     private static StoredGradient restored;
-    private static Object restoredFor, restoredBuild;
+    private static Object restoredFor;
+    private static int restoredBuild;
     private static String savedName;
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
@@ -112,7 +113,7 @@ public final class GradientTab extends PanelTab {
     private double meanDeltaE;
     private Component problem;
     private boolean solving;
-    private Object solvedBuild;
+    private int solvedBuild;
     private String solvedFor = "";
     private Bounds stopsArea, stripArea;
     private int pressedStop = -1;
@@ -159,7 +160,7 @@ public final class GradientTab extends PanelTab {
         StoredGradient asked = Handoff.gradientLoad;
         Handoff.gradientLoad = null;
         boolean loaded = asked != null && !restore(asked);
-        if (asked == null && result.isEmpty() && !solving && restored != null && pinKey().equals(restoredFor) && build() == restoredBuild) show(restored);
+        if (asked == null && result.isEmpty() && !solving && restored != null && pinKey().equals(restoredFor) && BlockIndex.get().version() == restoredBuild) show(restored);
         selectedStop = Math.clamp(selectedStop, 0, STOPS.size() - 1);
 
         int x = b.x() + PAD, y = b.y() + PAD;
@@ -299,16 +300,7 @@ public final class GradientTab extends PanelTab {
         });
     }
 
-    /**
-     * Something only the index's current build holds, or null before the first. A later build holds another, so this
-     * tells a rebuild that finished while the tab wasn't looking, pinned or behind another tab.
-     */
-    private static Object build() {
-        List<Entry> stone = BlockIndex.get().statesOf(Blocks.STONE);
-        return stone.isEmpty() ? null : stone.getFirst();
-    }
-
-    private boolean stale() { return build() != solvedBuild || !inputs().equals(solvedFor); }
+    private boolean stale() { return BlockIndex.get().version() != solvedBuild || !inputs().equals(solvedFor); }
 
     private static String inputs() {
         return String.join("|", ModSettings.defaultFace.name(), ModSettings.metric, String.valueOf(ModSettings.viewingDistance), ModSettings.biomeMode.name(),
@@ -405,7 +397,7 @@ public final class GradientTab extends PanelTab {
         poolById = chosenFrom.byId;
         poolMetric = PaletteBlocks.metric();
         solvedFor = inputs();
-        solvedBuild = build();
+        solvedBuild = BlockIndex.get().version();
         restored = g;
         restoredFor = pinKey();
         restoredBuild = solvedBuild;
@@ -436,7 +428,7 @@ public final class GradientTab extends PanelTab {
             if (e != null) PINS.put(i, e);
         }
         pinsFor = pinKey();
-        pinsBuild = build();
+        pinsBuild = BlockIndex.get().version();
         savedName = g.name();
     }
 
@@ -444,7 +436,7 @@ public final class GradientTab extends PanelTab {
         int number = ASKED.incrementAndGet();
         restored = null;
         solvedFor = inputs();
-        solvedBuild = build();
+        solvedBuild = BlockIndex.get().version();
         swapStep = -1;
         Object key = pinKey();
         if (!key.equals(pinsFor) || solvedBuild != pinsBuild) {
