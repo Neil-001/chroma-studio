@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import dev.chromastudio.core.palette.StoredGradient;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -113,7 +114,7 @@ public final class ModSettings {
         limit("resultCount", 3, 60);
         limit("viewingDistance", 1, VIEW_FAR);
         limit("statesCap", 1, 8);
-        limit("gradientSteps", 2, 32);
+        limit("gradientSteps", StoredGradient.MIN_STEPS, StoredGradient.MAX_STEPS);
         limit("generateCount", 2, 32);
         limit("captureCount", 1, 64);
         limit("patchSize", 1, 16);
