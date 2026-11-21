@@ -112,7 +112,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 ## Scripts
 
-- Each script works out what it does to an existing block with the code its tool uses (`RecolourPlan`, `ScatterBlocks`, `GradientTool.paintable`), so it never replaces a block its tool would leave alone. The one exception is air, which the gradient script fills with its Paint air box ticked and the gradient tool never does.
+- Each script reuses its tool's rules for which blocks may change (`RecolourPlan`, `ScatterBlocks`, `GradientTool.paintable`), so it never replaces a block its tool would leave alone for what the block is. A script can't see Axiom's tool masks, which apply to it as to any Script Brush, and the gradient script fills air with its Paint air box ticked, which the gradient tool never does.
 - A script names blocks as the game writes them, and copies properties by value name, as Axiom's `getBlockProperty` gives them and `withBlockProperty` sets them.
 - The gradient script paints only full cubes with nothing inside, as a chain or a slab would leave holes in a wall and a chest would come empty. Where the gradient tool gives a stair or slab its step's shape, the script can't reshape a block and leaves it alone.
 - What a script leaves alone rests only on block names and properties. A tag is a world's data, which its data packs may change, and a script may run in another world than the one it was made in.
@@ -171,4 +171,4 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 ## Palette brush
 
-- `PaletteBrushTool` changes nothing while `fromGone` is true, that is while no palette has the From key, rather than every block but the ground.
+- `PaletteBrushTool` refuses a recolour while `fromGone` is true, that is while no palette has the From key, rather than recolour every block but the ground.
