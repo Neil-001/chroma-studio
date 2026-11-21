@@ -19,8 +19,9 @@ Colour maths for the block index and the tools: colour spaces, distances, harmon
 
 - `Distribution.transport` finds each augmenting path with Dijkstra over costs reduced by potentials, with exact comparisons and rounding below zero clamped to zero. A node's predecessor is always settled before it, so the walk back along a path ends even when costs differ by less than rounding. Comparing costs with a tolerance would let nearly tied costs leave a cycle in the predecessors.
 - `Distribution.transport` ships until a supply or a demand is exactly empty, and any flow above zero can be sent back, however small. An input weight can be far below rounding, and a floor on either would leave it moved the wrong way or not at all. A path's bottleneck becomes exactly zero, so each path empties something.
-- `Distribution.transport` throws after `(n + m) · n · m` paths, 1,024 for eight by eight. Four million fuzzed inputs, among them near-tied costs, tied costs and weights down to 2⁻⁶⁰, needed at most 29, so only a broken solver reaches the limit.
-- Before `Distribution.transport` answers, it checks the potentials against the flow as a proof of optimality. It throws if a reduced cost is negative, or positive on a cell with flow, by more than `OPTIMAL_SLACK` of the largest cost.
+- `Distribution.transport` throws after `(n + m) · n · m` paths, 1,024 for eight by eight, rather than return a plan it hasn't finished. No proof bounds the paths for real-valued weights. Four million fuzzed inputs, among them near-tied costs, tied costs and weights down to 2⁻⁶⁰, needed at most 29.
+- Before `Distribution.transport` answers, it checks the plan against its potentials as a proof of optimality. It throws if a supply or demand doesn't balance with its flows, by more than `OPTIMAL_SLACK` of the total weight, or if a reduced cost is negative, or positive on a cell with flow, by more than `OPTIMAL_SLACK` of the largest cost.
+- The answer is optimal for the weights as doubles hold them. A weight below half a unit in the last place of a large weight vanishes when subtracted from it, so two inputs that differ by that much can get the same answer. The error is then about a unit in the last place of the largest cost.
 
 ## Threads
 

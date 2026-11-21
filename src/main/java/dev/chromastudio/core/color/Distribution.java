@@ -198,7 +198,7 @@ public final class Distribution {
                 node = prev;
             }
         }
-        checkOptimal(flow, cost, potential);
+        checkOptimal(supply, demand, left, wanted, flow, cost, potential);
         double total = 0;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) total += flow[i][j] * cost[i][j];
@@ -206,15 +206,28 @@ public final class Distribution {
         return total;
     }
 
-    private static void checkOptimal(double[][] flow, double[][] cost, double[] potential) {
-        int n = flow.length;
+    private static void checkOptimal(double[] supply, double[] demand, double[] left, double[] wanted, double[][] flow, double[][] cost, double[] potential) {
+        int n = supply.length, m = demand.length;
+        double total = 0;
+        for (double s : supply) total += s;
+        double massTolerance = total * OPTIMAL_SLACK;
+        for (int i = 0; i < n; i++) {
+            double sent = left[i];
+            for (int j = 0; j < m; j++) sent += flow[i][j];
+            if (Math.abs(sent - supply[i]) > massTolerance) throw new IllegalStateException("The transport plan loses weight from supply " + i);
+        }
+        for (int j = 0; j < m; j++) {
+            double got = wanted[j];
+            for (int i = 0; i < n; i++) got += flow[i][j];
+            if (Math.abs(got - demand[j]) > massTolerance) throw new IllegalStateException("The transport plan loses weight at demand " + j);
+        }
         double scale = 1;
         for (double[] row : cost) {
             for (double c : row) scale = Math.max(scale, Math.abs(c));
         }
         double tolerance = scale * OPTIMAL_SLACK;
         for (int i = 0; i < n; i++) {
-            for (int j = 0; j < flow[i].length; j++) {
+            for (int j = 0; j < m; j++) {
                 double reduced = cost[i][j] + potential[i] - potential[n + j];
                 if (reduced < -tolerance || flow[i][j] > 0 && reduced > tolerance) {
                     throw new IllegalStateException("The transport plan is not optimal: cell " + i + ", " + j + " has reduced cost " + reduced);
