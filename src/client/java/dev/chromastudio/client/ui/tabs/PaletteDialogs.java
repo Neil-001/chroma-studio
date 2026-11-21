@@ -7,6 +7,7 @@ import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.FileDialog;
 import dev.chromastudio.client.action.HotbarFill;
+import dev.chromastudio.client.action.HotbarPlan;
 import dev.chromastudio.client.action.ImageImport;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.axiom.AxiomBridge;
@@ -366,6 +367,7 @@ final class PaletteDialogs {
         private boolean gap = ModSettings.exportGap;
         private final long seed;
         private Component skipped;
+        private String cutPath;
         private int labelW;
 
         Export(Palette palette, Layout layout, long seed) {
@@ -431,6 +433,7 @@ final class PaletteDialogs {
             y += PanelTab.ROW;
             label(g, "palettes.chromastudio.export.patch", half, y);
             if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - STATUS_H - 9, Theme.FAIR, false);
+            if (cutPath != null && over(mouseX, mouseY, in.x(), in.bottom() - STATUS_H, in.w(), STATUS_H)) tip(g, List.of(Component.literal(cutPath)), mouseX, mouseY);
         }
 
         @Override
@@ -454,6 +457,7 @@ final class PaletteDialogs {
 
         private void run(boolean place) {
             skipped = null;
+            cutPath = null;
             LayoutOptions options = new LayoutOptions(layout, height, patch, width, gap, seed);
             SchematicExporter.Result result;
             try {
@@ -467,15 +471,24 @@ final class PaletteDialogs {
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
             int room = box.w() - 10 - Widgets.tw(tr("command.chromastudio.export.done", ""));
-            MutableComponent done = tr("command.chromastudio.export.done", middle(shortPath(result.file()), room));
-            if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty()) done.append("\n").append(tr("palettes.chromastudio.export.axiom").withColor(Theme.DIM));
+            String path = shortPath(result.file()), shown = middle(path, room);
+            Component route = format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty() ? tr("palettes.chromastudio.export.axiom").withColor(Theme.DIM) : null;
+            MutableComponent done = tr("command.chromastudio.export.done", shown);
+            if (route != null) done.append("\n").append(route);
             status(done, Theme.GOOD);
-            if (!place) return;
+            if (!place) {
+                if (!shown.equals(path)) cutPath = path;
+                return;
+            }
             BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
             String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
             Optional<Component> problem = LitematicaBridge.place(result.file(), origin, name);
             if (problem.isPresent()) status(problem.get(), Theme.BAD);
-            else status(tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()), Theme.GOOD);
+            else {
+                MutableComponent placed = tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ());
+                if (route != null) placed.append("\n").append(route);
+                status(placed, Theme.GOOD);
+            }
         }
     }
 
@@ -582,13 +595,21 @@ final class PaletteDialogs {
             if (line != lines.getFirst()) all.append("\n");
             all.append(line);
         }
-        g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), all), mouseX, mouseY);
+        List<FormattedCharSequence> split = Tooltip.splitTooltip(Minecraft.getInstance(), all);
+        int most = Math.max(1, (Minecraft.getInstance().getWindow().getGuiScaledHeight() - TIP_MARGIN) / 10);
+        if (split.size() > most) {
+            split = new ArrayList<>(split.subList(0, most - 1));
+            split.add(Component.literal("...").getVisualOrderText());
+        }
+        g.setTooltipForNextFrame(PanelTab.font(), split, mouseX, mouseY);
     }
+
+    private static final int TIP_MARGIN = 16, TIP_NAME = 4 * 170;
 
     static final class Axiom extends Dialog {
         private enum Script { RECOLOUR, SCATTER }
 
-        static final int WIDTH = 300, SCOPE_LINES = 2, WARNING_LINES = 2, BODY_LINES = SCOPE_LINES + 1 + WARNING_LINES;
+        static final int WIDTH = 300, SCOPE_LINES = 1, WARNING_LINES = 2, BODY_LINES = 5;
 
         private static Script script = Script.RECOLOUR;
         private static AxiomScript.Axis axis = AxiomScript.Axis.Y;
@@ -687,7 +708,7 @@ final class PaletteDialogs {
                 boolean fitted = Export.middle(name.apply(from), w - 10).equals(name.apply(from));
                 var fromButton = widgets.cycler(x, y, w, null, fromChoices(), from, p -> Component.literal(Export.middle(name.apply(p), w - 10)),
                         p -> { fromKey = p == palette ? "" : key(p); refresh(); },
-                        fitted ? tr("axiom.chromastudio.from.tip") : Component.literal(name.apply(from)));
+                        fitted ? tr("axiom.chromastudio.from.tip") : Component.literal(Export.middle(name.apply(from), TIP_NAME)));
                 y += PanelTab.ROW;
                 var matchButton = widgets.cycler(x, y, w, null, List.of(Recolour.Mode.values()), match,
                         m -> tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT)), m -> { match = m; refresh(); }, tr("axiom.chromastudio.match.tip"));
@@ -744,7 +765,7 @@ final class PaletteDialogs {
     }
 
     static final class Hotbar extends Dialog {
-        static final int WIDTH = 300, HEADING = 11, DESTINATION_LINES = 2, WARNING_LINES = 2, RESULT_LINES = 3;
+        static final int WIDTH = 300, HEADING = 11, DESTINATION_LINES = 3, WARNING_LINES = 2, RESULT_LINES = 3;
 
         private final List<PaletteEntry> entries;
         private final int blocks;
@@ -766,18 +787,35 @@ final class PaletteDialogs {
             return tr(key, args);
         }
 
-        static List<Component> destinations(int blocks, Optional<HotbarFill.AxiomPreview> preview, OverflowMode mode) {
+        static List<Component> destinations(int blocks, Optional<HotbarFill.AxiomPreview> preview, HotbarPlan plan) {
             List<Component> out = new ArrayList<>();
             out.add(counted("palettes.chromastudio.hotbar.to.hotbar", Math.min(HotbarFill.HOTBAR, blocks)));
-            int rest = blocks - HotbarFill.HOTBAR;
-            if (rest <= 0) return out;
-            if (preview.isPresent()) out.add(counted("palettes.chromastudio.hotbar.to.axiom", rest, preview.get().hotbars()));
-            else out.add(counted("palettes.chromastudio.hotbar.to." + mode.name().toLowerCase(Locale.ROOT), rest));
+            if (blocks <= HotbarFill.HOTBAR) return out;
+            if (preview.isPresent()) {
+                out.add(counted("palettes.chromastudio.hotbar.to.axiom", blocks - HotbarFill.HOTBAR, preview.get().hotbars()));
+                return out;
+            }
+            if (plan.slotted() > 0) out.add(counted("palettes.chromastudio.hotbar.to.slots", plan.slotted()));
+            if (plan.boxed() > 0) out.add(counted("palettes.chromastudio.hotbar.to.boxes", plan.boxed()));
             return out;
         }
 
-        static @Nullable Component warning(Optional<HotbarFill.AxiomPreview> preview) {
-            return preview.filter(p -> p.replaced() > 0).map(p -> (Component) counted("palettes.chromastudio.hotbar.replaces", p.replaced(), p.hotbars())).orElse(null);
+        static int dropped(int blocks, HotbarPlan plan) {
+            int dropped = Math.max(0, blocks - HotbarFill.HOTBAR) - plan.slotted() - plan.boxed();
+            for (int i = plan.boxesSlotted(); i < plan.boxes().size(); i++) dropped += plan.boxes().get(i);
+            return dropped;
+        }
+
+        static @Nullable Component warning(Optional<HotbarFill.AxiomPreview> preview, int dropped) {
+            if (preview.isPresent()) {
+                HotbarFill.AxiomPreview p = preview.get();
+                return p.replaced() > 0 ? counted("palettes.chromastudio.hotbar.replaces", p.replaced(), p.hotbars()) : null;
+            }
+            return dropped > 0 ? counted("palettes.chromastudio.hotbar.drops", dropped) : null;
+        }
+
+        private HotbarPlan plan() {
+            return HotbarPlan.of(ModSettings.hotbarOverflowMode, blocks - HotbarFill.HOTBAR, HotbarFill.freeSlots());
         }
 
         private int fillY(Bounds in) { return in.bottom() - RESULT_LINES * 9 - PanelTab.GAP - Widgets.H; }
@@ -833,7 +871,8 @@ final class PaletteDialogs {
             Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
             StringSplitter splitter = PanelTab.font().getSplitter();
             int y = in.y() + HEADING + PanelTab.ROW + PanelTab.GAP;
-            List<Component> rows = destinations(blocks, preview, ModSettings.hotbarOverflowMode);
+            HotbarPlan plan = plan();
+            List<Component> rows = destinations(blocks, preview, plan);
             for (Component row : rows) {
                 Fitted line = fit(splitter, row, in.w(), 1);
                 drawLines(g, line, in.x(), y, Theme.TEXT);
@@ -841,7 +880,7 @@ final class PaletteDialogs {
                 y += 9;
             }
             int fillY = fillY(in);
-            Component warning = warning(preview);
+            Component warning = warning(preview, dropped(blocks, plan));
             Fitted warned = fit(splitter, warning, in.w(), WARNING_LINES);
             int warningY = fillY - PanelTab.GAP - warned.height();
             drawLines(g, warned, in.x(), warningY, Theme.FAIR);

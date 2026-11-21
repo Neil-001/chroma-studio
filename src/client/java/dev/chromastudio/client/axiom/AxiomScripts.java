@@ -57,15 +57,18 @@ final class AxiomScripts {
     static Script scatter(Palette p) throws Refused {
         if (p.entries.isEmpty()) throw new Refused(Component.translatable("palettes.chromastudio.need_entries"));
         ScatterBlocks blocks = ScatterBlocks.of(p);
+        List<PaletteEntry> skipped = p.entries.stream().filter(e -> PaletteBlocks.state(e) == null || blocks.leftOut().contains(e)).toList();
         Component leftOut = Component.translatable("axiom.chromastudio.brush.left_out",
-                blocks.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", ")));
-        if (blocks.blocks().isEmpty()) throw new Refused(blocks.leftOut().isEmpty() ? Component.translatable("axiom.chromastudio.no_blocks") : leftOut);
+                skipped.stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", ")));
+        if (blocks.blocks().isEmpty()) {
+            throw new Refused(Component.translatable(blocks.leftOut().isEmpty() ? "axiom.chromastudio.no_blocks" : "axiom.chromastudio.scatter.none"));
+        }
         Palette placed = new Palette(p.name);
         for (ScatterBlocks.Placed b : blocks.blocks()) placed.entries.add(PaletteBlocks.of(b.state()).withWeight(b.weight()));
         MutableComponent scope = counted("axiom.chromastudio.scatter.done", placed.entries.size());
         List<Component> details = new ArrayList<>(List.of(Component.translatable("axiom.chromastudio.scatter.rules")));
-        if (!blocks.leftOut().isEmpty()) {
-            scope.append(" ").append(Component.translatable("axiom.chromastudio.script.left_out", blocks.leftOut().size()));
+        if (!skipped.isEmpty()) {
+            scope.append(" ").append(Component.translatable("axiom.chromastudio.script.left_out", skipped.size()));
             details.add(leftOut);
             details.add(Component.translatable("axiom.chromastudio.brush.left_out.tip"));
         }

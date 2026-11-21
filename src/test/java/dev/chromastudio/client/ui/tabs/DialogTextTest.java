@@ -10,6 +10,7 @@ import com.mojang.blaze3d.font.UnbakedGlyph;
 import com.mojang.serialization.JsonOps;
 import dev.chromastudio.client.OverflowMode;
 import dev.chromastudio.client.action.HotbarFill;
+import dev.chromastudio.client.action.HotbarPlan;
 import dev.chromastudio.client.axiom.AxiomBridge;
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.client.ui.Bounds;
@@ -167,7 +168,7 @@ class DialogTextTest {
         List<Component> problems = List.of(tr("axiom.chromastudio.nothing_to_change").copy().append(" ").append(tr("axiom.chromastudio.recolour.kept", 999)),
                 tr("palettes.chromastudio.need_entries"), tr("axiom.chromastudio.no_blocks"), tr("axiom.chromastudio.gradient.too_short"),
                 tr("axiom.chromastudio.gradient_tool.missing"), tr("axiom.chromastudio.too_long", "99.9", "40.0"), tr("axiom.chromastudio.too_long.from", "99.9", "40.0"),
-                tr("palettes.chromastudio.index_building"));
+                tr("palettes.chromastudio.index_building"), tr("axiom.chromastudio.scatter.none"));
         for (Component p : problems) fits("a refusal", p, w, PaletteDialogs.Axiom.BODY_LINES);
         fits("the receipt", tr("axiom.chromastudio.copied"), w, Dialog.STATUS_LINES);
         int labelW = 6;
@@ -185,12 +186,17 @@ class DialogTextTest {
         for (OverflowMode m : OverflowMode.values()) {
             String value = tr("option.chromastudio.overflowmode." + m.name().toLowerCase(Locale.ROOT)).getString();
             within("the shulker box cycler", button(Component.literal(tr("palettes.chromastudio.hotbar.boxes").getString() + ": " + value)), control);
-            for (Component row : PaletteDialogs.Hotbar.destinations(99, Optional.empty(), m)) fits("a destination", row, w, 1);
+            for (int free : List.of(0, 5, 27)) {
+                HotbarPlan plan = HotbarPlan.of(m, 90, free);
+                for (Component row : PaletteDialogs.Hotbar.destinations(99, Optional.empty(), plan)) fits("a destination", row, w, 1);
+                Component warning = PaletteDialogs.Hotbar.warning(Optional.empty(), PaletteDialogs.Hotbar.dropped(99, plan));
+                if (warning != null) fits("the drop warning", warning, w, PaletteDialogs.Hotbar.WARNING_LINES);
+            }
         }
         Component hotbars = tr("hotbar.chromastudio.axiom.hotbars", 8, 9);
         Optional<HotbarFill.AxiomPreview> preview = Optional.of(new HotbarFill.AxiomPreview(hotbars, 99));
-        for (Component row : PaletteDialogs.Hotbar.destinations(99, preview, OverflowMode.NEVER)) fits("a destination", row, w, 1);
-        fits("the replacement warning", PaletteDialogs.Hotbar.warning(preview), w, PaletteDialogs.Hotbar.WARNING_LINES);
+        for (Component row : PaletteDialogs.Hotbar.destinations(99, preview, HotbarPlan.of(OverflowMode.NEVER, 90, 0))) fits("a destination", row, w, 1);
+        fits("the replacement warning", PaletteDialogs.Hotbar.warning(preview, 0), w, PaletteDialogs.Hotbar.WARNING_LINES);
         for (Component receipt : List.of(tr("hotbar.chromastudio.filled.axiom", hotbars, "Left Alt"), tr("hotbar.chromastudio.undone_axiom"),
                 tr("hotbar.chromastudio.filled", 9).copy().append(" ").append(tr("hotbar.chromastudio.rest.boxes", 99, 3)), tr("hotbar.chromastudio.undone_dropped")))
             fits("a fill's receipt", receipt, w, PaletteDialogs.Hotbar.RESULT_LINES);

@@ -196,6 +196,14 @@ public final class HotbarFill {
 
     public record AxiomPreview(Component hotbars, int replaced) {}
 
+    public static int freeSlots() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return 0;
+        int free = 0;
+        for (int i = HOTBAR; i < INVENTORY; i++) if (player.getInventory().getItem(i).isEmpty()) free++;
+        return free;
+    }
+
     public static int holdable(List<PaletteEntry> entries) {
         return (int) entries.stream().filter(e -> !PaletteBlocks.icon(e).isEmpty()).count();
     }

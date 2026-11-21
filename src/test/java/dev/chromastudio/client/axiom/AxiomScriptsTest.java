@@ -59,6 +59,7 @@ class AxiomScriptsTest {
     void theScatterScriptPlacesWhatTheBrushsScatterPlaces() throws Exception {
         Palette p = new Palette("Mixed");
         p.entries.addAll(steps("stone", "oak_stairs", "lantern"));
+        p.entries.add(new PaletteEntry("missing_mod:block", ""));
         AxiomBridge.Script script = AxiomScripts.scatter(p);
         assertTrue(script.text().contains("blocks.oak_planks") && script.text().contains("blocks.stone"), script.text());
         assertFalse(script.text().contains("oak_stairs") || script.text().contains("lantern"), script.text());
@@ -66,6 +67,7 @@ class AxiomScriptsTest {
         keys(script, keys);
         assertTrue(keys.stream().anyMatch(k -> k.startsWith("axiom.chromastudio.brush.left_out")), keys.toString());
         assertTrue(keys.contains("axiom.chromastudio.scatter.done[2]"), keys.toString());
+        assertTrue(keys.contains("axiom.chromastudio.script.left_out[2]"), keys.toString());
     }
 
     @Test
