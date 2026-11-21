@@ -171,7 +171,7 @@ public final class ImGui {
 
     public static void endTooltip() { inTooltip = false; }
 
-    public static boolean beginTable(String id, int columns, int flags) { return true; }
+    public static boolean beginTable(String id, int columns, int flags, float width, float height) { return true; }
 
     public static void endTable() {}
 

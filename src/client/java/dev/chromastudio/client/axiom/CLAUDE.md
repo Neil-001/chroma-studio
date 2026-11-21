@@ -7,7 +7,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - Brigadier merges literals of the same name, so `AxiomCommand` builds the whole `/chroma axiom` tree, and a new subcommand is one more child of `axiom`.
 - `AxiomBridge.register` runs after Axiom's own entrypoint, so Axiom's tool list is there to add to. `AxiomTools.register` makes every tool before it adds any, so a tool this Axiom can't make leaves none behind.
 - Axiom registers its service implementations in its own jar, so `AxiomTools.service` loads each with the API class's own class loader.
-- A throw from Axiom that reaches `AxiomBridge.fail`, a missing class or method included, turns every Axiom feature off for the session, with a reason the controls show, because another Axiom version would fail the same way on every call. `GuardedTool` catches every call Axiom makes into a tool, and `AxiomBridge.tick` catches the tick, so nothing reaches the game loop.
+- A throw that reaches `AxiomBridge.fail` turns every Axiom feature off for the session, with a reason the controls show, because the same call would fail again. A `LinkageError`, or any throw while the tools are registered, counts as an Axiom version this Chroma Studio doesn't support; any other throw says the tools stopped and a restart brings them back, as it isn't the version's fault. Each notice is two short lines, as `Hud` doesn't wrap and in the editor the screen is only the 3D view. `GuardedTool` catches every call Axiom makes into a tool, and `AxiomBridge.tick` catches the tick, so nothing reaches the game loop.
 - `GuardedTool` catches the throws that escape a tool, so tool code lets Axiom's throws reach it unless it has a fallback of its own. `AxiomBlock.live` logs a failed read and gives no block, and `BuildPreview.show` shows nothing when it can't take the chunk render override.
 - Once the features are off, a throw while putting the tools away is dropped (`GuardedTool.failed`, `AxiomTools.shutDown`, `AxiomBridge.fail`): the first failure is already logged, and Axiom's classes may be what's missing before any tool exists.
 - Once the features are off, a tool Axiom still holds does nothing, but its panel is still drawn and says why (`GuardedTool.displayImguiOptions`, `AxiomPanel.Layout.draw`).
@@ -108,7 +108,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - `GradientTool.ON_TAB` is the empty string, which no saved gradient's name can be, as names are never blank.
 - Swap ends sets `GradientTool.reversed` and leaves the ends and `seed` where they are. `GradientLine.between` anchors a straightened line on the first end, and Like the first block keeps to the seed's material, so swapping the ends could move the line or change the material, where Swap ends should only turn the steps round.
 - Blend starts at 75, which fades steps into each other on a tower a few blocks a step as on a long wall, while each step still shows pure along its middle.
-- The Gradient tab works its gradient out only once it has been shown, so until then the gradient tool's panel offers to open it.
+- The Gradient tab works its gradient out only once it has been shown, so until then the gradient tool's panel offers to open it, but only when no saved gradient it shows is usable.
 
 ## Scripts
 
@@ -143,8 +143,11 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - ImGui reads the text of its tooltips and of `text` and `textWrapped` as a printf format, so a `%` in a palette's or block's name would show as garbage. `AxiomPanel` sends all text through `textUnformatted`, and draws a control's own label as it is.
 - ImGui wraps text only at spaces, which Chinese and Japanese don't have between words, so `AxiomPanel` breaks their text into lines with `LineBreaks`.
 - `AxiomPanel.wrapped` draws broken lines as one ImGui group, so a tooltip set after it belongs to all of them.
-- An ImGui label is also its id, and palettes may share a name, as a player's palette may share a preset's, so `AxiomPanel.list` adds each row's place to its id. A selectable grows to fit its label, so `list` measures a label against the list's width to know when to show it whole in a tooltip.
-- Axiom's panel shows no scrollbar, so `AxiomPanel.Layout` scrolls a tool's options in their own area and holds a bottom part to the panel's bottom edge. The bottom part has the first claim on the space, and holds what the player must read before acting, the masks line first in the tools that change blocks, then the buttons.
+- An ImGui label is also its id, and palettes may share a name, as a player's palette may share a preset's, so `AxiomPanel.list` adds each row's place to its id. Two long names often differ only at the end, so `AxiomPanel.fit` cuts a name in the middle and keeps more of its end, and the whole name shows on hover.
+- A list that can grow takes the height the options part has left, less what was drawn below it in the last frame (`AxiomPanel.Layout.grow`), so it never pushes the controls under it out of view, and shows at least three rows.
+- A click in a panel acts through `AxiomPanel.Layout.later`, after the whole panel is drawn, so nothing drawn later in the same frame reads state the click cleared. Apply still acts at once, as its tool resets itself right after.
+- Axiom's panel shows no scrollbar, so `AxiomPanel.Layout` scrolls a tool's options in their own area and holds a bottom part to the panel's bottom edge. The bottom part has the first claim on the space, and holds what the player must read before acting: the masks line in the tools that change blocks, the one status row, then the buttons.
+- The status row says one thing, chosen in the tool's `status` method: a failure of the masks or the tool, then what to choose, then a refusal, then the receipt of the last change, then the next step or the preview's count. Details of a preview go in its tooltip. A refusal from `AxiomChanges.send` says only what happened, and `AxiomPanel.refusal` adds the tool's next step, and for `refused.masks_differ` the advice on seeding a mask's noise in its tooltip.
 - In the options part, a line that comes and goes with a mode or a result sits below every control, so no control moves. In the bottom part, the lines sit above the buttons, so a button's tooltip never covers them.
 - ImGui lays a window out top to bottom, so `AxiomPanel.Layout` keeps the bottom part's height from the last frame. In a panel too short for both parts, the two scroll together.
 - `AxiomPanel` closes an ImGui child in `finally`, as ImGui left with an open child fails on Axiom's next call into it.
@@ -168,7 +171,9 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - Scatter doesn't paint over a block that holds items, text or what a player put in it, a block with water in it, or one half of a door or a tall plant (`ScatterBlocks.paintsOver`), as what it holds would be lost or the other half left on its own.
 - `SampleKind.of` counts a shape as its material's first full block, as a recolour in Shading counts it. `SampleKind` tells the ground and plants from the block itself, so a plant the index doesn't list still can't join a build to its neighbour.
 - `SamplerTool` starts the sample over in a new world or dimension only at the first block there that counts, so a missed click there loses nothing.
+- `SamplerTool` saves through `PaletteStore.createSaved`, which adds a palette only once its file is written, so a failed save leaves nothing to save twice. The Palettes tab keeps a palette it couldn't write, so the player can retry there.
 
 ## Palette brush
 
-- `PaletteBrushTool` refuses a recolour while `fromGone` is true, that is while no palette has the From key, rather than recolour every block but the ground.
+- `PaletteBrushTool` refuses a recolour while `fromGone` is true, that is while the From palette is gone, rather than recolour every block but the ground.
+- A palette's key in `PaletteBrushTool.keys` comes from its name or file, which a rename changes and a new palette can take. So `PaletteBrushTool.Bound` holds the chosen palette itself, follows it through a rename and saves its new key, and once it is deleted, no palette made later under its key takes its place. Setting `paletteKey` or `fromKey` to another key chooses again.

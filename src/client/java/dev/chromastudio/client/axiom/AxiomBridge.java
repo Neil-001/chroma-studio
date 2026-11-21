@@ -26,6 +26,7 @@ public final class AxiomBridge {
     }
 
     private static @Nullable Component broken;
+    private static boolean version;
     private static boolean told;
 
     public static Optional<Component> whyNot() {
@@ -50,7 +51,7 @@ public final class AxiomBridge {
         try {
             AxiomTools.register();
         } catch (Throwable t) {
-            fail(t);
+            fail(t, true);
         }
     }
 
@@ -59,10 +60,14 @@ public final class AxiomBridge {
         told = false;
     }
 
-    static void fail(Throwable t) {
+    static void fail(Throwable t) { fail(t, t instanceof LinkageError); }
+
+    private static void fail(Throwable t, boolean unsupported) {
         if (broken != null) return;
-        ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
-        broken = Component.translatable("axiom.chromastudio.incompatible");
+        version = unsupported;
+        if (unsupported) ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
+        else ChromaStudioClient.LOGGER.error("Chroma Studio's Axiom tools stopped after an error, so its Axiom features are off until the game restarts", t);
+        broken = Component.translatable(unsupported ? "axiom.chromastudio.incompatible" : "axiom.chromastudio.stopped");
         try {
             AxiomTools.shutDown();
         } catch (Throwable _) {
@@ -80,7 +85,8 @@ public final class AxiomBridge {
         if (broken != null) {
             if (!told && mc.player != null) {
                 told = true;
-                Hud.readout(Component.translatable("axiom.chromastudio.incompatible.title"), broken, ModSettings.readoutSeconds);
+                String notice = version ? "axiom.chromastudio.incompatible" : "axiom.chromastudio.stopped";
+                Hud.readout(Component.translatable(notice + ".title"), Component.translatable(notice + ".how"), ModSettings.readoutSeconds);
             }
             return;
         }
