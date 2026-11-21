@@ -17,7 +17,6 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/** The scripts' choice of blocks, which needs the game's blocks but not Axiom. */
 class AxiomScriptsTest {
     @BeforeAll
     static void loadGame() {
@@ -33,25 +32,20 @@ class AxiomScriptsTest {
 
     @Test
     void aGradientScriptLeavesOutWhatTheGradientToolLeavesOutAndSaysSo() throws Exception {
-        // The builder's "Tower": nine steps, the second a chain, which isn't a full block.
         List<PaletteEntry> tower = steps("brown_concrete_powder", "copper_chain", "terracotta", "jungle_planks", "stripped_oak_log", "birch_planks",
                 "sandstone", "smooth_sandstone", "chest");
         AxiomBridge.Script script = AxiomScripts.gradient("Tower", tower, AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
         assertFalse(script.text().contains("copper_chain"), script.text());
         assertFalse(script.text().contains("blocks.chest"), script.text());
         assertTrue(script.text().contains("blocks.terracotta or false"), script.text());
-        // Seven steps, two blocks each, from where the player stands.
         assertTrue(script.text().contains("$int(Bottom, -53, -64, 319)$") && script.text().contains("$int(Top, -40, -64, 319)$"), script.text());
         List<String> keys = new ArrayList<>();
         keys(script.summary(), keys);
         assertTrue(keys.contains("axiom.chromastudio.gradient.done[7, y]"), keys.toString());
         assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped[2]"), keys.toString());
-        // One left out is said in the singular.
         keys.clear();
         keys(AxiomScripts.gradient("Tower", tower.subList(0, 3), AxiomScript.Axis.Y, BlockPos.ZERO).summary(), keys);
         assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped.one[1]"), keys.toString());
-        // Naming every block the tool leaves that holds something, potted plants included, takes more room than a
-        // server lets a player without import rights run, even for two steps, and the summary says so.
         AxiomBridge.Script two = AxiomScripts.gradient("Tower", tower.subList(2, 4), AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
         for (AxiomBridge.Script made : List.of(script, two)) {
             keys.clear();
@@ -62,7 +56,6 @@ class AxiomScriptsTest {
 
     @Test
     void theScatterScriptPlacesWhatTheBrushsScatterPlaces() throws Exception {
-        // Stairs go in as their full block, and a lantern, which can't stand alone, is left out, as the brush has it.
         Palette p = new Palette("Mixed");
         p.entries.addAll(steps("stone", "oak_stairs", "lantern"));
         AxiomBridge.Script script = AxiomScripts.scatter(p);
@@ -77,14 +70,11 @@ class AxiomScriptsTest {
     @Test
     void theGradientScriptNamesTheBlocksThatHoldItemsWhichItsOtherChecksMiss() {
         AxiomScript.Kept kept = AxiomScripts.gradientKept();
-        // A jukebox and a spawner have no way they face, so they're named; a barrel, which faces a way, is left alone by
-        // that, a player head by its rotation, and a brewing stand by a property only it has.
         assertTrue(kept.blocks().contains("minecraft:jukebox") && kept.blocks().contains("minecraft:spawner"), kept.toString());
         assertFalse(kept.blocks().contains("minecraft:barrel") || kept.blocks().contains("minecraft:player_head") || kept.blocks().contains("minecraft:stone"), kept.toString());
         assertTrue(kept.properties().contains("has_bottle_0"), kept.toString());
     }
 
-    /** The translation keys in a message, with their arguments. */
     private static void keys(Component c, List<String> out) {
         if (c.getContents() instanceof TranslatableContents t) out.add(t.getKey() + List.of(t.getArgs()));
         for (Component sibling : c.getSiblings()) keys(sibling, out);

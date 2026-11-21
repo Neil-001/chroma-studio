@@ -82,7 +82,6 @@ class GradientShapesTest {
 
     @Test
     void aStepWithoutTheShapeLendsItFromTheClosestColour() {
-        // Concrete has no stairs, so its stairs come from the material nearest its colour.
         BlockState stair = block("stone_brick_stairs").defaultBlockState().setValue(StairBlock.FACING, Direction.WEST);
         BlockState dark = shapes().apply(block("black_concrete").defaultBlockState(), stair);
         assertNotNull(dark);
@@ -111,10 +110,8 @@ class GradientShapesTest {
         assertNotNull(out);
         assertEquals(block("black_stained_glass_pane"), out.getBlock());
         assertEquals(true, out.getValue(IronBarsBlock.EAST));
-        // A glass step gives its own pane, and a pane finds its own glass.
         assertEquals(block("white_stained_glass_pane"), shapes.apply(block("white_stained_glass").defaultBlockState(), pane).getBlock());
         assertEquals(block("white_stained_glass"), GradientShapes.glassPair(BlockIndex.get().entryOf(block("white_stained_glass_pane").defaultBlockState())).block());
-        // A window in a stone gradient keeps its glass, and no pane ever becomes iron bars.
         assertNull(shapes.apply(block("black_concrete").defaultBlockState(), pane));
         assertNull(shapes.apply(block("stone_bricks").defaultBlockState(), pane));
     }
@@ -139,10 +136,8 @@ class GradientShapesTest {
     @Test
     void blocksAlreadyRightStayAndShapesNoneCanTakeAreLeftAlone() {
         GradientShapes shapes = shapes();
-        // Already the step's material in this shape, so it's part of the gradient as it is.
         BlockState stair = block("stone_brick_stairs").defaultBlockState().setValue(StairBlock.FACING, Direction.SOUTH);
         assertEquals(stair, shapes.apply(block("stone_bricks").defaultBlockState(), stair));
-        // A door's halves could fall in different steps.
         assertNull(shapes.apply(block("sandstone").defaultBlockState(), block("oak_door").defaultBlockState()));
     }
 }

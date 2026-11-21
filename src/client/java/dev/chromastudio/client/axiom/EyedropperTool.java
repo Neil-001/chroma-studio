@@ -10,12 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
-/**
- * Chroma Studio's eyedropper as an Axiom tool: using it on a block makes that face the Match target, as the
- * eyedropper key does in the world. It changes no blocks.
- */
 final class EyedropperTool implements CustomTool {
-    /** The last block taken, to show in the panel, or null. */
     private Component last;
     private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
 
@@ -39,7 +34,6 @@ final class EyedropperTool implements CustomTool {
 
     private void bottom() {
         if (last != null) AxiomPanel.wrapped(tr("axiom.chromastudio.eyedropper.last", last));
-        // The window opens at the next tick, after Axiom has finished drawing its panels this frame.
         if (AxiomPanel.button(tr("key.chromastudio.open"), true, tr("axiom.chromastudio.open.tip"))) ChromaStudioClient.openWindowSoon("match");
     }
 }

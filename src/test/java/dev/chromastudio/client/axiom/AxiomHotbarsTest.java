@@ -11,15 +11,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.junit.jupiter.api.Test;
 
-/**
- * How Chroma Studio tells an Axiom whose hotbars it knows from one whose internals changed, without Axiom: the
- * lookup is pointed at stand-ins with Axiom 6.1's signatures, and at one with a changed signature.
- */
 public class AxiomHotbarsTest {
     private static final String HERE = AxiomHotbarsTest.class.getName() + "$";
     private static final Component CHANGED = Component.literal("changed");
 
-    /** {@code HotbarManager} as Axiom 6.1 has it. */
     public static final class Manager {
         public static int getActiveHotbarIndex() { return 3; }
 
@@ -28,7 +23,6 @@ public class AxiomHotbarsTest {
         public static void setItemStack(int hotbar, int slot, ItemStack stack) {}
     }
 
-    /** As a later Axiom might have it: the same names, but a slot set by one number. */
     public static final class ChangedManager {
         public static int getActiveHotbarIndex() { return 3; }
 
@@ -37,12 +31,10 @@ public class AxiomHotbarsTest {
         public static void setItemStack(int index, ItemStack stack) {}
     }
 
-    /** {@code AxiomPermission}, with the one constant used. */
     public static final class Permission {
         public static final Permission PLAYER_HOTBAR = new Permission();
     }
 
-    /** {@code AxiomClient}'s two methods. */
     public static final class Client {
         public static boolean hasPermission(Permission p) { return p == Permission.PLAYER_HOTBAR; }
 
@@ -73,7 +65,6 @@ public class AxiomHotbarsTest {
 
     @Test
     void theHeldHotbarIsStillKnownWhenTheRestChanged() throws Throwable {
-        // So Undo can tell that the player switched hotbars, and refuse rather than write into the wrong one.
         assertEquals(3, (int) AxiomHotbars.findIndex(HERE + "ChangedManager").invoke());
     }
 

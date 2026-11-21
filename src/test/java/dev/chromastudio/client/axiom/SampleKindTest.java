@@ -20,7 +20,6 @@ import net.minecraft.world.level.block.state.properties.SlabType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/** What each block counts as when the sampler tool counts a build: {@link SampleKind#of}. */
 class SampleKindTest {
     private static BlockIndex index;
 
@@ -42,7 +41,6 @@ class SampleKindTest {
         blocks.put("poppy", "block/poppy");
         blocks.put("chest", "block/oak_planks");
         blocks.put("water", "block/water_still");
-        // A shape whose material has no full block in the index counts as itself.
         blocks.put("mossy_cobblestone_slab", "block/mossy_cobblestone");
         index = TestIndex.index(blocks);
     }
@@ -64,7 +62,6 @@ class SampleKindTest {
 
     @Test
     void fullBlocksGlassPanesAndAccentsCountAsThemselves() {
-        // A log is a full block of oak, but not the planks: a builder chooses it for its own look.
         assertEquals("minecraft:oak_log", kind(Blocks.OAK_LOG.defaultBlockState()));
         assertEquals("minecraft:glass", kind(Blocks.GLASS.defaultBlockState()));
         assertEquals("minecraft:glass_pane", kind(Blocks.GLASS_PANE.defaultBlockState()));
@@ -73,7 +70,6 @@ class SampleKindTest {
 
     @Test
     void plantsCountOnlyWhenAskedFor() {
-        // Grass, dirt and sand go by block tags, which a test without a world doesn't bind, so the game shows those.
         assertNull(kind(Blocks.POPPY.defaultBlockState()));
         assertEquals("minecraft:poppy", SampleKind.of(index, Blocks.POPPY.defaultBlockState(), true));
     }
@@ -82,7 +78,6 @@ class SampleKindTest {
     void theWholeBuildSearchNeverPassesThroughPlantsListedOrNot() {
         assertTrue(SampleKind.member(Blocks.STONE_BRICKS.defaultBlockState()));
         assertFalse(SampleKind.member(Blocks.POPPY.defaultBlockState()));
-        // Not in this index, but a plant all the same.
         assertFalse(SampleKind.member(Blocks.DANDELION.defaultBlockState()));
         assertFalse(SampleKind.member(Blocks.AIR.defaultBlockState()));
         assertFalse(SampleKind.member(Blocks.WATER.defaultBlockState()));
@@ -94,7 +89,6 @@ class SampleKindTest {
             assertNull(SampleKind.of(index, Blocks.AIR.defaultBlockState(), ground));
             assertNull(SampleKind.of(index, Blocks.WATER.defaultBlockState(), ground));
             assertNull(SampleKind.of(index, Blocks.CHEST.defaultBlockState(), ground));
-            // Not in the index at all.
             assertNull(SampleKind.of(index, Blocks.BEDROCK.defaultBlockState(), ground));
         }
     }

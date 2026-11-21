@@ -12,26 +12,6 @@ import java.util.List;
 import java.util.Map;
 import net.minecraft.network.chat.Component;
 
-/**
- * Gives each of Chroma Studio's tools its own icon in Axiom's tool grid. Axiom's API draws every tool added through
- * it with the same pencil, so five Chroma tools in a row couldn't be told apart. Axiom keeps its tools in one list,
- * and draws each with the character its {@code Tool.iconChar} names in Axiom's icon font; this swaps the entry Axiom
- * made for a tool with one that answers its own character and passes every other call to Axiom's entry unchanged.
- * It's internal to Axiom, so it goes through {@link AxiomInternals}, and when anything doesn't match, the tool keeps
- * the pencil, as it would without this.
- *
- * <p>Axiom 6.1.5 finds its tools by their place in that list, or by their class for its own tools, and keys only their
- * key bindings by the entry itself, which it gives none of the tools added through its API. So swapping the entry
- * loses nothing. In case another version keys an entry of ours, the swap is left undone when it would lose a lookup,
- * and undone when anything goes wrong after it: a pencil is better than a tool Axiom can't find.
- *
- * <p>The characters are ones Axiom's own tools don't use in this version, so none can be taken for one of Axiom's:
- * a scribble and pencil for the palette brush, two strands twisting from one end to the other for the gradient, a
- * picture for the shade brush, which changes a build's light and shade, a hand that takes blocks for the sampler, and
- * a marker for the eyedropper. Axiom's font has no pipette, and its arrows up and down over a slope, which would
- * suit the shade brush, look too like its own Elevation tool. Another version of Axiom could draw something else for
- * these characters; that would show a wrong icon, never break a tool.
- */
 final class AxiomIcons {
     private AxiomIcons() {}
 
@@ -49,17 +29,12 @@ final class AxiomIcons {
         return new Handles(tool, tools, keybinds, icon, tool.getMethod("name"));
     });
 
-    /**
-     * Gives {@code added}, just registered through Axiom's API, the icon {@code icon}. Leaves it with the pencil when
-     * Axiom's list isn't as this version of Chroma Studio knows it.
-     */
     static void give(GuardedTool added, char icon) {
         if (INTERNALS.reason().isPresent()) return;
         Handles h = INTERNALS.handles();
         try {
             @SuppressWarnings("unchecked")
             List<Object> tools = (List<Object>) h.tools.invoke();
-            // Axiom's entry for the tool is the last one with its name: its own tools never share our names.
             String name = added.name();
             for (int i = tools.size() - 1; i >= 0; i--) {
                 Object entry = tools.get(i);
@@ -81,11 +56,6 @@ final class AxiomIcons {
         }
     }
 
-    /**
-     * Axiom's own entry for a tool, answering {@code icon} for its icon. Equal only to itself, as Axiom keys maps by it.
-     * It also tells the tool when Axiom picks another, which Axiom says only to its own tools' entries, through
-     * {@code toolDeselected}: with "Clear tool when swapping" off it calls nothing else.
-     */
     private record WithIcon(Object entry, char icon, Method iconChar, GuardedTool tool) implements InvocationHandler {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -111,7 +81,6 @@ final class AxiomIcons {
             try {
                 return method.invoke(entry, args);
             } catch (InvocationTargetException e) {
-                // What Axiom's entry throws, such as the API's refusal to write settings, reaches Axiom as it would have.
                 throw e.getCause();
             }
         }
