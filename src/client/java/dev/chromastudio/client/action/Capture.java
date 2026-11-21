@@ -33,26 +33,17 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
 
-/**
- * Makes a palette from the blocks in a box of the world. Armed from the Palettes tab or by the capture key, it takes
- * the next two presses of the eyedropper or capture key as the box's corners, outlining the box meanwhile.
- * {@code /chroma capture} does the same from six numbers.
- */
 public final class Capture {
     private Capture() {}
 
-    /** The most blocks a box may hold. Counting happens in one go on the client thread, and this keeps it brief. */
     public static final long MAX_VOLUME = 4_000_000;
     private static final int OUTLINE = 0xFFFFFFFF;
 
     private static boolean armed;
     private static BlockPos first;
-    /** The world the capture was armed in. Coordinates picked there mean nothing in another. */
     private static ClientLevel armedIn;
-    /** What the eyedropper key did before the capture borrowed it. */
     private static Runnable eyedropper;
 
-    /** Gives the capture key its action and adds {@code /chroma capture}. Call once at client start. */
     public static void install() {
         Keys.onCapture = () -> {
             if (armed) corner();
@@ -83,7 +74,6 @@ public final class Capture {
 
     public static boolean armed() { return armed; }
 
-    /** Starts waiting for the two corners. The eyedropper key picks them until the capture is done or cancelled. */
     public static void arm() {
         if (armed || Minecraft.getInstance().player == null) return;
         armed = true;
@@ -113,7 +103,6 @@ public final class Capture {
         Hud.readout(Component.translatable(first == null ? "capture.chromastudio.first" : "capture.chromastudio.second"), keys, 2);
     }
 
-    /** The block the player looks at within reach, or failing that where they stand, so a corner can be in mid-air. */
     private static BlockPos aimed(Minecraft mc) {
         if (mc.hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK) return hit.getBlockPos();
         return mc.player.blockPosition();
@@ -135,10 +124,6 @@ public final class Capture {
         if (result.made) ChromaStudioClient.openWindow();
     }
 
-    /**
-     * Call every client tick. Keeps the prompt up while armed, and cancels on Escape, which opens the pause menu, on
-     * leaving the world, and on going to another dimension.
-     */
     public static void tick(Minecraft mc) {
         if (!armed) return;
         if (mc.player == null) disarm();
@@ -146,10 +131,6 @@ public final class Capture {
         else prompt();
     }
 
-    /**
-     * Outlines the box being picked: the first corner to the block aimed at, or just the block aimed at before the
-     * first corner. Each loader calls this where it collects the world's extra geometry; {@code cam} is the camera.
-     */
     public static void render(SubmitNodeCollector out, PoseStack pose, Vec3 cam) {
         Minecraft mc = Minecraft.getInstance();
         if (!armed || mc.player == null) return;
@@ -163,14 +144,8 @@ public final class Capture {
         pose.popPose();
     }
 
-    /** What a capture came to: a line to show the player, and whether a palette was made. */
     public record Result(Component message, boolean made) {}
 
-    /**
-     * Counts the block states in the loaded chunks of the box between two corners, air left out, and makes a palette
-     * of the commonest, each weighted by how often it turned up against the rarest kept. A state is kept as it stands
-     * in the world, with every property that isn't its block's default.
-     */
     public static Result capture(BlockPos a, BlockPos b) {
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
@@ -178,9 +153,7 @@ public final class Capture {
         if (level == null || sink == null) return new Result(Component.translatable("palettes.chromastudio.no_world"), false);
         int x0 = Math.min(a.getX(), b.getX()), y0 = Math.max(level.getMinY(), Math.min(a.getY(), b.getY())), z0 = Math.min(a.getZ(), b.getZ());
         int x1 = Math.max(a.getX(), b.getX()), y1 = Math.min(level.getMaxY(), Math.max(a.getY(), b.getY())), z1 = Math.max(a.getZ(), b.getZ());
-        // A box wholly above or below the world holds nothing, however wide it is.
         if (y1 < y0) return new Result(Component.translatable("capture.chromastudio.empty"), false);
-        // Each side is checked on its own first: three sides typed into the command can multiply past what a long holds.
         long sx = (long) x1 - x0 + 1, sy = (long) y1 - y0 + 1, sz = (long) z1 - z0 + 1;
         if (sx > MAX_VOLUME || sz > MAX_VOLUME || sx * sz > MAX_VOLUME || sx * sz * sy > MAX_VOLUME) {
             return new Result(Component.translatable("capture.chromastudio.too_big", MAX_VOLUME), false);
@@ -189,7 +162,6 @@ public final class Capture {
         Map<BlockState, PaletteEntry> entries = new IdentityHashMap<>();
         Map<PaletteEntry, Integer> counts = new HashMap<>();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        // Counted by offset from the corner: a coordinate at the very end of the int range can't be stepped past.
         for (int dx = 0; dx < sx; dx++)
             for (int dz = 0; dz < sz; dz++) {
                 int x = x0 + dx, z = z0 + dz;
@@ -214,7 +186,6 @@ public final class Capture {
         return new Result(Component.translatable("capture.chromastudio.done", kept.size(), counts.size()), true);
     }
 
-    /** Whether a capture could start: only in a world. */
     public static Optional<Component> unavailable() {
         return Minecraft.getInstance().player == null ? Optional.of(Component.translatable("palettes.chromastudio.no_world")) : Optional.empty();
     }
