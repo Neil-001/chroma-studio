@@ -111,6 +111,10 @@ dependencies {
 test {
 	useJUnitPlatform()
 	systemProperty 'chroma.timing', System.getProperty('chroma.timing', 'false')
+	inputs.files(fileTree(rootDir) {
+		include '**/*.java', '**/CLAUDE.md', '**/AGENTS.md'
+		exclude '**/build/**', 'run/**', '.gradle/**'
+	}).withPropertyName('sourceRules')
 	testLogging {
 		events "failed"
 		exceptionFormat = "full"
