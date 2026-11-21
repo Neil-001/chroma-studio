@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "Reste : cette forme est désactivée dans « Formes de bloc ».",
   "axiom.chromastudio.shade.left.darker": "Reste : aucune nuance plus foncée d'un cran n'est assez proche.",
   "axiom.chromastudio.shade.left.lighter": "Reste : aucune nuance plus claire d'un cran n'est assez proche.",
+  "axiom.chromastudio.shade.left.masked": "Reste : les masques d'outil l'excluent.",
   "axiom.chromastudio.sampler": "Échantillonneur de construction Chroma",
   "axiom.chromastudio.sampler.brush": "Pinceau",
   "axiom.chromastudio.sampler.build.tip": "Prend tous les blocs reliés à celui sur lequel tu fais un clic droit.",

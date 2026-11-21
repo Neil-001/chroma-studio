@@ -13,6 +13,7 @@ import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.StoredGradient;
+import com.moulberry.axiom.mask.MaskManager;
 import imgui.moulberry92.ImGui;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
@@ -151,5 +152,18 @@ class PanelTest {
         } finally {
             GradientStore.get().delete(slabs.name());
         }
+    }
+
+    @Test
+    void theShadeBrushSaysWhenTheMasksKeepThePointedBlockOut() {
+        axiom.level.put(0, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
+        axiom.tools.hit = new BlockPos(0, 0, 0);
+        MaskManager.mask = _ -> false;
+        ShadeBrushTool shade = new ShadeBrushTool();
+        GuardedTool tool = new GuardedTool(shade);
+        tool.render(axiom.rc);
+        frame(tool);
+        frame(tool);
+        assertTrue(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.shade.left.masked")), ImGui.drawn.toString());
     }
 }

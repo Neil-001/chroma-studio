@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "Bleibt: Diese Form ist unter „Blockformen“ aus.",
   "axiom.chromastudio.shade.left.darker": "Bleibt: Keine Schattierung einen Schritt dunkler ist nah genug.",
   "axiom.chromastudio.shade.left.lighter": "Bleibt: Keine Schattierung einen Schritt heller ist nah genug.",
+  "axiom.chromastudio.shade.left.masked": "Bleibt: Die Werkzeugmasken schließen ihn aus.",
   "axiom.chromastudio.sampler": "Chroma-Bauwerksprobe",
   "axiom.chromastudio.sampler.brush": "Pinsel",
   "axiom.chromastudio.sampler.build.tip": "Nimmt jeden Block, der mit dem rechtsgeklickten verbunden ist.",

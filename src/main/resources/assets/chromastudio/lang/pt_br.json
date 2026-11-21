@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "Fica: esta forma está desligada em “Formas de bloco”.",
   "axiom.chromastudio.shade.left.darker": "Fica: nenhum tom um passo mais escuro é parecido o bastante.",
   "axiom.chromastudio.shade.left.lighter": "Fica: nenhum tom um passo mais claro é parecido o bastante.",
+  "axiom.chromastudio.shade.left.masked": "Fica: as máscaras de ferramenta o excluem.",
   "axiom.chromastudio.sampler": "Amostrador de construções Chroma",
   "axiom.chromastudio.sampler.brush": "Pincel",
   "axiom.chromastudio.sampler.build.tip": "Pega todos os blocos ligados ao que você clica com o botão direito.",

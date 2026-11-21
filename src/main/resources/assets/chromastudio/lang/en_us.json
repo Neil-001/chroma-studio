@@ -855,6 +855,7 @@
   "axiom.chromastudio.shade.left.kind": "Stays: this shape is off under Block shapes.",
   "axiom.chromastudio.shade.left.darker": "Stays: no shade a step darker is close enough.",
   "axiom.chromastudio.shade.left.lighter": "Stays: no shade a step lighter is close enough.",
+  "axiom.chromastudio.shade.left.masked": "Stays: the tool masks keep it out.",
   "axiom.chromastudio.sampler": "Chroma build sampler",
   "axiom.chromastudio.sampler.brush": "Brush",
   "axiom.chromastudio.sampler.build.tip": "Takes every block joined to the one you right-click.",

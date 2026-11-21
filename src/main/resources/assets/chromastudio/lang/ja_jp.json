@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "そのまま：この形は「ブロックの形」でオフです。",
   "axiom.chromastudio.shade.left.darker": "そのまま：1 段暗くて十分近い濃さがありません。",
   "axiom.chromastudio.shade.left.lighter": "そのまま：1 段明るくて十分近い濃さがありません。",
+  "axiom.chromastudio.shade.left.masked": "そのまま：ツールマスクの対象外です。",
   "axiom.chromastudio.sampler": "Chroma 建築サンプラー",
   "axiom.chromastudio.sampler.brush": "ブラシ",
   "axiom.chromastudio.sampler.build.tip": "右クリックしたブロックにつながるブロックをすべて取ります。",

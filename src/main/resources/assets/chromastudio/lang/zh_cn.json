@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "保持不变：这个形状在“方块形状”中已关闭。",
   "axiom.chromastudio.shade.left.darker": "保持不变：没有足够接近的更深一档色调。",
   "axiom.chromastudio.shade.left.lighter": "保持不变：没有足够接近的更浅一档色调。",
+  "axiom.chromastudio.shade.left.masked": "保持不变：工具遮罩将其排除。",
   "axiom.chromastudio.sampler": "Chroma 建筑取样",
   "axiom.chromastudio.sampler.brush": "画笔",
   "axiom.chromastudio.sampler.build.tip": "取所有与右键点击的方块相连的方块。",

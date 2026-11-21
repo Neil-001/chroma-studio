@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "Se queda: esta forma está desactivada en «Formas de bloque».",
   "axiom.chromastudio.shade.left.darker": "Se queda: ningún tono un paso más oscuro se parece lo bastante.",
   "axiom.chromastudio.shade.left.lighter": "Se queda: ningún tono un paso más claro se parece lo bastante.",
+  "axiom.chromastudio.shade.left.masked": "Se queda: las máscaras de herramienta lo excluyen.",
   "axiom.chromastudio.sampler": "Muestreador de construcciones Chroma",
   "axiom.chromastudio.sampler.brush": "Pincel",
   "axiom.chromastudio.sampler.build.tip": "Toma todos los bloques unidos al que pulsas con clic derecho.",

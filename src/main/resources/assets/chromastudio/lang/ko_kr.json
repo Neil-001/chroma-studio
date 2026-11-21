@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "그대로: 이 모양은 ‘블록 모양’에서 꺼져 있습니다.",
   "axiom.chromastudio.shade.left.darker": "그대로: 한 단계 더 어두우면서 충분히 가까운 명암이 없습니다.",
   "axiom.chromastudio.shade.left.lighter": "그대로: 한 단계 더 밝으면서 충분히 가까운 명암이 없습니다.",
+  "axiom.chromastudio.shade.left.masked": "그대로: 도구 마스크가 제외합니다.",
   "axiom.chromastudio.sampler": "Chroma 건축물 샘플러",
   "axiom.chromastudio.sampler.brush": "브러시",
   "axiom.chromastudio.sampler.build.tip": "우클릭한 블록에 이어진 블록을 모두 가져옵니다.",

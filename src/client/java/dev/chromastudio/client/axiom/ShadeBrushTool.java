@@ -65,6 +65,8 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private static final List<Kind> CHANGEABLE = List.of(Kind.FULL, Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE, Kind.FENCE_GATE);
     private static final Set<Kind> SHAPES = EnumSet.of(Kind.SLAB, Kind.STAIRS, Kind.WALL);
 
+    private static final int MASK_FRAMES = 20;
+
     private static final Set<Block> STORAGE = Set.of(Blocks.COAL_BLOCK, Blocks.LAPIS_BLOCK, Blocks.RAW_IRON_BLOCK, Blocks.RAW_COPPER_BLOCK, Blocks.RAW_GOLD_BLOCK);
 
     private final BrushStroke stroke = new BrushStroke();
@@ -80,6 +82,9 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private final Set<Kind> kinds = EnumSet.copyOf(CHANGEABLE);
     private @Nullable BlockState hovered;
     private boolean overPanel;
+    private @Nullable BlockPos maskedAsked;
+    private int maskedFrame;
+    private boolean masked;
     private @Nullable Plan plan;
 
     @Override
@@ -141,6 +146,13 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         boolean onBlock = hit != null && hit.getType() == HitResult.Type.BLOCK && level != null;
         hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : overPanel ? hovered : null;
         if (!onBlock) return;
+        BlockPos at = hit.getBlockPos();
+        int frame = AxiomTools.frame();
+        if (!at.equals(maskedAsked) || frame - maskedFrame >= MASK_FRAMES || frame < maskedFrame) {
+            maskedAsked = at.immutable();
+            maskedFrame = frame;
+            masked = !AxiomMask.now(level).allows(at.getX(), at.getY(), at.getZ());
+        }
         int r = AxiomPanel.radius(radius);
         if (outlineRadius != r) {
             outlineRadius = r;
@@ -222,6 +234,10 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             return;
         }
         BlockState next = p.apply(here, direction, kinds);
+        if (next != null && masked) {
+            AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.left.masked")).withTip(here.getBlock().getName().getString()));
+            return;
+        }
         if (next == null) {
             String name = here.getBlock().getName().getString();
             AxiomPanel.status(AxiomPanel.Status.of(tr(p.whyLeft(here, direction, kinds))).withTip(name));

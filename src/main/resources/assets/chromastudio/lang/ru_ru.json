@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "Остаётся: эта форма выключена в «Формы блоков».",
   "axiom.chromastudio.shade.left.darker": "Остаётся: нет достаточно близкого оттенка на шаг темнее.",
   "axiom.chromastudio.shade.left.lighter": "Остаётся: нет достаточно близкого оттенка на шаг светлее.",
+  "axiom.chromastudio.shade.left.masked": "Остаётся: маски инструментов его исключают.",
   "axiom.chromastudio.sampler": "Сбор образца постройки Chroma",
   "axiom.chromastudio.sampler.brush": "Кисть",
   "axiom.chromastudio.sampler.build.tip": "Берёт все блоки, соединённые с тем, по которому вы щёлкнули правой кнопкой.",

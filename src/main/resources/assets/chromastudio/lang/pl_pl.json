@@ -856,6 +856,7 @@
   "axiom.chromastudio.shade.left.kind": "Zostaje: ten kształt jest wyłączony w „Kształty bloków”.",
   "axiom.chromastudio.shade.left.darker": "Zostaje: żaden odcień o krok ciemniejszy nie jest dość bliski.",
   "axiom.chromastudio.shade.left.lighter": "Zostaje: żaden odcień o krok jaśniejszy nie jest dość bliski.",
+  "axiom.chromastudio.shade.left.masked": "Zostaje: maski narzędzi go wykluczają.",
   "axiom.chromastudio.sampler": "Próbnik budowli Chroma",
   "axiom.chromastudio.sampler.brush": "Pędzel",
   "axiom.chromastudio.sampler.build.tip": "Bierze każdy blok połączony z klikniętym prawym przyciskiem.",
