@@ -81,7 +81,6 @@ class RecolourPlanTest {
         return RecolourPlan.of(desert(), null, mode, Face.NORTH, TintContext.none());
     }
 
-    /** What the script does with a block: the row's block, then each copied property as the block found has it. */
     private static BlockState scripted(List<AxiomScript.Remap> rows, BlockState here) {
         String id = PaletteBlocks.of(here.getBlock().defaultBlockState()).blockId();
         for (AxiomScript.Remap r : rows) {
@@ -132,10 +131,8 @@ class RecolourPlanTest {
         assertTrue(out.getBlock() instanceof StairBlock, out.toString());
         assertEquals(Direction.EAST, out.getValue(StairBlock.FACING));
         assertEquals(Half.TOP, out.getValue(StairBlock.HALF));
-        // The darkest stair takes the darkest palette material that has stairs, as terracotta has none.
         assertEquals(TestIndex.block("red_sandstone_stairs"), plan.apply(TestIndex.block("deepslate_tile_stairs").defaultBlockState()).getBlock());
         assertEquals(TestIndex.block("terracotta"), plan.apply(TestIndex.block("deepslate_tiles").defaultBlockState()).getBlock());
-        // No palette material has walls, so a wall stays as it is rather than becoming a full block.
         assertNull(plan.apply(TestIndex.block("stone_brick_wall").defaultBlockState()));
     }
 
@@ -155,18 +152,14 @@ class RecolourPlanTest {
         Palette lit = palette("Lit", "sandstone", "sea_lantern", "lantern");
         RecolourPlan plan = RecolourPlan.of(lit, null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
         assertEquals(TestIndex.block("sea_lantern"), plan.apply(TestIndex.block("glowstone").defaultBlockState()).getBlock());
-        // A torch is no lantern: its shape and the way it hangs on a wall are its own.
         assertNull(plan.apply(TestIndex.block("torch").defaultBlockState()));
         assertNull(plan.apply(TestIndex.block("lantern").defaultBlockState()));
     }
 
     @Test
     void aFromPaletteChangesItsOwnBlocksGroundIncluded() throws Exception {
-        // Without a From palette, grass is left alone by its tag, which only a world loads, so the game shows that.
         RecolourPlan from = RecolourPlan.of(desert(), palette("Garden", "grass_block", "stone_bricks"), Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
         assertNotNull(from.apply(TestIndex.block("grass_block").defaultBlockState()));
-        // A From palette limits the recolour to its own blocks, with the shapes of the full blocks it lists, as a
-        // palette sampled from a build counts a stair as its full block: grass, stone bricks and their stairs and slabs.
         assertNull(from.apply(TestIndex.block("cobblestone").defaultBlockState()));
         assertNotNull(from.apply(TestIndex.block("stone_brick_stairs").defaultBlockState()));
         assertEquals(4, from.size(), from.rows().toString());
@@ -175,10 +168,8 @@ class RecolourPlanTest {
     @Test
     void aShapeThePaletteListsBringsNoFullBlockOfItsOwn() throws Exception {
         RecolourPlan plan = RecolourPlan.of(palette("Oak", "oak_log", "oak_stairs"), null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
-        // Oak stairs lend their shape, but the palette's only full block is the log, so no wall turns to planks.
         assertEquals(TestIndex.block("oak_log"), plan.apply(TestIndex.block("white_concrete").defaultBlockState()).getBlock());
         assertEquals(TestIndex.block("oak_stairs"), plan.apply(TestIndex.block("stone_brick_stairs").defaultBlockState()).getBlock());
-        // With no full block listed at all, the stairs' planks stand in for one.
         RecolourPlan stairs = RecolourPlan.of(palette("Stairs", "oak_stairs"), null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
         assertEquals(TestIndex.block("oak_planks"), stairs.apply(TestIndex.block("white_concrete").defaultBlockState()).getBlock());
     }
@@ -188,7 +179,6 @@ class RecolourPlanTest {
         RecolourPlan plan = RecolourPlan.of(palette("Lit glass", "glass", "sea_lantern"), null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
         assertNull(plan.apply(TestIndex.block("white_concrete").defaultBlockState()));
         assertNull(plan.apply(TestIndex.block("black_concrete").defaultBlockState()));
-        // With glass alone, a wall may become it.
         RecolourPlan glass = RecolourPlan.of(palette("Glass", "glass"), null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
         assertEquals(TestIndex.block("glass"), glass.apply(TestIndex.block("black_concrete").defaultBlockState()).getBlock());
     }
@@ -196,7 +186,6 @@ class RecolourPlanTest {
     @Test
     void theScriptNamesAStateAsTheGameWritesIt() throws Exception {
         Palette logs = new Palette("Logs");
-        // An imported palette may carry odd spacing the game's parser forgives.
         logs.entries.add(new PaletteEntry("minecraft:oak_log", "axis= x"));
         RecolourPlan plan = RecolourPlan.of(logs, null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
         AxiomScript.Remap row = plan.rows().getFirst();
@@ -204,7 +193,6 @@ class RecolourPlanTest {
         assertEquals(PaletteBlocks.state(row.to()), plan.apply(TestIndex.block(row.from().replace("minecraft:", "")).defaultBlockState()));
     }
 
-    /** The blocks the palette already has stay, and are counted as kept, in whatever state the palette lists them. */
     @Test
     void blocksThePaletteHasAreKept() throws Exception {
         Palette logs = new Palette("Logs");
@@ -222,7 +210,6 @@ class RecolourPlanTest {
         assertTrue(plan.rows().stream().noneMatch(r -> r.from().equals("minecraft:oak_log") || r.from().equals("minecraft:stone_bricks")));
     }
 
-    /** A few blocks in an otherwise empty world, as the brush reads them. */
     private static final class World implements BlockGetter {
         final Map<BlockPos, BlockState> blocks = new HashMap<>();
 
@@ -247,7 +234,6 @@ class RecolourPlanTest {
         public int getMinY() { return -64; }
     }
 
-    /** An oak door facing east, hinged on the right, its lower half at 0 0 0 and its upper half above it. */
     private static World door() {
         BlockState lower = TestIndex.block("oak_door").defaultBlockState().setValue(DoorBlock.FACING, Direction.EAST)
                 .setValue(DoorBlock.HINGE, DoorHingeSide.RIGHT).setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER);
@@ -259,7 +245,6 @@ class RecolourPlanTest {
         return RecolourPlan.of(palette("Spruce", "spruce_planks"), null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
     }
 
-    /** What a stroke puts down where it reaches these positions, with only {@code admitted} positions let through. */
     private static Map<BlockPos, BlockState> stroke(RecolourPlan plan, World world, RecolourPlan.Admit admit, BlockPos... reached) {
         Map<BlockPos, BlockState> out = new HashMap<>();
         for (BlockPos p : reached) plan.change(world, p.getX(), p.getY(), p.getZ(), admit, (x, y, z, s) -> out.put(new BlockPos(x, y, z), s));
@@ -280,11 +265,9 @@ class RecolourPlanTest {
                 assertEquals(was.getValue(DoorBlock.HALF), e.getValue().getValue(DoorBlock.HALF));
                 assertEquals(Direction.EAST, e.getValue().getValue(DoorBlock.FACING));
                 assertEquals(DoorHingeSide.RIGHT, e.getValue().getValue(DoorBlock.HINGE));
-                // A whole build asks each half on its own, and gets what the stroke put.
                 assertEquals(e.getValue(), plan.apply(world, e.getKey().getX(), e.getKey().getY(), e.getKey().getZ(), (_, _, _) -> true));
             }
         }
-        // The plank beside the door is no door, so it changes on its own.
         assertEquals(Set.of(new BlockPos(1, 0, 0)), stroke(plan, world, (_, _, _) -> true, new BlockPos(1, 0, 0)).keySet());
     }
 
@@ -292,15 +275,12 @@ class RecolourPlanTest {
     void aDoorWhoseOtherHalfIsKeptOutStaysAsItIs() throws Exception {
         RecolourPlan plan = spruce();
         World world = door();
-        // A mask or the edge of a found build that lets in only the upper half.
         RecolourPlan.Admit upperOnly = (_, y, _) -> y == 1;
         assertEquals(Map.of(), stroke(plan, world, upperOnly, new BlockPos(0, 1, 0), new BlockPos(0, 0, 0)));
         assertNull(plan.apply(world, 0, 1, 0, upperOnly));
         assertNull(plan.apply(world, 0, 0, 0, upperOnly));
-        // A half with no other half, as a broken door leaves, changes as any block does.
         World half = new World().with(0, 1, 0, world.getBlockState(new BlockPos(0, 1, 0)));
         assertEquals(Set.of(new BlockPos(0, 1, 0)), stroke(plan, half, (_, _, _) -> true, new BlockPos(0, 1, 0)).keySet());
-        // A stair's half is top or bottom, not a door's, so the block above it is left alone.
         assertEquals(0, RecolourPlan.otherHalf(new World(), BlockPos.ZERO, TestIndex.block("oak_stairs").defaultBlockState()));
     }
 

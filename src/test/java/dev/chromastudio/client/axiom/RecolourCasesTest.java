@@ -31,10 +31,6 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/**
- * The recolours a builder tried in game and found wrong, with the game's own textures: a build of one main material
- * into a palette made mostly of that material, and a cottage into a palette sampled from it or from its own blocks.
- */
 class RecolourCasesTest {
     @BeforeAll
     static void loadGame() {
@@ -60,7 +56,6 @@ class RecolourCasesTest {
 
     private static String id(Block b) { return BuiltInRegistries.BLOCK.getKey(b).getPath(); }
 
-    /** The player's "Harbour wall": mostly stone bricks, with worn bricks and andesite, and copper, sea and wood accents. */
     private static Palette harbourWall() {
         Palette p = new Palette("Harbour wall");
         Object[][] entries = {{"stone_bricks", 5}, {"mossy_stone_bricks", 2}, {"cracked_stone_bricks", 2}, {"andesite", 2}, {"oxidized_copper", 1},
@@ -70,7 +65,6 @@ class RecolourCasesTest {
         return p;
     }
 
-    /** A solid block of stone bricks, 20 by 10 by 20, capped with a slab of polished andesite. */
     private static World bigWall() {
         World w = new World();
         for (int x = 0; x < 20; x++) for (int y = 0; y < 10; y++) for (int z = 0; z < 20; z++) w.put(x, y, z, block("stone_bricks"));
@@ -78,10 +72,6 @@ class RecolourCasesTest {
         return w;
     }
 
-    /**
-     * The cottage the builder recoloured: a cobblestone footing, stone brick walls with polished andesite corners and
-     * a chiseled band, glass panes, a spruce floor and door, lanterns and a stone brick stair roof.
-     */
     static World cottage() {
         World w = new World();
         for (int x = 0; x <= 10; x++) for (int z = 0; z <= 8; z++) {
@@ -116,13 +106,11 @@ class RecolourCasesTest {
         return RecolourPlan.of(to, from, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
     }
 
-    /** What a block of the build becomes: its own block when the plan leaves it alone. */
     private static Block after(RecolourPlan plan, String path) {
         BlockState next = plan.apply(block(path).defaultBlockState());
         return next == null ? block(path) : next.getBlock();
     }
 
-    /** The cottage sampled as the sampler tool samples it: every block of the build by what it counts as. */
     private static Palette sampled(World w, FoundBuild found) {
         BuildSample sample = new BuildSample();
         for (long p : found.blocks()) {
@@ -140,12 +128,9 @@ class RecolourCasesTest {
         FoundBuild found = FoundBuild.from(w, new BlockPos(0, 0, 0));
         assertNotNull(found);
         RecolourPlan plan = plan(harbourWall(), found.kinds());
-        // The palette is mostly stone bricks, so the stone brick build stays stone bricks, not the palette's darkest block.
         assertNull(plan.apply(block("stone_bricks").defaultBlockState()));
-        // Its lighter cap stays a grey lighter than the walls: andesite, not wood, copper or the sea.
         Block cap = after(plan, "polished_andesite");
         assertEquals("andesite", id(cap));
-        // Scaled down as a palette sampled from it would be, the build recolours the same.
         Palette scaled = new Palette("scaled");
         for (PaletteEntry e : found.kinds().entries) scaled.entries.add(e.withWeight(Math.max(1, e.weight() * BuildSample.MAX_WEIGHT / 4000)));
         RecolourPlan small = plan(harbourWall(), scaled);
@@ -163,8 +148,6 @@ class RecolourCasesTest {
             String what = from.name;
             assertEquals("stone_bricks", id(after(plan, "stone_bricks")), what);
             assertEquals("stone_brick_stairs", id(after(plan, "stone_brick_stairs")), what);
-            // Polished andesite, cobblestone and smooth stone are greys a little lighter than the walls; none turns to
-            // wood or terracotta.
             for (String grey : List.of("polished_andesite", "cobblestone", "smooth_stone")) {
                 Block to = after(plan, grey);
                 assertTrue(!id(to).contains("terracotta") && !id(to).contains("planks"), what + ": " + grey + " to " + id(to));
@@ -193,8 +176,6 @@ class RecolourCasesTest {
 
     @Test
     void aBuildWhoseStairsAreCountedApartMatchesItsSample() throws Exception {
-        // As the brush counts a build: as many stone brick stairs as stone bricks, and as much polished andesite. A
-        // sample counts the stairs as stone bricks, so stone bricks are its main material, and the build's must be too.
         Palette build = new Palette("build"), sample = new Palette("sample");
         build.entries.addAll(List.of(new PaletteEntry("minecraft:stone_bricks", "", 50), new PaletteEntry("minecraft:stone_brick_stairs", "", 50),
                 new PaletteEntry("minecraft:polished_andesite", "", 50)));
@@ -203,7 +184,6 @@ class RecolourCasesTest {
         RecolourPlan a = plan(to, build), b = plan(to, sample);
         for (String path : List.of("stone_bricks", "stone_brick_stairs", "polished_andesite")) assertEquals(after(a, path), after(b, path), path);
         assertEquals("andesite", id(after(b, "polished_andesite")));
-        // Nor does it matter when the build has no full stone bricks at all, only stairs and slabs.
         Palette shapes = new Palette("shapes");
         shapes.entries.addAll(List.of(new PaletteEntry("minecraft:stone_brick_stairs", "", 50), new PaletteEntry("minecraft:stone_brick_slab", "", 50),
                 new PaletteEntry("minecraft:polished_andesite", "", 50)));

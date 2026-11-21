@@ -12,7 +12,6 @@ class DrawnTest {
         d.start(10);
         assertTrue(d.draw(10), "drawn in the frame it started in");
         assertTrue(d.draw(11));
-        // A lag spike: no frame is drawn for a while, and the game ticks meanwhile.
         Thread.sleep(300);
         assertFalse(d.missed(11));
         assertFalse(d.missed(12), "the next frame may still draw it");

@@ -18,12 +18,6 @@ import java.util.Locale;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 
-/**
- * {@code /chroma axiom} and everything under it. Brigadier merges literals of the same name, so the whole tree is
- * built here, and a new Axiom command is one more child of {@code axiom}. The command is there on every client,
- * NeoForge's included; without Axiom each subcommand answers why it can't run. Like {@link AxiomBridge}, this class
- * names no Axiom class.
- */
 final class AxiomCommand {
     private AxiomCommand() {}
 
@@ -57,7 +51,6 @@ final class AxiomCommand {
         });
     }
 
-    /** Makes Axiom's active block the Match target, and opens the window on it. */
     private static int block() {
         AxiomBridge.Taken result = AxiomBridge.takeActiveBlock();
         ChromaCommand.say(result.message());
@@ -69,7 +62,6 @@ final class AxiomCommand {
         Script make() throws Refused;
     }
 
-    /** Makes a script and copies it for the Script Brush. */
     private static int copy(Maker maker) {
         Optional<Component> why = AxiomBridge.whyNot();
         if (why.isPresent()) {
@@ -87,13 +79,11 @@ final class AxiomCommand {
         }
     }
 
-    /** How to use the command, or, without Axiom, why it can't be used at all. */
     private static int usage() {
         ChromaCommand.say(AxiomBridge.whyNot().orElse(Component.translatable("command.chromastudio.axiom.usage")));
         return 0;
     }
 
-    /** A palette by its name, as the Palettes tab shows it or as its file has it, ignoring case. */
     private static <S> Palette palette(CommandContext<S> ctx, String argument) throws Refused {
         String name = StringArgumentType.getString(ctx, argument).strip();
         for (Palette p : PaletteStore.get().all()) if (name.equalsIgnoreCase(PaletteStore.get().shownName(p)) || name.equalsIgnoreCase(p.name)) return p;

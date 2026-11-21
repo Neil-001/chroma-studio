@@ -39,41 +39,15 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Property;
 import org.jspecify.annotations.Nullable;
 
-/**
- * What each block becomes in one recolour into a palette, worked out once for the script and the palette brush alike,
- * so the two change a build the same way. {@link Recolour} picks each block's palette block; this class says which
- * blocks take part, how they look, and which shape the block they become takes.
- *
- * <p>Each block is decided as a whole, by the look of its first state in the index, as a script can only ask which
- * block stands somewhere. The block it becomes keeps the properties both share, such as a stair's facing. Without a
- * From palette the ground, grass, dirt, sand and gravel, is left alone, so a brush that reaches past a build doesn't
- * repaint the lawn.
- *
- * <p>A door changes as a whole, so a recoloured house never has a door of two woods: where the brush reaches one half,
- * the other half changes with it, even past the edge of the stroke, and where a tool mask or the build keeps the other
- * half out, neither changes ({@link #change}, {@link #apply(BlockGetter, int, int, int, Admit)}). The script does the
- * same, except that it can't see Axiom's tool masks, so with a mask that cuts a door in two it changes both halves.
- */
 final class RecolourPlan {
-    /** What one block becomes: the palette's block with its fixed properties, and the properties it copies from the block it replaces. */
     record Change(PaletteEntry to, BlockState state, List<String> copied) {}
 
-    /**
-     * Shapes that follow the full block their colour picks: a stair becomes the stair of a palette material, chosen
-     * among the materials that have stairs, and is left alone when none has. Glass counts as a see-through full block.
-     */
     private static final Set<Kind> SHAPED = Set.of(Kind.FULL, Kind.GLASS, Kind.SLAB, Kind.STAIRS, Kind.WALL, Kind.FENCE,
             Kind.FENCE_GATE, Kind.TRAPDOOR, Kind.DOOR);
-    /**
-     * Kinds that only become the palette's blocks of the same kind: a pane a pane, a carpet a carpet, a light a light.
-     * Only lights that are full blocks take part, as glowstone and sea lanterns do, since torches and lanterns have
-     * shapes of their own.
-     */
     private static final Set<Kind> OWN_KIND = Set.of(Kind.PANE, Kind.CARPET, Kind.LIGHT);
 
     private final Map<Block, Change> changes;
     private final int unshaped;
-    /** The blocks that stay as they are because the palette already has them, in their shape or as their full block. */
     private final Set<Block> kept;
 
     private RecolourPlan(Map<Block, Change> changes, int unshaped, Set<Block> kept) {
@@ -82,22 +56,14 @@ final class RecolourPlan {
         this.kept = kept;
     }
 
-    /** {@link #of(Palette, Palette, Recolour.Mode, Face, TintContext)} with the face and biome the settings match by. */
     static RecolourPlan of(Palette to, @Nullable Palette from, Recolour.Mode mode) throws Refused {
         return of(to, from, mode, PaletteBlocks.queryFace(), PaletteBlocks.tint());
     }
 
-    /**
-     * The plan for recolouring into {@code to} every block but the ground, or only the blocks of {@code from}, with
-     * colours read from {@code face}, where {@link Face#ANY} averages all six. Refused, saying why, when the index
-     * isn't ready or none of the palette's blocks are in this game.
-     */
     static RecolourPlan of(Palette to, @Nullable Palette from, Recolour.Mode mode, Face face, TintContext tint) throws Refused {
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) throw new Refused(Component.translatable("palettes.chromastudio.index_building"));
 
-        // The palette's blocks by group: under FULL the full blocks whose shapes stand in for every shape, and each
-        // kind that keeps to its own. A shaped entry, such as oak stairs, brings its material's full block along.
         Map<Kind, Map<BlockState, Target>> targets = new EnumMap<>(Kind.class);
         boolean any = false, anySolid = false, anyFull = false;
         for (PaletteEntry pe : to.entries) {
@@ -107,7 +73,6 @@ final class RecolourPlan {
             any = true;
             anySolid |= !seeThrough(e);
             Entry base = base(index, e);
-            // Sand and concrete powder would fall out of a wall the first time a block next to them changed.
             if (base != null && base.block() instanceof Fallable) continue;
             if (base != null) {
                 boolean listed = base == e;
@@ -122,8 +87,6 @@ final class RecolourPlan {
             }
         }
         if (!any) throw new Refused(Component.translatable("axiom.chromastudio.no_blocks"));
-        // A palette that lists full blocks recolours full blocks only into those, and a block it lists only a shape
-        // of, such as oak stairs beside stone bricks, lends just that shape.
         if (anyFull) for (Target t : targets.getOrDefault(Kind.FULL, Map.of()).values()) t.onlyShapes = !t.listed;
 
         Map<Kind, List<Source>> sources = new EnumMap<>(Kind.class);
@@ -139,7 +102,6 @@ final class RecolourPlan {
                 Recolour.Look look = look(index, t.state, face, tint, t.weight);
                 looks.add(look == null ? null : new Recolour.Look(look.colour(), look.seeThrough(), look.weight(), null, id(t.state.getBlock())));
             }
-            // A palette block whose colour couldn't be read, as one an index rebuild has just dropped, sits out.
             for (int j = group.size() - 1; j >= 0; j--) {
                 if (looks.get(j) != null) continue;
                 group.remove(j);
@@ -151,7 +113,6 @@ final class RecolourPlan {
             }
             Recolour recolour = new Recolour(looks, g.getValue().stream().map(Source::look).toList(), mode);
             final boolean solidElsewhere = anySolid;
-            // Each palette block in each shape, where its material has that shape.
             Map<Kind, List<@Nullable PaletteEntry>> shapes = new EnumMap<>(Kind.class);
             for (Source source : g.getValue()) {
                 List<@Nullable PaletteEntry> shaped = shapes.computeIfAbsent(source.entry.kind(), k -> {
@@ -159,8 +120,6 @@ final class RecolourPlan {
                     for (Target t : group) out.add(shape(index, t, k));
                     return out;
                 });
-                // A solid block only turns see-through when the palette has nothing solid at all: a palette of glass
-                // and sea lanterns leaves walls alone rather than glazing them.
                 boolean solid = !source.look.seeThrough();
                 int picked = recolour.pick(source.look, j -> shaped.get(j) != null && !(solid && solidElsewhere && looks.get(j).seeThrough()));
                 if (picked < 0) {
@@ -169,30 +128,22 @@ final class RecolourPlan {
                 }
                 BlockState target = PaletteBlocks.state(shaped.get(picked));
                 if (target == null) continue;
-                // The same block in another state, such as a log the palette lists lying on its side, becomes itself,
-                // as it keeps its own properties.
                 if (target.getBlock() == source.entry.block()) {
                     kept.add(source.entry.block());
                     continue;
                 }
-                // The row names the block as the game writes it, so the script reads it as the brush does.
                 changes.put(source.entry.block(), new Change(PaletteBlocks.of(target), target, shared(source.entry.block(), target.getBlock())));
             }
         }
         return new RecolourPlan(changes, unshaped, kept);
     }
 
-    /** A palette block that a recolour may give: its state, the entry to place, and how it takes part. */
     private static final class Target {
         final BlockState state;
         final PaletteEntry entry;
-        /** How much of a build it's meant to cover: its weight, with those of the shaped entries it stands for. */
         long weight;
-        /** Whether the palette lists it, rather than only a shape of its material. */
         boolean listed;
-        /** Whether it may only give the shapes of it the palette lists, as the palette has full blocks of its own. */
         boolean onlyShapes;
-        /** The shapes of its material that the palette lists, which a block of that shape takes as listed. */
         final Map<Kind, PaletteEntry> shapes = new EnumMap<>(Kind.class);
 
         Target(BlockState state, PaletteEntry entry) {
@@ -201,10 +152,8 @@ final class RecolourPlan {
         }
     }
 
-    /** A block a recolour may change: its index entry, and how it looks in the state the build has it in. */
     private record Source(Entry entry, Recolour.Look look) {}
 
-    /** The block a block becomes, with the properties it copies taken from it, or null to leave it as it is. */
     @Nullable BlockState apply(BlockState here) {
         Change c = changes.get(here.getBlock());
         if (c == null) return null;
@@ -213,33 +162,22 @@ final class RecolourPlan {
         return keepsWater(here, out) ? out : null;
     }
 
-    /**
-     * Whether {@code out} may take the place of {@code here} as far as water goes: a block with water in it changes
-     * only into one that keeps the water, as a player could take it out with a bucket. Every tool and script asks this.
-     */
     static boolean keepsWater(BlockState here, BlockState out) { return !waterlogged(here) || waterlogged(out); }
 
     private static boolean waterlogged(BlockState s) {
         return s.hasProperty(BlockStateProperties.WATERLOGGED) && s.getValue(BlockStateProperties.WATERLOGGED);
     }
 
-    /** Whether a position may change, as the tool masks and the build say. */
     @FunctionalInterface
     interface Admit {
         boolean test(int x, int y, int z);
     }
 
-    /** Takes a block the recolour puts down. */
     @FunctionalInterface
     interface Put {
         void put(int x, int y, int z, BlockState state);
     }
 
-    /**
-     * What the block at a position becomes, or null to leave it: null too where {@code admit} keeps the position out,
-     * or keeps out the other half of a door there, so a door is never left in two materials. For a whole build, which
-     * holds both halves of a door and so asks this of each.
-     */
     @Nullable BlockState apply(BlockGetter level, int x, int y, int z, Admit admit) {
         if (!admit.test(x, y, z)) return null;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
@@ -250,13 +188,7 @@ final class RecolourPlan {
         return dy == 0 || admit.test(x, y + dy, z) ? out : null;
     }
 
-    /**
-     * Puts what the block at a position becomes, as {@link #apply(BlockGetter, int, int, int, Admit)} says, and with
-     * a door's half its other half too, wherever the brush reaches. For a brush's stroke, whose edge can cut a door
-     * in two. Puts nothing when the block stays as it is.
-     */
     void change(BlockGetter level, int x, int y, int z, Admit admit, Put put) {
-        // Found before the first put, in case that put reaches the level this reads.
         BlockPos pos = new BlockPos(x, y, z);
         int dy = otherHalf(level, pos, level.getBlockState(pos));
         BlockState out = apply(level, x, y, z, admit);
@@ -267,10 +199,6 @@ final class RecolourPlan {
         if (otherOut != null && otherOut != other) put.put(x, y + dy, z, otherOut);
     }
 
-    /**
-     * Which way the other half of a two-high block, such as a door, lies from {@code here}: 1 up, -1 down, or 0 when
-     * it isn't one, or its other half is missing, as the script also checks.
-     */
     static int otherHalf(BlockGetter level, BlockPos pos, BlockState here) {
         if (!here.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) return 0;
         DoubleBlockHalf half = here.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF);
@@ -279,7 +207,6 @@ final class RecolourPlan {
         return other.is(here.getBlock()) && other.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) != half ? dy : 0;
     }
 
-    /** The plan as rows for a script, in the order of the blocks' ids. */
     List<AxiomScript.Remap> rows() {
         List<AxiomScript.Remap> rows = new ArrayList<>();
         changes.forEach((block, c) -> rows.add(new AxiomScript.Remap(PaletteBlocks.of(block.defaultBlockState()).blockId(), c.to(), c.copied(),
@@ -288,37 +215,17 @@ final class RecolourPlan {
         return rows;
     }
 
-    /** How many blocks change. */
     int size() { return changes.size(); }
 
-    /** How many blocks are left alone because no palette block has their shape or, for glass, can be seen through. */
     int unshaped() { return unshaped; }
 
-    /** Whether a block stays as it is because the palette already has it, so the player can be told why. */
     boolean keeps(BlockState here) { return kept.contains(here.getBlock()); }
 
-    /** How many kinds of block stay as they are because the palette already has them. */
     int kept() { return kept.size(); }
 
-    /** The group a block is matched in: shapes with their full blocks, and every other kind with its own. */
     private static Kind group(Kind kind) { return SHAPED.contains(kind) ? Kind.FULL : kind; }
 
-    /**
-     * The blocks a recolour may change, one a block: those of {@code from}, looked at in the state it lists them in
-     * and weighted as it weights them, with the shapes of each full block it lists, or every block the index holds,
-     * each once. Each knows its family, so variants share a shade and different materials don't, and which block it
-     * is, so a block the palette has is known. Blocks with a block entity, such as chests and signs, technical
-     * blocks, the ground without a From palette, kinds a palette can't recolour, such as plants, and blocks whose
-     * colour couldn't be read are left out.
-     *
-     * <p>To keep the shading, a shape, such as a stair or a door, counts as its material's full block, as a palette
-     * sampled from a build counts it: it takes that block's shade and changes with it, so the build itself and a
-     * palette sampled from it as From give the same blocks.
-     */
     private static List<Source> sources(BlockIndex index, @Nullable Palette from, Recolour.Mode mode, Face face, TintContext tint) {
-        // Each block with how much of the build it is: every block in the game counts once, and a From palette's
-        // blocks by their weights, which for a palette made from a build are how many of each it has. A full block
-        // it lists brings its shapes along, which add nothing, as its weight already counts them.
         Map<BlockState, Integer> weights = new LinkedHashMap<>();
         if (from == null) for (Entry e : index.entries()) weights.putIfAbsent(e.block().defaultBlockState(), 1);
         else {
@@ -332,9 +239,6 @@ final class RecolourPlan {
                 for (Entry m : index.materialSet(e)) if (m.kind() != Kind.FULL && SHAPED.contains(m.kind())) weights.putIfAbsent(m.block().defaultBlockState(), 0);
             }
         }
-        // To keep the shading, a From palette's shape counts toward its full block, which joins the blocks that change
-        // if the palette lacks it, as a palette sampled from the build counts it: the build and its sample then find
-        // the same main material. Every block in the game counts once as it is, so none of them is a main material.
         if (mode == Recolour.Mode.SHADING && from != null) {
             Map<Block, BlockState> full = new HashMap<>();
             for (BlockState state : weights.keySet()) full.putIfAbsent(state.getBlock(), state);
@@ -368,32 +272,22 @@ final class RecolourPlan {
         return out;
     }
 
-    /** A block's id, as the palette names it. */
     private static String id(Block block) { return PaletteBlocks.of(block.defaultBlockState()).blockId(); }
 
-    /** Whether a block of a kind that keeps to its own takes part in a recolour. */
     private static boolean takesPart(Entry e) { return OWN_KIND.contains(e.kind()) && (e.kind() != Kind.LIGHT || e.fullCube()); }
 
-    /** Grass, dirt, sand and gravel, which a recolour of every block leaves alone. */
     static boolean ground(BlockState state) {
         return state.is(BlockTags.SUBSTRATE_OVERWORLD) || state.is(BlockTags.SAND) || state.is(Blocks.GRAVEL);
     }
 
-    /** How a block looks to {@link Recolour}, or null when the index can't say. */
     private static Recolour.@Nullable Look look(BlockIndex index, BlockState state, Face face, TintContext tint, long weight) {
         Entry e = index.entryOf(state);
         Optional<Color> colour = index.colourOf(state, face, tint);
         return e == null || colour.isEmpty() ? null : new Recolour.Look(colour.get(), seeThrough(e), (int) Math.min(Integer.MAX_VALUE, weight));
     }
 
-    /** Whether a full block lets light and sight through, as glass and ice do. */
     private static boolean seeThrough(Entry e) { return e.kind() == Kind.GLASS || e.kind() == Kind.FULL && !e.opaque(); }
 
-    /**
-     * The full block a palette block lends its shapes from: itself when it's a full block or glass, or else its
-     * material's first full block, so a palette of stone brick stairs recolours walls into stone bricks. Null for a
-     * block with no full block, such as a flower.
-     */
     private static @Nullable Entry base(BlockIndex index, Entry e) {
         if (e.kind() == Kind.FULL || e.kind() == Kind.GLASS) return e;
         if (!SHAPED.contains(e.kind())) return null;
@@ -401,11 +295,6 @@ final class RecolourPlan {
         return null;
     }
 
-    /**
-     * A palette block in the shape of a block it replaces: itself for a full block, glass or a kind that keeps to its
-     * own, the palette's own entry of that shape where it lists one, else its material's block of that shape. Null
-     * when there is none, or when the palette lists the block only for its shapes.
-     */
     private static @Nullable PaletteEntry shape(BlockIndex index, Target target, Kind kind) {
         if (OWN_KIND.contains(kind)) return target.entry;
         if (kind == Kind.FULL || kind == Kind.GLASS) return target.onlyShapes ? null : target.entry;
@@ -418,10 +307,6 @@ final class RecolourPlan {
         return null;
     }
 
-    /**
-     * The properties a recolour carries from one block to the other: those both have by the same name, where the new
-     * block takes every value the old one can have, such as a stair's facing, half and shape.
-     */
     private static List<String> shared(Block from, Block to) {
         List<String> out = new ArrayList<>();
         for (Property<?> p : from.getStateDefinition().getProperties()) {
@@ -437,7 +322,6 @@ final class RecolourPlan {
         return out;
     }
 
-    /** {@code to} with the value {@code from} has for a property, by its name, as the script's withBlockProperty sets it. */
     private static BlockState copy(BlockState from, BlockState to, String name) {
         Property<?> p = from.getBlock().getStateDefinition().getProperty(name);
         Property<?> q = to.getBlock().getStateDefinition().getProperty(name);

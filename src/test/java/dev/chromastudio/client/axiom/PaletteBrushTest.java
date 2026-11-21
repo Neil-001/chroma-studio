@@ -44,7 +44,6 @@ import net.minecraft.world.level.material.FluidState;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/** The palette brush's rules that need no Axiom: the build it finds for itself, and the blocks Scatter places. */
 class PaletteBrushTest {
     @BeforeAll
     static void loadGame() {
@@ -60,7 +59,6 @@ class PaletteBrushTest {
                 "cut_sandstone", "chiseled_sandstone", "glass", "sand", "gravel", "oak_planks")) {
             blocks.put(full, "block/" + full);
         }
-        // Every colour of concrete and terracotta, so that the game's blocks run from black to white as they do in play.
         for (String colour : List.of("white", "light_gray", "gray", "black", "brown", "red", "orange", "yellow", "lime", "green", "cyan",
                 "light_blue", "blue", "purple", "magenta", "pink")) {
             blocks.put(colour + "_concrete", "block/" + colour + "_concrete");
@@ -70,7 +68,6 @@ class PaletteBrushTest {
         blocks.put("oak_leaves", "block/oak_leaves");
         blocks.put("lantern", "block/lantern");
         blocks.put("white_carpet", "block/white_wool");
-        // The blocks of the stone house and of the Desert, Nether and Medieval presets.
         Map<String, String> shapes = Map.ofEntries(Map.entry("deepslate_tile", "deepslate_tiles"), Map.entry("smooth_sandstone", "sandstone_top"),
                 Map.entry("cut_sandstone", "cut_sandstone"), Map.entry("cut_red_sandstone", "cut_red_sandstone"), Map.entry("birch", "birch_planks"),
                 Map.entry("nether_brick", "nether_bricks"), Map.entry("red_nether_brick", "red_nether_bricks"), Map.entry("blackstone", "blackstone"),
@@ -98,7 +95,6 @@ class PaletteBrushTest {
         TestIndex.index(blocks);
     }
 
-    /** A few blocks in an otherwise empty world. */
     static final class World implements BlockGetter {
         final Map<BlockPos, BlockState> blocks = new HashMap<>();
 
@@ -122,11 +118,6 @@ class PaletteBrushTest {
 
     private static Block block(String path) { return TestIndex.block(path); }
 
-    /**
-     * A grey stone house, six by six and four high, on gravel, which stands for the ground as the tests have no tags:
-     * a cobblestone footing, stone brick and andesite walls, deepslate corners, a smooth stone band, glass windows, a
-     * torch inside and a roof of stairs and slabs. A sandstone shed stands apart on the same ground.
-     */
     private static World house() {
         World w = new World();
         for (int x = -4; x <= 14; x++) for (int z = -4; z <= 9; z++) w.put(x, 0, z, Blocks.GRAVEL);
@@ -145,11 +136,6 @@ class PaletteBrushTest {
         return w;
     }
 
-    /**
-     * A larger stone house, built as a player would: a cobblestone footing, walls of stone bricks mixed with cracked
-     * stone bricks and andesite, deepslate brick corners, a smooth stone band, glass windows with smooth stone slab
-     * sills, a polished andesite floor, a gabled deepslate tile roof and a cobblestone chimney, on ground.
-     */
     private static World stoneHouse() {
         World w = new World();
         for (int x = 15; x <= 33; x++) for (int z = 4; z <= 22; z++) w.put(x, -61, z, Blocks.GRAVEL);
@@ -192,7 +178,6 @@ class PaletteBrushTest {
         return w;
     }
 
-    /** The OKLab lightness of the full block a block's material has, as the index reads it. */
     private static double lightness(BlockState state) {
         BlockIndex index = BlockIndex.get();
         Entry e = index.entryOf(state);
@@ -220,17 +205,12 @@ class PaletteBrushTest {
                 BlockState next = plan.apply(block(b).defaultBlockState());
                 out.put(b, next == null ? b : BuiltInRegistries.BLOCK.getKey(next.getBlock()).getPath());
             }
-            // With the build's own range and counts, the walls take a main block of the palette, cracked stone bricks
-            // with them, and cobblestone, andesite and polished andesite never collapse into one.
             String walls = out.get("stone_bricks");
-            // Unless the palette has cracked stone bricks of its own, which then stay, as Medieval's do.
             if (to.entries.stream().noneMatch(e -> e.blockId().equals("minecraft:cracked_stone_bricks"))) assertEquals(walls, out.get("cracked_stone_bricks"), id + " " + out);
-            // One of the blocks the preset means for the bulk of a build, weighted 2 or more, and never an accent.
             int weight = to.entries.stream().filter(e -> e.blockId().equals("minecraft:" + walls)).mapToInt(PaletteEntry::weight).max().orElse(0);
             assertTrue(weight >= 2, id + " " + out);
             assertTrue(new HashSet<>(List.of(out.get("cobblestone"), out.get("andesite"), out.get("polished_andesite"))).size() >= 2, id + " " + out);
             assertTrue(new HashSet<>(out.values()).size() >= 5, id + " " + out);
-            // The dark roof's stairs stay darker than the walls, though stairs are matched among the blocks that have them.
             BlockState roof = plan.apply(block("deepslate_tile_stairs").defaultBlockState()), wall = plan.apply(block("stone_bricks").defaultBlockState());
             if (roof != null && wall != null) assertTrue(lightness(roof) <= lightness(wall), id + " " + roof + " " + wall);
         }
@@ -247,7 +227,6 @@ class PaletteBrushTest {
         for (long p : found.blocks()) kinds.add(w.getBlockState(new BlockPos(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p))).getBlock());
         assertEquals(Set.of(block("deepslate_tiles"), block("cobblestone"), block("smooth_stone"), block("glass"), block("andesite"),
                 block("polished_andesite"), block("stone_bricks"), block("stone_brick_stairs"), block("stone_brick_slab")), kinds);
-        // 20 wall columns of 4, and a 6 by 6 roof.
         assertEquals(20 * 4 + 36, found.blocks().length);
         assertEquals(kinds.size(), found.kinds().entries.size());
         int cobblestone = found.kinds().entries.stream().filter(e -> e.blockId().equals("minecraft:cobblestone")).findFirst().orElseThrow().weight();
@@ -267,10 +246,8 @@ class PaletteBrushTest {
         BlockState lightest = block("smooth_stone").defaultBlockState(), darkest = block("deepslate_tiles").defaultBlockState();
         RecolourPlan own = RecolourPlan.of(desert, found.kinds(), Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
         RecolourPlan any = RecolourPlan.of(desert, null, Recolour.Mode.SHADING, Face.NORTH, TintContext.none());
-        // The house's darkest and lightest blocks become the palette's, so its shading spans the whole palette.
         assertEquals(block("orange_terracotta"), own.apply(darkest).getBlock());
         assertEquals(block("smooth_sandstone"), own.apply(lightest).getBlock());
-        // Against every block in the game, the grey house sits in the middle of the range and misses the palette's lightest.
         assertTrue(any.apply(lightest).getBlock() != block("smooth_sandstone"), any.apply(lightest).toString());
         for (long p : found.blocks()) {
             BlockState next = any.apply(w.getBlockState(new BlockPos(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p))));

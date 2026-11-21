@@ -16,21 +16,9 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
-/**
- * Axiom's editor, as Chroma Studio's window and tools need it. Only {@link AxiomBridge} calls this, once Axiom is known
- * to be loaded. Axiom's API can't say whether the editor is open, so its {@code EditorUI} is asked through
- * {@link AxiomInternals}; when that fails, the editor counts as closed and everything acts as it did before.
- *
- * <p>While the editor is open, Axiom tells the game its window is only the editor's 3D view, and moves the mouse and
- * takes the first click to match. No screen can be bigger than that view, which leaves the window too small to use.
- * So the window leaves the editor when it opens there, as Axiom's own key would, and goes back once the player is
- * back in the world, or once a pinned window is put away. Axiom keeps its selection, tool, views and camera through
- * that, as it does for its key.
- */
 final class AxiomEditor {
     private AxiomEditor() {}
 
-    /** @param push {@code pushImGuiContext}, which makes the editor's ImGui context current and returns the one it replaced, for {@code pop} */
     private record Handles(MethodHandle active, MethodHandle enabled, MethodHandle enable, MethodHandle disable, MethodHandle push, MethodHandle pop,
                            MethodHandle contextActive) {}
 
@@ -46,28 +34,16 @@ final class AxiomEditor {
                         lookup.findStatic(ui, "isImGuiContextActive", bool));
             });
 
-    /** Set when the window took the player out of the editor, until they're back in it or have gone elsewhere. */
     private static boolean left;
-    /** The active block when the editor was last open this session, or null. Outside it Axiom's API answers stone. */
     private static @Nullable BlockState lastActiveBlock;
-    /** Whether the player has been told this Axiom can't say whether its editor is open. */
     private static boolean warned;
 
-    /** Whether Chroma Studio can tell if the editor is open. */
     static boolean known() { return INTERNALS.reason().isEmpty(); }
 
-    /** Whether the editor is switched on, which changes as soon as it's opened or closed. False when that can't be told. */
     static boolean enabled() { return call(h -> (boolean) h.enabled.invoke()); }
 
-    /** Whether the editor is open. False when that can't be told. */
     static boolean active() { return call(h -> (boolean) h.active.invoke()); }
 
-    /**
-     * How many frames the editor's ImGui context has drawn, or -1 when that can't be told. Outside Axiom's own drawing
-     * the current ImGui context may be none at all, and asking it then crashes the game in native code, past any catch;
-     * so the editor's context is made current around the one question, as Axiom itself does, and only once Axiom says
-     * it has one.
-     */
     static int frame() {
         if (!known()) return -1;
         Handles h = INTERNALS.handles();
@@ -92,58 +68,40 @@ final class AxiomEditor {
         }
     }
 
-    /** The active block as Axiom last gave it while its editor was open, or null when it hasn't been open. */
     static @Nullable BlockState lastActiveBlock() { return lastActiveBlock; }
 
-    /** Leaves the editor before the window opens, when it's open. */
     static void leaveForWindow() {
         if (!known()) {
-            // The window may open squeezed into the editor's view. Said once a session, as it may not be open at all.
             if (!warned) tell();
             return;
         }
-        // Axiom says it's active a frame late, so a player who has just pressed Axiom's own key would be counted wrongly
-        // either way. Whether it's switched on changes at once.
         boolean on = call(h -> (boolean) h.enabled.invoke());
-        // Until the editor counts as active, Axiom answers stone for its block, which would replace the one last seen.
         if (on && active()) remember();
         if (on && call(h -> { h.disable.invoke(); return true; })) {
             left = true;
             return;
         }
-        // A call that threw has turned the editor controls off, and the window may now open squeezed: said at once.
         if (!known()) tell();
     }
 
-    /** Tells the player that Chroma Studio can't tell whether the editor is open, and what to do about it. */
     private static void tell() {
         warned = true;
         Hud.readout(Component.translatable("axiom.chromastudio.editor.unknown"), Component.translatable("axiom.chromastudio.editor.unknown.how"),
                 ModSettings.readoutSeconds);
     }
 
-    /**
-     * Call at the end of every client tick. Remembers the active block while the editor is open, and takes the player
-     * back into it once the window it left for has closed to the world. It doesn't when the player has left the world,
-     * opened the editor themselves, gone to another mod's screen or changed game mode, so it never opens the editor
-     * for a player who wasn't in it.
-     */
     static void tick(Minecraft mc) {
         if (!known()) return;
         if (active()) remember();
         if (!left) return;
-        // Axiom says its editor is active from one frame to the next, so just after leaving it still does. Whether it's
-        // switched on changes at once, and is what tells that the player went back by themselves.
         Screen screen = mc.gui.screen();
         if (mc.level == null || mc.player == null || mc.gameMode == null || mc.gameMode.getPlayerMode() != GameType.CREATIVE
                 || call(h -> (boolean) h.enabled.invoke()) || screen != null && !(screen instanceof ChromaScreen || screen instanceof SettingsScreen)) {
             left = false;
             return;
         }
-        // A pinned window stays over the world: in the editor it would be squeezed over the 3D view as the open one would.
         if (screen != null || ChromaScreen.isPinned()) return;
         left = false;
-        // A call that threw has been logged; either way the player is told the editor stayed closed, and how to open it.
         if (!call(h -> { h.enable.invoke(); return true; }) || !call(h -> (boolean) h.enabled.invoke()))
             Hud.readout(Component.translatable("axiom.chromastudio.editor.not_back"), Component.translatable("axiom.chromastudio.editor.not_back.how"),
                     ModSettings.readoutSeconds);
@@ -161,7 +119,6 @@ final class AxiomEditor {
         boolean on(Handles h) throws Throwable;
     }
 
-    /** Runs a call on the handles, false when they're missing or the call throws. */
     private static boolean call(Call c) {
         Optional<Component> why = INTERNALS.reason();
         if (why.isPresent()) return false;
