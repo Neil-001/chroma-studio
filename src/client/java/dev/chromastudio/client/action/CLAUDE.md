@@ -3,7 +3,7 @@ What the mod does for the player in the game: reading colours off blocks and the
 ## Clipboard and file dialogs
 
 - `Clipboard.copy` is the only way the mod puts text on the clipboard. Text past `ClipboardSize.MAX_BYTES` would crash the game, so it is refused and the caller shows the player why.
-- `FileDialog.choose` hands `extensions` to SDL as they are, so they are separated by semicolons and have no dots, such as `png;jpg`.
+- `FileDialog.choose` hands `extensions` to SDL as they are, so they are separated by semicolons with no leading dot, such as `png;jpg`.
 - Every caller of `FileDialog.choose` also offers a field to type a path into, because some systems bring up no dialog.
 - SDL hands `FileDialog`'s callback a null list on an error, such as a system with no dialog to show, and an empty list when the player cancels or picks nothing. Only the null list calls `failed`.
 - `FileDialog` frees a dialog's callback when the next dialog opens. A callback can't be freed from inside its own call, nor before its dialog answers, however long the player leaves it open.
@@ -13,13 +13,13 @@ What the mod does for the player in the game: reading colours off blocks and the
 - `Eyedropper.press` reads the block under the mouse in Axiom's editor, because the editor hides the crosshair and points with the mouse.
 - `Eyedropper.read` turns a Minecraft `Direction` into a core `Face` by ordinal, so `Face` must keep the order of `Direction`.
 - `ScreenPicker` can read only the last frame shown, GUI and all, because the game lays out a frame's GUI before it draws the world. So the window isn't drawn while the picker is armed, and a click counts only after `SETTLE` frames, once the window is out of the frame that is read.
-- The game's frame runs from the bottom up, so `ScreenPicker.read` flips its rows. `ScreenPicker.read` understands only four bytes a pixel, which the game's main frame has, and reads nothing from any other format.
+- The game's frame runs from the bottom up, so `ScreenPicker.read` flips its rows. `ScreenPicker.read` reads nothing from a frame whose pixels aren't four bytes, and it decodes the four bytes as the `RGBA8_UNORM` channels of the game's main frame.
 - `PaletteBlocks.queryFace` takes the north face for the Side setting, because a block's four sides nearly always look alike.
 - `PaletteBlocks.tint` reads where the player stands unless the biome setting names one biome, because a range over all biomes has no one tint.
 
 ## Capture
 
-- `Capture` checks each side of a box against `MAX_VOLUME` before it multiplies them, because three sides typed into the command can multiply past what a `long` holds.
+- `Capture` clamps a box's height to the world, checks each horizontal side against `MAX_VOLUME`, and checks their product before it multiplies by the height, because three sides typed into the command can multiply past what a `long` holds.
 - `Capture` steps through a box by offset from its corner, because a loop up to a coordinate at the very end of the `int` range would never end.
 
 ## Giving and dyeing items
@@ -44,7 +44,7 @@ What the mod does for the player in the game: reading colours off blocks and the
 - Axiom saves its hotbars itself a few seconds after a write, so `HotbarFill.fillAxiom` doesn't save them.
 - Axiom numbers its hotbars from 0, and `HotbarFill` names them to the player from 1, as Axiom's menu shows them.
 - `HotbarFill.fillAxiom` treats a write that quietly didn't take as a sign of a changed Axiom, the same as one that threw, and reports it to `AxiomBridge.hotbarsFailed`.
-- `HotbarFill.undo` reads back each slot it writes through Axiom's hotbars. That works because `whyNoUndo` allows an Undo through Axiom in creative mode alone, where every write takes at once. An operator's Undo of an ordinary fill goes through commands.
+- `HotbarFill.undo` reads back each slot it writes through Axiom's hotbars. That works because `whyNoUndo` allows an Undo through Axiom in creative mode alone, where every write takes at once. An operator in survival undoes an ordinary fill through commands.
 
 ## Recipe viewers
 
