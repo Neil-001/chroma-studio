@@ -53,17 +53,10 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 import org.joml.Quaternionfc;
 
-/**
- * Axiom as Chroma Studio's tools see it, for tests: its services, which record what reaches them, its editor and tool
- * masks through the stand-ins in {@code com.moulberry.axiom}, a world of a few blocks, and a frame count the test moves
- * on. {@link #install} puts it in place and forgets everything a previous test left.
- */
 final class FakeAxiom {
-    /** The world the tools see: air but for the blocks put in it. */
     static final class Level extends ClientLevel {
         private Map<BlockPos, BlockState> blocks;
 
-        // Never run: the world is made without its constructor, which would need a whole client.
         private Level() { super(null, null, null, null, 0, 0, null, false, 0, 0); }
 
         private Map<BlockPos, BlockState> blocks() {
@@ -79,11 +72,8 @@ final class FakeAxiom {
 
     final Level level = make(Level.class);
     final Tools tools = new Tools();
-    /** The positions the brush's ball reaches next frame. */
     final List<BlockPos> reach = new ArrayList<>();
-    /** The frame Axiom's editor is drawing. */
     int frame = 1;
-    /** What each tool Axiom was handed is, as Axiom would call it. */
     final List<CustomTool> registered = new ArrayList<>();
     final IAxiomWorldRenderContext rc = new RenderContext();
 
@@ -117,24 +107,18 @@ final class FakeAxiom {
         return a;
     }
 
-    /** Takes the fakes away again, so other tests find the game as it was. */
     static void uninstall() {
         ChromaStudioClient.platform = null;
         AxiomBridge.forget();
         setStatic(Minecraft.class, "instance", null);
     }
 
-    /**
-     * Puts a game client in place whose world is this one, in English, as the tools read the world, the language and
-     * the window from it. Made without its constructor, like the world, so it holds nothing else.
-     */
     void client() {
         Minecraft mc = make(Minecraft.class);
         mc.level = level;
         LanguageManager language = make(LanguageManager.class);
         set(LanguageManager.class, language, "currentCode", "en_us");
         set(Minecraft.class, mc, "languageManager", language);
-        // A 720-pixel window at the default field of view, which a swatch's colour is read for.
         Window window = make(Window.class);
         set(Window.class, window, "height", 720);
         set(Minecraft.class, mc, "window", window);
@@ -146,7 +130,6 @@ final class FakeAxiom {
         setStatic(Minecraft.class, "instance", mc);
     }
 
-    /** Sets a field of an object, a private or final one included, as a tool's panel would set it. */
     static void set(Class<?> type, Object on, String name, Object value) {
         try {
             Field f = type.getDeclaredField(name);
@@ -157,7 +140,6 @@ final class FakeAxiom {
         }
     }
 
-    /** Reads a field of an object, a private one included. */
     static Object get(Class<?> type, Object on, String name) {
         try {
             Field f = type.getDeclaredField(name);
@@ -170,17 +152,11 @@ final class FakeAxiom {
 
     private static void setStatic(Class<?> type, String name, Object value) { set(type, null, name, value); }
 
-    /** Hands a tool to Axiom as Chroma Studio's own are, and returns what Axiom then holds and calls. */
     CustomTool register(CustomTool tool, char icon) {
         AxiomTools.add(registered::add, tool, icon);
         return registered.getLast();
     }
 
-    /**
-     * A tool mask whose Lua script fails at the positions {@code failsAt} names, as Axiom runs one: a fresh context
-     * compiles the script, which clears the last error, and a context whose script has failed answers no from then on.
-     * Every position asked is added to {@code asked}.
-     */
     static MaskElement lua(List<Integer> asked, IntPredicate failsAt) {
         return c -> {
             if (!c.compiled) {
@@ -198,10 +174,8 @@ final class FakeAxiom {
         };
     }
 
-    /** What the player reads when a tool sent nothing, for a refusal by its name. */
     static Component refusal(String why) { return Component.translatable("axiom.chromastudio.refused." + why); }
 
-    /** What the HUD's readout shows, or null. */
     static Component readout() {
         try {
             Field f = dev.chromastudio.client.ui.Hud.class.getDeclaredField("line1");
@@ -222,7 +196,6 @@ final class FakeAxiom {
         }
     }
 
-    /** Makes an object without running its constructor, as the game's world can't be built without a client. */
     private static <T> T make(Class<T> type) {
         try {
             Class<?> unsafe = Class.forName("sun.misc.Unsafe");
@@ -235,18 +208,12 @@ final class FakeAxiom {
         }
     }
 
-    /** Axiom's tool service: whether the button is held, and what was sent and shown. */
     static final class Tools implements ToolService {
         boolean down;
-        /** Each change sent, as the blocks it held. */
         final List<Map<BlockPos, BlockState>> pushed = new ArrayList<>();
-        /** Thrown when a change is sent, as by an Axiom that lacks the method. */
         Throwable failPush;
-        /** Thrown once, the next time a preview lets go of the world's look. */
         Throwable failRelease;
-        /** The block under the mouse, or null. */
         BlockPos hit;
-        /** The previews holding the world's look, by name. */
         final Set<String> overriding = new HashSet<>();
         final Map<BlockPos, BlockState> overrides = new HashMap<>();
 
@@ -254,7 +221,6 @@ final class FakeAxiom {
         public void pushBlockRegionChange(BlockRegion region) {
             if (failPush instanceof Error e) throw e;
             if (failPush instanceof RuntimeException e) throw e;
-            // Copied into a hash map: an immutable copy probes badly on the clustered hashes of a big box's positions.
             pushed.add(new LinkedHashMap<>(((Blocks3) region).blocks));
         }
 
@@ -276,7 +242,6 @@ final class FakeAxiom {
         @Override
         public ExecutorService getSharedSingleThreadExecutor() { throw new UnsupportedOperationException(); }
 
-        /** As Axiom's: one holder at a time, and an {@code Error} for anyone else who asks. */
         @Override
         public void acquireChunkRenderOverrider(String id) {
             if (!overriding.isEmpty()) throw new Error("Chunk render overrider is already locked by " + overriding.iterator().next());
@@ -356,7 +321,6 @@ final class FakeAxiom {
         public BooleanRegion createBoolean() { return new Positions(); }
     }
 
-    /** A brush's ball, which reaches each position in {@link #reach} the next frame it's drawn. */
     private final class Pathers implements ToolPatherProvider {
         @Override
         public ToolPatherPoint createPoint(boolean unique) { throw new UnsupportedOperationException(); }
@@ -400,7 +364,6 @@ final class FakeAxiom {
         public Matrix4fc projection() { return null; }
     }
 
-    /** A loader with Axiom loaded. */
     private static final class Platform implements ClientPlatform {
         @Override
         public Path configDir() { return Path.of("build", "fake-axiom"); }

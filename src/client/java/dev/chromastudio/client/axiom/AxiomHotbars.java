@@ -10,23 +10,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
-/**
- * Reads and writes Axiom's extra hotbars. Only {@link AxiomBridge} calls this, once Axiom is known to be loaded.
- * The hotbars are Axiom's internal {@code HotbarManager}, not its API, so the methods are found by exact signature
- * through {@link AxiomInternals}; if any is missing, or a call throws, the hotbars are off for the session with a reason
- * the player can act on.
- *
- * <p>As Axiom 6.1 has them: hotbars are numbered from 0 with no upper limit, nine slots each, shown nine to a page in
- * the menu its context key opens (Left Alt by default), where scrolling steps through them across pages. The active
- * one is the player's real hotbar: reading it reads the inventory, and writing it sends the creative inventory packet,
- * but only in creative mode, and outside it the write returns having done nothing. So callers write the active hotbar
- * themselves and only the others through here. The others live on the client, kept per world or server unless the
- * player chose global hotbars, and are saved about ten seconds after a change, but only while Axiom is active.
- */
 final class AxiomHotbars {
     private AxiomHotbars() {}
 
-    /** {@code HotbarManager}'s slot methods, and two of {@code AxiomClient}'s with the permission bound in. */
     record Handles(MethodHandle get, MethodHandle set, MethodHandle allowed, MethodHandle axiomActive) {}
 
     private static final String MANAGER = "com.moulberry.axiom.HotbarManager";
@@ -35,22 +21,15 @@ final class AxiomHotbars {
             Component.translatable("hotbar.chromastudio.axiom.changed"),
             () -> find(MANAGER, "com.moulberry.axiom.AxiomClient", "com.moulberry.axiom.restrictions.AxiomPermission"));
 
-    /**
-     * Which hotbar the player holds, looked up on its own: with it, Undo can tell that the player has switched hotbars
-     * even when the rest has changed, and refuse rather than write into the wrong one.
-     */
     private static final AxiomInternals<MethodHandle> INDEX = new AxiomInternals<>("Axiom's hotbar number",
             Component.translatable("hotbar.chromastudio.axiom.changed"), () -> findIndex(MANAGER));
 
-    /** The context key's name in Axiom 6.1, a game key mapping like any other, so no Axiom class is needed to read it. */
     private static final String CONTEXT_KEY = "axiom.keybind.context";
 
-    /** Looks the active hotbar's method up in the class named, so a test can point it at a class of its own. */
     static MethodHandle findIndex(String manager) throws Throwable {
         return MethodHandles.publicLookup().findStatic(Class.forName(manager), "getActiveHotbarIndex", MethodType.methodType(int.class));
     }
 
-    /** Looks the other methods up in the classes named, so a test can point it at classes of its own. */
     static Handles find(String manager, String client, String permission) throws Throwable {
         MethodHandles.Lookup lookup = MethodHandles.publicLookup();
         Class<?> m = Class.forName(manager), c = Class.forName(client), p = Class.forName(permission);
@@ -62,29 +41,19 @@ final class AxiomHotbars {
         return new Handles(get, set, allowed, axiomActive);
     }
 
-    /** Why the hotbars can't be used on any world: this Axiom isn't one Chroma Studio knows. Nothing when they can be. */
     static Optional<Component> unsupported() { return INTERNALS.reason().or(INDEX::reason); }
 
-    /** Turns the hotbars off after they didn't take a write, which a call that returned normally can't show. */
     static void failed(Throwable t) { INTERNALS.failed(t); }
 
-    /** Why a fill can't use the hotbars now, or nothing when it can. */
     static Optional<Component> unavailable() { return unsupported().or(AxiomHotbars::situation); }
 
-    /**
-     * Why an Undo can't put back what a fill wrote in the hotbars now, or nothing when it can. Unlike a fill, it goes
-     * ahead after a call has failed, since putting back is how the player recovers, but it needs everything else a
-     * fill does: in survival mode Axiom writes no hotbar it can show the player, and off Axiom it saves none.
-     */
     static Optional<Component> unreachable() { return INTERNALS.found() && INDEX.found() ? situation() : unsupported(); }
 
-    /** Why the player can't use the hotbars where they are now. */
     private static Optional<Component> situation() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return Optional.of(Component.translatable("palettes.chromastudio.no_world"));
         if (!mc.player.hasInfiniteMaterials()) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.creative"));
         try {
-            // Axiom is off on a server that doesn't support it, and then saves no hotbar and opens no menu to reach one.
             if (!(boolean) call(Handles::axiomActive)) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.inactive"));
             if (!(boolean) call(Handles::allowed)) return Optional.of(Component.translatable("hotbar.chromastudio.axiom.denied"));
         } catch (Throwable _) {
@@ -93,7 +62,6 @@ final class AxiomHotbars {
         return Optional.empty();
     }
 
-    /** The hotbar the player holds now. Throws when Axiom's method fails, after turning the hotbars off. */
     static int active() throws Throwable {
         try {
             return (int) INDEX.handles().invoke();
@@ -103,17 +71,10 @@ final class AxiomHotbars {
         }
     }
 
-    /** A copy of what one slot of a hotbar holds, the active one included. Throws as {@link #active} does. */
     static ItemStack get(int hotbar, int slot) throws Throwable { return (ItemStack) call(Handles::get, hotbar, slot); }
 
-    /**
-     * Sets one slot of a hotbar that isn't the active one, to nothing for an empty stack. Throws as {@link #active}
-     * does. The active one is the player's own hotbar, which Axiom writes only in creative mode and otherwise leaves
-     * as it was without a word, so callers write it themselves.
-     */
     static void set(int hotbar, int slot, ItemStack stack) throws Throwable { call(Handles::set, hotbar, slot, stack.copy()); }
 
-    /** Calls one of the handles, turning the hotbars off if it throws. */
     private static Object call(Function<Handles, MethodHandle> which, Object... args) throws Throwable {
         try {
             return which.apply(INTERNALS.handles()).invokeWithArguments(args);
@@ -123,7 +84,6 @@ final class AxiomHotbars {
         }
     }
 
-    /** The key that opens Axiom's menu of hotbars, as the player has it bound, or Left Alt, its default. */
     static Component switchKey() {
         for (KeyMapping key : Minecraft.getInstance().options.keyMappings)
             if (key.getName().equals(CONTEXT_KEY)) return key.getTranslatedKeyMessage();

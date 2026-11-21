@@ -44,32 +44,12 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-/**
- * An Axiom brush that paints with one of Chroma Studio's palettes. Scatter fills the brush's ball with the palette's
- * blocks, each as often as its weight says, as {@link ScatterBlocks} has them, but not over a block that holds items,
- * such as a chest. Recolour changes each block the ball touches as a recolour script into the palette would, through
- * the same {@link RecolourPlan}, and so leaves the ground, air and liquids alone. A stroke ({@link BrushStroke}) shows
- * while the button is held and goes to Axiom as one change when it's let go, so one undo takes it back.
- *
- * <p>Recolour can also take a whole build at once: used on a block, the tool finds the build joined to it
- * ({@link FoundBuild}) and shows it recoloured ({@link BuildPreview}), and Apply sends it to Axiom as one change, as
- * the gradient tool does. Its default From is the build itself, whose darkest and lightest blocks set the range the
- * palette is spread over; against every block in the game, a grey house would use only the palette's few middle
- * shades. Every change keeps to the player's tool masks in Axiom ({@link AxiomMask}). The panel's choices are kept in
- * {@link ModSettings}.
- */
 final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
-    /** From choices that aren't palettes: the build the tool is used on, and every block but the ground. */
     private static final String FROM_BUILD = "build", FROM_ANY = "any";
-    /** The most of a build's kinds the panel shows. */
     private static final int MAX_SHOWN = 32;
 
     private enum Mode { SCATTER, RECOLOUR }
 
-    /**
-     * Counts the edits to a palette's blocks: a copy is kept and compared each frame, which allocates nothing, and is
-     * made again only when the blocks differ, as after an edit in Chroma Studio's window.
-     */
     private static final class Edits {
         private Palette palette;
         private List<PaletteEntry> copy = List.of();
@@ -90,46 +70,27 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private final BooleanRegion one = AxiomTools.regions.createBoolean();
     private int outlineRadius = -1;
 
-    // The panel's choices, as they were left last session.
     private final int[] radius = {ModSettings.brushRadius};
     private Mode mode = Mode.valueOf(ModSettings.brushMode);
     private boolean wholeBuild = ModSettings.brushWholeBuild;
-    /** The palette, by {@link #key}; when no palette has it, the Palettes tab's or the first stands in. */
     private String paletteKey = ModSettings.brushPalette;
-    /** {@link #FROM_BUILD}, {@link #FROM_ANY}, or a palette's {@link #key}. */
     private String fromKey = ModSettings.brushFrom;
     private Recolour.Mode match = Recolour.Mode.valueOf(ModSettings.brushMatch);
 
-    /** Why the last use or preview couldn't go ahead, shown in the panel until the next. */
     private @Nullable Component said;
-    /** Whether a stroke was dropped partway, as when the player picked another tool, for the panel to say so. */
     private boolean dropped;
     private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
-    /**
-     * Why the last Apply didn't go. Until the tool is used again, no new preview is made, so a second Apply has
-     * nothing to send.
-     */
     private @Nullable Component refused;
-    /** The last build found, to show what sets the shading, as swatches from darkest to lightest. */
     private @Nullable FoundBuild found;
     private List<AxiomPanel.Swatch> foundSwatches = List.of();
 
-    // The whole-build preview.
     private final BuildPreview preview = new BuildPreview("chromastudio_brush");
-    /** The block the tool was used on, whose build is shown recoloured, or null, and the world it's in. */
     private @Nullable BlockPos picked;
     private @Nullable ClientLevel pickedIn;
-    /** What the preview on show was made for, so it's made again only when something changes. */
     private @Nullable Object previewFor;
-    /** Count edits to the palettes the preview is made from, so it's made again when one is. */
     private final Edits toEdits = new Edits(), fromEdits = new Edits();
-    /**
-     * How many kinds of block the previewed build has now, and will have once recoloured, how many blocks the masks
-     * keep out, and how many stay as they are because the palette already has them.
-     */
     private int kindsBefore, kindsAfter, masked, kept;
 
-    // The panel's view of the palettes, made again only when they change.
     private List<Palette> listed = List.of();
     private List<String> listedNames = List.of(), labels = List.of(), fromLabels = List.of(), keys = List.of();
     private String listedLanguage = "";
@@ -149,7 +110,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     @Override
     public void reset() {
-        // Axiom resets a tool before it says another was picked, so a stroke dropped here is the one left partway.
         if (stroke.active()) dropped = true;
         stroke.cancel();
         picked = null;
@@ -191,14 +151,9 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             }
             picked = at;
             pickedIn = level;
-            // The old preview goes at once, so Apply can't send it before the new one has been made.
             clearPreview();
             return true;
         }
-        // The block the stroke starts on, whose build it keeps to with From set to This build, Scatter's choices, new
-        // each stroke, and the ball's radius, which Axiom keeps for the whole stroke, are what the stroke is, as the
-        // positions its ball reaches are. Everything else is read again each time the painter is made, at the start
-        // and when the stroke is checked before it's sent.
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
         BlockPos at = hit == null || hit.getType() != HitResult.Type.BLOCK ? null : hit.getBlockPos().immutable();
         if (mode == Mode.RECOLOUR && fromKey.equals(FROM_BUILD) && at == null) {
@@ -219,22 +174,12 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
     }
 
-    /**
-     * Paints by recolouring, as a recolour script into the palette would. A door changes as a whole, its other half
-     * too, unless the masks or {@code inBuild}, when there is one, keep that half out.
-     */
     private static BrushStroke.Painter recolour(Level level, RecolourPlan plan, @Nullable Set<Long> inBuild) throws Refused {
         if (plan.size() == 0) throw new Refused(Component.translatable("axiom.chromastudio.nothing_to_change"));
         return (x, y, z, _, admit, put) -> plan.change(level, x, y, z,
                 (ax, ay, az) -> admit.test(ax, ay, az) && (inBuild == null || inBuild.contains(BuildSearch.pack(ax, ay, az))), put);
     }
 
-    /**
-     * The stroke's painter as the panel is set now: the mode, the palette and its blocks, From and how blocks match,
-     * read afresh each time, so the check before sending paints the stroke again with them, and sends nothing unless
-     * that comes out the same. {@code at} is the block the stroke started on, {@code seed} Scatter's choices for it,
-     * and {@code size} the ball's radius; with Radius set otherwise now, there's nothing to paint with.
-     */
     private BrushStroke.@Nullable Painter painterNow(Level lvl, @Nullable BlockPos at, long seed, int size) throws Refused {
         Palette to = current();
         if (to == null || wholeBuild() || AxiomPanel.radius(radius) != size) return null;
@@ -242,7 +187,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             List<ScatterBlocks.Placed> blocks = ScatterBlocks.of(to).blocks();
             if (blocks.isEmpty()) return null;
             WeightedPick<ScatterBlocks.Placed> scatter = new WeightedPick<>(blocks, ScatterBlocks.Placed::weight);
-            // Not over a chest or a sign, whose contents would be lost, nor one half of a door or a tall plant.
             return (x, y, z, now, _, put) -> {
                 if (ScatterBlocks.paintsOver(now)) put.put(x, y, z, scatter.at(seed, x, y, z).state());
             };
@@ -251,7 +195,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             FoundBuild build = at == null ? null : FoundBuild.from(lvl, at);
             if (build == null) throw new Refused(Component.translatable("axiom.chromastudio.not_build"));
             showFound(build);
-            // With From set to This build, a stroke that reaches another build leaves it alone.
             Set<Long> inBuild = new HashSet<>();
             for (long b : build.blocks()) inBuild.add(b);
             return recolour(lvl, RecolourPlan.of(to, build.kinds(), match), inBuild);
@@ -277,7 +220,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         return true;
     }
 
-    /** Called every client tick. The block the tool was used on is kept, so the preview comes back with the tool. */
     void tick() {
         stroke.tick();
         if (preview.tick()) previewFor = null;
@@ -295,7 +237,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             return;
         }
         if (stroke.active()) {
-            // Cleared here, as Axiom draws the tool every frame but its panel only while Tool Options is open.
             dropped = false;
             stroke.render(rc);
             return;
@@ -312,13 +253,11 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     }
 
     private void renderBuild(IAxiomWorldRenderContext rc, ClientLevel level) {
-        // A preview belongs to the world it was made in, so a trip to another dimension or server doesn't carry it over.
         if (picked != null && pickedIn != level) reset();
         Palette to = current();
         Palette from = from();
         Object key = picked == null || to == null ? null : Arrays.asList(picked, to, toEdits.of(to), fromKey,
                 from == null ? 0 : fromEdits.of(from), match, BlockIndex.get().version());
-        // After a refused Apply, nothing is shown until the tool is used again.
         if (refused == null && !Objects.equals(key, previewFor)) {
             makePreview(level);
             previewFor = key;
@@ -331,11 +270,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
     }
 
-    /**
-     * Works out what recolouring the build at {@link #picked} would do and shows it in the world in place of the
-     * blocks there, with the blocks that change outlined. Apply works it out again by the same steps,
-     * {@link #wholeBuildNow}, so what it sends was made from the panel's choices as they are then.
-     */
     void makePreview(ClientLevel level) {
         preview.clear();
         if (picked == null || current() == null || !ChromaStudioApi.indexReady()) return;
@@ -354,7 +288,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             return;
         }
         showFound(made.build());
-        // A preview the masks failed while making could show blocks they were keeping out.
         if (mask.failed()) {
             said = AxiomMask.unavailable().orElse(AxiomChanges.refusal(QueuedChanges.Refusal.MASK_FAILED));
             return;
@@ -368,17 +301,12 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             try {
                 wholeBuildNow(level, again, redone);
             } catch (Refused _) {
-                // Nothing to recolour now, which is never what the player saw.
             }
             return redone;
         });
         if (!shown) said = Component.translatable("axiom.chromastudio.preview.busy");
     }
 
-    /**
-     * Recolours the build at {@link #picked} into {@code into} as the panel is set now: the palette and its blocks,
-     * From and how blocks match, read afresh, with the build found again from the world.
-     */
     private WholeBuild wholeBuildNow(Level level, QueuedChanges.Mask mask, QueuedChanges<BlockState> into) throws Refused {
         Palette to = current();
         boolean fromBuild = fromKey.equals(FROM_BUILD);
@@ -387,11 +315,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         return wholeBuild(level, picked, to, fromBuild ? null : from(), fromBuild, match, mask, into);
     }
 
-    /**
-     * How many of a build's blocks stay as they are because the palette already has them, which the panel says, as a
-     * build mostly of the palette's own blocks hardly changes and the player should know why. Only what the player
-     * reads: what changes is worked out by {@link #wholeBuild}.
-     */
     private int kept(Level level, FoundBuild build) {
         Palette to = current();
         if (to == null) return 0;
@@ -407,14 +330,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         return n;
     }
 
-    /** What recolouring a whole build works out to: the build, the blocks outlined, and what the panel says of it. */
     record WholeBuild(FoundBuild build, long[] outlined, int masked, int kindsBefore, int kindsAfter) {}
 
-    /**
-     * Works out what recolouring the build at {@code at} into {@code to} does, with these masks, into {@code into}:
-     * every block of the build is asked about and recorded, changed or left as it is. The same steps make the preview
-     * and check it at Apply. {@code from} sets the shading range, or with {@code fromBuild} the build's own blocks do.
-     */
     static WholeBuild wholeBuild(Level level, BlockPos at, Palette to, @Nullable Palette from, boolean fromBuild, Recolour.Mode match,
                                  QueuedChanges.Mask mask, QueuedChanges<BlockState> into) throws Refused {
         FoundBuild build = FoundBuild.from(level, at);
@@ -424,7 +341,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         Set<Block> before = new HashSet<>(), after = new HashSet<>();
         LongArrayList outlined = new LongArrayList();
         int masked = 0;
-        // A door changes only when both its halves may: a capped search can hold one half without the other.
         Set<Long> inBuild = new HashSet<>();
         for (long p : build.blocks()) inBuild.add(p);
         RecolourPlan.Admit admit = (x, y, z) -> mask.allows(x, y, z) && inBuild.contains(BuildSearch.pack(x, y, z));
@@ -452,11 +368,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         return new WholeBuild(build, outlined.toLongArray(), masked, before.size(), after.size());
     }
 
-    /**
-     * Sends the whole-build change to Axiom as one entry in its history, and starts over. When working it out again
-     * now doesn't give what the preview shows, nothing is sent, the preview goes, and the panel says why and to use the
-     * tool again. False when nothing was sent.
-     */
     private boolean apply() {
         if (preview.isEmpty()) return false;
         Optional<Component> why = preview.apply();
@@ -471,7 +382,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     @Override
     public void displayImguiOptions() { layout.draw(this::options, this::bottom); }
 
-    /** What the brush paints with and how. Nothing here comes and goes with the mode, so no control moves when it changes. */
     private void options() {
         List<Palette> all = palettes();
         Palette shown = current();
@@ -502,7 +412,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         if (AxiomPanel.radius(radius, !wholeBuild(), tr(wholeBuild() ? "axiom.chromastudio.radius.whole" : "axiom.chromastudio.radius.tip"))) remember();
         recolourOptions(all, recolour);
-        // Notes that come and go, under every control so none moves; the bottom part keeps what must be read before acting.
         if (shown != null && !anyInGame) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.empty"));
         if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
             AxiomPanel.note(tr("axiom.chromastudio.brush.left_out",
@@ -511,21 +420,16 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         if (!wholeBuild()) {
             AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
-            // A stroke over blocks the palette already has changes nothing, which would look like the brush failing.
-            // Closest colour may still swap a block for one of the same colour listed first, so it says nothing.
             if (recolour && match == Recolour.Mode.SHADING) AxiomPanel.note(tr("axiom.chromastudio.brush.keeps"));
         } else if (picked != null && found != null && said == null && refused == null) AxiomPanel.note(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
         if (recolour && fromKey.equals(FROM_BUILD) && found != null) {
-            // What the build the tool found holds, darkest first, as that sets the shading.
             AxiomPanel.note(tr("axiom.chromastudio.brush.found"));
             AxiomPanel.swatches("found", foundSwatches);
         }
     }
 
-    /** What the player must read before painting or pressing Apply, and the buttons, held to the panel's bottom. */
     private void bottom() {
         boolean recolour = mode == Mode.RECOLOUR;
-        // Whether the masks bind the change is read before it's made, so it's never scrolled out of sight.
         AxiomPanel.masks();
         Component why = wholeBuild() ? refused : stroke.refused();
         if (why == null && dropped && !wholeBuild()) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
@@ -552,7 +456,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         remember();
     }
 
-    /** Which blocks a recolour changes and how it matches them, greyed out for Scatter. */
     private void recolourOptions(List<Palette> all, boolean recolour) {
         ImGui.beginDisabled(!recolour);
         Palette chosen = from();
@@ -585,10 +488,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         remember();
     }
 
-    /**
-     * The palettes, and the names the panel shows for them, read again only when one is added, removed or renamed, or
-     * the language changes.
-     */
     private List<Palette> palettes() {
         List<Palette> all = PaletteStore.get().all();
         List<String> names = all.stream().map(p -> p.name).toList();
@@ -611,7 +510,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         return true;
     }
 
-    /** Reads a palette's swatches and what Scatter does with it, again only when its blocks or the index change. */
     private void readSwatches(Palette p) {
         int version = BlockIndex.get().ready() ? BlockIndex.get().version() : -1;
         if (p == swatched && p.entries.equals(swatchedEntries) && version == swatchedVersion) return;
@@ -633,30 +531,19 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     private @Nullable Palette current() {
         List<Palette> all = palettes();
-        // The panel's choice, while it's still in the list: the player may have deleted it in Chroma Studio's window.
         for (int i = 0; i < all.size(); i++) if (keys.get(i).equals(paletteKey)) return all.get(i);
         Palette selected = PaletteStore.get().selected();
         return selected != null ? selected : all.isEmpty() ? null : all.getFirst();
     }
 
-    /**
-     * Whether the From choice is a palette that's no longer there, as after it was deleted or renamed. The brush then
-     * changes nothing until the player chooses again, rather than every block but the ground in its place.
-     */
     private boolean fromGone() { return !fromKey.equals(FROM_BUILD) && !fromKey.equals(FROM_ANY) && from() == null; }
 
-    /** The From palette, while it's still in the list, or null for the build or every block but the ground. */
     private @Nullable Palette from() {
         List<Palette> all = palettes();
         for (int i = 0; i < all.size(); i++) if (keys.get(i).equals(fromKey)) return all.get(i);
         return null;
     }
 
-    /**
-     * How the panel's choices name each palette in the settings file: a preset by its id, and the player's own by its
-     * file and name together. No two palettes share a file, and a file freed by a rename can only be taken by a palette
-     * of another name, so a key never comes to mean a different palette; a renamed one is simply chosen again.
-     */
     private static List<String> keys(List<Palette> all) {
         List<String> out = new ArrayList<>();
         for (Palette p : all) {
@@ -666,7 +553,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         return out;
     }
 
-    /** Keeps the panel's choices for next session. */
     private void remember() {
         ModSettings.brushPalette = paletteKey;
         ModSettings.brushMode = mode.name();
