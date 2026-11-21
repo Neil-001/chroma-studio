@@ -188,4 +188,15 @@ class PanelTest {
         frame(tool);
         assertTrue(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.shade.left.masked")), ImGui.drawn.toString());
     }
+
+    @Test
+    void aMaskThatThrowsOnHoverLeavesTheMasksWorking() {
+        axiom.level.put(0, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
+        axiom.tools.hit = new BlockPos(0, 0, 0);
+        MaskManager.mask = _ -> {
+            throw new IllegalStateException("a mask that fails");
+        };
+        new GuardedTool(new ShadeBrushTool()).render(axiom.rc);
+        assertTrue(AxiomMask.INTERNALS.reason().isEmpty(), AxiomMask.INTERNALS.reason().toString());
+    }
 }
