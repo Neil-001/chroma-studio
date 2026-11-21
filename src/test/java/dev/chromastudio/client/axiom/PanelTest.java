@@ -7,13 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.moulberry.axiom.mask.MaskManager;
 import dev.chromastudio.client.GradientStore;
 import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.StoredGradient;
-import com.moulberry.axiom.mask.MaskManager;
 import imgui.moulberry92.ImGui;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
