@@ -29,36 +29,20 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
-/**
- * The mod's settings: one scrolling list, grouped under headings, with a search over it. A change applies straight
- * away and is saved when the screen closes. Each group has a Reset, to its defaults, and an Undo, to what it was when
- * the screen opened; the bar at the bottom has both for everything. The rows come from {@link ModSettings#GROUPS}, so
- * a new setting gets one by being declared there, with its label and tooltip in the language file.
- */
 public final class SettingsScreen extends Screen {
     private static final int TOP = 24, BOTTOM = 26, ROW = 20, HEADING = 22, CONTROL_W = 130, M = 12, GAP = 2;
-    /**
-     * A row with no setting behind it, which opens the mod's key binds. It sits where the recipe key's setting was before
-     * that became a key bind. Its label and tooltip come from the language file under this name, for the search.
-     */
     private static final String MOD_KEYS = "modKeys";
 
     private final Screen parent;
-    /** Every setting as it was when the screen opened, which Undo goes back to. */
     private final Map<String, Object> atOpen = ModSettings.snapshot();
-    /** The rows. The search field and the buttons along the bottom are the screen's own. */
     private final Widgets list = new Widgets();
     private String search = "";
     private EditBox searchField;
-    /** Each group's Undo, and the one for everything under the name "". Each is greyed while it has nothing to undo. */
     private final Map<String, Button> undos = new HashMap<>();
     private boolean noRows;
-    /** Set when the rows no longer show the settings, to lay them out again before the next frame rather than under a click. */
     private boolean stale;
-    /** The confirmation or the colour dialog, while one is open. */
     private Popup popup;
 
-    /** {@code parent} is the screen to go back to, or null to return to the game. */
     public SettingsScreen(Screen parent) {
         super(Component.translatable("settings.chromastudio.title"));
         this.parent = parent;
@@ -74,7 +58,6 @@ public final class SettingsScreen extends Screen {
     protected void init() {
         Theme.sync();
         int colW = columnWidth(), left = left();
-        // The title keeps what the search field can spare, and the field at least half the row.
         int titleW = Math.min(font.width(title), colW / 2 - 8);
         searchField = new EditBox(font, left + titleW + 8, 4, colW - titleW - 8, Widgets.H, tr("search"));
         searchField.setMaxLength(64);
@@ -86,7 +69,6 @@ public final class SettingsScreen extends Screen {
         });
         addRenderableWidget(searchField);
 
-        // Bottom bar: each button as wide as its text needs, or all of them narrower when a translation's won't fit.
         Component keys = tr("keys"), undoAll = tr("undo_all"), resetAll = tr("reset_all"), done = Component.translatable("gui.done");
         int[] w = {Widgets.buttonWidth(keys) + 6, Widgets.buttonWidth(undoAll), Widgets.buttonWidth(resetAll), Widgets.buttonWidth(done) + 14};
         int room = colW - 3 * GAP, wanted = w[0] + w[1] + w[2] + w[3];
@@ -107,10 +89,8 @@ public final class SettingsScreen extends Screen {
         if (popup != null) popup.layout(width, height);
     }
 
-    /** What a setting's row says, for the search: its label and its tooltip. */
     private static String text(String name) { return tr(name).getString() + " " + tr(name + ".tip").getString(); }
 
-    /** Lays the rows out for the search as it stands. */
     private void buildList() {
         stale = false;
         list.clear();
@@ -138,7 +118,6 @@ public final class SettingsScreen extends Screen {
             }));
             showUndo(id, undos.get(id));
             if (id.equals("index")) {
-                // The cache is keyed by the packs' names, so it can't tell that a pack's files changed where they are.
                 Component refresh = tr("refresh");
                 list.button(x - GAP - Widgets.buttonWidth(refresh), y + 4, refresh, () -> BlockIndex.get().rebuild()).setTooltip(Tooltip.create(tr("refresh.tip")));
             }
@@ -153,10 +132,6 @@ public final class SettingsScreen extends Screen {
         list.viewport(new Bounds(0, TOP, width, height - TOP - BOTTOM), y - TOP);
     }
 
-    /**
-     * Settings changed other than through their own controls: a reset or an undo. The rows are laid out again to show
-     * them, and the window behind takes its place and size again when those were among them.
-     */
     private void applied(boolean window) {
         stale = true;
         if (window && parent instanceof ChromaScreen screen) screen.reloadWindow();
@@ -166,7 +141,6 @@ public final class SettingsScreen extends Screen {
         return group.isEmpty() ? ModSettings.changedSince(since) : ModSettings.changedSince(group, since);
     }
 
-    /** Greys an Undo out while it has nothing to undo, and has its tooltip say so. */
     private void showUndo(String group, Button undo) {
         undo.active = changed(group, atOpen);
         String key = group.isEmpty() ? "undo_all" : "undo";
@@ -180,7 +154,6 @@ public final class SettingsScreen extends Screen {
         p.layout(width, height);
     }
 
-    /** Asks before every setting goes back to its default. */
     private final class Confirm extends Popup {
         private static final int W = 200;
 
@@ -209,7 +182,6 @@ public final class SettingsScreen extends Screen {
         }
     }
 
-    /** A square of the colour a setting holds, in its row. It scrolls with the rows and takes no input. */
     private static final class Swatch extends AbstractWidget {
         private final String setting;
 
@@ -228,28 +200,20 @@ public final class SettingsScreen extends Screen {
         protected void updateWidgetNarration(NarrationElementOutput builder) { }
     }
 
-    /** The control for one setting, chosen by the setting's type, with its tooltip. */
     private void control(String name, int x, int y, Component tip) {
         if (name.equals(MOD_KEYS)) {
             list.button(x, y, CONTROL_W, tr("keys"), this::openKeys).setTooltip(Tooltip.create(tip));
             return;
         }
         AbstractWidget made = control(name, x, y, tip, ModSettings.type(name));
-        // An option button already has its tooltip, and would lose one set here the first time it's clicked. A greyed
-        // control's tooltip says why it is.
         if (!(made instanceof CycleButton) && made.active) made.setTooltip(Tooltip.create(tip));
     }
 
     private AbstractWidget control(String name, int x, int y, Component tip, Class<?> type) {
         Object value = ModSettings.get(name);
-        // An on or off that chooses between two named things reads better as the names.
         if (name.equals("dioramaPerspective"))
             return list.cycler(x, y, CONTROL_W, null, List.of(false, true), (Boolean) value,
                     v -> Component.translatable("option.chromastudio.projection." + (v ? "perspective" : "orthographic")), v -> ModSettings.set(name, v), tip);
-        // Greyed rather than hidden without Axiom, or with an Axiom whose hotbars this version can't use, so the setting
-        // can be found and its tooltip says what it needs. Greyed, it reads OFF, as the fill dialog does, since no fill
-        // can use Axiom's hotbars then; the saved choice is kept for when one can. Only the fill dialog greys it for
-        // the moment's reasons, such as survival mode, since the choice still stands for later.
         if (name.equals("hotbarAxiom") && AxiomBridge.hotbarsUnsupported().isPresent())
             return Widgets.disable(list.toggle(x, y, CONTROL_W, null, false, v -> ModSettings.set(name, v)), AxiomBridge.hotbarsUnsupported().orElseThrow());
         if (type == boolean.class) return list.toggle(x, y, CONTROL_W, null, (Boolean) value, v -> ModSettings.set(name, v), tip);
@@ -263,7 +227,6 @@ public final class SettingsScreen extends Screen {
             return list.cycler(x, y, CONTROL_W, null, List.of((Object[]) type.getEnumConstants()), value,
                     v -> Component.translatable(prefix + ((Enum<?>) v).name().toLowerCase(Locale.ROOT)), v -> {
                         ModSettings.set(name, v);
-                        // The rows are drawn in the theme's colours, and the custom colour's row is greyed by the theme.
                         if (name.equals("theme")) stale = true;
                     }, tip);
         }
@@ -274,7 +237,7 @@ public final class SettingsScreen extends Screen {
                     v -> ModSettings.set(name, v), tip);
         if (name.equals("startTab")) {
             List<String> ids = new ArrayList<>(ChromaScreen.tabIds());
-            if (!ids.contains(text)) ids.add(text);   // a tab from a mod that's gone: keep it listed rather than change it silently
+            if (!ids.contains(text)) ids.add(text);
             return list.cycler(x, y, CONTROL_W, null, ids, text, v -> Component.translatable("tab.chromastudio." + v), v -> ModSettings.set(name, v), tip);
         }
         if (name.equals("customColour")) {
@@ -286,13 +249,11 @@ public final class SettingsScreen extends Screen {
                     }, () -> popup = null)));
             return ModSettings.theme == ThemeChoice.CUSTOM ? pick : Widgets.disable(pick, tr(name + ".off"));
         }
-        // Free text. Text the setting can't hold shows red and changes nothing.
         EditBox[] box = new EditBox[1];
         box[0] = list.field(x, y, CONTROL_W, text, v -> box[0].setTextColor(ModSettings.set(name, v) ? EditBox.DEFAULT_TEXT_COLOR : Theme.FIELD_BAD));
         return box[0];
     }
 
-    /** Opens the game's key binds screen. It has no way to show one category, so this scrolls its list to the mod's heading. */
     private void openKeys() {
         KeyBindsScreen keys = new KeyBindsScreen(this, minecraft.options);
         minecraft.gui.setScreen(keys);
@@ -328,7 +289,6 @@ public final class SettingsScreen extends Screen {
         undos.forEach((group, undo) -> {
             if (changed(group, atOpen) != undo.active) showUndo(group, undo);
         });
-        // Under a popup nothing reacts to the cursor.
         int mx = popup == null ? mouseX : -1, my = popup == null ? mouseY : -1;
         super.extractRenderState(g, mx, my, delta);
         int left = left();
@@ -371,7 +331,6 @@ public final class SettingsScreen extends Screen {
     public boolean keyPressed(KeyEvent event) {
         if (popup != null) return popup.keyPressed(event);
         if (event.isEscape()) {
-            // The first Escape only clears a search.
             if (search.isEmpty()) onClose();
             else searchField.setValue("");
             return true;

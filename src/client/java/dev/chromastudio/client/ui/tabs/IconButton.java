@@ -8,7 +8,6 @@ import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.network.chat.Component;
 
-/** A small square button with a drawn sign: an arrow, a cross or a plus. Its name is its tooltip. */
 final class IconButton extends AbstractButton {
     enum Glyph { UP, DOWN, REMOVE, CLOSE, ADD }
 

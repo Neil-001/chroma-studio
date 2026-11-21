@@ -9,16 +9,10 @@ import net.minecraft.util.ARGB;
 import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 
-/**
- * What the mod draws over the world: a two-line readout, a strip naming the hotbar's slots, and the pinned window.
- * Each loader calls {@link #render} from its HUD hook.
- */
 public final class Hud {
     private Hud() {}
 
-    /** How long the strip stays, and how long either takes to fade at the end. */
     private static final long STRIP_MS = 5000, FADE_MS = 600;
-    /** The bottom of the lowest thing drawn, above the hotbar, the health and food rows and the held item's name. */
     private static final int ABOVE_HOTBAR = 70;
 
     private static Component line1, line2;
@@ -27,20 +21,14 @@ public final class Hud {
     private static Component caption;
     private static long stripUntil;
 
-    /** Shows two lines above the hotbar for a number of seconds. A new readout replaces the old one. */
     public static void readout(Component line1, Component line2, int seconds) {
         Hud.line1 = line1;
         Hud.line2 = line2;
         readoutUntil = Util.getMillis() + seconds * 1000L;
     }
 
-    /**
-     * Shows up to nine items above the hotbar, each over its slot, with their names listed above. It fades after a few
-     * seconds. An empty stack leaves its slot blank.
-     */
     public static void strip(List<ItemStack> slots) { strip(slots, null); }
 
-    /** The same, with a line over the names, or null for none. */
     public static void strip(List<ItemStack> slots, Component caption) {
         Hud.slots = List.copyOf(slots.subList(0, Math.min(9, slots.size())));
         Hud.caption = caption;
@@ -49,7 +37,6 @@ public final class Hud {
 
     private static float fade(long until, long now) { return Math.clamp((until - now) / (float) FADE_MS, 0, 1); }
 
-    /** Draws everything. Nothing shows with the HUD hidden (F1). */
     public static void render(GuiGraphicsExtractor g) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.hud.isHidden()) return;
@@ -63,7 +50,6 @@ public final class Hud {
             y -= 18;
             g.fill(centre - 91, y - 1, centre + 91, y + 17, ARGB.multiplyAlpha(0x90000000, strip));
             for (int i = 0; i < slots.size(); i++) Widgets.blockIcon(g, slots.get(i), centre - 88 + i * 20, y);
-            // The names don't fit over 20-pixel slots, so they're listed above, numbered as the slots are.
             for (int i = slots.size() - 1; i >= 0; i--) {
                 if (slots.get(i).isEmpty()) continue;
                 y -= font.lineHeight;

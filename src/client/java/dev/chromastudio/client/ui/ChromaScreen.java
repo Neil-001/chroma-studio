@@ -30,26 +30,14 @@ import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.sdl.SDLMouse;
 
-/**
- * The mod's window: a title bar with the tabs and the close, fullscreen and pin buttons, over the selected tab. The
- * title bar drags it and its edges resize it; {@link Window} keeps where it is. Windowed, the world shows around it and
- * the game carries on. Pinned, the screen closes and the tab is drawn over the world until the open key brings it back.
- */
 public final class ChromaScreen extends Screen {
-    /**
-     * What {@code /chroma} asked for, for the Match tab to take when it opens: an {@link Integer} for a colour, packed
-     * 0xRRGGBB, or a {@link String} for a block's full id such as {@code minecraft:oak_planks}. Null when nothing is
-     * waiting; the tab that takes it sets it back to null.
-     */
     public static Object pendingTarget;
 
     private static final int BUTTON_W = 16, COG = 16, COG_MARGIN = 2;
 
     private record Registered(String id, Supplier<Tab> factory, int order) {}
     private static final List<Registered> REGISTRY = new ArrayList<>();
-    /** The tab the window last showed this session, or null before its first opening. */
     private static String lastTab;
-    /** The window while it's pinned, or null. */
     private static ChromaScreen pinned;
 
     static {
@@ -60,24 +48,14 @@ public final class ChromaScreen extends Screen {
         }
     }
 
-    /**
-     * Adds a tab, or replaces the one with the same id. Tabs sit in the title bar by {@code order}, lowest first; the
-     * built-in four are at 0, 10, 20 and 30. The factory runs once for each window that shows the tab.
-     */
     public static void registerTab(String id, Supplier<Tab> factory, int order) {
         REGISTRY.removeIf(r -> r.id.equals(id));
         REGISTRY.add(new Registered(id, factory, order));
         REGISTRY.sort(Comparator.comparingInt(Registered::order));
     }
 
-    /** Every tab's id, in title bar order. */
     public static List<String> tabIds() { return REGISTRY.stream().map(Registered::id).toList(); }
 
-    /**
-     * Opens the window on a tab, or switches to it when the window is already open. A null id means the tab last
-     * shown, or the start tab from the settings the first time. A pinned window comes back as it was. Does nothing
-     * outside a world.
-     */
     public static void open(String tabId) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
@@ -85,22 +63,16 @@ public final class ChromaScreen extends Screen {
         if (screen == null) {
             screen = pinned != null ? pinned : new ChromaScreen();
             pinned = null;
-            // Axiom's editor would squeeze the window into its 3D view, so the window steps out of it until it closes.
             AxiomBridge.leaveEditorForWindow();
             mc.gui.setScreen(screen);
         }
         if (tabId != null) screen.select(tabId);
     }
 
-    /** The window, when it is the screen that's open, or null. */
     public static ChromaScreen current() { return Minecraft.getInstance().gui.screen() instanceof ChromaScreen s ? s : null; }
 
     public static boolean isPinned() { return pinned != null; }
 
-    /**
-     * Pins the open window; or, from the world, pins the window as it would open, or takes a pinned window away
-     * without opening it.
-     */
     public static void togglePin() {
         ChromaScreen screen = current();
         if (screen != null) screen.pin();
@@ -113,12 +85,9 @@ public final class ChromaScreen extends Screen {
     private Window window = new Window();
     private final Map<String, Tab> tabs = new HashMap<>();
     private String selected;
-    /** The area and tab of the last {@link Tab#init}, so a tab is only laid out again when either changes. */
     private Bounds laidOut;
     private Tab laidOutTab;
-    /** Whether the tab took the last click, so it gets the drags and the release wherever they happen. */
     private boolean tabHasMouse;
-    /** Set while the screen closes to become pinned, so the tabs aren't told it closed. */
     private boolean pinning;
 
     private ChromaScreen() {
@@ -127,7 +96,6 @@ public final class ChromaScreen extends Screen {
         lastTab = selected;
     }
 
-    /** The tab with this id, made on first use, or null when no such tab is registered. */
     public Tab tab(String id) {
         if (id == null) return null;
         Tab made = tabs.get(id);
@@ -141,7 +109,6 @@ public final class ChromaScreen extends Screen {
         return null;
     }
 
-    /** Switches to a tab. An unknown id changes nothing. */
     public void select(String id) {
         if (tab(id) == null) return;
         selected = id;
@@ -155,7 +122,6 @@ public final class ChromaScreen extends Screen {
     private Bounds frame() { return window.frame(width, height); }
     private Bounds content() { return window.content(width, height); }
 
-    /** Lays the selected tab out when its area or the tab itself has changed, or always with {@code force}. */
     private void layout(boolean force) {
         Bounds b = content();
         Tab tab = tab();
@@ -168,32 +134,25 @@ public final class ChromaScreen extends Screen {
     @Override
     protected void init() { layout(true); }
 
-    /** The game window changed size, or the settings screen handed back: either may have changed what the tab should show. */
     @Override
     protected void repositionElements() { layout(true); }
 
     @Override
     public boolean isPauseScreen() { return false; }
 
-    /** Windowed, the world shows as it is: no blur and no dimming. Fullscreen has the game's usual blurred backdrop. */
     @Override
     public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-        // The screen picker reads the frame, so while it aims nothing of the window may be in it, the blur included.
         if (fullscreen() && !ScreenPicker.armed()) super.extractBackground(g, mouseX, mouseY, delta);
         else minecraft.gui.hud.extractDeferredSubtitles();
     }
 
-    // ---- Title bar layout, shared by drawing and clicking ----
-
     private Bounds cog() { return new Bounds(width - COG - COG_MARGIN, COG_MARGIN, COG, COG); }
 
-    /** How far the title bar's buttons move in from the frame's right edge, so the cog is never over them. */
     private static int cogReserve(Bounds frame, int screenW) {
         boolean under = frame.y() < COG + 2 * COG_MARGIN && frame.right() > screenW - COG - 2 * COG_MARGIN;
         return under ? frame.right() - (screenW - COG - 2 * COG_MARGIN) : 0;
     }
 
-    /** The close, fullscreen and pin buttons, in that order from the right, or with the last two swapped. */
     private static Bounds button(Bounds frame, int screenW, int which) {
         int fromRight = ModSettings.titleButtons == TitleButtons.FLIPPED ? which : switch (which) {
             case PIN -> FULLSCREEN;
@@ -216,8 +175,6 @@ public final class ChromaScreen extends Screen {
         return rects;
     }
 
-    // ---- Drawing ----
-
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         if (ScreenPicker.armed()) {
@@ -227,7 +184,6 @@ public final class ChromaScreen extends Screen {
         }
         Theme.sync();
         Bounds frame = frame(), content = content();
-        // A drag in progress keeps hold of the cursor's meaning, wherever the cursor has got to.
         boolean free = !window.dragging() && !tabHasMouse;
         Component tip = chrome(g, frame, fullscreen(), 1, selected, true, free ? mouseX : -1, free ? mouseY : -1);
 
@@ -241,20 +197,13 @@ public final class ChromaScreen extends Screen {
         if (overCog) tip = Component.translatable("window.chromastudio.settings");
 
         if (tip != null) {
-            // Wrapped, as widgets' own are. The game draws a tooltip a little above the cursor and doesn't mind the
-            // screen's top, so one for a button up there is asked for lower down, where all its lines fit.
             List<FormattedCharSequence> lines = Tooltip.splitTooltip(minecraft, tip);
             g.setTooltipForNextFrame(font, lines, mouseX, Math.max(mouseY, 16 + (lines.size() - 1) * 2));
         }
-        // The game shows the arrow again by itself on any frame that asks for nothing, so also once the screen has closed.
         CursorType cursor = cursor(free ? window.gripAt(mouseX, mouseY, width, height) : Window.Grip.NONE);
         if (cursor != null && !overCog) g.requestCursor(cursor);
     }
 
-    /**
-     * The two diagonal arrows, which the game has no use for and so doesn't make. Made on first use and kept, as the
-     * game keeps its own; where the system has no such shape, each is the arrow.
-     */
     private static final class Diagonal {
         static final CursorType NWSE = CursorType.createStandardCursor(SDLMouse.SDL_SYSTEM_CURSOR_NWSE_RESIZE, "resize_nwse", CursorTypes.ARROW);
         static final CursorType NESW = CursorType.createStandardCursor(SDLMouse.SDL_SYSTEM_CURSOR_NESW_RESIZE, "resize_nesw", CursorTypes.ARROW);
@@ -270,11 +219,6 @@ public final class ChromaScreen extends Screen {
         };
     }
 
-    /**
-     * Draws the window's frame and title bar with every alpha scaled by {@code opacity}, and returns the tooltip of
-     * the title bar button under the cursor, if any. The pinned window uses it too, without the buttons: they'd
-     * look as if they could be clicked.
-     */
     private static Component chrome(GuiGraphicsExtractor g, Bounds f, boolean fullscreen, float opacity, String selected, boolean buttons,
                                     int mouseX, int mouseY) {
         Minecraft mc = Minecraft.getInstance();
@@ -284,8 +228,6 @@ public final class ChromaScreen extends Screen {
             g.fill(f.x(), f.y(), f.right(), f.bottom(), ARGB.multiplyAlpha(Theme.WINDOW, opacity));
             g.outline(f.x(), f.y(), f.w(), f.h(), ARGB.multiplyAlpha(Theme.BORDER, opacity));
         } else if (ModSettings.theme != ThemeChoice.DEFAULT) {
-            // The default's light text reads on the game's blurred backdrop, as it always has. Another theme's colours
-            // need their own background under them.
             g.fill(f.x(), f.y(), f.right(), f.bottom(), ARGB.multiplyAlpha(Theme.WINDOW, opacity));
         }
         g.fill(f.x() + (fullscreen ? 0 : 1), f.y() + (fullscreen ? 0 : 1), f.right() - (fullscreen ? 0 : 1), f.y() + Window.TITLE_H,
@@ -313,18 +255,18 @@ public final class ChromaScreen extends Screen {
             int cx = b.x() + b.w() / 2, cy = b.y() + b.h() / 2;
             switch (which) {
                 case CLOSE -> {
-                    for (int i = -3; i <= 2; i++) {   // two diagonals
+                    for (int i = -3; i <= 2; i++) {
                         g.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, c);
                         g.fill(cx + i, cy - 1 - i, cx + i + 1, cy - i, c);
                     }
                 }
-                case PIN -> {   // a drawing pin: a head, a collar and a point
+                case PIN -> {
                     g.fill(cx - 2, cy - 4, cx + 2, cy - 1, c);
                     g.fill(cx - 3, cy - 1, cx + 3, cy, c);
                     g.fill(cx - 1, cy, cx + 1, cy + 4, c);
                 }
                 default -> {
-                    if (fullscreen) {   // two overlapping squares: back to a window
+                    if (fullscreen) {
                         g.outline(cx - 2, cy - 4, 6, 6, c);
                         g.fill(cx - 4, cy - 2, cx + 2, cy + 4, ARGB.multiplyAlpha(Theme.BAR, opacity));
                         g.outline(cx - 4, cy - 2, 6, 6, c);
@@ -343,10 +285,8 @@ public final class ChromaScreen extends Screen {
         return tip;
     }
 
-    /** A small cog: a ring with a tooth on each side and corner. */
     private static void cog(GuiGraphicsExtractor g, Bounds b, int colour) {
         int cx = b.x() + b.w() / 2, cy = b.y() + b.h() / 2;
-        // A plate behind it, so it shows against the sky as well as on the title bar.
         g.fill(b.x(), b.y(), b.right(), b.bottom(), Theme.BAR);
         g.fill(cx - 4, cy - 4, cx + 4, cy + 4, colour);
         g.fill(cx - 1, cy - 6, cx + 1, cy + 6, colour);
@@ -358,12 +298,10 @@ public final class ChromaScreen extends Screen {
         g.fill(cx - 2, cy - 2, cx + 2, cy + 2, Theme.BAR);
     }
 
-    /** Draws the pinned window over the world. {@link Hud#render} calls it. */
     static void renderPinned(GuiGraphicsExtractor g) {
         ChromaScreen s = pinned;
         if (s == null || current() != null) return;
         Theme.sync();
-        // The screen isn't open, so nothing else keeps its size up to date.
         s.width = g.guiWidth();
         s.height = g.guiHeight();
         s.layout(false);
@@ -375,13 +313,10 @@ public final class ChromaScreen extends Screen {
         g.disableScissor();
     }
 
-    // ---- Input ----
-
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         double mx = event.x(), my = event.y();
         if (ScreenPicker.armed()) {
-            // The click that picks, anywhere at all. Any other button calls it off.
             if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) ScreenPicker.click(mx, my);
             else ScreenPicker.cancel();
             return true;
@@ -393,7 +328,6 @@ public final class ChromaScreen extends Screen {
                 minecraft.gui.setScreen(new SettingsScreen(this));
                 return true;
             }
-            // The edges come first: the top three pixels of the title bar resize rather than press what's under them.
             Window.Grip grip = window.gripAt(mx, my, width, height);
             if (grip != Window.Grip.NONE && grip != Window.Grip.MOVE) {
                 window.grab(grip, mx, my, width, height);
@@ -423,11 +357,9 @@ public final class ChromaScreen extends Screen {
             }
         }
         tabHasMouse = content().contains(mx, my) && tab().mouseClicked(event, doubled);
-        // A window key bound to a mouse button: the game doesn't count presses for key binds while a screen is open.
         return tabHasMouse || windowKey(key -> key.matchesMouse(event));
     }
 
-    /** Does what the open, pin or fullscreen key does inside the window, if the press is one of them. */
     private boolean windowKey(Predicate<KeyMapping> pressed) {
         if (pressed.test(Keys.OPEN)) onClose();
         else if (pressed.test(Keys.PIN)) {
@@ -481,7 +413,6 @@ public final class ChromaScreen extends Screen {
     @Override
     public boolean charTyped(CharacterEvent event) { return tab().charTyped(event); }
 
-    /** Switches between the window and fullscreen. Does nothing when the screen is too small for a window. */
     public void toggleFullscreen() {
         if (Window.forced(width, height)) return;
         window.toggleFullscreen();
@@ -489,14 +420,12 @@ public final class ChromaScreen extends Screen {
         layout(false);
     }
 
-    /** Closes the screen and keeps the selected tab drawn over the world, where it takes no input. */
     public void pin() {
         pinning = true;
         pinned = this;
         minecraft.gui.setScreen(null);
     }
 
-    /** Takes the window's place and size from the settings again, after the settings screen reset them. */
     void reloadWindow() { window = new Window(); }
 
     private void store() {

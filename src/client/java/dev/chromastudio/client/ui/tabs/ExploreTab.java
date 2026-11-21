@@ -35,30 +35,21 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.ARGB;
 
-/**
- * The Explore tab: every block under the Match tab's filters as a dot, with OKLCH hue across and lightness up, and
- * more vivid blocks drawn larger. The wheel zooms, a drag pans, and a click makes the block the Match target.
- */
 public final class ExploreTab extends Tab {
     private static final int PAD = 3, GAP = 2, AXIS = 6;
     private static final double MAX_ZOOM = 32;
-    /** How far right of the cursor the game starts a tooltip, and the room it wants past the tooltip's text before it changes sides. */
     private static final int TIP_OFFSET = 12, TIP_MARGIN = 4;
-    /** How near the cursor a dot must be to be the one hovered, and how far a press may move and still be a click. */
     private static final int REACH = 5, CLICK_SLOP = 3;
 
-    /** One block on the plot. {@code hue} is 0 to 1 across, {@code lightness} 0 to 1 up. */
     private record Dot(Entry entry, Face face, int rgb, double hue, double lightness, int size, boolean ringed) {}
 
     private Bounds area = new Bounds(0, 0, 0, 0), plot = area;
     private final Widgets controls = new Widgets();
     private AbstractWidget clear;
     private List<Dot> dots = List.of();
-    /** What the dots were worked out from, so they are only worked out again when one of these changes. */
     private int seenRevision = -1, seenVersion = -1;
     private List<PaletteEntry> highlight;
 
-    // The view: how far in, and the plot coordinates, 0 to 1 each way, at its middle.
     private double zoom = 1, centreX = 0.5, centreY = 0.5;
     private boolean pressed, panned;
     private double pressX, pressY;
@@ -101,7 +92,6 @@ public final class ExploreTab extends Tab {
         seenRevision = -1;
     }
 
-    /** Works the dots out again when the index, the filters or the highlighted palette have changed. */
     private void sync() {
         BlockIndex index = BlockIndex.get();
         MatchState.follow();
@@ -124,7 +114,6 @@ public final class ExploreTab extends Tab {
         Set<String> ringed = new HashSet<>();
         if (ringing) for (PaletteEntry e : highlight) ringed.add(e.blockId());
         var query = MatchState.query(Integer.MAX_VALUE);
-        // The search does the filtering and says which face of each block the face control means.
         List<Dot> out = new ArrayList<>();
         for (BlockIndex.Match m : index.closest(MatchState.target(), query)) {
             Color c = m.entry().face(m.face(), query.tint).mean(query.scale);
@@ -141,7 +130,6 @@ public final class ExploreTab extends Tab {
 
     private int screenY(double lightness) { return plot.y() + (int) Math.round((0.5 - (lightness - centreY) * scale()) * (plot.h() - 1)); }
 
-    /** Keeps the view inside the plot: at no zoom it shows everything, and further in it stops at the edges. */
     private void confine() {
         zoom = Math.clamp(zoom, 1, MAX_ZOOM);
         double half = 0.5 / zoom;
@@ -163,8 +151,6 @@ public final class ExploreTab extends Tab {
             tip.add(e.properties().isEmpty() ? e.name() : Component.translatable("match.chromastudio.name_with_state", e.name(), e.properties()));
             tip.add(Component.literal(String.format("#%06X", over.rgb)).withColor(Theme.TIP_DIM));
             tip.add(tr("click").withColor(Theme.TIP_DIM));
-            // The icon sits up and to the left of the cursor, where the tooltip, which goes to the right, doesn't cover it.
-            // Near the screen's right edge the game puts the tooltip on the left instead, so the icon changes sides too.
             int tipWidth = tip.stream().mapToInt(font::width).max().orElse(0);
             boolean tipOnLeft = mouseX + TIP_OFFSET + tipWidth + TIP_MARGIN > Minecraft.getInstance().getWindow().getGuiScaledWidth();
             int ix = tipOnLeft ? Math.min(b.right() - 17, mouseX + 6) : Math.max(b.x() + 1, mouseX - 22), iy = Math.max(b.y() + 1, mouseY - 22);
@@ -180,14 +166,11 @@ public final class ExploreTab extends Tab {
         draw(g, Minecraft.getInstance().font, opacity, -1, -1);
     }
 
-    /** Draws the plot, and returns the dot nearest the cursor when one is within reach. */
     private Dot draw(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY) {
         Bounds p = plot;
-        // Fullscreen has no panel of its own, so the controls and the axes get a backing to be read against.
         g.fill(area.x(), area.y(), area.right(), area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
         g.fill(p.x() - 1, p.y() - 1, p.right() + 1, p.bottom() + 1, ARGB.multiplyAlpha(BORDER, opacity));
         g.fill(p.x(), p.y(), p.right(), p.bottom(), ARGB.multiplyAlpha(WELL, opacity));
-        // The axes: the hues along the bottom and the lightness up the side, each as the part of it in view.
         double half = 0.5 / zoom;
         for (int x = 0; x < p.w(); x += 2) {
             double hue = centreX - half + 2 * half * x / Math.max(1, p.w() - 1);
@@ -287,7 +270,6 @@ public final class ExploreTab extends Tab {
         if (v == 0) return false;
         if (controls.mouseScrolled(x, y, h, v)) return true;
         if (!plot.contains(x, y)) return false;
-        // The point under the cursor stays under it.
         double fx = (x - plot.x()) / Math.max(1, plot.w() - 1) - 0.5, fy = 0.5 - (y - plot.y()) / Math.max(1, plot.h() - 1);
         double hue = centreX + fx / zoom, lightness = centreY + fy / zoom;
         zoom = Math.clamp(zoom * Math.pow(1.25, v), 1, MAX_ZOOM);

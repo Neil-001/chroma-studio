@@ -66,29 +66,14 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 
-/**
- * The Gradient tab: a row of stops, each a colour or a block; the steps, easing, hue arc, spread and kind controls; a
- * strip of the ideal colours over the blocks chosen for them; a quality badge; and what can be done with the result.
- * The blocks are chosen on a worker thread, and only the newest request's answer is kept. They come from the blocks
- * that pass the Match tab's filters: the kind control here is that tab's own, and "More…" opens the rest of them.
- *
- * <p>A click on a step opens the swap list under the strip: the next-best blocks for that step's colour. The one
- * chosen is pinned to the step, and the other steps are solved again around it.
- *
- * <p>"Saved…" saves the gradient on show, with its controls, steps and swaps, and loads one saved before.
- */
 public final class GradientTab extends PanelTab {
     private static final int MAX_STOPS = 8, CHIP = 18, CELL_MIN = 18, CELL_MAX = 40, IDEAL_H = 10, BLOCK_H = 7, CELL_H = IDEAL_H + 16 + BLOCK_H + 4;
-    /** The bands of the quality badge, as the mean ΔE in OKLab. */
     private static final double GOOD_UP_TO = 0.02, FAIR_UP_TO = 0.06;
     private static final String ALL_KINDS = "all";
-    /** How many blocks the swap list offers, the most and fewest of its lines on show at once, a line's height and the list's width. */
     private static final int SWAP_OPTIONS = 20, SWAP_LINES = 6, SWAP_LINES_MIN = 2, SWAP_ROW = 18, SWAP_W = 200;
-    /** The side of a pinned step's put-back button, and its sign, seven pixels square. */
     private static final int BACK = 9;
     private static final String[] UNDO = {"..#....", ".##....", "######.", ".##...#", "..#...#", "......#", "..####."};
 
-    /** The stops, each a {@link Color} or an {@link Entry}. They and the controls last the session, across windows. */
     private static final List<Object> STOPS = new ArrayList<>(List.of(Color.fromHex("#1F2A44"), Color.fromHex("#E9D8A6")));
     private static int selectedStop;
     private static int steps = ModSettings.gradientSteps;
@@ -96,20 +81,10 @@ public final class GradientTab extends PanelTab {
     private static HueArc arc = named(HueArc.class, ModSettings.hueArc, HueArc.SHORTEST);
     private static boolean spread = ModSettings.spreadMatching;
     private static String hex = "";
-    /**
-     * The blocks the player has chosen for steps, by the step's number from 0, and {@link #pinKey what} they were
-     * chosen for with the index build. A choice is the next best for one step of one gradient, so it lasts through
-     * the solves that other steps' swaps ask for, across windows too, and goes when anything else about the gradient does.
-     */
     private static final Map<Integer, Entry> PINS = new HashMap<>();
     private static Object pinsFor, pinsBuild;
-    /**
-     * The saved gradient whose blocks are on show as they were saved, and what they were shown for, as the pins are,
-     * or null once anything has been solved since. A window opened afresh shows it again rather than solving.
-     */
     private static StoredGradient restored;
     private static Object restoredFor, restoredBuild;
-    /** The name the gradient on show was last saved or loaded under, or null. Saving offers it again. */
     private static String savedName;
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
@@ -117,61 +92,39 @@ public final class GradientTab extends PanelTab {
         t.setDaemon(true);
         return t;
     });
-    /** Each solve takes the next number, and its answer is dropped when a later one has been asked for. */
     private static final AtomicInteger ASKED = new AtomicInteger();
 
-    /**
-     * One step of the answer: the colour wanted, the block chosen and how far apart they are, as ΔE in OKLab.
-     * {@code pinned} is set where the player chose the block.
-     */
     private record Step(Color ideal, Entry entry, Color mean, double deltaE, boolean pinned) {}
 
-    /** A line of the swap list: a block that could take a step, and its ΔE from the step's colour in OKLab, as the badge counts it. */
     private record Option(Entry entry, double deltaE) {}
 
     private List<Step> result = List.of();
-    /** The blocks of the last answer on show, kept after the window closes, for Axiom's gradient tool. Empty until there is one. */
     private static List<PaletteEntry> onShow = List.of();
 
-    /** The blocks of the gradient last on show, step by step, or nothing before the tab has shown one. Client thread only. */
     public static List<PaletteEntry> stepsOnShow() { return onShow; }
-    /** What the answer was chosen from and by, which the swap list offers more of. */
     private List<Gradient.Candidate> pool = List.of();
     private Map<String, Entry> poolById = Map.of();
     private Metric poolMetric = Metric.OKLAB;
-    /** The step the swap list is open for, or -1, with its lines and where it lies. */
     private int swapStep = -1;
     private List<Option> swapOptions = List.of();
     private Bounds swapBox;
     private Widgets.ScrollList swapRows;
     private double meanDeltaE;
-    /** Why there's no answer, or null while there is one or one is on its way. */
     private Component problem;
     private boolean solving;
-    /** The index build the last solve read, by {@link #build}. */
     private Object solvedBuild;
-    /** The {@link #inputs} the last solve was asked with. */
     private String solvedFor = "";
     private Bounds stopsArea, stripArea;
-    /** The stop the left button went down on, or -1, and where; it's a drag once the cursor has moved a little. */
     private int pressedStop = -1;
     private double pressedX;
     private boolean draggingStop;
-    /** The gap between stops a drag would drop into now, as {@link Reorder} counts them. */
     private int dropGap;
     private int badgeY;
-    /** The actions along the bottom, in order, and where the last layout placed them. */
     private static final String[] ACTIONS = {"hotbar", "copy", "export", "axiom", "saved", "save", "swap"};
     private Flow.Spot[] actionSpots;
-    /** The filters behind "More…", which lie over the strip while they are open. */
     private boolean filtersOpen;
     private final Widgets filterWidgets = new Widgets();
-    /** The area the filters' controls were last laid out for. They are only laid out again for another, so a number being typed isn't lost. */
     private Bounds filtersFor;
-    /**
-     * The filters the controls were laid out from, and how they stood when this tab last ticked. The Match tab can
-     * change or reset them while this one is away, and the controls are laid out again when they no longer agree.
-     */
     private MatchFilters filtersBuilt;
     private List<Object> filtersSeen = List.of();
 
@@ -197,21 +150,15 @@ public final class GradientTab extends PanelTab {
         return stop instanceof Entry e ? PaletteBlocks.stats(e).mean(PaletteBlocks.scale()) : (Color) stop;
     }
 
-    // ---- Layout ----
-
     @Override
     protected void layout(Bounds b) {
-        // The settings screen may have changed a filter's setting. The kind control is built from the filters, so those catch up first.
         MatchState.follow();
-        // A block sent over from a Match result becomes a stop, once.
         boolean seeded = Handoff.gradientSeed instanceof Entry;
         if (Handoff.gradientSeed instanceof Entry seed) addStop(seed);
         Handoff.gradientSeed = null;
-        // A saved gradient another mod asked to show, once.
         StoredGradient asked = Handoff.gradientLoad;
         Handoff.gradientLoad = null;
         boolean loaded = asked != null && !restore(asked);
-        // A window opened afresh shows a loaded gradient's own blocks again, while nothing it was shown for has changed.
         if (asked == null && result.isEmpty() && !solving && restored != null && pinKey().equals(restoredFor) && build() == restoredBuild) show(restored);
         selectedStop = Math.clamp(selectedStop, 0, STOPS.size() - 1);
 
@@ -273,9 +220,7 @@ public final class GradientTab extends PanelTab {
         w = Widgets.tw(spreadLabel) + Widgets.tw(": ") + Math.max(Widgets.tw(CommonComponents.OPTION_ON), Widgets.tw(CommonComponents.OPTION_OFF)) + 10;
         widgets.toggle(x, y, w, spreadLabel, spread, v -> { spread = v; solve(); }, tr("gradient.chromastudio.spread.tip"));
         x += w + GAP;
-        // The Match tab's kind filter and its "More…", on the same filters.
         MatchFilters filters = MatchState.filters();
-        // The button counts the filters that are on besides the kind, the only one this row shows.
         int others = filters.besidesKind();
         Component more = others == 0 ? tr("match.chromastudio.filter.more") : tr("gradient.chromastudio.filters.more", others);
         Component counted = tr(others == 0 ? "gradient.chromastudio.filters.none" : others == 1 ? "gradient.chromastudio.filters.one" : "gradient.chromastudio.filters.many", others);
@@ -295,8 +240,6 @@ public final class GradientTab extends PanelTab {
             rebuild();
         })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip", counted)));
 
-        // The actions sit along the bottom, and the strip and its badge take what's between. Where the window is too
-        // narrow for them, as it is at its smallest in some languages, they wrap onto a second row.
         int[] actionWidths = new int[ACTIONS.length];
         for (int i = 0; i < ACTIONS.length; i++) actionWidths[i] = Widgets.buttonWidth(tr("gradient.chromastudio.action." + ACTIONS[i]));
         actionSpots = Flow.place(actionWidths, b.x() + PAD, b.right() - PAD, GAP);
@@ -329,13 +272,10 @@ public final class GradientTab extends PanelTab {
         Bounds body = filtersBody();
         if (filtersOpen && (!body.equals(filtersFor) || filtersBuilt != filters || !filters.state().equals(filtersSeen))) buildFilters();
         if (!filtersOpen) filtersFor = null;
-        // The swap list follows the window as it is resized.
         if (swapStep >= 0) placeSwap();
-        // A new stop, or settings changed on the settings screen, make the answer on show a stale one.
         if (seeded || loaded || stale() || result.isEmpty() && problem == null && !solving) solve();
     }
 
-    /** The filters lie over the strip and the badge under it. */
     private Bounds filtersArea() { return new Bounds(stripArea.x(), stripArea.y(), stripArea.w(), badgeY + 10 - stripArea.y()); }
 
     private Bounds filtersBody() {
@@ -353,26 +293,19 @@ public final class GradientTab extends PanelTab {
         filtersBuilt = MatchState.filters();
         filtersSeen = filtersBuilt.state();
         filterWidgets.clear();
-        // "Reset filters" resets the kind too, which the row above shows.
         FilterControls.build(filterWidgets, filtersFor, true, () -> {
             filtersFor = null;
             rebuild();
         });
     }
 
-    /**
-     * Something only the index's current build holds, or null before the first. A later build holds another, so this
-     * tells a rebuild that finished while the tab wasn't looking, pinned or behind another tab.
-     */
     private static Object build() {
         List<Entry> stone = BlockIndex.get().statesOf(Blocks.STONE);
         return stone.isEmpty() ? null : stone.getFirst();
     }
 
-    /** Whether the index or a setting the answer hangs on has changed since the last solve. */
     private boolean stale() { return build() != solvedBuild || !inputs().equals(solvedFor); }
 
-    /** Everything outside the tab that the answer depends on, to tell when it has changed. */
     private static String inputs() {
         return String.join("|", ModSettings.defaultFace.name(), ModSettings.metric, String.valueOf(ModSettings.viewingDistance), ModSettings.biomeMode.name(),
                 ModSettings.biome, MatchState.filters().state().toString(), String.valueOf(ModSettings.statesSeparately), PaletteBlocks.scale().name());
@@ -380,7 +313,6 @@ public final class GradientTab extends PanelTab {
 
     private static int widest(List<Component> labels) { return labels.stream().mapToInt(Widgets::tw).max().orElse(40) + 10; }
 
-    /** Places the action at this index in {@link #ACTIONS} where {@link #actionSpots} has it, its first row at y. */
     private void action(int index, int y, Runnable run, Component unavailable) {
         String key = ACTIONS[index];
         Flow.Spot spot = actionSpots[index];
@@ -389,7 +321,6 @@ public final class GradientTab extends PanelTab {
         else button.setTooltip(Tooltip.create(tr("gradient.chromastudio.action." + key + ".tip")));
     }
 
-    /** The block the player holds, as the index has it, or null. */
     private static Entry inHand() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return null;
@@ -397,7 +328,6 @@ public final class GradientTab extends PanelTab {
         return held.getItem() instanceof BlockItem item ? PaletteBlocks.entry(item.getBlock().defaultBlockState()) : null;
     }
 
-    /** Puts a stop after the selected one and selects it. Past the most stops there's room for, it does nothing. */
     private static void addStop(Object stop) {
         if (stop == null || STOPS.size() >= MAX_STOPS) return;
         selectedStop = Math.min(selectedStop + 1, STOPS.size());
@@ -417,15 +347,11 @@ public final class GradientTab extends PanelTab {
         return p;
     }
 
-    // ---- Saving and loading ----
-
-    /** Why the gradient on show can't be saved now, or null when it can: there must be an answer, and no newer one on its way. */
     private Component unsaveable() {
         if (solving || result.isEmpty() && problem == null) return tr("gradient.chromastudio.working");
         return result.isEmpty() ? problem : null;
     }
 
-    /** The gradient on show, to save under a name. Only while {@link #unsaveable} is null. */
     private StoredGradient toSave(String name) {
         List<StoredGradient.Stop> stops = new ArrayList<>();
         for (Object stop : STOPS) stops.add(new StoredGradient.Stop(colourOf(stop).rgb(), stop instanceof Entry e ? PaletteBlocks.of(e) : null));
@@ -436,7 +362,6 @@ public final class GradientTab extends PanelTab {
         return new StoredGradient(name, stops, steps, easing.name(), arc.name(), spread, kind == null ? "" : kind.name(), blocks);
     }
 
-    /** Shows a saved gradient in place of the one on show. */
     private void load(StoredGradient g) {
         boolean shown = restore(g);
         say(tr("gradient.chromastudio.store.loaded", g.name()), GOOD);
@@ -444,21 +369,11 @@ public final class GradientTab extends PanelTab {
         rebuild();
     }
 
-    /**
-     * Takes a saved gradient's stops and controls, and shows the very blocks it was saved with, whatever the filters
-     * and settings would choose now. Only a later change solves it again, keeping the blocks chosen by hand. Returns
-     * false when the saved blocks can't be shown, as when one is gone from the game or the index isn't built yet,
-     * and the caller must solve instead.
-     */
     private boolean restore(StoredGradient g) {
         apply(g);
         return show(g);
     }
 
-    /**
-     * Shows a saved gradient's blocks as the answer, for stops and controls already taken from it, and keeps it as
-     * what the tab shows until something changes, across windows too. Returns false when they can't be shown.
-     */
     private boolean show(StoredGradient g) {
         restored = null;
         if (!BlockIndex.get().ready() || g.blocks().size() != steps) return false;
@@ -475,7 +390,6 @@ public final class GradientTab extends PanelTab {
             shown.add(new Step(ideal, e, stats.mean(scale), deltaE, step.byHand()));
         }
         Pool chosenFrom = pool(scale);
-        // Any solve still on its way was for what was on show before.
         ASKED.incrementAndGet();
         solving = false;
         problem = null;
@@ -494,11 +408,6 @@ public final class GradientTab extends PanelTab {
         return true;
     }
 
-    /**
-     * Takes a saved gradient's stops and controls, and pins the blocks the player chose by hand to their steps, for
-     * the next solve. A block this game no longer has gives its stop the colour it showed, and its pin is let go.
-     * The other filters, which the Match tab shares, are left as the player has them.
-     */
     private static void apply(StoredGradient g) {
         STOPS.clear();
         for (StoredGradient.Stop stop : g.stops()) {
@@ -522,18 +431,11 @@ public final class GradientTab extends PanelTab {
             Entry e = step.byHand() ? PaletteBlocks.entry(step.block()) : null;
             if (e != null) PINS.put(i, e);
         }
-        // The pins belong to the gradient just taken, so the solve keeps them.
         pinsFor = pinKey();
         pinsBuild = build();
         savedName = g.name();
     }
 
-    // ---- Solving ----
-
-    /**
-     * Asks for the blocks again. The colours and the candidates are read here, on the client thread, since a tint
-     * may need the world; the assignment itself runs on the worker.
-     */
     private void solve() {
         int number = ASKED.incrementAndGet();
         restored = null;
@@ -558,8 +460,6 @@ public final class GradientTab extends PanelTab {
         List<Gradient.Candidate> candidates = chosenFrom.candidates;
         Map<String, Entry> byId = chosenFrom.byId;
         Map<String, TextureStats> looks = chosenFrom.looks;
-        // A loaded gradient's swaps stay, though the filters now leave their blocks out or offer another state of
-        // them: the player chose that very state.
         for (Entry e : PINS.values()) {
             if (byId.get(e.id()) == e) continue;
             TextureStats stats = PaletteBlocks.stats(e);
@@ -582,7 +482,6 @@ public final class GradientTab extends PanelTab {
             double mean = 0;
             try {
                 Gradient.Result solved = Gradient.solve(ideal, candidates, metric, matchSpread, pins);
-                // The blocks are chosen by the settings' metric, but the badge's bands are OKLab's, so it is measured in that.
                 for (int i = 0; i < solved.steps().size(); i++) {
                     Gradient.Candidate c = solved.steps().get(i);
                     Color wanted = Color.ofOklch(solved.ideal().get(i));
@@ -601,7 +500,6 @@ public final class GradientTab extends PanelTab {
             Minecraft.getInstance().execute(() -> {
                 if (number != ASKED.get()) return;
                 solving = false;
-                // A list opened while this solve was on its way offers blocks from the answer before it.
                 swapStep = -1;
                 result = List.copyOf(found);
                 onShow = entries();
@@ -609,22 +507,18 @@ public final class GradientTab extends PanelTab {
                 pool = candidates;
                 poolById = byId;
                 poolMetric = metric;
-                // A pin the solve couldn't keep, its block no longer among the candidates, is gone.
                 PINS.keySet().removeIf(step -> step >= found.size() || !found.get(step).pinned);
                 rebuild();
             });
         });
     }
 
-    /** The blocks a gradient is chosen from, by their ids, and how each looks. */
     private record Pool(List<Gradient.Candidate> candidates, Map<String, Entry> byId, Map<String, TextureStats> looks) {}
 
-    /** The blocks that pass the filters, read on the client thread, since a tint may need the world. */
     private static Pool pool(Scale scale) {
         List<Gradient.Candidate> candidates = new ArrayList<>();
         Map<String, Entry> byId = new HashMap<>();
         Map<String, TextureStats> looks = new HashMap<>();
-        // One block fills at most one step: the filters give each block that passes them once.
         for (Entry e : MatchState.filters().candidates(BlockIndex.get(), PaletteBlocks.face(), scale, PaletteBlocks.tint())) {
             byId.put(e.id(), e);
             TextureStats stats = PaletteBlocks.stats(e);
@@ -643,17 +537,9 @@ public final class GradientTab extends PanelTab {
         rebuild();
     }
 
-    /** Everything a pinned block was chosen for, but the index build: a change to any of it lets the pins go. */
     private static Object pinKey() { return List.of(List.copyOf(STOPS), steps, easing, arc, spread, inputs()); }
 
-    // ---- The swap list ----
-
-    /**
-     * Opens the list under the strip for a step: the blocks nearest its colour that no step uses, from the
-     * candidates the last solve chose among. They are ranked as the solve ranks a colour.
-     */
     private void openSwap(int step) {
-        // While a solve is on its way the answer on show is about to change, and the list would be made from the old one.
         if (solving) return;
         Set<String> used = new HashSet<>();
         for (Step s : result) used.add(s.entry.id());
@@ -669,16 +555,10 @@ public final class GradientTab extends PanelTab {
         placeSwap();
     }
 
-    /** The swap list's lines: the way back first, on a pinned step, then the options or a line saying there are none. */
     private int swapLines() { return swapBack() + Math.max(1, swapOptions.size()); }
 
     private int swapBack() { return swapStep < result.size() && result.get(swapStep).pinned ? 1 : 0; }
 
-    /**
-     * Lays the swap list just under the strip, which stays where it is, and under its own step as near as it fits.
-     * When the room is above the strip instead, the list goes there. A well with no room either side gets it over
-     * the strip's bottom rather than not at all.
-     */
     private void placeSwap() {
         if (swapStep >= result.size()) {
             swapStep = -1;
@@ -697,7 +577,6 @@ public final class GradientTab extends PanelTab {
         else swapRows.area = inside;
     }
 
-    /** Where the steps are drawn: the whole well, swap list open or not, so the strip never jumps when a list opens. */
     private Bounds stepsArea() { return stripArea; }
 
     private void swapList(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -727,14 +606,12 @@ public final class GradientTab extends PanelTab {
         });
     }
 
-    /** A click inside the swap list: on a block's line, it pins that block to the step. */
     private void swapClicked(MouseButtonEvent e) {
         if (swapRows.mouseClicked(e) || e.button() != InputConstants.MOUSE_BUTTON_LEFT) return;
         int back = swapBack(), i = swapRows.rowAt(e.x(), e.y()) - back;
         if (i == -1 && back == 1) putBack(swapStep);
         else if (i >= 0 && i < swapOptions.size()) {
             Entry chosen = swapOptions.get(i).entry;
-            // Never a block another step has or is pinned to, whatever the list was made from.
             boolean taken = false;
             for (int other = 0; other < result.size(); other++) taken |= other != swapStep && result.get(other).entry.id().equals(chosen.id());
             for (Map.Entry<Integer, Entry> pin : PINS.entrySet()) taken |= pin.getKey() != swapStep && pin.getValue().id().equals(chosen.id());
@@ -744,19 +621,16 @@ public final class GradientTab extends PanelTab {
             }
             say(tr("gradient.chromastudio.swap.done", result.get(swapStep).entry.name(), chosen.name()), GOOD);
             PINS.put(swapStep, chosen);
-            // The other steps are solved again around it, in case one of them would now do better with the block it gave up.
             solve();
         }
     }
 
-    /** Lets a pinned step go back to the block the solve gives it. */
     private void putBack(int step) {
         PINS.remove(step);
         say(tr("gradient.chromastudio.swap.undone", step + 1));
         solve();
     }
 
-    /** The step under the cursor as the strip was last drawn, or -1. */
     private int stepAt(double mx, double my) {
         if (filtersOpen || result.isEmpty()) return -1;
         Grid grid = grid(stepsArea(), result.size());
@@ -767,7 +641,6 @@ public final class GradientTab extends PanelTab {
         return -1;
     }
 
-    /** Whether the cursor is over the put-back button a pinned step has at the top right of its cell. */
     private static boolean overBack(int x, int y, int cellW, double mx, double my) {
         return mx >= x + cellW - BACK && mx < x + cellW && my >= y && my < y + BACK;
     }
@@ -778,11 +651,8 @@ public final class GradientTab extends PanelTab {
                 if (sign[j].charAt(i) == '#') g.fill(x + i, y + j, x + i + 1, y + j + 1, colour);
     }
 
-    // ---- Drawing ----
-
     private record Grid(int perRow, int rows, int cellW, int x, int y) {}
 
-    /** How the steps sit in the strip: in one row while each has room for an icon, else in as many rows as that takes. */
     private Grid grid(Bounds area, int count) {
         int perRow = Math.max(1, Math.min(count, area.w() / CELL_MIN));
         int rows = (count + perRow - 1) / perRow;
@@ -802,11 +672,9 @@ public final class GradientTab extends PanelTab {
             boolean over = mouseX >= x && mouseX < x + grid.cellW && mouseY >= y && mouseY < y + CELL_H - 4;
             boolean onBack = controls && s.pinned && over && overBack(x, y, grid.cellW, mouseX, mouseY);
             if (s.pinned) {
-                // The mark of a block the player chose: an amber corner at the bottom left of its icon.
                 int ix = x + (grid.cellW - 16) / 2, iy = y + IDEAL_H;
                 g.fill(ix, iy + 11, ix + 5, iy + 16, ARGB.multiplyAlpha(0xFF10140F, opacity));
                 g.fill(ix, iy + 12, ix + 4, iy + 16, ARGB.multiplyAlpha(0xFF000000 | Theme.TIP_SWAPPED, opacity));
-                // The put-back button, which a pinned window leaves out, since it takes no clicks.
                 if (controls) {
                     g.fill(x + grid.cellW - BACK, y, x + grid.cellW, y + BACK, onBack ? Theme.LIT_HOVER : Theme.CHIP);
                     sign(g, x + grid.cellW - BACK + 1, y + 1, UNDO, TEXT);
@@ -840,7 +708,6 @@ public final class GradientTab extends PanelTab {
             }
         }
 
-        // The marker shows only where letting go would move the stop.
         if (draggingStop && Reorder.target(pressedStop, dropGap) != pressedStop) {
             int x = stopsArea.x() + dropGap * (CHIP + 1) - 1;
             g.fill(x - 1, stopsArea.y() - 2, x + 1, stopsArea.bottom() + 2, TEXT);
@@ -849,13 +716,11 @@ public final class GradientTab extends PanelTab {
 
         g.fill(stripArea.x(), stripArea.y(), stripArea.right(), stripArea.bottom(), WELL);
         Component note = note();
-        // The note has the room the badge leaves on its line.
         int noteRoom = stripArea.w() / 2;
         if (result.isEmpty()) {
             Component text = problem != null ? problem : tr("gradient.chromastudio.working");
             g.textWithWordWrap(font(), text, stripArea.x() + 8, stripArea.y() + 8, stripArea.w() - 16, problem != null ? FAIR : DIM, false);
         } else {
-            // While the swap list is open the steps under it don't react to the cursor.
             boolean overSwap = swapStep >= 0 && swapBox.contains(mouseX, mouseY);
             strip(g, stepsArea(), 1, true, overSwap ? -1 : mouseX, overSwap ? -1 : mouseY);
             if (swapStep >= 0) swapList(g, mouseX, mouseY);
@@ -890,7 +755,6 @@ public final class GradientTab extends PanelTab {
         filterWidgets.render(g, mouseX, mouseY, delta);
     }
 
-    /** Pinned, the tab is its strip and badge. */
     @Override
     public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
         if (result.isEmpty()) {
@@ -902,15 +766,11 @@ public final class GradientTab extends PanelTab {
         g.text(font(), tr("gradient.chromastudio.badge.short", quality), b.x() + PAD, b.bottom() - PAD - 9, ARGB.multiplyAlpha(badgeColour(), opacity), false);
     }
 
-    // ---- Input ----
-
     @Override
     protected boolean clicked(MouseButtonEvent e, boolean doubled) {
-        // A press that never saw its release, with the window closed under it, mustn't turn the next drag into a stop's.
         pressedStop = -1;
         draggingStop = false;
         boolean left = e.button() == InputConstants.MOUSE_BUTTON_LEFT;
-        // Read before the swap list shuts, while the steps are where they were drawn.
         Bounds drawn = stepsArea();
         int step = stepAt(e.x(), e.y()), shut = -1;
         if (swapStep >= 0) {
@@ -918,7 +778,6 @@ public final class GradientTab extends PanelTab {
                 swapClicked(e);
                 return true;
             }
-            // A click anywhere else shuts the list, and then does what it would have done, but for opening it again.
             shut = swapStep;
             swapStep = -1;
         }
@@ -936,7 +795,6 @@ public final class GradientTab extends PanelTab {
                 rebuild();
                 return true;
             }
-            // The group takes a click outside its area as the end of any typing in it.
             if (filterWidgets.mouseClicked(e, doubled) || filtersArea().contains(e.x(), e.y())) return true;
         }
         if (!stopsArea.contains(e.x(), e.y())) return false;
@@ -957,7 +815,6 @@ public final class GradientTab extends PanelTab {
     @Override
     protected boolean dragged(MouseButtonEvent e, double dx, double dy) {
         if (pressedStop < 0) return swapStep >= 0 && swapRows.mouseDragged(e) || filtersOpen && filterWidgets.mouseDragged(e, dx, dy);
-        // A click that slips a pixel is still a click.
         if (Math.abs(e.x() - pressedX) >= 3) draggingStop = true;
         dropGap = Reorder.gap(e.x() - stopsArea.x(), CHIP + 1, STOPS.size());
         return true;
@@ -993,7 +850,6 @@ public final class GradientTab extends PanelTab {
     @Override
     protected boolean typingElsewhere() { return filtersOpen && filterWidgets.typing(); }
 
-    /** Escape closes the swap list or the filters, when one is open. */
     @Override
     protected boolean dismissPanel() {
         if (swapStep >= 0) {
@@ -1009,16 +865,13 @@ public final class GradientTab extends PanelTab {
     @Override
     public void tick() {
         super.tick();
-        // A load asked for while the tab was already on show, which lays nothing out again.
         if (Handoff.gradientLoad != null && !dialogOpen()) {
             StoredGradient asked = Handoff.gradientLoad;
             Handoff.gradientLoad = null;
             load(asked);
         }
         MatchState.follow();
-        // A change made while this tab is the one on show came from its own controls, which already show it.
         filtersSeen = MatchState.filters().state();
-        // Checked by what is so now, so nothing is missed while a dialog is open or another tab is showing.
         if (!dialogOpen() && stale()) solve();
     }
 }

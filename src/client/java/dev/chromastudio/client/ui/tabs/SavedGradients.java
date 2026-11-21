@@ -17,14 +17,9 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
-/**
- * The Gradient tab's saved gradients: a name and "Save gradient" over the list of those saved, each shown as its
- * steps' colours and its name. A click on one loads it into the tab, and its cross deletes it after asking.
- */
 final class SavedGradients extends Dialog {
     private static final int ROW_H = 16, SWATCH_W = 48, CROSS = 9;
 
-    /** The gradient on show under a name, or null with why it can't be saved. */
     private final Function<String, StoredGradient> current;
     private final Supplier<Component> unsaveable;
     private final Consumer<StoredGradient> load;
@@ -33,12 +28,6 @@ final class SavedGradients extends Dialog {
     private List<StoredGradient> saved = List.of();
     private Widgets.ScrollList rows;
 
-    /**
-     * @param current    the gradient on show, saved under a name
-     * @param unsaveable why the gradient on show can't be saved now, or null when it can. It is asked again on saving, as a new answer may be on its way
-     * @param name       the name the field starts with
-     * @param load       shows a saved gradient in the tab
-     */
     SavedGradients(Function<String, StoredGradient> current, Supplier<Component> unsaveable, String name, Consumer<StoredGradient> load) {
         super(tr("gradient.chromastudio.store.title"), 260, 170);
         this.current = current;
@@ -89,7 +78,6 @@ final class SavedGradients extends Dialog {
             store(g);
             return true;
         }
-        // Saving over another gradient can't be undone, so it asks first.
         tab.open(new PaletteDialogs.Confirm(tr("gradient.chromastudio.store.replace.title"), tr("gradient.chromastudio.store.replace.question", old.name()),
                 tr("gradient.chromastudio.store.replace"), () -> store(g)));
         return true;
@@ -133,7 +121,6 @@ final class SavedGradients extends Dialog {
         });
     }
 
-    /** The steps' colours side by side, or the stops' where there are no steps. */
     private static void swatch(GuiGraphicsExtractor g, StoredGradient s, int x, int y, int w, int h) {
         int n = s.blocks().isEmpty() ? s.stops().size() : s.blocks().size();
         for (int k = 0; k < n; k++) {
@@ -156,7 +143,6 @@ final class SavedGradients extends Dialog {
                 tab.open(new PaletteDialogs.Confirm(tr("gradient.chromastudio.store.delete.title"), tr("gradient.chromastudio.store.delete.question", s.name()),
                         tr("gradient.chromastudio.store.delete"), () -> {
                             boolean deleted = GradientStore.get().delete(s.name());
-                            // Back to the list, which the question took the place of.
                             SavedGradients again = new SavedGradients(current, unsaveable, name, load);
                             tab.open(again);
                             if (deleted) again.status(tr("gradient.chromastudio.store.deleted", s.name()), Theme.TEXT);
@@ -171,7 +157,6 @@ final class SavedGradients extends Dialog {
         return super.mouseClicked(e, doubled);
     }
 
-    /** A row's width, which the scrollbar narrows when there is one. */
     private int rowWidth() { return rows.area.w() - (saved.size() * ROW_H > rows.area.h() ? Widgets.BAR_W + 2 : 0); }
 
     @Override

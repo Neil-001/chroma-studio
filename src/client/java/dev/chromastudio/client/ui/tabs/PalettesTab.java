@@ -44,52 +44,37 @@ import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-/**
- * The Palettes tab. On the left, the player's palettes and the presets, with the buttons that make, name, delete,
- * import and share them. On the right, the toolbar over the selected palette's entries, which the Analyse and Diorama
- * panels replace while they're open.
- */
 public final class PalettesTab extends PanelTab {
     private enum Panel { ENTRIES, ANALYSE, DIORAMA }
-    /** A weight's field with its arrows: room for three digits, as a capture often counts a hundred of a block. */
     private static final int WEIGHT_W = 40;
 
     private static final int LIST_ROW = 12, ENTRY_ROW = 18, TITLE_H = 11, LEFT_MIN = 110;
-    /** How long after the last change a palette is written, so typing a weight or a note doesn't write on every key. */
     private static final long SAVE_AFTER_MS = 400;
 
     private final PaletteStore store = PaletteStore.get();
-    /** The entries' rows, which scroll on their own. */
     private final Widgets rows = new Widgets();
     private Widgets.ScrollList list;
-    /** A palette for each row of the list, or null for the heading over the presets. */
     private List<Palette> listed = List.of();
-    /** What the search field holds, which keeps only the palettes it matches in the list. */
     private String search = "";
     private Bounds entriesArea, titleArea;
     private Panel panel = Panel.ENTRIES;
     private AnalysePanel analyse;
     private DioramaPanel diorama;
     private boolean dirty;
-    /** Set while the fields are given a palette's own text, which isn't an edit. */
     private boolean loading;
-    /** The palette the unsaved changes are in, which another tab may since have deselected. */
     private Palette edited;
     private long saveAt;
-    /** What the layout was last built for, so a change from outside the tab, such as an added block, lays it out again. */
     private Palette shown;
     private int shownSize;
     private boolean shownReady;
 
     public PalettesTab() {
         super("palettes");
-        // The entries are a list the wheel scrolls, so it steps a weight only after a click into it, as on the settings screen.
         rows.wheelNeedsClick();
     }
 
     private static Component tr(String key, Object... args) { return Component.translatable(key, args); }
 
-    /** A palette's name: a preset's is translated, with the name in its file as the fallback. */
     private Component name(Palette p) {
         String preset = store.presetId(p);
         return preset == null ? Component.literal(p.name) : Component.translatableWithFallback("preset.chromastudio." + preset, p.name);
@@ -113,8 +98,6 @@ public final class PalettesTab extends PanelTab {
         rebuild();
     }
 
-    // ---- Layout ----
-
     @Override
     protected void layout(Bounds b) {
         Palette p = selected();
@@ -136,7 +119,6 @@ public final class PalettesTab extends PanelTab {
         }
     }
 
-    /** The list of palettes and the two rows of buttons under it. Returns the column's width. */
     private int layoutList(Bounds b, Palette p) {
         record Action(String key, Runnable run, Component unavailable) {}
         Component needsOne = tr("palettes.chromastudio.need_palette"), presetFixed = tr("palettes.chromastudio.preset_fixed");
@@ -179,7 +161,6 @@ public final class PalettesTab extends PanelTab {
         if (list == null) list = new Widgets.ScrollList(area, LIST_ROW, () -> listed.size());
         else list.area = area;
         if (listed.contains(p)) list.reveal(listed.indexOf(p));
-        // The list is filtered as each letter is typed, without laying the tab out again, so the field keeps its cursor.
         EditBox field = widgets.search(x0, b.y() + PAD, leftW, tr("palettes.chromastudio.search"), s -> {
             search = s;
             filter();
@@ -189,7 +170,6 @@ public final class PalettesTab extends PanelTab {
         return leftW;
     }
 
-    /** Lists the palettes the search keeps: the player's own, then the presets under their heading. */
     private void filter() {
         List<Palette> all = new ArrayList<>();
         for (Palette own : store.own()) if (kept(own)) all.add(own);
@@ -201,7 +181,6 @@ public final class PalettesTab extends PanelTab {
 
     private boolean kept(Palette p) { return PaletteSearch.matches(search, name(p).getString(), p.tags); }
 
-    /** A field's whole text over the reason it can't be changed, or the reason alone when the field is empty. */
     private static Component whole(String text, Component reason) {
         if (text == null || text.isBlank()) return reason;
         return Component.empty().append(text).append("\n").append(reason.copy().withColor(Theme.TIP_DIM));
@@ -234,7 +213,6 @@ public final class PalettesTab extends PanelTab {
             int w = labels ? ToolButton.labelledWidth(label) : ToolButton.ICON;
             ToolButton button = widgets.add(new ToolButton(x, y, w, t.icon, label, labels, t.lit, t.run));
             Component tip = tr("palettes.chromastudio.tool." + t.key + ".tip");
-            // With icons alone the tooltip also has to name the tool.
             Component named = labels ? tip : Component.empty().append(label).append("\n").append(tip.copy().withColor(Theme.TIP_DIM));
             if (t.unavailable != null) Widgets.disable(button, labels ? t.unavailable : Component.empty().append(label).append("\n").append(t.unavailable));
             else button.setTooltip(Tooltip.create(named));
@@ -250,11 +228,9 @@ public final class PalettesTab extends PanelTab {
         }
         flush();
         Capture.arm();
-        // The corners are picked in the world, so the window gets out of the way.
         Minecraft.getInstance().gui.setScreen(null);
     }
 
-    /** Escape leaves Analyse or the diorama for the entries. */
     @Override
     protected boolean dismissPanel() {
         if (panel == Panel.ENTRIES) return false;
@@ -291,21 +267,17 @@ public final class PalettesTab extends PanelTab {
             p.notes = s;
             touch();
         });
-        // A palette's tags and notes may be any length, and a shorter limit would cut an imported one on its first edit.
         tags.setMaxLength(Integer.MAX_VALUE);
         notes.setMaxLength(Integer.MAX_VALUE);
         if (p != null) {
-            // The responders are told of these too, and would mark this palette changed in place of one still waiting to be saved.
             loading = true;
             tags.setValue(String.join(", ", p.tags));
             notes.setValue(p.notes == null ? "" : p.notes);
-            // From the start, so a long line shows its beginning rather than its end.
             tags.moveCursorToStart(false);
             notes.moveCursorToStart(false);
             loading = false;
         }
         if (fixed != null) {
-            // A greyed field can't be scrolled, so its tooltip carries the whole of a preset's text.
             Widgets.disable(tags, whole(String.join(", ", p == null ? List.of() : p.tags), fixed));
             Widgets.disable(notes, whole(p == null ? "" : p.notes, fixed));
         } else {
@@ -349,7 +321,6 @@ public final class PalettesTab extends PanelTab {
         changed();
     }
 
-    /** The entries changed in number or order: save and lay the rows out again. */
     private void changed() {
         touch();
         flush();
@@ -357,7 +328,6 @@ public final class PalettesTab extends PanelTab {
     }
 
     private void touch() {
-        // Another palette's edit may still be waiting, if the selection changed from outside the tab. It goes to its file first.
         if (dirty && edited != selected()) flush();
         dirty = true;
         edited = selected();
@@ -372,7 +342,6 @@ public final class PalettesTab extends PanelTab {
         if (p != null && !p.preset && store.own().contains(p) && !store.save(p)) say(tr("palettes.chromastudio.save_failed"), BAD);
     }
 
-    /** One entry's icon, name, state note and colour. It takes no clicks; its tooltip is the block's id. */
     private static final class EntryCell extends AbstractWidget {
         private final PaletteEntry entry;
         private final ItemStack icon;
@@ -405,8 +374,6 @@ public final class PalettesTab extends PanelTab {
         protected void updateWidgetNarration(NarrationElementOutput builder) { }
     }
 
-    // ---- Drawing ----
-
     @Override
     protected void draw(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
         Palette p = selected();
@@ -427,7 +394,6 @@ public final class PalettesTab extends PanelTab {
         });
         if (listed.isEmpty()) g.textWithWordWrap(font(), tr("palettes.chromastudio.search.none"), list.area.x() + 4, list.area.y() + 4, list.area.w() - 8, DIM, false);
 
-        // A note about what just happened takes the whole line for its few seconds; else the name and the count share it.
         Component note = note();
         if (note != null) g.text(font(), fit(note.getString(), titleArea.w()), titleArea.x(), titleArea.y() + 1, noteColour(), false);
         else if (p != null) {
@@ -452,7 +418,6 @@ public final class PalettesTab extends PanelTab {
         if (panel == Panel.ENTRIES) rows.render(g, mouseX, mouseY, delta);
     }
 
-    /** Pinned, the tab shows the selected palette's blocks: icon, name and colour, as many as fit. */
     @Override
     public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
         Palette p = selected();
@@ -462,7 +427,6 @@ public final class PalettesTab extends PanelTab {
             return;
         }
         g.text(font(), fit(name(p).getString(), b.w() - 2 * PAD), b.x() + PAD, b.y() + PAD, text, false);
-        // Two columns when there's room, so a dozen blocks fit the smallest window.
         int top = b.y() + PAD + TITLE_H, perColumn = Math.max(1, (b.bottom() - PAD - top) / ENTRY_ROW);
         int columns = Math.max(1, Math.min(b.w() / 150, (p.entries.size() + perColumn - 1) / perColumn)), columnW = (b.w() - 2 * PAD) / columns;
         for (int i = 0; i < Math.min(p.entries.size(), perColumn * columns); i++) {
@@ -474,8 +438,6 @@ public final class PalettesTab extends PanelTab {
             g.text(font(), fit(PaletteBlocks.name(e).getString(), columnW - 36), x + 33, y + 4, text, false);
         }
     }
-
-    // ---- Input ----
 
     @Override
     protected boolean clicked(MouseButtonEvent e, boolean doubled) {
@@ -538,7 +500,6 @@ public final class PalettesTab extends PanelTab {
         super.tick();
         if (dirty && Util.getMillis() >= saveAt) flush();
         Palette p = selected();
-        // Something outside the tab changed what it shows: a block added from Match, a capture, or the index finishing.
         boolean ready = BlockIndex.get().ready();
         if (!dialogOpen() && (p != shown || (p == null ? 0 : p.entries.size()) != shownSize || ready != shownReady)) {
             if (p != shown) {

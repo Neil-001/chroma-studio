@@ -78,10 +78,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 
-/**
- * The Match tab: on the left the target and the ways to set it, on the right the controls, the filters and the
- * blocks closest to the target. Everything is placed from the tab's area, so it follows the window as it is resized.
- */
 public final class MatchTab extends Tab {
     private static final int PAD = 3, ROW = 18, CELL = 20, HEAD = 13, GAP = 2, LINE = Widgets.H + 1, STATUS_H = 10;
     private static final long STATUS_MS = 2500;
@@ -89,7 +85,6 @@ public final class MatchTab extends Tab {
     private static final int BODY = 0, EXPAND = 1, ADD = 2;
     private static final String ALL = "all";
 
-    /** Searches run here, one at a time, so a slow one never holds a frame up. */
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(task -> {
         Thread t = new Thread(task, "Chroma Studio match");
         t.setDaemon(true);
@@ -98,10 +93,8 @@ public final class MatchTab extends Tab {
 
     private enum Panel { NONE, FILTERS, BIOMES, FIND_BIOME, DYE }
 
-    /** The matches on show, and what they were matched with, which the rows are drawn with too. */
     private record Shown(List<BlockIndex.Match> matches, Target target, Scale scale, TintContext tint, Metric metric) {}
 
-    /** One line of the list: a match, a block of an opened material set, or that set's "Make a palette". */
     private record Row(int type, Entry entry, Face face, double distance, boolean hasSet) {}
 
     private record BiomeFit(ResourceKey<Biome> biome, Color colour, double distance) {}
@@ -110,11 +103,9 @@ public final class MatchTab extends Tab {
     private final Widgets controls = new Widgets();
     private Widgets panelWidgets = new Widgets();
     private EditBox hexField;
-    /** The two fields under the hex code: RGB and HSL, with OKLCH in place of whichever the sliders already show. */
     private final EditBox[] formatFields = new EditBox[2];
     private final ColourFormat[] fieldFormats = new ColourFormat[2];
     private AbstractWidget findButton;
-    /** Set while the fields are being filled in from the colour, so that doesn't count as typing. */
     private boolean filling;
     private final ColourPicker picker = new ColourPicker(MatchState.colour(), this::picked);
 
@@ -124,7 +115,6 @@ public final class MatchTab extends Tab {
     private Shown shown;
     private List<Row> rows = List.of();
     private int kindWidth;
-    /** The entry whose material set is open under its row, or null. */
     private Entry expanded;
     private Row hovered;
     private final Debounce search = new Debounce();
@@ -136,7 +126,6 @@ public final class MatchTab extends Tab {
     private List<ResourceKey<Biome>> biomes = List.of();
     private List<BiomeFit> fits = List.of();
     private List<ItemStack> dyes = List.of();
-    /** Each tinted entry's tints across the biomes, for the strip "All biomes" draws. */
     private final Map<Entry, int[]> ranges = new HashMap<>();
 
     private Component status;
@@ -150,18 +139,14 @@ public final class MatchTab extends Tab {
         return Component.translatable(prefix + value.name().toLowerCase(Locale.ROOT));
     }
 
-    // ---- Layout ----
-
     @Override
     public void init(Bounds b) {
         area = b;
-        // The settings screen may have changed a filter's setting. The controls are built from the filters, so those catch up first.
         MatchState.follow();
         build();
         search.request();
     }
 
-    /** Places a row of controls from the left, starting a new line when one doesn't fit. */
     private static final class Flow {
         final int left, right;
         int x, y;
@@ -173,7 +158,6 @@ public final class MatchTab extends Tab {
             this.y = y;
         }
 
-        /** Where a control this wide goes. Read {@link #y} afterwards. */
         int take(int w) {
             if (x > left && x + w > right) line();
             int at = x;
@@ -181,7 +165,6 @@ public final class MatchTab extends Tab {
             return at;
         }
 
-        /** The width left on this line for a control that stretches, or a whole new line when that is under {@code min}. */
         int rest(int min) {
             if (right - x < min) line();
             return right - x;
@@ -199,11 +182,9 @@ public final class MatchTab extends Tab {
         Font font = Minecraft.getInstance().font;
         TargetModel model = picker.model;
 
-        // The left column: the target.
         int lw = Math.clamp(b.w() * 36 / 100, 146, 210), x = b.x() + PAD, w = lw - 2 * PAD, y = b.y() + PAD;
         slot = new Bounds(x, y - 1, 18, 18);
         swatch = new Bounds(x + 20, y, 16, 16);
-        // Axiom's active block sits at the end of the hex row, which keeps room for its seven characters.
         Component axiom = tr("axiom");
         int axiomW = Widgets.buttonWidth(axiom);
         hexField = controls.field(x + 38, y, w - 38 - axiomW - GAP, model.hex(), text -> typed(hexField, text, model::typeHex));
@@ -217,8 +198,6 @@ public final class MatchTab extends Tab {
         int half = (w - GAP) / 2;
         fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;
         fieldFormats[1] = ModSettings.colourFormat == ColourFormat.HSL ? ColourFormat.OKLCH : ColourFormat.HSL;
-        // OKLCH's figures are a few pixels wider than half the narrowest column, and RGB's and HSL's a few narrower,
-        // so the OKLCH field takes what it needs from the other.
         int oklchW = font.width("0.00,.000,000") + 8;
         int firstW = fieldFormats[0] == ColourFormat.OKLCH ? Math.max(half, oklchW)
                 : fieldFormats[1] == ColourFormat.OKLCH ? Math.min(half, w - GAP - oklchW) : half;
@@ -253,7 +232,6 @@ public final class MatchTab extends Tab {
         recent = new Bounds(x, recentY, w, 10);
         picker.layout(new Bounds(x, y, w, Math.max(8, slidersY - 4 - y)), new Bounds(x, slidersY, w, 3 * (ColourPicker.SLIDER_H + 2)));
 
-        // The right column: the controls, the filters, then the results in what is left.
         Flow flow = new Flow(b.x() + lw, b.right() - PAD, b.y() + PAD);
         List<FaceChoice> faces = List.of(FaceChoice.values());
         int faceW = widest(faces.stream().map(f -> lower("option.chromastudio.facechoice.", f)).toList());
@@ -315,7 +293,6 @@ public final class MatchTab extends Tab {
                 .setTooltip(Tooltip.create(tr("filter.more.tip")));
 
         int top = flow.y + LINE + 1;
-        // The status line has the strip under the results to itself, so what it says never lies over a row.
         statusLine = new Bounds(flow.left, b.bottom() - PAD - STATUS_H, flow.right - flow.left, STATUS_H);
         results = new Bounds(flow.left, top, flow.right - flow.left, Math.max(ROW, statusLine.y() - 1 - top));
         list = grid ? new Widgets.ScrollList(results, CELL, () -> shown == null ? 0 : (shown.matches.size() + columns() - 1) / columns())
@@ -345,8 +322,6 @@ public final class MatchTab extends Tab {
     }
 
     private int columns() { return Math.max(1, (results.w() - 5) / CELL); }
-
-    // ---- Panels: what opens over the results ----
 
     private void toggle(Panel which) {
         panel = panel == which ? Panel.NONE : which;
@@ -385,7 +360,6 @@ public final class MatchTab extends Tab {
         return biomes.stream().filter(k -> k.identifier().toString().contains(biomeSearch)).toList();
     }
 
-    /** Greys "Find the biome" out with the reason while it can't run. It depends on the target, so it is set again whenever that changes. */
     private void findState() {
         if (findButton == null) return;
         Component why = whyNoFind();
@@ -393,7 +367,6 @@ public final class MatchTab extends Tab {
         findButton.setTooltip(Tooltip.create(why != null ? why : tr("find_biome.tip")));
     }
 
-    /** Why "Find the biome" can't run, or null when it can. */
     private static Component whyNoFind() {
         Entry e = MatchState.entry();
         if (e == null || !e.tinted()) return tr("find_biome.no_block");
@@ -401,7 +374,6 @@ public final class MatchTab extends Tab {
         return null;
     }
 
-    /** The five biomes that bring the target block's face closest to the last flat colour matched. */
     private static List<BiomeFit> fits() {
         Entry e = MatchState.entry();
         Color wanted = MatchState.lastFlat();
@@ -423,9 +395,6 @@ public final class MatchTab extends Tab {
         build();
     }
 
-    // ---- Keeping in step ----
-
-    /** The fields follow a colour that came from anywhere but the field being typed in. */
     private void fill(EditBox except) {
         if (hexField == null) return;
         TargetModel model = picker.model;
@@ -436,10 +405,6 @@ public final class MatchTab extends Tab {
         filling = false;
     }
 
-    /**
-     * A field's text changed. Text that isn't a colour shows red and changes nothing. Text the tab put there itself
-     * isn't read back: a colour rounded to whole numbers and taken again would drift.
-     */
     private void typed(EditBox field, String text, Predicate<String> take) {
         if (filling || field == null) return;
         boolean valid = take.test(text);
@@ -455,7 +420,6 @@ public final class MatchTab extends Tab {
         if (settled) MatchState.remember();
     }
 
-    /** Makes the pickers' colour the target, without them being set back from it. */
     private void adopt() {
         MatchState.setColour(picker.model.colour());
         seenRevision = MatchState.revision();
@@ -467,7 +431,6 @@ public final class MatchTab extends Tab {
         statusUntil = Util.getMillis() + STATUS_MS;
     }
 
-    /** Takes what another tab or {@code /chroma} left for this one, follows the target, and starts a search when one is due. */
     private void sync() {
         BlockIndex index = BlockIndex.get();
         MatchState.follow();
@@ -494,7 +457,6 @@ public final class MatchTab extends Tab {
             MatchState.setColour(Color.ofRgb(rgb));
             MatchState.remember();
         } else if (pending instanceof String id && index.ready()) {
-            // A block has to wait for the index; a colour doesn't.
             ChromaScreen.pendingTarget = null;
             Identifier key = Identifier.tryParse(id);
             List<Entry> states = key == null ? List.<Entry>of() : BuiltInRegistries.BLOCK.getOptional(key).map(index::statesOf).orElse(List.of());
@@ -538,7 +500,6 @@ public final class MatchTab extends Tab {
             }
             List<BlockIndex.Match> matches = found;
             mc.execute(() -> {
-                // An answer to a search that has since been asked again is out of date.
                 if (!search.current(run)) return;
                 shown = new Shown(matches, target, query.scale, query.tint, query.metric);
                 rows();
@@ -546,7 +507,6 @@ public final class MatchTab extends Tab {
         });
     }
 
-    /** Works the list's lines out from the matches, with the open material set under its block. */
     private void rows() {
         List<Row> out = new ArrayList<>();
         BlockIndex index = BlockIndex.get();
@@ -568,8 +528,6 @@ public final class MatchTab extends Tab {
         kindWidth = 0;
         for (Row row : out) kindWidth = Math.max(kindWidth, font.width(kindName(row.entry.kind().name())));
     }
-
-    // ---- Drawing ----
 
     @Override
     public void render(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
@@ -599,10 +557,8 @@ public final class MatchTab extends Tab {
         results(g, font, opacity, -1, -1, none);
     }
 
-    /** The left column but for its widgets: the slot, the swatch, the pickers and the recent colours. */
     private void target(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
         Entry entry = MatchState.entry();
-        // Fullscreen has no panel of its own, only the blurred world, so everything outside the results gets a backing to be read against.
         g.fill(area.x(), area.y(), results.x() - 1, area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
         g.fill(results.x() - 1, area.y(), area.right(), results.y(), ARGB.multiplyAlpha(BACKING, opacity));
         g.fill(results.x() - 1, results.bottom(), area.right(), area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
@@ -637,7 +593,6 @@ public final class MatchTab extends Tab {
         }
     }
 
-    /** The target block's name with the state that is matched, which may not be its entry's own. */
     private static Component targetName() {
         String properties = MatchState.entryProperties();
         return properties.isEmpty() ? MatchState.entry().name() : tr("name_with_state", MatchState.entry().name(), properties);
@@ -647,8 +602,6 @@ public final class MatchTab extends Tab {
         return e.properties().isEmpty() ? e.name() : tr("name_with_state", e.name(), e.properties());
     }
 
-    // The viewing distance slider runs from 1 block to far along a logarithmic scale, as each halving of a
-    // texture's detail takes twice the distance.
     private static double distanceAt(int blocks) { return Math.log(blocks) / Math.log(ModSettings.VIEW_FAR); }
 
     private static int blocksAt(double t) { return Math.clamp(Math.round(Math.exp(t * Math.log(ModSettings.VIEW_FAR))), 1, ModSettings.VIEW_FAR); }
@@ -669,7 +622,6 @@ public final class MatchTab extends Tab {
         g.fill(kx - 1, d.y() + 1, kx + 2, d.bottom() - 1, over ? Theme.STRONG : Theme.HIGHLIGHT);
         boolean far = ModSettings.viewingDistance >= ModSettings.VIEW_FAR;
         Component label = far ? tr("distance.far") : ModSettings.viewingDistance == 1 ? tr("distance.block") : tr("distance.blocks", ModSettings.viewingDistance);
-        // The label keeps clear of the handle: on whichever side has the room.
         int lw = font.width(label), lx = kx < d.x() + d.w() / 2 ? d.right() - lw - 4 : d.x() + 4;
         g.text(font, label, lx, d.y() + 4, TEXT, false);
         if (d.contains(mouseX, mouseY)) {
@@ -717,7 +669,6 @@ public final class MatchTab extends Tab {
         } else {
             list.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> row(g2, font, rows.get(i), x, y, w, h, over, opacity, mouseX, tip));
         }
-        // A later build shows as a thin bar while the earlier one still answers.
         if (index.building()) bar(g, r.x(), r.y(), r.w(), index.progress(), opacity);
     }
 
@@ -726,7 +677,6 @@ public final class MatchTab extends Tab {
         g.fill(x, y, x + Math.round(w * Math.clamp(progress, 0, 1)), y + 2, ARGB.multiplyAlpha(Theme.HIGHLIGHT, opacity));
     }
 
-    /** Which part of a line the cursor is over: the expander at its left, the add button at its right, or the rest. */
     private static int zone(Row row, int x, int w, double mx) {
         if (row.type == MAKE) return BODY;
         if (row.hasSet && mx < x + 10) return EXPAND;
@@ -752,7 +702,6 @@ public final class MatchTab extends Tab {
         ItemStack icon = new ItemStack(e.block());
         if (icon.isEmpty()) Widgets.swatch(g, left + 2, y + 3, 12, 12, e.face(row.face, shown.tint).mean(shown.scale).rgb());
         else Widgets.blockIcon(g, icon, left, y + 1);
-        // The tint badge: a green corner on the icon of a block the game tints, as it does grass by its biome.
         if (e.tinted()) {
             g.fill(left + 11, y + 11, left + 16, y + 16, ARGB.multiplyAlpha(0xFF10140F, opacity));
             g.fill(left + 12, y + 12, left + 16, y + 16, ARGB.multiplyAlpha(0xFF000000 | Theme.TIP_TINT, opacity));
@@ -760,7 +709,6 @@ public final class MatchTab extends Tab {
         left += 18;
 
         int right = x + w - 1;
-        // The add button.
         boolean can = PaletteSink.current() != null;
         g.fill(right - 11, y + 3, right, y + 14, ARGB.multiplyAlpha(zone == ADD && can ? Theme.LIT_HOVER : Theme.CHIP, opacity));
         g.fill(right - 9, y + 8, right - 2, y + 9, ARGB.multiplyAlpha(can ? TEXT : GREYED, opacity));
@@ -772,7 +720,6 @@ public final class MatchTab extends Tab {
         g.fill(right - 12, y + 3, right, y + 15, ARGB.multiplyAlpha(0xFF000000, opacity));
         g.fill(right - 11, y + 4, right - 1, y + 14, ARGB.multiplyAlpha(0xFF000000 | stats.mean(shown.scale).rgb(), opacity));
         right -= 15;
-        // Every line gives the kind the width of the widest on show, so the columns to its left line up.
         right -= kindWidth;
         g.text(font, kindName(e.kind().name()), right, y + 5, dim, false);
         right -= 10;
@@ -799,7 +746,6 @@ public final class MatchTab extends Tab {
 
     private static boolean sameBlock(Entry a, Entry b) { return a != null && b != null && a.id().equals(b.id()); }
 
-    /** A small arrowhead: down when its set is open, right when shut. */
     private static void triangle(GuiGraphicsExtractor g, int x, int cy, boolean open, int colour) {
         for (int i = 0; i < 3; i++) {
             if (open) g.fill(x + i, cy - 1 + i, x + 5 - i, cy + i, colour);
@@ -807,7 +753,6 @@ public final class MatchTab extends Tab {
         }
     }
 
-    /** The texture badge as a little picture: one flat square, a few specks, or a checker. */
     private static void badge(GuiGraphicsExtractor g, int x, int y, Badge badge, int colour) {
         g.outline(x, y, 7, 7, colour);
         if (badge == Badge.FLAT) return;
@@ -818,7 +763,6 @@ public final class MatchTab extends Tab {
             }
     }
 
-    /** The tints a block takes across every biome, darkest first, as a strip under its name. */
     private void strip(GuiGraphicsExtractor g, Entry e, Face face, int x, int y, int w, float opacity) {
         int[] tints = ranges.computeIfAbsent(e, _ -> {
             int[] all = Tints.tintsAcross(e, face).stream().filter(t -> t != TintContext.NO_TINT).mapToInt(Integer::intValue).distinct().toArray();
@@ -833,7 +777,6 @@ public final class MatchTab extends Tab {
         return String.format(Locale.ROOT, metric.justNoticeable() < 1 ? "%.3f" : "%.1f", d);
     }
 
-    /** The tooltip for the line under the cursor: what it is, then what each click does. */
     private void describe(Row row, int zone, List<Component> tip) {
         if (zone == EXPAND) {
             tip.add(tr("set.tip"));
@@ -912,8 +855,6 @@ public final class MatchTab extends Tab {
 
     private Bounds closeButton() { return new Bounds(results.right() - HEAD - 1, results.y() + 1, HEAD, HEAD - 1); }
 
-    // ---- Input ----
-
     @Override
     public boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         double mx = e.x(), my = e.y();
@@ -924,7 +865,6 @@ public final class MatchTab extends Tab {
         }
         panelWidgets.setFocused(null);
         if (controls.mouseClicked(e, doubled)) return true;
-        // The recipe key bound to a mouse button: the game doesn't count presses for key binds while a screen is open.
         if (Keys.RECIPE.matchesMouse(e) && lookUpRecipe()) return true;
         if (left && picker.mouseClicked(mx, my)) return true;
         if (left && distance.contains(mx, my)) {
@@ -959,7 +899,6 @@ public final class MatchTab extends Tab {
         return true;
     }
 
-    /** Does what a click on a line does. */
     private void act(Row row, int zone, MouseButtonEvent e) {
         Entry entry = row.entry;
         if (row.type == MAKE) {
@@ -1024,7 +963,6 @@ public final class MatchTab extends Tab {
         return true;
     }
 
-    /** Makes the block the player is holding the target. */
     private void takeHeld() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
@@ -1043,7 +981,6 @@ public final class MatchTab extends Tab {
         }
     }
 
-    /** Makes Axiom's active block the target, saying how it went. */
     private void takeAxiom() { status(AxiomBridge.takeActiveBlock().message()); }
 
     private void armEyedropper() {
@@ -1078,7 +1015,6 @@ public final class MatchTab extends Tab {
         if (panel != Panel.NONE && results.contains(x, y)) return panelWidgets.mouseScrolled(x, y, h, v) || panelList.mouseScrolled(x, y, v);
         if (picker.mouseScrolled(x, y, v)) return true;
         if (distance.contains(x, y)) {
-            // A notch is a step along the slider, so it moves a block at a time up close and further when far.
             int next = blocksAt(distanceAt(ModSettings.viewingDistance) + Math.signum(v) * 0.03);
             if (next == ModSettings.viewingDistance) next = (int) Math.clamp(next + Math.signum(v), 1, ModSettings.VIEW_FAR);
             ModSettings.viewingDistance = next;
@@ -1118,7 +1054,6 @@ public final class MatchTab extends Tab {
         return controls.keyPressed(e);
     }
 
-    /** Shows the hovered result's recipe in a recipe viewer. False when no result is under the cursor. */
     private boolean lookUpRecipe() {
         if (hovered == null || hovered.type == MAKE) return false;
         ItemStack stack = new ItemStack(hovered.entry.block());
@@ -1127,7 +1062,6 @@ public final class MatchTab extends Tab {
         return true;
     }
 
-    /** Escape closes the panel over the results, when one is open. */
     @Override
     public boolean dismiss() {
         if (panel == Panel.NONE) return false;
