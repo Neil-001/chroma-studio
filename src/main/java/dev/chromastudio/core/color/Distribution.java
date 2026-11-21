@@ -2,11 +2,16 @@ package dev.chromastudio.core.color;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public final class Distribution {
     public static final int MAX_ENTRIES = 8;
     private static final int PIXEL_CLUSTERS = 4;
     private static final double OPTIMAL_SLACK = 1e-9;
+
+    private static volatile Consumer<IllegalStateException> unsolved = e -> {
+        throw e;
+    };
 
     private final Color[] colours;
     private final double[] weights;
@@ -109,8 +114,19 @@ public final class Distribution {
         for (int i = 0; i < colours.length; i++) {
             for (int j = 0; j < other.colours.length; j++) cost[i][j] = metric.distance(colours[i], other.colours[j]);
         }
-        return transport(weights, other.weights, cost);
+        try {
+            return transport(weights, other.weights, cost);
+        } catch (IllegalStateException e) {
+            unsolved.accept(e);
+            double bound = 0;
+            for (int i = 0; i < colours.length; i++) {
+                for (int j = 0; j < other.colours.length; j++) bound += weights[i] * other.weights[j] * cost[i][j];
+            }
+            return bound;
+        }
     }
+
+    public static void whenUnsolved(Consumer<IllegalStateException> handler) { unsolved = handler; }
 
     public Distribution tinted(int rgbMultiplier) {
         Color[] out = new Color[colours.length];
