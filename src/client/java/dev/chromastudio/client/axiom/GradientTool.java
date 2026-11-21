@@ -164,18 +164,31 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
         if (first != null) ends.render(rc, Vec3.ZERO, Effects.BLUE | Effects.OUTLINE);
     }
 
-    record Search(BuildSearch.Found found, GradientLine line, @Nullable Set<Block> like) {}
+    record Search(BuildSearch.Found found, GradientLine line) {}
 
     static Search search(BlockGetter level, BlockPos first, BlockPos second, BlockPos seed, boolean likeFirst, int reach) {
         GradientLine l = GradientLine.between(first.getX(), first.getY(), first.getZ(), second.getX(), second.getY(), second.getZ());
-        Set<Block> like = likeFirst ? like(level.getBlockState(seed)) : null;
+        Set<Block> like = like(level.getBlockState(seed));
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        BuildSearch.Found found = BuildSearch.from(seed.getX(), seed.getY(), seed.getZ(), (x, y, z) -> {
-            BlockState s = level.getBlockState(pos.set(x, y, z));
-            if (s.isAir() || s.getBlock() instanceof LiquidBlock) return false;
-            return (like == null || like.contains(s.getBlock()) || !RecolourPlan.ground(s)) && l.reaches(x, y, z, reach);
-        }, FoundBuild.CAP);
-        return new Search(found, l, like);
+        BuildSearch.Found found = BuildSearch.from(likeFirst ? starts(seed, first, second) : new long[] {BuildSearch.pack(seed.getX(), seed.getY(), seed.getZ())},
+                (x, y, z) -> {
+                    BlockState s = level.getBlockState(pos.set(x, y, z));
+                    if (s.isAir() || s.getBlock() instanceof LiquidBlock) return false;
+                    return (!likeFirst || like.contains(s.getBlock())) && l.reaches(x, y, z, reach);
+                }, FoundBuild.CAP);
+        return new Search(found, l);
+    }
+
+    private static long[] starts(BlockPos seed, BlockPos first, BlockPos second) {
+        int dx = second.getX() - first.getX(), dy = second.getY() - first.getY(), dz = second.getZ() - first.getZ();
+        int n = Math.max(Math.abs(dx), Math.max(Math.abs(dy), Math.abs(dz)));
+        long[] out = new long[n + 2];
+        out[0] = BuildSearch.pack(seed.getX(), seed.getY(), seed.getZ());
+        for (int i = 0; i <= n; i++) {
+            out[i + 1] = BuildSearch.pack(first.getX() + Math.round((float) dx * i / n), first.getY() + Math.round((float) dy * i / n),
+                    first.getZ() + Math.round((float) dz * i / n));
+        }
+        return out;
     }
 
     record Laid(long[] outlined, int covered, int leftAlone, int masked) {}
@@ -190,10 +203,6 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
             int x = BuildSearch.x(p), y = BuildSearch.y(p), z = BuildSearch.z(p);
             BlockState now = level.getBlockState(pos.set(x, y, z));
             boolean allowed = mask.allows(x, y, z);
-            if (s.like() != null && !s.like().contains(now.getBlock())) {
-                into.leave(x, y, z, now);
-                continue;
-            }
             int at = s.line().step(x, y, z, steps.size(), blend / 100.0);
             BlockState step = steps.get(reversed ? steps.size() - 1 - at : at);
             BlockState next = shapes.shaped(now) ? shapes.apply(step, now) : paintable(level, pos, now) ? step : null;
