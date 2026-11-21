@@ -14,7 +14,6 @@ repositories {
 		url = 'https://masa.dy.fi/maven/sakura-ryoko'
 		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
 	}
-	// Each of these groups is asked for from its own Maven alone, so another repository's outage can't fail the build.
 	exclusiveContent {
 		forRepository {
 			maven {
@@ -92,7 +91,6 @@ dependencies {
 	localRuntime("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
 	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
 	compileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:${project.rei_version}") { transitive = false }
-	// REI's API names Architectury's types in the methods used.
 	compileOnly("dev.architectury:architectury-fabric:${project.architectury_version}") { transitive = false }
 	if (findProperty('viewer') == 'jei') {
 		localRuntime("mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}") { transitive = false }
@@ -113,6 +111,17 @@ dependencies {
 test {
 	useJUnitPlatform()
 	systemProperty 'chroma.timing', System.getProperty('chroma.timing', 'false')
+	def sourceRules = fileTree(rootDir) {
+		include '**/*.java', '**/CLAUDE.md', '**/AGENTS.md'
+		exclude '**/.git/**', '**/.gradle/**', '**/.idea/**'
+		['', 'fabric/', 'neoforge/'].each { dir -> ['bin', 'build', 'logs', 'out', 'run'].each { exclude "${dir}${it}/**" } }
+	}
+	inputs.files(sourceRules).withPropertyName('sourceRules')
+	inputs.property('sourceRuleLinks', providers.provider {
+		sourceRules.matching { include '**/AGENTS.md' }.files
+				.findAll { java.nio.file.Files.isSymbolicLink(it.toPath()) }
+				.collect { "${rootDir.toPath().relativize(it.toPath())} ${java.nio.file.Files.readSymbolicLink(it.toPath())}".toString() }.sort()
+	})
 	testLogging {
 		events "failed"
 		exceptionFormat = "full"
