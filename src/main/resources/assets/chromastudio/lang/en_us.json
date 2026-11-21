@@ -860,7 +860,7 @@
   "axiom.chromastudio.sampler.brush": "Brush",
   "axiom.chromastudio.sampler.build.tip": "Takes every block joined to the one you right-click.",
   "axiom.chromastudio.sampler.ground": "Include the ground and plants",
-  "axiom.chromastudio.sampler.ground.tip": "Also counts grass, dirt, sand, gravel and plants.",
+  "axiom.chromastudio.sampler.ground.tip": "Also counts plants and the ground, such as grass, dirt and bedrock.",
   "axiom.chromastudio.sampler.ground.build": "Whole build never spreads into the ground. Use the brush to add some.",
   "axiom.chromastudio.sampler.total": "%s blocks of %s kinds",
   "axiom.chromastudio.sampler.total.one": "One block",

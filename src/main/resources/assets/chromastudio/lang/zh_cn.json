@@ -861,7 +861,7 @@
   "axiom.chromastudio.sampler.brush": "画笔",
   "axiom.chromastudio.sampler.build.tip": "取所有与右键点击的方块相连的方块。",
   "axiom.chromastudio.sampler.ground": "包含地面和植物",
-  "axiom.chromastudio.sampler.ground.tip": "同时计入草方块、泥土、沙子、沙砾和植物。",
+  "axiom.chromastudio.sampler.ground.tip": "同时计入植物和地面，例如草方块、泥土和基岩。",
   "axiom.chromastudio.sampler.ground.build": "“整个建筑”不会扩展到地面。请用画笔来添加。",
   "axiom.chromastudio.sampler.total": "%s 个方块，共 %s 种",
   "axiom.chromastudio.sampler.total.one": "1 个方块",

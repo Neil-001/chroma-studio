@@ -861,7 +861,7 @@
   "axiom.chromastudio.sampler.brush": "Pincel",
   "axiom.chromastudio.sampler.build.tip": "Toma todos los bloques unidos al que pulsas con clic derecho.",
   "axiom.chromastudio.sampler.ground": "Incluir el suelo y las plantas",
-  "axiom.chromastudio.sampler.ground.tip": "También cuenta césped, tierra, arena, grava y plantas.",
+  "axiom.chromastudio.sampler.ground.tip": "También cuenta las plantas y el suelo, como hierba, tierra y lecho de roca.",
   "axiom.chromastudio.sampler.ground.build": "«Construcción entera» nunca se extiende al suelo. Usa el pincel para añadir algo.",
   "axiom.chromastudio.sampler.total": "%s bloques de %s tipos",
   "axiom.chromastudio.sampler.total.one": "Un bloque",

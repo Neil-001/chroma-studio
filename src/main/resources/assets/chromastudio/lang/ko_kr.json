@@ -861,7 +861,7 @@
   "axiom.chromastudio.sampler.brush": "브러시",
   "axiom.chromastudio.sampler.build.tip": "우클릭한 블록에 이어진 블록을 모두 가져옵니다.",
   "axiom.chromastudio.sampler.ground": "땅과 식물 포함",
-  "axiom.chromastudio.sampler.ground.tip": "잔디, 흙, 모래, 자갈, 식물도 셉니다.",
+  "axiom.chromastudio.sampler.ground.tip": "식물과 잔디, 흙, 기반암 같은 땅도 셉니다.",
   "axiom.chromastudio.sampler.ground.build": "‘건축물 전체’는 땅으로 퍼지지 않습니다. 땅을 넣으려면 브러시를 쓰세요.",
   "axiom.chromastudio.sampler.total": "블록 %s개, %s종류",
   "axiom.chromastudio.sampler.total.one": "블록 1개",

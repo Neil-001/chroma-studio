@@ -861,7 +861,7 @@
   "axiom.chromastudio.sampler.brush": "Pinceau",
   "axiom.chromastudio.sampler.build.tip": "Prend tous les blocs reliés à celui sur lequel tu fais un clic droit.",
   "axiom.chromastudio.sampler.ground": "Inclure le sol et les plantes",
-  "axiom.chromastudio.sampler.ground.tip": "Compte aussi l'herbe, la terre, le sable, le gravier et les plantes.",
+  "axiom.chromastudio.sampler.ground.tip": "Compte aussi les plantes et le sol, comme l'herbe, la terre et la bedrock.",
   "axiom.chromastudio.sampler.ground.build": "« Toute la construction » ne s'étend jamais au sol. Utilise le pinceau pour en ajouter.",
   "axiom.chromastudio.sampler.total": "%s blocs de %s sortes",
   "axiom.chromastudio.sampler.total.one": "Un bloc",

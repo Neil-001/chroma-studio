@@ -861,7 +861,7 @@
   "axiom.chromastudio.sampler.brush": "Кисть",
   "axiom.chromastudio.sampler.build.tip": "Берёт все блоки, соединённые с тем, по которому вы щёлкнули правой кнопкой.",
   "axiom.chromastudio.sampler.ground": "Включать землю и растения",
-  "axiom.chromastudio.sampler.ground.tip": "Также учитывает траву, землю, песок, гравий и растения.",
+  "axiom.chromastudio.sampler.ground.tip": "Также учитывает растения и землю, например траву, землю и коренную породу.",
   "axiom.chromastudio.sampler.ground.build": "«Вся постройка» никогда не доходит до земли. Добавьте её кистью.",
   "axiom.chromastudio.sampler.total": "Блоков: %s, видов: %s",
   "axiom.chromastudio.sampler.total.one": "Один блок",

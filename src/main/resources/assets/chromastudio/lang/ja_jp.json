@@ -861,7 +861,7 @@
   "axiom.chromastudio.sampler.brush": "ブラシ",
   "axiom.chromastudio.sampler.build.tip": "右クリックしたブロックにつながるブロックをすべて取ります。",
   "axiom.chromastudio.sampler.ground": "地面と植物を含める",
-  "axiom.chromastudio.sampler.ground.tip": "草、土、砂、砂利、植物も数えます。",
+  "axiom.chromastudio.sampler.ground.tip": "植物と、草・土・岩盤などの地面も数えます。",
   "axiom.chromastudio.sampler.ground.build": "「建築物全体」は地面に広がりません。地面を含めるにはブラシを使ってください。",
   "axiom.chromastudio.sampler.total": "%s 個のブロック、%s 種類",
   "axiom.chromastudio.sampler.total.one": "1 個のブロック",

@@ -861,7 +861,7 @@
   "axiom.chromastudio.sampler.brush": "Pinsel",
   "axiom.chromastudio.sampler.build.tip": "Nimmt jeden Block, der mit dem rechtsgeklickten verbunden ist.",
   "axiom.chromastudio.sampler.ground": "Boden und Pflanzen einbeziehen",
-  "axiom.chromastudio.sampler.ground.tip": "Zählt auch Gras, Erde, Sand, Kies und Pflanzen.",
+  "axiom.chromastudio.sampler.ground.tip": "Zählt auch Pflanzen und den Boden, etwa Gras, Erde und Grundgestein.",
   "axiom.chromastudio.sampler.ground.build": "„Ganzes Bauwerk“ breitet sich nie in den Boden aus. Nutze den Pinsel, um welchen hinzuzufügen.",
   "axiom.chromastudio.sampler.total": "%s Blöcke aus %s Arten",
   "axiom.chromastudio.sampler.total.one": "Ein Block",

@@ -861,7 +861,7 @@
   "axiom.chromastudio.sampler.brush": "Pędzel",
   "axiom.chromastudio.sampler.build.tip": "Bierze każdy blok połączony z klikniętym prawym przyciskiem.",
   "axiom.chromastudio.sampler.ground": "Uwzględnij grunt i rośliny",
-  "axiom.chromastudio.sampler.ground.tip": "Liczy też trawę, ziemię, piasek, żwir i rośliny.",
+  "axiom.chromastudio.sampler.ground.tip": "Liczy też rośliny i ziemię, taką jak trawa, ziemia i skała macierzysta.",
   "axiom.chromastudio.sampler.ground.build": "„Cała budowla” nigdy nie sięga ziemi. Użyj pędzla, aby dodać trochę.",
   "axiom.chromastudio.sampler.total": "Bloki: %s, rodzaje: %s",
   "axiom.chromastudio.sampler.total.one": "Jeden blok",
