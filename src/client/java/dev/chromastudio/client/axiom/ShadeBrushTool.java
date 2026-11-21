@@ -86,6 +86,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private int maskedFrame;
     private boolean masked;
     private int receiptOf;
+    private @Nullable String scriptAt;
     private @Nullable BlockPos receiptAt;
     private @Nullable Plan plan;
 
@@ -106,6 +107,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         if (AxiomTools.off()) return false;
         stroke.cancel();
         stroke.forget();
+        scriptAt = AxiomMask.script();
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return false;
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
@@ -160,7 +162,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         if (!at.equals(maskedAsked) || frame - maskedFrame >= MASK_FRAMES || frame < maskedFrame) {
             maskedAsked = at.immutable();
             maskedFrame = frame;
-            masked = !AxiomMask.scripted() && !AxiomMask.now(level).allows(at.getX(), at.getY(), at.getZ());
+            masked = !AxiomMask.scripted() && !AxiomMask.peek(level, at.getX(), at.getY(), at.getZ()).orElse(true);
         }
         int r = AxiomPanel.radius(radius);
         if (outlineRadius != r) {
@@ -223,7 +225,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         Component why = stroke.refused();
         if (why == null && dropped) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
         if (why != null) {
-            AxiomPanel.status(AxiomPanel.refusal(why, "axiom.chromastudio.again.brush"));
+            AxiomPanel.status(AxiomPanel.refusal(why, "axiom.chromastudio.again.brush", scriptAt));
             return;
         }
         if (!BlockIndex.get().ready()) {
@@ -237,7 +239,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         int sent = stroke.sent();
         if (sent > 0 && (receiptAt != null || sent != receiptOf)) {
-            AxiomPanel.status(AxiomPanel.Status.of(AxiomTools.count("axiom.chromastudio.changed", sent, sent)));
+            AxiomPanel.status(AxiomPanel.Status.receipt(AxiomTools.count("axiom.chromastudio.changed", sent, sent)));
             return;
         }
         BlockState here = hovered;

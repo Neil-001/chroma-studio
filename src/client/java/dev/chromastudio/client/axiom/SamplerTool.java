@@ -221,7 +221,7 @@ final class SamplerTool implements CustomTool {
         if (!BlockIndex.get().ready()) return AxiomPanel.Status.of(tr("axiom.chromastudio.not_ready"));
         if (said != null) return AxiomPanel.Status.of(said);
         if (saved == null) return null;
-        AxiomPanel.Status receipt = AxiomPanel.Status.of(tr("axiom.chromastudio.sampler.saved", saved.name));
+        AxiomPanel.Status receipt = AxiomPanel.Status.receipt(tr("axiom.chromastudio.sampler.saved", saved.name));
         return askedName == null ? receipt : receipt.withTip(tr("axiom.chromastudio.sampler.saved.renamed", askedName));
     }
 

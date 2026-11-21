@@ -34,14 +34,16 @@ final class AxiomPanel {
         }
     }
 
-    record Status(String text, String tip) {
-        static Status of(String text) { return new Status(text, ""); }
+    record Status(String text, String tip, boolean receipt) {
+        static Status of(String text) { return new Status(text, "", false); }
+
+        static Status receipt(String text) { return new Status(text, "", true); }
 
         static Status of(Component text) { return of(text.getString()); }
 
         Status withTip(String more) {
             if (more.isEmpty()) return this;
-            return new Status(text, tip.isEmpty() ? more : tip + "\n" + more);
+            return new Status(text, tip.isEmpty() ? more : tip + "\n" + more, receipt);
         }
     }
 
@@ -174,10 +176,11 @@ final class AxiomPanel {
         tip(s.tip());
     }
 
-    static Status refusal(Component why, String again) {
+    static Status refusal(Component why, String again, @Nullable String scriptAt) {
         if (!(why.getContents() instanceof TranslatableContents t) || !t.getKey().startsWith(REFUSED)) return Status.of(why);
         Status s = Status.of(why.getString() + " " + tr(again));
-        return t.getKey().equals(REFUSED + "masks_differ") && AxiomMask.scripted() ? s.withTip(tr(REFUSED + "masks_differ.tip")) : s;
+        boolean sameScript = scriptAt != null && scriptAt.equals(AxiomMask.script());
+        return t.getKey().equals(REFUSED + "masks_differ") && sameScript ? s.withTip(tr(REFUSED + "masks_differ.tip")) : s;
     }
 
     static Optional<Status> masks() {

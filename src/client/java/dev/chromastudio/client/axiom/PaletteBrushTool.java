@@ -90,6 +90,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private @Nullable Object previewFor;
     private final Edits toEdits = new Edits(), fromEdits = new Edits();
     private int kindsBefore, kindsAfter, masked, kept, receipt;
+    private @Nullable String scriptAt;
     private final Bound paletteBound = new Bound(), fromBound = new Bound();
 
     private List<Palette> listed = List.of();
@@ -143,6 +144,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         refused = null;
         receipt = 0;
         stroke.forget();
+        scriptAt = AxiomMask.script();
         if (wholeBuild()) {
             BlockHitResult hit = AxiomTools.tools.raycastBlock();
             if (hit == null || hit.getType() != HitResult.Type.BLOCK) return false;
@@ -283,6 +285,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             said = Component.translatable("axiom.chromastudio.brush.from_gone");
             return;
         }
+        scriptAt = AxiomMask.script();
         AxiomMask.Test mask = AxiomMask.now(level);
         WholeBuild made;
         try {
@@ -448,8 +451,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         AxiomPanel.Status status = status();
         AxiomPanel.status(status);
         if (!wholeBuild()) return;
-        boolean receipt = this.receipt > 0 && picked == null;
-        AxiomPanel.applyCancel(!preview.isEmpty(), status != null && preview.isEmpty() && !receipt ? status.text() : tr("axiom.chromastudio.brush.apply.none"),
+        AxiomPanel.applyCancel(!preview.isEmpty(), status != null && preview.isEmpty() && !status.receipt() ? status.text() : tr("axiom.chromastudio.brush.apply.none"),
                 picked != null, this::apply, () -> layout.later(this::cancel), null);
     }
 
@@ -465,10 +467,10 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (mode == Mode.RECOLOUR && fromGone()) return AxiomPanel.Status.of(tr("axiom.chromastudio.brush.from_gone"));
         Component why = wholeBuild() ? refused : stroke.refused();
         if (why == null && dropped && !wholeBuild()) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
-        if (why != null) return AxiomPanel.refusal(why, wholeBuild() ? "axiom.chromastudio.again.build" : "axiom.chromastudio.again.brush");
+        if (why != null) return AxiomPanel.refusal(why, wholeBuild() ? "axiom.chromastudio.again.build" : "axiom.chromastudio.again.brush", scriptAt);
         if (said != null) return AxiomPanel.Status.of(said);
         int sent = wholeBuild() ? receipt : stroke.sent();
-        if (sent > 0 && (!wholeBuild() || picked == null)) return AxiomPanel.Status.of(AxiomTools.count("axiom.chromastudio.changed", sent, sent));
+        if (sent > 0 && (!wholeBuild() || picked == null)) return AxiomPanel.Status.receipt(AxiomTools.count("axiom.chromastudio.changed", sent, sent));
         if (!wholeBuild()) return null;
         if (picked == null) return AxiomPanel.Status.of(tr("axiom.chromastudio.brush.pick"));
         if (found == null) return null;
