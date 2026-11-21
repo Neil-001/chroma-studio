@@ -148,6 +148,18 @@ class DistributionTest {
         assertEquals(expected, uneven.emd(even, Metric.SRGB), expected * 1e-6);
     }
 
+    @Test
+    void transportSendsBackEvenATinyFlow() {
+        double tiny = Math.scalb(1.0, -50);
+        double[] weights = {tiny, tiny, 1 - 2 * tiny};
+        int[] from = {2, 5, 255}, to = {3, 0, 255};
+        double[][] cost = new double[3][3];
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) cost[i][j] = Math.abs(from[i] - to[j]);
+        }
+        assertEquals(4 * tiny, Distribution.transport(weights, weights, cost), tiny * 1e-6);
+    }
+
     private static List<int[]> orders(int[] a, int k, List<int[]> out) {
         if (k == a.length) {
             out.add(a.clone());

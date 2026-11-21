@@ -6,7 +6,6 @@ import java.util.List;
 public final class Distribution {
     public static final int MAX_ENTRIES = 8;
     private static final int PIXEL_CLUSTERS = 4;
-    private static final double EMPTY = 1e-15;
     private static final double OPTIMAL_SLACK = 1e-9;
 
     private final Color[] colours;
@@ -128,6 +127,7 @@ public final class Distribution {
         int[] from = new int[n + m];
         boolean[] settled = new boolean[n + m];
         double sinkPotential = 0;
+        int paths = 0, mostPaths = (n + m) * n * m;
         while (true) {
             double highest = Double.NEGATIVE_INFINITY;
             for (int i = 0; i < n; i++) {
@@ -167,7 +167,7 @@ public final class Distribution {
                 } else {
                     for (int i = 0; i < n; i++) {
                         double through = dist[u] + Math.max(0, potential[u] - cost[i][u - n] - potential[i]);
-                        if (flow[i][u - n] > EMPTY && !settled[i] && through < dist[i]) {
+                        if (flow[i][u - n] > 0 && !settled[i] && through < dist[i]) {
                             dist[i] = through;
                             from[i] = u;
                         }
@@ -175,6 +175,7 @@ public final class Distribution {
                 }
             }
             if (end < 0) break;
+            if (++paths > mostPaths) throw new IllegalStateException("The transport plan took more than " + mostPaths + " paths");
 
             for (int v = 0; v < n + m; v++) potential[v] += Math.min(dist[v], reach);
             sinkPotential += reach;
@@ -215,7 +216,7 @@ public final class Distribution {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < flow[i].length; j++) {
                 double reduced = cost[i][j] + potential[i] - potential[n + j];
-                if (reduced < -tolerance || flow[i][j] > EMPTY && reduced > tolerance) {
+                if (reduced < -tolerance || flow[i][j] > 0 && reduced > tolerance) {
                     throw new IllegalStateException("The transport plan is not optimal: cell " + i + ", " + j + " has reduced cost " + reduced);
                 }
             }

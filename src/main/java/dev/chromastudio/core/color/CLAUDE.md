@@ -18,8 +18,9 @@ Colour maths for the block index and the tools: colour spaces, distances, harmon
 ## Transport
 
 - `Distribution.transport` finds each augmenting path with Dijkstra over costs reduced by potentials, with exact comparisons and rounding below zero clamped to zero. A node's predecessor is always settled before it, so the walk back along a path ends even when costs differ by less than rounding. Comparing costs with a tolerance would let nearly tied costs leave a cycle in the predecessors.
-- `Distribution.transport` ships until a supply or a demand is exactly empty, so even a difference in weight far below rounding is moved and costed. Only a flow at or below `EMPTY` is never sent back: such a flow is rounding left over from weights that sum to 1, and the floor is what bounds the loop. Each path either empties a supply or a demand for good, at most n + m times, or is limited by a flow it sends back, which is above `EMPTY`, so it ships more than `EMPTY`.
-- Before `Distribution.transport` answers, it checks the potentials against the flow as a proof of optimality and throws if a reduced cost is negative, or positive on a flow above `EMPTY`, by more than `OPTIMAL_SLACK` of the largest cost.
+- `Distribution.transport` ships until a supply or a demand is exactly empty, and any flow above zero can be sent back, however small. An input weight can be far below rounding, and a floor on either would leave it moved the wrong way or not at all. A path's bottleneck becomes exactly zero, so each path empties something.
+- `Distribution.transport` throws after `(n + m) · n · m` paths, 1,024 for eight by eight. Four million fuzzed inputs, among them near-tied costs, tied costs and weights down to 2⁻⁶⁰, needed at most 29, so only a broken solver reaches the limit.
+- Before `Distribution.transport` answers, it checks the potentials against the flow as a proof of optimality. It throws if a reduced cost is negative, or positive on a cell with flow, by more than `OPTIMAL_SLACK` of the largest cost.
 
 ## Threads
 
