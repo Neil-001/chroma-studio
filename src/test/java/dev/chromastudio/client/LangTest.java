@@ -27,14 +27,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
-/**
- * The keys that code builds from names, which nothing else would notice missing from the language file, and the
- * generated translations, which must keep up with the English.
- */
 class LangTest {
-    /** The generated translations. English is written by hand. */
     private static final List<String> TRANSLATIONS = List.of("zh_cn", "ru_ru", "pt_br", "de_de", "es_es", "fr_fr", "ja_jp", "ko_kr", "pl_pl");
-    /** What the game fills in: {@code %s}, {@code %d} and their numbered forms such as {@code %1$s}. */
     private static final Pattern PLACEHOLDER = Pattern.compile("%(?:\\d+\\$)?([sd])");
 
     private static JsonObject english() throws IOException { return language("en_us"); }
@@ -46,7 +40,6 @@ class LangTest {
         }
     }
 
-    /** A text's placeholders in order of kind, so a translation may move them but not drop or add one. */
     private static List<String> placeholders(String text) {
         List<String> found = new ArrayList<>();
         Matcher m = PLACEHOLDER.matcher(text.replace("%%", ""));
@@ -92,10 +85,8 @@ class LangTest {
             keys.add("axiom.chromastudio.shade.left." + way);
         }
         for (QueuedChanges.Refusal r : QueuedChanges.Refusal.values()) {
-            // Nothing to send, or nothing wrong, is never said.
             if (r != QueuedChanges.Refusal.NONE && r != QueuedChanges.Refusal.EMPTY) keys.add("axiom.chromastudio.refused." + r.name().toLowerCase(Locale.ROOT));
         }
-        // The Axiom panels' sentences about a number of blocks, which have their own words for one.
         for (String counted : List.of("count", "masked", "gradient_tool.skipped", "gradient_tool.left_alone")) {
             keys.add("axiom.chromastudio." + counted);
             keys.add("axiom.chromastudio." + counted + ".one");
@@ -114,7 +105,6 @@ class LangTest {
         }
         JsonObject english = english();
         for (String key : keys) assertTrue(english.has(key) && !english.get(key).getAsString().isBlank(), key);
-        // The dialog shows the commands as they're typed, so they need no text of their own, only to be the five expected.
         assertTrue(WorldEditPattern.COMMANDS.containsAll(List.of("set", "replace", "walls", "outline", "overlay")));
     }
 }

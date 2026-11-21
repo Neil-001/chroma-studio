@@ -13,31 +13,18 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
-/**
- * The screen picker: once armed, the next click anywhere takes the colour of the frame under the cursor, averaged
- * over 3 by 3 pixels. While it is armed the window isn't drawn, so what is under the cursor is the game and nothing
- * of the mod's, and a magnifier beside the cursor shows the nine pixels.
- *
- * <p>The game lays a frame's GUI out before it draws the world, so when {@link #render} runs the frame that can be
- * read is the last one shown, GUI and all. That is why the window steps aside rather than being read around.
- */
 public final class ScreenPicker {
     private ScreenPicker() {}
 
     private static final int SIDE = 3, CELL = 8;
-    /** Frames to wait after arming before a click counts, so the window is out of the frame that is read. */
     private static final int SETTLE = 2;
 
     private static IntConsumer onPick;
     private static int frames;
-    /** Where the player clicked, in GUI pixels, until the frame there has been read. */
     private static double clickX = -1, clickY = -1;
-    /** The nine pixels last read under the cursor, packed 0xRRGGBB in rows from the top, or null before the first read. */
     private static int[] seen;
-    /** Counts the reads asked for, so an old one that comes back late doesn't finish a newer pick. */
     private static int session;
 
-    /** Arms the picker. {@code onPick} gets the colour, packed 0xRRGGBB, on the client thread. */
     public static void arm(IntConsumer onPick) {
         ScreenPicker.onPick = onPick;
         frames = 0;
@@ -53,14 +40,12 @@ public final class ScreenPicker {
         session++;
     }
 
-    /** Takes the click that picks. The colour arrives once the frame has been read. */
     public static void click(double x, double y) {
         if (frames < SETTLE) return;
         clickX = x;
         clickY = y;
     }
 
-    /** Draws the magnifier and the hint, and reads the frame under the cursor or the click. The window calls it in place of drawing itself. */
     public static void render(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
@@ -81,7 +66,6 @@ public final class ScreenPicker {
         g.centeredText(font, hint, g.guiWidth() / 2, 6, 0xFFFFFFFF);
 
         if (seen == null) return;
-        // Beside the cursor, never under it, and inside the screen.
         int size = SIDE * CELL + 2, x = mouseX + 14, y = mouseY + 14;
         int textW = font.width("#000000") + 4;
         if (x + Math.max(size, textW) > g.guiWidth()) x = mouseX - 14 - Math.max(size, textW);
@@ -102,7 +86,6 @@ public final class ScreenPicker {
         if (taker != null) taker.accept(rgb);
     }
 
-    /** The average of some pixels, each packed 0xRRGGBB. */
     static int mean(int[] pixels) {
         int r = 0, g = 0, b = 0;
         for (int p : pixels) {
@@ -118,17 +101,14 @@ public final class ScreenPicker {
         void accept(int[] rgb);
     }
 
-    /** Reads the 3 by 3 pixels around a point given in GUI pixels from the last frame drawn. Near an edge the block of nine stays inside the frame. */
     private static void read(double guiX, double guiY, Pixels then) {
         Minecraft mc = Minecraft.getInstance();
         RenderTarget target = mc.gameRenderer.mainRenderTarget();
         GpuTexture texture = target.getColorTexture();
         int bytes = texture == null ? 0 : texture.getFormat().blockSize();
-        // Only four bytes a pixel is understood here, which is what the game's own frame has.
         if (bytes != 4 || target.width < SIDE || target.height < SIDE) return;
         double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
         int px = Math.clamp((int) (guiX * scale) - 1, 0, target.width - SIDE);
-        // The frame's rows run from the bottom up.
         int fromTop = Math.clamp((int) (guiY * scale) - 1, 0, target.height - SIDE);
         int py = target.height - SIDE - fromTop;
         try {
