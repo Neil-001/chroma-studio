@@ -79,12 +79,10 @@ class ModSettingsTest {
 
     @Test
     void aFileFromBeforeThePaletteBrushLoadsWithNothingLost() {
-        // The window's memory is saved under each field's own name, as it always was.
         assertTrue(ModSettings.read("{\"windowX\": 30, \"windowY\": 40, \"windowW\": 500, \"windowH\": 300, \"fullscreen\": true, \"resultCount\": 20}"));
         assertEquals(List.of(30, 40, 500, 300), List.of(ModSettings.windowX, ModSettings.windowY, ModSettings.windowW, ModSettings.windowH));
         assertTrue(ModSettings.fullscreen);
         assertEquals(20, ModSettings.resultCount);
-        // The brush's choices it lacks start at their defaults.
         assertEquals("build", ModSettings.brushFrom);
         assertEquals(4, ModSettings.brushRadius);
         assertTrue(ModSettings.MEMORY.containsAll(List.of("windowX", "windowY", "windowW", "windowH", "fullscreen")));

@@ -67,7 +67,6 @@ class PaletteStoreTest {
         assertEquals("Wall", store.create("Wall", STONES).name);
         assertEquals("Wall (2)", store.create("Wall", STONES).name);
         assertEquals("wall (3)", store.create("wall", STONES).name);
-        // Different names that come to the same file name get a numbered file.
         store.create("Wall!", STONES);
         assertEquals(List.of("wall-2.json", "wall-3.json", "wall-4.json", "wall.json"), fileNames());
         assertEquals(4, new PaletteStore(dir).own().size());
@@ -92,7 +91,6 @@ class PaletteStoreTest {
         assertEquals("New name", new PaletteStore(dir).own().getFirst().name);
         assertFalse(store.rename(p, "  "));
         assertEquals("New name", p.name);
-        // A name that keeps the file name rewrites the file in place.
         assertTrue(store.rename(p, "NEW NAME"));
         assertEquals(List.of("new-name.json"), fileNames());
         assertEquals("NEW NAME", new PaletteStore(dir).own().getFirst().name);
@@ -180,7 +178,6 @@ class PaletteStoreTest {
         assertEquals(2, started.entries.size());
         assertEquals(2, new PaletteStore(dir).own().getFirst().entries.size());
 
-        // A preset can't be changed, so adding with one selected starts a palette of the player's own.
         store.select(store.presets().getFirst());
         store.add("minecraft:dirt", "");
         assertFalse(store.selected().preset);

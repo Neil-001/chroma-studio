@@ -40,8 +40,6 @@ repositories {
 			includeGroup 'dev.architectury'
 		}
 	}
-	// Axiom's client API and ImGui binding, pinned in libs/ so the build doesn't wait on JitPack; libs/README.md says
-	// where they come from. Axiom itself is closed source and never a dependency: put its jar in run/fabric/mods to try it.
 	exclusiveContent {
 		forRepository {
 			maven {
@@ -72,8 +70,6 @@ neoForge {
 	}
 }
 
-// The shared code, next to this project's own NeoForge entrypoints. NeoForge has no separate client source set,
-// so the client code goes into the same jar.
 sourceSets {
 	main {
 		java.srcDir rootProject.file('src/main/java')
@@ -83,14 +79,12 @@ sourceSets {
 }
 
 dependencies {
-	// Axiom is optional: only dev.chromastudio.client.axiom refers to its API, and only once the mod is known to be loaded.
 	compileOnly("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
 	compileOnly("com.github.moulberry.imgui-java:imgui-java-binding:${project.axiom_imgui_version}") { transitive = false }
 	// Litematica's Fabric jars, only to compile the bridge against. Forgematica keeps the same package and class names,
 	// and Minecraft's names are the same on both loaders.
 	compileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
 	compileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
-	// The recipe viewers' APIs, only to compile RecipeViewers and JEI's plugin class against. JEI's is the loader-neutral jar.
 	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
 	compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:${project.rei_version}") { transitive = false }
 	// REI's API names Architectury's types in the methods used.
@@ -98,7 +92,6 @@ dependencies {
 	// REI's classes carry Fabric's @Environment annotation on every loader, and the compiler warns when it can't
 	// read it. Nothing here may import from this jar: it is on the path for that annotation alone.
 	compileOnly("net.fabricmc:fabric-loader:${project.loader_version}") { transitive = false }
-	// To try the recipe key, run the dev client with one of them: ./gradlew :neoforge:runClient -Pviewer=jei (or rei)
 	if (findProperty('viewer') == 'jei') {
 		runtimeOnly("mezz.jei:jei-${project.minecraft_version}-neoforge:${project.jei_version}") { transitive = false }
 	}
