@@ -31,7 +31,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -259,7 +258,7 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
     }
 
     static boolean paintable(BlockGetter level, BlockPos pos, BlockState s) {
-        return !(s.getBlock() instanceof EntityBlock) && s.isCollisionShapeFullBlock(level, pos);
+        return GradientShapes.paintable(level, pos, s);
     }
 
     private boolean apply() {

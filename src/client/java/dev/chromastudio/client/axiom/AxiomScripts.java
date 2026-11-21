@@ -27,7 +27,6 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import org.jspecify.annotations.Nullable;
@@ -79,7 +78,7 @@ final class AxiomScripts {
         List<PaletteEntry> full = new ArrayList<>();
         for (PaletteEntry e : steps) {
             BlockState s = PaletteBlocks.state(e);
-            if (s != null && !(s.getBlock() instanceof EntityBlock) && s.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) full.add(e);
+            if (s != null && GradientShapes.paintable(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)) full.add(e);
         }
         if (full.size() < 2) throw new Refused(Component.translatable("axiom.chromastudio.gradient_tool.missing"));
         int start = switch (axis) {
@@ -97,7 +96,7 @@ final class AxiomScripts {
 
     static AxiomScript.Kept gradientKept() {
         return kept(s -> !s.isAir() && !(FoundBuild.member(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)
-                && GradientTool.paintable(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)), s -> {
+                && GradientShapes.paintable(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, s)), s -> {
             return s.getBlock().defaultBlockState().getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty()
                     || AxiomScript.KEPT_BY_PROPERTY.stream().anyMatch(p -> property(s, p) != null);
         });

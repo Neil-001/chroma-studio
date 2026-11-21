@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.UnaryOperator;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Fallable;
@@ -39,6 +41,10 @@ final class GradientShapes {
     GradientShapes(Face face, TintContext tint) {
         this.face = face;
         this.tint = tint;
+    }
+
+    static boolean paintable(BlockGetter level, BlockPos pos, BlockState s) {
+        return !(s.getBlock() instanceof EntityBlock) && s.isCollisionShapeFullBlock(level, pos);
     }
 
     boolean shaped(BlockState here) {

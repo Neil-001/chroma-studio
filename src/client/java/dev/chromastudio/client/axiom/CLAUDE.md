@@ -2,7 +2,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 ## Entry and failure
 
-- `AxiomBridge` and `AxiomCommand` name no Axiom or ImGui class, in signatures or bodies, because they load on NeoForge and on clients without Axiom. The bridge's paths that need Axiom enter the other classes only once `AxiomBridge.isPresent` is true.
+- `AxiomBridge` and `AxiomCommand` name no Axiom or ImGui class, in signatures or bodies, because they load on NeoForge and on clients without Axiom. The same holds for every class a script maker reaches (`AxiomScripts`, `RecolourPlan`, `ScatterBlocks`, `GradientShapes`, `FoundBuild`), which `WithoutAxiomTest` checks with Axiom's classes hidden. The bridge's paths that need Axiom enter the other classes only once `AxiomBridge.isPresent` is true.
 - The UI asks `AxiomBridge.whyNot` and greys a control out with its answer, rather than checking the mod id. The bridge's script makers call `AxiomScripts` without that guard, as scripts are only text, and the controls that offer them check `whyNot` instead.
 - Brigadier merges literals of the same name, so `AxiomCommand` builds the whole `/chroma axiom` tree, and a new subcommand is one more child of `axiom`.
 - `AxiomBridge.register` runs after Axiom's own entrypoint, so Axiom's tool list is there to add to. `AxiomTools.register` makes every tool before it adds any, so a tool this Axiom can't make leaves none behind.
@@ -112,7 +112,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 ## Scripts
 
-- Each script reuses its tool's rules for which blocks may change (`RecolourPlan`, `ScatterBlocks`, `GradientTool.paintable`), so it never replaces a block its tool would leave alone for what the block is. A script can't see Axiom's tool masks, which apply to it as to any Script Brush, and the gradient script fills air with its Paint air box ticked, which the gradient tool never does.
+- Each script reuses its tool's rules for which blocks may change (`RecolourPlan`, `ScatterBlocks`, `GradientShapes.paintable`), so it never replaces a block its tool would leave alone for what the block is. A script can't see Axiom's tool masks, which apply to it as to any Script Brush, and the gradient script fills air with its Paint air box ticked, which the gradient tool never does.
 - A script names blocks as the game writes them, and copies properties by value name, as Axiom's `getBlockProperty` gives them and `withBlockProperty` sets them.
 - The gradient script paints only full cubes with nothing inside, as a chain or a slab would leave holes in a wall and a chest would come empty. Where the gradient tool gives a stair or slab its step's shape, the script can't reshape a block and leaves it alone.
 - What a script leaves alone rests only on block names and properties. A tag is a world's data, which its data packs may change, and a script may run in another world than the one it was made in.
