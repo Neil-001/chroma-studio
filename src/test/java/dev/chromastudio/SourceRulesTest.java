@@ -23,12 +23,7 @@ class SourceRulesTest {
     private static final String API = "src/client/java/dev/chromastudio/api/";
     private static final Map<String, Integer> ALLOWED = Map.of(
             "src/client/java/dev/chromastudio/api/ChromaStudioApi.java", 2,
-            "src/client/java/dev/chromastudio/client/ChromaStudioClient.java", 1,
-            "src/client/java/dev/chromastudio/client/action/HotbarFill.java", 1,
-            "src/client/java/dev/chromastudio/client/axiom/AxiomEditor.java", 1,
             "src/client/java/dev/chromastudio/client/axiom/SamplerTool.java", 1,
-            "src/client/java/dev/chromastudio/client/ui/Tooltips.java", 1,
-            "src/client/java/dev/chromastudio/client/ui/tabs/GradientTab.java", 1,
             "src/client/java/dev/chromastudio/client/ui/tabs/PaletteDialogs.java", 1,
             "src/main/java/dev/chromastudio/core/color/Distribution.java", 1);
 
