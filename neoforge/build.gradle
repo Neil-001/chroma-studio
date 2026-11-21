@@ -17,7 +17,6 @@ repositories {
 		}
 		filter { includeModule 'net.fabricmc', 'fabric-loader' }
 	}
-	// Each of these groups is asked for from its own Maven alone, so another repository's outage can't fail the build.
 	exclusiveContent {
 		forRepository {
 			maven {
@@ -81,16 +80,11 @@ sourceSets {
 dependencies {
 	compileOnly("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
 	compileOnly("com.github.moulberry.imgui-java:imgui-java-binding:${project.axiom_imgui_version}") { transitive = false }
-	// Litematica's Fabric jars, only to compile the bridge against. Forgematica keeps the same package and class names,
-	// and Minecraft's names are the same on both loaders.
 	compileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
 	compileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
 	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
 	compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:${project.rei_version}") { transitive = false }
-	// REI's API names Architectury's types in the methods used.
 	compileOnly("dev.architectury:architectury-neoforge:${project.architectury_version}") { transitive = false }
-	// REI's classes carry Fabric's @Environment annotation on every loader, and the compiler warns when it can't
-	// read it. Nothing here may import from this jar: it is on the path for that annotation alone.
 	compileOnly("net.fabricmc:fabric-loader:${project.loader_version}") { transitive = false }
 	if (findProperty('viewer') == 'jei') {
 		runtimeOnly("mezz.jei:jei-${project.minecraft_version}-neoforge:${project.jei_version}") { transitive = false }
