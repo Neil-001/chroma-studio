@@ -372,6 +372,7 @@ public final class GradientTab extends PanelTab {
 
     private boolean show(StoredGradient g) {
         restored = null;
+        int build = BlockIndex.get().version();
         if (!BlockIndex.get().ready() || g.blocks().size() != steps) return false;
         Scale scale = PaletteBlocks.scale();
         List<Step> shown = new ArrayList<>();
@@ -397,7 +398,7 @@ public final class GradientTab extends PanelTab {
         poolById = chosenFrom.byId;
         poolMetric = PaletteBlocks.metric();
         solvedFor = inputs();
-        solvedBuild = BlockIndex.get().version();
+        solvedBuild = build;
         restored = g;
         restoredFor = pinKey();
         restoredBuild = solvedBuild;
@@ -405,6 +406,7 @@ public final class GradientTab extends PanelTab {
     }
 
     private static void apply(StoredGradient g) {
+        int build = BlockIndex.get().version();
         STOPS.clear();
         for (StoredGradient.Stop stop : g.stops()) {
             Entry e = stop.isBlock() ? PaletteBlocks.entry(stop.block()) : null;
@@ -428,7 +430,7 @@ public final class GradientTab extends PanelTab {
             if (e != null) PINS.put(i, e);
         }
         pinsFor = pinKey();
-        pinsBuild = BlockIndex.get().version();
+        pinsBuild = build;
         savedName = g.name();
     }
 
