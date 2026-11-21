@@ -299,6 +299,10 @@ public final class GradientTab extends PanelTab {
         });
     }
 
+    /**
+     * Something only the index's current build holds, or null before the first. A later build holds another, so this
+     * tells a rebuild that finished while the tab wasn't looking, pinned or behind another tab.
+     */
     private static Object build() {
         List<Entry> stone = BlockIndex.get().statesOf(Blocks.STONE);
         return stone.isEmpty() ? null : stone.getFirst();
