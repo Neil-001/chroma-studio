@@ -16,7 +16,7 @@ A reference number that a test works out from its own inputs is not listed here.
 
 ## Scenarios
 
-- `ShadeStepsTest.commonBlocksRoundTripAtEveryStepSize` accepts three round trips that don't return, each a block that shares its one neighbour that way with another block, which the closer pair keeps. Terracotta and pink terracotta both darken to red terracotta, which lightens to pink. Oak and jungle planks both darken to spruce at the larger steps. At steps above 0.095, cobblestone darkens to cobbled deepslate, which lightens to tuff.
+- `ShadeStepsTest.commonBlocksRoundTripAtEveryStepSize` accepts three round trips that don't return, each a block that shares its one neighbour that way with another block, which the closer pair keeps. Terracotta and pink terracotta both darken to red terracotta, which lightens to pink. Oak and jungle planks both darken to spruce at the larger steps. At 0.100 and 0.105, cobblestone darkens to cobbled deepslate, which lightens to tuff. The test permits this above 0.095.
 - `RecolourTest.aHouseWithMoreRoofThanWallStillPutsItsWallsOnAMainBlock` uses the counts of the palette brush's stone house as it stands. Its dark roof is the largest part, 98 blocks against the walls' 63, so the main material can't simply be the largest shade.
 - `HotbarWritesTest.aSetThatQuietlyDoesNothingIsCaughtByReadingBack` copies Axiom's held hotbar outside creative mode: the call returns and the slot is unchanged.
 - `HotbarWritesTest.aFillWritesOnlyTheNewItemsAndNamesTheSlotsAQuietRefusalLeavesChanged` checks that no slot is written with what it already holds before its new item, which would send the server packets and save Axiom's hotbars for nothing.

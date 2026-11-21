@@ -9,7 +9,7 @@ Colour maths for the block index and the tools: colour spaces, distances, harmon
 ## Averages and clusters
 
 - `TextureStats` and `Distribution.mean` average in linear light, as colours blend when seen from far away.
-- `TextureStats.of` takes one frame. The caller averages an animated strip to one frame first.
+- `TextureStats.of` takes one frame. For an animated texture the caller first averages its frames or takes the first one, as the settings say.
 - `TextureStats` keeps the exact alpha of each full-scale pixel for its statistics. A faint pixel's alpha can round to nothing in the 8-bit thumbnail while it still counts.
 - `Distribution.of` divides the weights by the largest before summing them, so very large weights don't overflow.
 - `Kmeans` uses a fixed seed, so one image always gives the same clusters and a cached index matches a rebuilt one.
