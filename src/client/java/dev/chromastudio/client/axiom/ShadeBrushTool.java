@@ -25,6 +25,7 @@ import dev.chromastudio.core.palette.ShadeSteps;
 import dev.chromastudio.core.palette.ShadeSteps.Direction;
 import dev.chromastudio.core.palette.WeightedPick;
 import imgui.moulberry92.ImGui;
+import imgui.moulberry92.flag.ImGuiHoveredFlags;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -78,6 +79,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private Palette from;
     private final Set<Kind> kinds = EnumSet.copyOf(CHANGEABLE);
     private @Nullable BlockState hovered;
+    private boolean overPanel;
     private @Nullable Plan plan;
 
     @Override
@@ -137,7 +139,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
         boolean onBlock = hit != null && hit.getType() == HitResult.Type.BLOCK && level != null;
-        hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : null;
+        hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : overPanel ? hovered : null;
         if (!onBlock) return;
         int r = AxiomPanel.radius(radius);
         if (outlineRadius != r) {
@@ -149,7 +151,10 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     }
 
     @Override
-    public void displayImguiOptions() { layout.draw(this::options, this::bottom); }
+    public void displayImguiOptions() {
+        overPanel = ImGui.isWindowHovered(ImGuiHoveredFlags.RootAndChildWindows);
+        layout.draw(this::options, this::bottom);
+    }
 
     private void options() {
         for (Direction d : List.of(Direction.DARKER, Direction.LIGHTER)) {

@@ -191,6 +191,8 @@ public final class ImGui {
 
     public static boolean isItemHovered() { return false; }
 
+    public static boolean isWindowHovered(int flags) { return false; }
+
     public static boolean isItemDeactivatedAfterEdit() { return false; }
 
     public static float getItemRectMinX() { return 8; }
