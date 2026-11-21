@@ -8,9 +8,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
-/** A palette as JSON, the form of its file and of JSON import and export. */
 public final class PaletteCodec {
-    /** The file format's version. A file without it, or with another, is refused rather than guessed at. */
     public static final int FORMAT = 1;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -37,10 +35,6 @@ public final class PaletteCodec {
         return GSON.toJson(o);
     }
 
-    /**
-     * Reads a palette. A missing or mistyped field gets its default and unknown fields are ignored, so a file
-     * edited by hand still loads. An entry with no block is left out, since nothing can stand in for it.
-     */
     public static Palette fromJson(String json) {
         JsonElement root;
         try {

@@ -30,9 +30,7 @@ class BuildSampleTest {
         s.add(0, 0, 0, BRICKS);
         s.add(1, 0, 0, BRICKS);
         assertTrue(s.add(0, 0, 0, PLANKS));
-        // Of two as common, the earlier id comes first.
         assertEquals(List.of(new BuildSample.Row(PLANKS, 1), new BuildSample.Row(BRICKS, 1)), s.rows());
-        // Broken since, so it no longer counts.
         assertTrue(s.add(1, 0, 0, null));
         assertEquals(List.of(new BuildSample.Row(PLANKS, 1)), s.rows());
         assertFalse(s.add(5, 5, 5, null));
@@ -57,7 +55,6 @@ class BuildSampleTest {
         assertEquals(List.of(new BuildSample.Row(BRICKS, 4)), s.rows());
         assertEquals(List.of(GLASS), s.removed());
         assertFalse(s.counts(0, 1, 0));
-        // More glass is sampled while it's out: it doesn't show, and isn't a change the player sees.
         assertFalse(s.add(9, 1, 0, GLASS));
         assertEquals(4, s.total());
         s.putBack(GLASS);
@@ -84,11 +81,9 @@ class BuildSampleTest {
         BuildSample s = new BuildSample();
         s.add(0, 0, 0, GLASS);
         s.remove(GLASS);
-        // Nothing the player sees changes, so a palette saved from the sample is still the same.
         assertFalse(s.add(0, 0, 0, null));
         assertTrue(s.isEmpty());
         assertTrue(s.removed().isEmpty());
-        // Sampled again later, it counts as any new kind does.
         s.add(1, 0, 0, GLASS);
         assertEquals(List.of(new BuildSample.Row(GLASS, 1)), s.rows());
     }
@@ -134,7 +129,6 @@ class BuildSampleTest {
         List<PaletteEntry> e = s.entries();
         assertEquals(BuildSample.MAX_WEIGHT, e.get(0).weight());
         assertEquals(500, e.get(1).weight());
-        // 2 of 5000 scales to 0.4, which would round to nothing: the accent keeps a weight of 1.
         assertEquals(new PaletteEntry(LANTERN, "", 1), e.get(2));
     }
 

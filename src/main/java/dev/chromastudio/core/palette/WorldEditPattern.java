@@ -3,18 +3,11 @@ package dev.chromastudio.core.palette;
 import java.util.ArrayList;
 import java.util.List;
 
-/** A palette as a WorldEdit pattern, and the commands that take one. */
 public final class WorldEditPattern {
-    /** The commands {@link #command} can build, without their slashes. */
     public static final List<String> COMMANDS = List.of("set", "replace", "walls", "outline", "overlay");
 
     private WorldEditPattern() {}
 
-    /**
-     * {@code stone,andesite} when every weight is 1, and otherwise {@code 70%stone,30%andesite}, with whole
-     * percentages that sum to 100. No entry is given 0%, which WorldEdit would never place. Past a hundred
-     * entries that can't be done, and the weights themselves stand in, which WorldEdit reads the same way.
-     */
     public static String of(Palette p) {
         List<PaletteEntry> entries = p.entries;
         boolean even = entries.stream().allMatch(e -> e.weight() == 1);
@@ -27,11 +20,6 @@ public final class WorldEditPattern {
         return String.join(",", parts);
     }
 
-    /**
-     * {@code //set}, {@code //walls}, {@code //outline} or {@code //overlay} with the palette's pattern, or
-     * {@code //replace} with the blocks to replace first. {@code which} is one of {@link #COMMANDS};
-     * {@code replaceFrom} is a WorldEdit mask and only {@code replace} reads it.
-     */
     public static String command(String which, Palette p, String replaceFrom) {
         if (which == null || !COMMANDS.contains(which)) throw new IllegalArgumentException("Unknown WorldEdit command: " + which);
         if (p.entries.isEmpty()) throw new IllegalArgumentException("The palette is empty");
@@ -44,7 +32,6 @@ public final class WorldEditPattern {
         return entries.stream().mapToInt(PaletteEntry::weight).toArray();
     }
 
-    /** Largest remainder rounding: everyone gets their share rounded down, and the points left over go to the largest fractions. */
     private static int[] percentages(List<PaletteEntry> entries) {
         int n = entries.size();
         long total = 0;
@@ -64,7 +51,6 @@ public final class WorldEditPattern {
             out[best]++;
             remainder[best] = -1;
         }
-        // An entry too rare for a whole point takes one from the largest, so it still turns up.
         for (int i = 0; i < n; i++) {
             if (out[i] > 0) continue;
             int largest = 0;

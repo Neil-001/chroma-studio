@@ -4,16 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-/**
- * A palette as one line of text to paste to someone: {@code chroma1:stone,andesite*3,oak_log[axis=y]/Name}.
- * Entries are separated by commas. The namespace is left off the game's own blocks, properties go in brackets,
- * a weight other than 1 follows {@code *}, and the name follows the first slash. Tags and notes aren't carried.
- */
 public final class ShareString {
     public static final String PREFIX = "chroma1:";
 
-    // A slash ends the entries, so the rare block id with one in its path carries it as this. Ids can't hold a
-    // percent sign, which keeps it from being mistaken for anything else.
     private static final String SLASH = "%2F";
     private static final Pattern VERSIONED = Pattern.compile("chroma\\d+:.*", Pattern.DOTALL);
     private static final Pattern ID = Pattern.compile("([a-z0-9_.-]+:)?[a-z0-9_./-]+");
@@ -33,7 +26,6 @@ public final class ShareString {
         return out.toString();
     }
 
-    /** Reads a share string, with any whitespace around it ignored. Says what is wrong when it can't. */
     public static Palette decode(String s) {
         if (s == null || s.isBlank()) throw new IllegalArgumentException("There is no share string");
         String text = s.strip();
@@ -51,7 +43,6 @@ public final class ShareString {
         return p;
     }
 
-    /** Splits at the commas between entries, leaving the ones between properties alone. */
     private static List<String> split(String entries) {
         List<String> out = new ArrayList<>();
         int start = 0;

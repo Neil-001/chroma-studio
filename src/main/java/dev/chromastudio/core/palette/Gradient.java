@@ -12,41 +12,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Picks the blocks of a gradient: one for each ideal colour, none used twice, as close overall as can be. */
 public final class Gradient {
-    /** The fewest of each step's nearest candidates that go into the pool the assignment is solved over. */
     public static final int NEAREST = 16;
 
-    /** Something that can fill a step: {@code key} is the caller's own handle for it, and {@code spread} its texture spread. */
     public record Candidate(Object key, Distribution distribution, double spread) {}
 
-    /** The candidate chosen for each ideal colour, and the mean distance between the two, in the metric's units. */
     public record Result(List<Candidate> steps, List<Oklch> ideal, double meanDeltaE) {}
 
-    /** A candidate that could fill a step, and its distance from the step's ideal colour, in the metric's units. */
     public record Option(Candidate candidate, double deltaE) {}
 
     private Gradient() {}
 
-    /** {@link #solve(List, List, Metric, boolean, Map)} with no step pinned. */
     public static Result solve(List<Oklch> ideal, List<Candidate> all, Metric metric, boolean matchSpread) {
         return solve(ideal, all, metric, matchSpread, Map.of());
     }
 
-    /**
-     * Assigns a different candidate to each ideal colour so that the total cost is the least possible. A step's
-     * cost for a candidate is the earth mover's distance from the ideal colour, which is the candidate's mean
-     * per-pixel ΔE from it. With {@code matchSpread}, how far the candidate's spread is from a target is added,
-     * the target being the mean spread of the closest candidates to the first and last colours, so that the
-     * steps in between look as busy as the ends.
-     *
-     * <p>Candidates with equal keys are the same block: only the first of them in the list is used.
-     *
-     * <p>{@code pinned} holds the steps whose candidate is already decided, as the step's number from 0 and the
-     * candidate's key. Such a step gets that candidate whatever it costs, and the others share out the rest at
-     * the least cost, so still nothing is used twice. A pin is left out when no candidate has its key, when its
-     * step doesn't exist, or when an earlier step has pinned the same candidate.
-     */
     public static Result solve(List<Oklch> ideal, List<Candidate> all, Metric metric, boolean matchSpread, Map<Integer, ?> pinned) {
         List<Candidate> candidates = new ArrayList<>(all.size());
         Set<Object> keys = new HashSet<>();
@@ -69,7 +49,6 @@ public final class Gradient {
             }
         }
 
-        // The pinned steps take their candidates first, and the assignment is solved over what is left of both.
         int[] column = new int[n];
         Arrays.fill(column, -1);
         boolean[] taken = new boolean[m];
@@ -110,11 +89,6 @@ public final class Gradient {
         return new Result(List.copyOf(steps), List.copyOf(ideal), total / n);
     }
 
-    /**
-     * The candidates closest to one ideal colour, nearest first, for the player to choose among: at most
-     * {@code limit} of them, without those whose keys are in {@code used}. The distance is the one a solve counts
-     * as the colour's, without anything for the spread. Candidates with equal keys are the same block, as in a solve.
-     */
     public static List<Option> closest(Oklch ideal, List<Candidate> all, Metric metric, Set<?> used, int limit) {
         Distribution target = Distribution.of(Color.ofOklch(ideal));
         List<Option> options = new ArrayList<>();
@@ -122,7 +96,6 @@ public final class Gradient {
         for (Candidate c : all) {
             if (keys.add(c.key()) && !used.contains(c.key())) options.add(new Option(c, target.emd(c.distribution(), metric)));
         }
-        // The sort is stable, so equal distances keep list order.
         options.sort((a, b) -> Double.compare(a.deltaE(), b.deltaE()));
         return List.copyOf(options.subList(0, Math.clamp(limit, 0, options.size())));
     }
@@ -133,12 +106,6 @@ public final class Gradient {
         return best;
     }
 
-    /**
-     * The candidates worth solving over: each step's nearest few, in list order. Some best assignment gives every
-     * step one of its n nearest, since a step given anything further always has one of those n going spare to
-     * swap for. So taking at least as many as there are steps loses nothing, and keeps thousands of candidates
-     * down to a few hundred.
-     */
     static int[] pool(double[][] cost) {
         int n = cost.length, m = cost[0].length;
         int keep = Math.min(m, Math.max(NEAREST, n));
@@ -146,7 +113,6 @@ public final class Gradient {
         Integer[] order = new Integer[m];
         for (double[] row : cost) {
             for (int j = 0; j < m; j++) order[j] = j;
-            // The sort is stable, so equal costs keep list order and the pool is the same on every run.
             Arrays.sort(order, (a, b) -> Double.compare(row[a], row[b]));
             for (int k = 0; k < keep; k++) in[order[k]] = true;
         }
@@ -157,14 +123,8 @@ public final class Gradient {
         return pool;
     }
 
-    /**
-     * The Hungarian method for a cost matrix with no more rows than columns: gives each row its own column at the
-     * least total cost. It adds the rows one at a time, each along the cheapest path that makes room for it, and
-     * keeps a price on every row and column so that later paths stay cheapest. Exact, in rows² × columns steps.
-     */
     static int[] assign(double[][] cost) {
         int n = cost.length, m = cost[0].length;
-        // Rows and columns are numbered from 1 here, and column 0 holds the row being added.
         double[] rowPrice = new double[n + 1], columnPrice = new double[m + 1];
         int[] rowOf = new int[m + 1], previous = new int[m + 1];
         double[] slack = new double[m + 1];
@@ -200,7 +160,6 @@ public final class Gradient {
                 }
                 column = next;
             } while (rowOf[column] != 0);
-            // Walk the path back, moving each row on it to the column it reached.
             do {
                 int before = previous[column];
                 rowOf[column] = rowOf[before];

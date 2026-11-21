@@ -5,49 +5,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Writes items into numbered hotbars all or nothing, as far as that can be promised, and puts back what was there. The
- * hotbars are another mod's, read and written through calls that may throw or quietly not take, so every slot is read
- * before anything changes and read back after the writes, and on any failure what was written is put back before the
- * caller hears of it. Calls that stop working partway, and stay broken, can't be put right at once, so the caller is
- * told exactly which slots were left changed. It is generic over the item so it can be tested without the game.
- *
- * <p>Nothing is written to a slot before its new item: writing each slot's own item back first, to see that it can be
- * set, would send the server a change for every slot and save the other mod's hotbars for nothing, and still couldn't
- * tell a slot that quietly ignores writes. Reading back after the writes is what catches that.
- */
 public final class HotbarWrites {
     private HotbarWrites() {}
 
-    /** Hotbars numbered from 0, with slots numbered from 0 in each. Any call may throw. */
     public interface Hotbars<T> {
         T get(int hotbar, int slot) throws Throwable;
 
         void set(int hotbar, int slot, T item) throws Throwable;
 
-        /** Whether two items are the same, as a slot read back should be what was written. */
         boolean same(T a, T b);
     }
 
-    /** One slot of one hotbar. */
     public record Slot(int hotbar, int slot) {}
 
-    /** One slot and what it held before a write. */
     public record Was<T>(int hotbar, int slot, T item) {}
 
-    /**
-     * How a write went. {@code undo} is what an Undo should put back: everything the write replaced when it worked,
-     * nothing when it failed and was put back, and the slots still changed, by reading them back, when putting back
-     * failed too. {@code failure} is null when the write worked.
-     */
     public record Result<T>(List<Was<T>> undo, Throwable failure) {
         public boolean worked() { return failure == null; }
     }
 
-    /**
-     * How putting back went: the slots that still don't hold what they held before, each once with what it held, and
-     * what went wrong, null when nothing did. A slot that couldn't be read back counts as still changed.
-     */
     public record Restored<T>(List<Was<T>> left, Throwable failure) {
         public Restored {
             left = List.copyOf(left);
@@ -56,11 +32,6 @@ public final class HotbarWrites {
         public boolean done() { return left.isEmpty(); }
     }
 
-    /**
-     * Puts each item in its slot, the two lists in step. Every slot is read before anything is written, so a failed
-     * read changes nothing. A set that throws or quietly doesn't take has what was written put back; one that stops
-     * working too can leave slots changed, which the result names for Undo.
-     */
     public static <T> Result<T> write(Hotbars<T> hotbars, List<Slot> slots, List<T> items) {
         if (slots.size() != items.size()) throw new IllegalArgumentException(slots.size() + " slots for " + items.size() + " items");
         List<Was<T>> before = new ArrayList<>();
@@ -78,17 +49,12 @@ public final class HotbarWrites {
                     throw new IllegalStateException("hotbar " + s.hotbar() + " slot " + s.slot() + " didn't take its item");
             }
         } catch (Throwable t) {
-            // A set that threw may still have taken, so its slot is put back too.
             Restored<T> back = restore(hotbars, before.subList(0, Math.min(written + 1, before.size())));
             return new Result<>(back.left(), together(t, back.failure()));
         }
         return new Result<>(List.copyOf(before), null);
     }
 
-    /**
-     * Puts back what a write replaced, last first, so a slot named twice ends as it began, and reads every slot back,
-     * since a set can return without having done anything. Every slot is tried.
-     */
     public static <T> Restored<T> restore(Hotbars<T> hotbars, List<Was<T>> was) {
         Throwable failed = null;
         for (int i = was.size() - 1; i >= 0; i--) {
@@ -99,7 +65,6 @@ public final class HotbarWrites {
                 failed = together(failed, t);
             }
         }
-        // Last first means a slot named twice ends as its first entry has it.
         List<Was<T>> left = new ArrayList<>();
         Set<Slot> checked = new HashSet<>();
         for (Was<T> w : was) {
@@ -115,7 +80,6 @@ public final class HotbarWrites {
         return new Restored<>(left, failed);
     }
 
-    /** One failure carrying another, which may be null or, from a mod that reuses its exceptions, the same one. */
     private static Throwable together(Throwable first, Throwable then) {
         if (first == null) return then;
         if (then != null && then != first) first.addSuppressed(then);
