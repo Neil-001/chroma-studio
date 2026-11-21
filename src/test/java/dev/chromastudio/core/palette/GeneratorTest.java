@@ -85,7 +85,6 @@ class GeneratorTest {
 
     @Test
     void theRandomGeneratorPairsHuesWithLightnesses() {
-        // Over many rolls the first hue meets every lightness, not always the darkest.
         boolean[] seen = new boolean[4];
         Random random = new Random(9);
         for (int roll = 0; roll < 200; roll++) {
@@ -97,7 +96,6 @@ class GeneratorTest {
 
     @Test
     void shadesKeepHueAndChromaAndStepLightnessEvenly() {
-        // Little enough chroma to fit sRGB even at the dark end.
         List<Oklch> shades = Lightness.shades(SEED.withC(0.02), 4);
         assertEquals(4, shades.size());
         for (int i = 0; i < 4; i++) {

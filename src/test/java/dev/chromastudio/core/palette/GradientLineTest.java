@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 class GradientLineTest {
     @Test
     void bandsShareTheBlocksFromEndToEndEqually() {
-        // 32 blocks from y 0 to y 31 and 8 steps: four blocks a step, the ends included.
         GradientLine line = new GradientLine(0, 0, 0, 0, 31, 0);
         for (int y = 0; y < 32; y++) assertEquals(y / 4, line.step(0, y, 0, 8, 0), "y " + y);
     }
@@ -24,7 +23,6 @@ class GradientLineTest {
 
     @Test
     void aPlaneAcrossTheLineHasOneStep() {
-        // A diagonal line: blocks off it take the step of where they meet it square on.
         GradientLine line = new GradientLine(0, 0, 0, 20, 20, 0);
         for (int i = -5; i <= 5; i++) assertEquals(line.step(10, 10, 0, 6, 0), line.step(10 + i, 10 - i, 3, 6, 0));
     }
@@ -44,7 +42,6 @@ class GradientLineTest {
 
     @Test
     void noBlendIsHardBands() {
-        // A blend of 0 gives exactly the bands: each step's share of the line, with nothing mixed in.
         GradientLine line = new GradientLine(2, -7, 5, 31, 12, -20);
         for (int x = 0; x < 40; x++) {
             for (int y = -10; y < 20; y++) {
@@ -58,7 +55,6 @@ class GradientLineTest {
 
     @Test
     void mixingTakesOnlyANeighbourAndOnlyInsideTheZone() {
-        // Ten blocks a step. With a blend of w, blocks within w * 5 blocks of a band's edge may mix, and the rest are pure.
         GradientLine line = new GradientLine(0, 0, 0, 0, 79, 0);
         for (double w : new double[] {0.2, 0.5, 0.75, 1}) {
             for (int y = 0; y < 80; y++) {
@@ -75,8 +71,6 @@ class GradientLineTest {
 
     @Test
     void theMixRisesEvenlyAcrossTheZone() {
-        // Ten blocks a step and the whole step mixing: from block 5 to block 14 the share of step 1 climbs from 0.05 to
-        // 0.95, a tenth a block.
         GradientLine line = new GradientLine(0, 0, 0, 0, 79, 0);
         for (double w : new double[] {0.5, 1}) {
             for (int y = 0; y < 20; y++) {
@@ -100,16 +94,12 @@ class GradientLineTest {
             for (int y = -20; y < 20; y++) for (int z = -20; z < 20; z++) mixed |= line.step(x, y, z, 8, 1) != x / 10;
             if (!mixed) pure++;
         }
-        // Only the two ends, which have no step beyond them to mix with, stay a single block.
         assertTrue(pure <= 10, "pure " + pure);
-        // Wider than a whole step counts as a whole step.
         for (int x = 0; x < 80; x++) assertEquals(line.step(x, 3, -4, 8, 1), line.step(x, 3, -4, 8, 5));
     }
 
     @Test
     void neighboursAreSpreadEvenlyNotClumped() {
-        // At an even mix, random choices make a block's neighbour the same as it half the time. Blocks scattered
-        // evenly, as by hand, are more often unlike their neighbours, on every face a build shows.
         for (int axis = 0; axis < 3; axis++) {
             int same = 0, pairs = 0;
             for (int a = -40; a < 40; a++) {
@@ -123,7 +113,6 @@ class GradientLineTest {
         }
     }
 
-    /** Whether a block in a slice square to an axis is past the halfway mark of the dither. */
     private static boolean cut(int axis, int a, int b) {
         return switch (axis) {
             case 0 -> GradientLine.dither(5, a, b) >= 0.5;
@@ -136,7 +125,6 @@ class GradientLineTest {
     void theDitherIsTheSameEveryTimeAndCoversEveryShareOnce() {
         GradientLine a = new GradientLine(0, 0, 0, 10, 30, 5), b = new GradientLine(0, 0, 0, 10, 30, 5);
         for (int y = -30; y < 30; y++) assertEquals(a.step(4, y, -2, 9, 0.75), b.step(4, y, -2, 9, 0.75));
-        // Within one tile of the table every share from 0 to 1 comes once, so every mix is exact.
         boolean[] seen = new boolean[4096];
         for (int x = 0; x < 16; x++) {
             for (int y = 0; y < 16; y++) {
@@ -177,7 +165,6 @@ class GradientLineTest {
 
     @Test
     void aLineShorterThanTheGradientStillBlends() {
-        // Seven blocks high and eight steps: the blend mixes each block with its neighbouring steps there too.
         GradientLine line = new GradientLine(0, 0, 0, 0, 6, 0);
         int changed = 0;
         for (int y = 0; y <= 6; y++) {
@@ -201,15 +188,12 @@ class GradientLineTest {
 
     @Test
     void aBlockExactlyAtTheReachCountsWhicheverWayTheLineRuns() {
-        // (-2, 3, 0) is exactly 3 from this line, which rounding puts a hair either side depending on direction.
         assertTrue(new GradientLine(0, 0, 0, 5, 12, 0).reaches(-2, 3, 0, 3));
         assertTrue(new GradientLine(5, 12, 0, 0, 0, 0).reaches(-2, 3, 0, 3));
     }
 
     @Test
     void endsClickedInDifferentColumnsOfATowerGiveLevelBands() {
-        // The top and bottom of a 5 wide tower 31 tall, clicked two columns apart: the bands stay level, and every
-        // block of the top and bottom layers counts, the far corners included.
         GradientLine line = GradientLine.between(0, 0, 0, 2, 30, 1);
         assertTrue(line.straightened());
         for (int x = -2; x <= 4; x++) {
@@ -225,16 +209,13 @@ class GradientLineTest {
 
     @Test
     void aDiagonalThePlayerMeantIsKept() {
-        // From one corner of a wall to the other, 8 high over 20 long, leans too far to be straightened.
         GradientLine wall = GradientLine.between(0, 0, 0, 20, 8, 0);
         assertFalse(wall.straightened());
         assertTrue(wall.slanted());
         assertFalse(GradientLine.between(0, 0, 0, 20, 20, 0).straightened());
-        // The top and bottom of a 5 wide tower 16 high, clicked at opposite corners, leans a quarter: straightened.
         GradientLine tower = GradientLine.between(0, 0, 0, 4, 15, 0);
         assertTrue(tower.straightened());
         assertFalse(tower.slanted());
-        // A line already on an axis has nothing to straighten.
         GradientLine along = GradientLine.between(0, 0, 0, 0, 20, 0);
         assertFalse(along.straightened());
         assertFalse(along.slanted());

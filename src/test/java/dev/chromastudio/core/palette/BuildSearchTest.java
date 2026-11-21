@@ -12,14 +12,12 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 class BuildSearchTest {
     private static final int GRASS = 1, STONE = 2;
 
-    /** A wall of stone 20 long and 8 high on a flat field of grass, which is what a gradient must not spill into. */
     private static int world(int x, int y, int z) {
         if (y == 0 && Math.abs(x) <= 40 && Math.abs(z) <= 40) return GRASS;
         if (y >= 1 && y <= 8 && x >= 0 && x < 20 && z == 0) return STONE;
         return 0;
     }
 
-    /** What the gradient tool counts as the build: blocks like the first, within reach of the line between its ends. */
     private static BuildSearch.Found build(GradientLine line, int x, int y, int z, int reach, int cap) {
         int first = world(x, y, z);
         return BuildSearch.from(x, y, z, (bx, by, bz) -> world(bx, by, bz) == first && line.reaches(bx, by, bz, reach), cap);
@@ -50,7 +48,6 @@ class BuildSearchTest {
 
     @Test
     void theEndsAndReachBoundTheBuild() {
-        // From x 5 to 14 along the wall's middle, at most two blocks from it: rows 2 to 6 of ten columns.
         GradientLine line = new GradientLine(5, 4, 0, 14, 4, 0);
         BuildSearch.Found found = build(line, 5, 4, 0, 2, 100_000);
         assertEquals(10 * 5, found.blocks().length);
@@ -74,7 +71,6 @@ class BuildSearchTest {
 
     @Test
     void blocksTouchingAtACornerAreJoined() {
-        // A staircase of single blocks, each one up and one along from the last.
         BuildSearch.Found found = BuildSearch.from(0, 0, 0, (x, y, z) -> x == y && z == 0 && x >= 0 && x < 10, 100);
         assertEquals(10, found.blocks().length);
     }
@@ -95,14 +91,9 @@ class BuildSearchTest {
         }
     }
 
-    /**
-     * How long the search takes over a build as big as the cap, with a test that costs nothing, so only the search
-     * itself is timed. Off by default, as timings depend on the machine; run it with {@code -Dchroma.timing=true}.
-     */
     @Test
     @EnabledIfSystemProperty(named = "chroma.timing", matches = "true")
     void aSearchUpToTheCapTakesAFewMilliseconds() {
-        // A solid box of 50 by 40 by 50, exactly 100,000 blocks, and the same box searched with a cap it overruns.
         BuildSearch.Member box = (x, y, z) -> x >= 0 && x < 50 && y >= 0 && y < 40 && z >= 0 && z < 50;
         for (int cap : new int[] {100_000, 50_000}) {
             double ms = Double.POSITIVE_INFINITY;

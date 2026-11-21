@@ -46,7 +46,6 @@ class HarmonyTest {
 
     @Test
     void huesWrapAndCycle() {
-        // 300° + 120° wraps to 60°, and a fourth triadic colour starts the cycle again.
         List<Oklch> colours = Harmony.TRIADIC.colours(SEED.withHue(300), 5);
         assertEquals(List.of(300.0, 60.0, 180.0, 300.0, 60.0), colours.stream().map(Oklch::h).toList());
         for (Harmony h : Harmony.values()) {
@@ -66,7 +65,6 @@ class HarmonyTest {
             assertTrue(colours.get(i).inGamut());
             assertTrue(colours.get(i).c() <= SEED.c());
         }
-        // The middle steps have room for the seed's chroma; the ends are too near black and white to hold it.
         assertEquals(0.1, colours.get(1).c());
         assertEquals(0.1, colours.get(2).c());
         assertTrue(colours.get(0).c() < 0.1);

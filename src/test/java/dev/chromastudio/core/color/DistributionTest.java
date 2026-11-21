@@ -28,7 +28,6 @@ class DistributionTest {
         assertEquals(List.of(0.75, 0.25), d.weights());
         assertEquals(List.of(Color.ofRgb(0xFF0000), Color.ofRgb(0x0000FF)), d.colours());
         assertEquals(List.of(1.0), Distribution.of(Color.ofRgb(0x123456)).weights());
-        // Weights too large to add up still scale.
         assertEquals(List.of(0.5, 0.5), Distribution.of(List.of(Color.ofRgb(0), Color.ofRgb(1)), List.of(Double.MAX_VALUE, Double.MAX_VALUE)).weights());
     }
 
@@ -69,12 +68,10 @@ class DistributionTest {
         }
     }
 
-    /** Along the grey axis the earth mover's distance is the area between the two cumulative curves. */
     @Test
     void emdOnGreysByHand() {
         Distribution a = Distribution.of(List.of(grey(0), grey(100)), List.of(0.5, 0.5));
         Distribution b = Distribution.of(List.of(grey(20), grey(60)), List.of(0.25, 0.75));
-        // 0 to 20: 0.5 · 20. 20 to 60: 0.25 · 40. 60 to 100: 0.5 · 40. That is 40 grey levels, each √3 in sRGB.
         assertEquals(40 * Math.sqrt(3), a.emd(b, Metric.SRGB), 1e-9);
     }
 
@@ -115,16 +112,13 @@ class DistributionTest {
 
     @Test
     void transportFindsTheOptimumWhereTheCheapestCellMisleads() {
-        // Filling the free cell first forces the dear one: 0 + 3 · 0.5 = 1.5. Crossing over costs 0.5 + 0.5 = 1.
         double[][] cost = {{0, 1}, {1, 3}};
         assertEquals(1.0, Distribution.transport(new double[] {0.5, 0.5}, new double[] {0.5, 0.5}, cost), 1e-12);
-        // One source can only split as the sinks ask.
         assertEquals(0.3 * 2 + 0.7 * 5, Distribution.transport(new double[] {1}, new double[] {0.3, 0.7}, new double[][] {{2, 5}}), 1e-12);
     }
 
     @Test
     void meanBlendsInLinearLight() {
-        // Half black and half white is 50% luminance, which sRGB stores as 188.
         assertEquals(0xBCBCBC, Distribution.of(List.of(grey(0), grey(255)), List.of(1.0, 1.0)).mean().rgb());
         assertEquals(0x123456, Distribution.of(Color.ofRgb(0x123456)).mean().rgb());
     }
@@ -148,7 +142,6 @@ class DistributionTest {
 
     @Test
     void pixelsCloserThanAStepMerge() {
-        // Four greys one level apart are about 0.004 apart in OKLab lightness, far inside a step of 0.02.
         int[] pixels = {0xFF808080, 0xFF818181, 0xFF828282, 0xFF838383, 0xFFFF0000, 0xFFFF0000};
         Distribution d = Distribution.ofPixels(pixels, 16);
         assertEquals(2, d.colours().size());
@@ -167,7 +160,6 @@ class DistributionTest {
 
     @Test
     void faintPixelsAreLeftOutAndTheRestCountByAlpha() {
-        // Alpha 15 is under the cutoff; alpha 51 counts a fifth of a solid pixel.
         int[] pixels = {0x0F00FF00, 0xFFFF0000, 0x330000FF};
         Distribution d = Distribution.ofPixels(pixels, 16);
         assertEquals(List.of(Color.ofRgb(0xFF0000), Color.ofRgb(0x0000FF)), d.colours());

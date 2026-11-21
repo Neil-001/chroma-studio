@@ -16,8 +16,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AnalyzerTest {
-    // A palette with nothing to fix: lightness from dark to light without gaps, three muted oranges and their
-    // complement as a light accent.
     private static final List<Oklch> GOOD = List.of(
             new Oklch(0.30, 0.05, 30), new Oklch(0.50, 0.06, 40), new Oklch(0.65, 0.05, 35), new Oklch(0.85, 0.14, 215));
 
@@ -33,7 +31,6 @@ class AnalyzerTest {
         return findings.stream().map(Finding::key).toList();
     }
 
-    /** The good palette with new lightnesses, in the same order. */
     private static List<Oklch> withLightness(double... lightness) {
         List<Oklch> out = new ArrayList<>();
         for (int i = 0; i < lightness.length; i++) out.add(GOOD.get(i).withL(lightness[i]));
@@ -71,7 +68,6 @@ class AnalyzerTest {
 
     @Test
     void aNarrowLightnessRangeIsAWarningThatPointsToTheRoomierSide() {
-        // The mean is 0.5875, over the middle of the usable range, so there is more room below.
         List<Finding> findings = analyse(withLightness(0.5, 0.55, 0.6, 0.7));
         assertEquals(List.of(Analyzer.NARROW_RANGE, Analyzer.NO_DARKS), keys(findings));
         Finding narrow = findings.getFirst();
@@ -92,7 +88,6 @@ class AnalyzerTest {
         assertEquals(0.5, gap.suggestedTarget().l(), 1e-9);
         assertEquals("", gap.suggestedFilter());
 
-        // The order the colours come in doesn't matter, and of two gaps the wider is the one reported.
         gap = only(analyse(withLightness(0.95, 0.2, 0.55, 0.21)), Analyzer.LIGHTNESS_GAP);
         assertEquals(0.75, gap.suggestedTarget().l(), 1e-9);
     }
@@ -103,7 +98,6 @@ class AnalyzerTest {
         assertEquals(0.25, dark.suggestedTarget().l(), 1e-9);
         assertEquals(Analyzer.DARKER, dark.suggestedFilter());
 
-        // The accent is the darkest here, to keep it clear of the mean.
         Finding light = only(analyse(withLightness(0.65, 0.5, 0.35, 0.2)), Analyzer.NO_HIGHLIGHTS);
         assertEquals(0.85, light.suggestedTarget().l(), 1e-9);
         assertEquals(Analyzer.LIGHTER, light.suggestedFilter());
@@ -119,13 +113,9 @@ class AnalyzerTest {
 
     @Test
     void huesThatFitAHarmonyAreLeftAlone() {
-        // Triadic from 350, each hue a few degrees out, across the seam.
         assertEquals(List.of(), analyse(withHues(355, 345, 105, 238)));
-        // Analogous: 15 either side of a seed at 45.
         assertEquals(List.of(), analyse(withHues(30, 45, 60, 45)));
-        // One hue throughout.
         assertEquals(List.of(), analyse(withHues(200, 200, 200, 200)));
-        // Just inside the 20 degrees: complementary from 20, with 0 and 40 on one side.
         assertEquals(List.of(), analyse(withHues(1, 39, 20, 200)));
     }
 
@@ -139,9 +129,6 @@ class AnalyzerTest {
 
     @Test
     void strayHuesSuggestTheHarmonyHueThePaletteLacks() {
-        // 0, 45, 90 and 135 are 45 apart, so a harmony hue within 22.5 of one reaches at most one more. Covering
-        // all four that closely takes two harmony hues 90 apart, at 22.5 and 112.5, and only a square has those.
-        // Its other corners are 202.5 and 292.5; 300 sits by the second, which leaves 202.5 the one missing.
         List<Oklch> colours = List.of(new Oklch(0.30, 0.05, 0), new Oklch(0.45, 0.06, 45), new Oklch(0.60, 0.05, 90),
                 new Oklch(0.70, 0.04, 135), new Oklch(0.85, 0.15, 300));
         Finding stray = only(analyse(colours), Analyzer.HUES_STRAY);
@@ -151,7 +138,6 @@ class AnalyzerTest {
         assertEquals(0.58, stray.suggestedTarget().l(), 1e-9);
         assertEquals(0.07, stray.suggestedTarget().c(), 1e-9);
 
-        // A grey has no hue to stray, but it still counts towards the lightness and chroma suggested.
         List<Oklch> withGrey = new ArrayList<>(colours);
         withGrey.add(new Oklch(0.20, 0, 0));
         stray = only(analyse(withGrey), Analyzer.HUES_STRAY);
@@ -159,7 +145,6 @@ class AnalyzerTest {
         assertEquals(3.1 / 6, stray.suggestedTarget().l(), 1e-9);
         assertEquals(0.35 / 6, stray.suggestedTarget().c(), 1e-9);
 
-        // Closing the hues up to 40 apart lets the same square fit within 20.
         assertEquals(List.of(), analyse(List.of(new Oklch(0.30, 0.05, 2.5), new Oklch(0.45, 0.06, 42.5),
                 new Oklch(0.60, 0.05, 92.5), new Oklch(0.70, 0.04, 132.5), new Oklch(0.85, 0.15, 300))));
     }
@@ -176,26 +161,22 @@ class AnalyzerTest {
     void mostlySaturatedColoursAreTooMuch() {
         Finding saturated = only(analyse(withChroma(0.15, 0.13, 0.14, 0.05)), Analyzer.TOO_SATURATED);
         assertEquals(0.04, saturated.suggestedTarget().c(), 1e-9);
-        // Exactly half is not more than half.
         assertEquals(List.of(), analyse(withChroma(0.15, 0.05, 0.05, 0.14)));
     }
 
     @Test
     void anAccentAtTheMeanLightnessIsMovedAwayFromIt() {
-        // The mean is 0.575. The accent sits just above it, so it goes lighter.
         List<Oklch> colours = List.of(
                 new Oklch(0.30, 0.05, 30), new Oklch(0.50, 0.06, 40), new Oklch(0.85, 0.05, 35), new Oklch(0.65, 0.14, 215));
         Finding contrast = only(analyse(colours), Analyzer.ACCENT_CONTRAST);
         assertEquals(new Oklch(0.9, 0.14, 215), contrast.suggestedTarget());
         assertEquals(Analyzer.ACCENT, contrast.suggestedFilter());
 
-        // Just below the mean of 0.5625, it goes darker.
         colours = List.of(
                 new Oklch(0.30, 0.05, 30), new Oklch(0.50, 0.14, 215), new Oklch(0.60, 0.05, 35), new Oklch(0.85, 0.05, 35));
         contrast = only(analyse(colours), Analyzer.ACCENT_CONTRAST);
         assertEquals(0.25, contrast.suggestedTarget().l(), 1e-9);
 
-        // With no room above, it goes darker even from over the mean.
         colours = List.of(
                 new Oklch(0.40, 0.05, 30), new Oklch(0.70, 0.06, 40), new Oklch(0.95, 0.05, 35), new Oklch(0.75, 0.14, 215));
         contrast = only(analyse(colours), Analyzer.ACCENT_CONTRAST);
@@ -213,7 +194,6 @@ class AnalyzerTest {
 
         assertEquals(List.of(Analyzer.TOO_BUSY, Analyzer.TEXTURE_JUMP),
                 keys(Analyzer.analyse(GOOD, List.of(Badge.BUSY, Badge.BUSY, Badge.BUSY, Badge.FLAT))));
-        // Half busy is not more than half, and a grainy block bridges flat and busy.
         assertEquals(List.of(), Analyzer.analyse(GOOD, List.of(Badge.BUSY, Badge.BUSY, Badge.GRAINY, Badge.FLAT)));
         assertEquals(List.of(), Analyzer.analyse(GOOD, List.of(Badge.FLAT, Badge.FLAT, Badge.FLAT, Badge.FLAT)));
     }
@@ -238,13 +218,11 @@ class AnalyzerTest {
 
     @Test
     void findingsComeInTheOrderOfTheKeys() {
-        // Two mid greys with busy and flat textures: nearly everything is wrong at once.
         List<Finding> findings = Analyzer.analyse(
                 List.of(new Oklch(0.5, 0.0, 0), new Oklch(0.55, 0.01, 0)), List.of(Badge.BUSY, Badge.FLAT));
         assertEquals(List.of(Analyzer.NARROW_RANGE, Analyzer.NO_DARKS, Analyzer.NO_HIGHLIGHTS, Analyzer.NO_ACCENT,
                 Analyzer.TEXTURE_JUMP, Analyzer.TOO_SMALL), keys(findings));
 
-        // Fourteen vivid colours of every hue, all mid-light and busy.
         List<Oklch> colours = new ArrayList<>();
         for (int i = 0; i < 14; i++) colours.add(new Oklch(0.6 + 0.005 * i, 0.2, 25 * i));
         findings = Analyzer.analyse(colours, Collections.nCopies(14, Badge.BUSY));

@@ -32,7 +32,6 @@ class KmeansTest {
         Random random = new Random(3);
         int[] pixels = new int[4000];
         for (int i = 0; i < pixels.length; i++) {
-            // Group 0 gets four tenths of the pixels, then three, two and one.
             int group = i % 10 < 4 ? 0 : i % 10 < 7 ? 1 : i % 10 < 9 ? 2 : 3;
             int c = centres[group];
             int r = (c >> 16 & 0xFF) + random.nextInt(21) - 10, g = (c >> 8 & 0xFF) + random.nextInt(21) - 10, b = (c & 0xFF) + random.nextInt(21) - 10;
@@ -52,7 +51,6 @@ class KmeansTest {
 
     @Test
     void oneClusterIsTheOklabMean() {
-        // Black and white in equal parts average to OKLab lightness 0.5, the 12.5% grey that sRGB stores as 99.
         assertEquals(List.of(Color.ofRgb(0x636363)), Kmeans.cluster(image(0x000000, 8, 0xFFFFFF, 8), 1, 16));
     }
 

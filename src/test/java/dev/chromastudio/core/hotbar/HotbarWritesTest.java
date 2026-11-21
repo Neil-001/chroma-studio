@@ -16,14 +16,10 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class HotbarWritesTest {
-    /** Hotbars in a map, "" for an empty slot, that can be told to fail in the ways another mod's might. */
     private static final class Fake implements HotbarWrites.Hotbars<String> {
         final Map<Integer, String> slots = new HashMap<>();
-        /** The calls to set, counted from 0, that throw. */
         Set<Integer> failSets = Set.of();
-        /** The calls to set, counted from 0, that return without doing anything. */
         Set<Integer> ignoreSets = Set.of();
-        /** When set, every failing call throws this one exception, as a mod that reuses its exceptions would. */
         RuntimeException reused;
         int failGetAt = -1, ignoreHotbar = -1, sets;
 
@@ -76,8 +72,6 @@ class HotbarWritesTest {
         assertEquals(Map.of(10, "diamond"), f.slots);
     }
 
-    // A write's own sets are calls 0 to 3, one a slot; putting back follows, last slot first.
-
     @Test
     void aSlotThatRefusesToBeSetHasWhatWasWrittenBeforeItPutBack() {
         Fake f = new Fake().with(0, 0, "torch").with(1, 1, "diamond");
@@ -101,7 +95,6 @@ class HotbarWritesTest {
 
     @Test
     void aSetThatQuietlyDoesNothingIsCaughtByReadingBack() {
-        // As Axiom does for the held hotbar outside creative mode: the call returns, and the slot is unchanged.
         Fake f = new Fake().with(0, 0, "torch").with(1, 1, "diamond");
         f.ignoreHotbar = 1;
         HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
@@ -113,19 +106,15 @@ class HotbarWritesTest {
     @Test
     void whenPuttingBackFailsTooUndoKeepsOnlyTheSlotsStillChanged() {
         Fake f = new Fake().with(0, 0, "torch");
-        // The sets break for good after the first write: the second write throws, and so does every set after it.
         f.failSets = IntStream.range(1, 30).boxed().collect(Collectors.toSet());
         HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
         assertFalse(r.worked());
         assertTrue(r.failure().getSuppressed().length >= 1, "the failed put-back is kept with the cause");
-        // Read back, only the first slot is still changed: the second never took its item.
         assertEquals(List.of(new Was<>(0, 0, "torch")), r.undo());
         assertEquals("stone", f.at(0, 0), "the first write is still there for Undo");
-        // While the sets stay broken, Undo says the slot is still changed rather than that it was put back.
         HotbarWrites.Restored<String> still = HotbarWrites.restore(f, r.undo());
         assertFalse(still.done());
         assertEquals(r.undo(), still.left());
-        // Once they work again, Undo finishes the job.
         f.failSets = Set.of();
         assertTrue(HotbarWrites.restore(f, still.left()).done());
         assertEquals("torch", f.at(0, 0));
@@ -141,7 +130,6 @@ class HotbarWritesTest {
 
     @Test
     void aPutBackThatQuietlyDoesNothingIsCaughtAndLeftForUndo() {
-        // The second write and the last put-back return without doing anything, so the first slot keeps the new item.
         Fake f = new Fake().with(0, 0, "torch");
         f.ignoreSets = Set.of(1, 7);
         HotbarWrites.Result<String> r = HotbarWrites.write(f, SLOTS, ITEMS);
@@ -177,7 +165,6 @@ class HotbarWritesTest {
         f.failSets = Set.of(0);
         HotbarWrites.Restored<String> r = HotbarWrites.restore(f, List.of(new Was<>(0, 0, "torch"), new Was<>(1, 0, "dirt")));
         assertEquals("set failed", r.failure().getMessage());
-        // Last first, so the first set to fail was the last slot's.
         assertEquals(List.of(new Was<>(1, 0, "dirt")), r.left());
         assertEquals("torch", f.at(0, 0), "the slot after the failed one was still put back");
     }
@@ -190,7 +177,6 @@ class HotbarWritesTest {
 
     @Test
     void aFillWritesOnlyTheNewItemsAndNamesTheSlotsAQuietRefusalLeavesChanged() {
-        // The review's case: slot 1 quietly ignores every write, and slot 0 stops taking writes once it has its new item.
         String[] held = {"old0", "old1"};
         List<String> writes = new java.util.ArrayList<>();
         boolean[] broken = {false};
@@ -211,7 +197,6 @@ class HotbarWritesTest {
             public boolean same(String a, String b) { return a.equals(b); }
         };
         HotbarWrites.Result<String> r = HotbarWrites.write(hotbars, List.of(new Slot(0, 0), new Slot(0, 1)), List.of("new0", "new1"));
-        // No slot is written with what it already holds, which would send the server packets and save Axiom's hotbars for nothing.
         assertEquals(List.of("0=new0", "1=new1", "1=old1", "0=old0"), writes);
         assertFalse(r.worked());
         assertEquals(List.of(new Was<>(0, 0, "old0")), r.undo(), "the slot left changed is named for Undo");
