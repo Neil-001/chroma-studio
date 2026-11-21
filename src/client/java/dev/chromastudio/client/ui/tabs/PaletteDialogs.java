@@ -466,7 +466,8 @@ final class PaletteDialogs {
                 return;
             }
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
-            MutableComponent done = tr("command.chromastudio.export.done", middle(shortPath(result.file()), box.w() - 10));
+            int room = box.w() - 10 - Widgets.tw(tr("command.chromastudio.export.done", ""));
+            MutableComponent done = tr("command.chromastudio.export.done", middle(shortPath(result.file()), room));
             if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty()) done.append("\n").append(tr("palettes.chromastudio.export.axiom").withColor(Theme.DIM));
             status(done, Theme.GOOD);
             if (!place) return;
