@@ -25,6 +25,7 @@ jobs:
           distribution: temurin
           java-version: 25
 
+      # Caches Gradle and Loom's Minecraft files. Only runs on main write the cache.
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Test release and listing scripts

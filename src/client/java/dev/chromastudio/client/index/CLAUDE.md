@@ -4,12 +4,14 @@ The block index: every block's colours per face, read from the game's models and
 
 - `BlockIndex.Built` holds a build's version beside its blocks, so a caller reading the volatile `built` never sees one build's version with another build's blocks.
 - `TintContext.HERE` reads the world the client has open, so use it on the client thread only. `TintContext.at` keeps hold of the world it was made in, so a search on another thread reads the same place throughout. Make it on the client thread.
+- A build reads the models, block colours, resources and selected packs in one task on the client thread, so they all come from the same reload.
+- A build takes one `IndexOptions` snapshot, so the texture cache's key and the builder go by the same settings.
 - `Sampled` fills its shaded distributions without a lock, because a race only repeats the work.
 
 ## Creative tabs
 
-- `BlockIndex.current` reads the creative tabs only on the client thread once the player is in a world, because item stacks can't be made before a world has loaded. Each loader calls `BlockIndex.worldJoined` when the player joins, so the loading screen hides the moment the read takes.
-- `BlockIndex` fills the creative tabs from `tabRegistries`, a copy of the world's registries under another identity. The game refills its tabs only when asked with registries other than the ones it last used, and only then feeds its creative search. Asked with the world's own, it could find nothing changed and leave that search empty.
+- `BlockIndex.current` reads the creative tabs only on the client thread once the player is connected, because the tabs are filled with the world's registries. Each loader calls `BlockIndex.worldJoined` when the player joins, so the loading screen hides the moment the read takes.
+- `BlockIndex` fills the creative tabs from `tabRegistries`, a copy of the world's registries under another identity. The game refills its tabs and feeds its creative search only when its features, operator rights or registries differ from the last fill. A provider it has never seen makes it refill even when nothing else differs. Asked with the world's own registries, it could find nothing changed and leave that search empty.
 - The game's own rebuild fills the tabs with every feature and the operator items on, so modded tabs and experimental blocks count as listed.
 - `BlockIndex.listedBlocks` skips every tab that isn't a category, because the search tab repeats every other tab, the operator one included.
 - `CreativeOnly` is kept by hand because the game has no flag for blocks a survival player can't get or can't place as they are. Add a block when no survival player can hold it, such as one with no item or one that can't be mined, even if a creative tab lists it. Infested blocks are found by class, so modded ones count.

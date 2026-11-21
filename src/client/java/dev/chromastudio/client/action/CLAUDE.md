@@ -3,8 +3,9 @@ What the mod does for the player in the game: reading colours off blocks and the
 ## Clipboard and file dialogs
 
 - `Clipboard.copy` is the only way the mod puts text on the clipboard. Text past `ClipboardSize.MAX_BYTES` would crash the game, so it is refused and the caller shows the player why.
+- `FileDialog.choose` hands `extensions` to SDL as they are, so they are separated by semicolons and have no dots, such as `png;jpg`.
 - Every caller of `FileDialog.choose` also offers a field to type a path into, because some systems bring up no dialog.
-- SDL hands `FileDialog`'s callback a null list when the system has no dialog to show and an empty list when the player cancels. Only the null list calls `failed`.
+- SDL hands `FileDialog`'s callback a null list on an error, such as a system with no dialog to show, and an empty list when the player cancels or picks nothing. Only the null list calls `failed`.
 - `FileDialog` frees a dialog's callback when the next dialog opens. A callback can't be freed from inside its own call, nor before its dialog answers, however long the player leaves it open.
 
 ## Reading colours
@@ -12,9 +13,14 @@ What the mod does for the player in the game: reading colours off blocks and the
 - `Eyedropper.press` reads the block under the mouse in Axiom's editor, because the editor hides the crosshair and points with the mouse.
 - `Eyedropper.read` turns a Minecraft `Direction` into a core `Face` by ordinal, so `Face` must keep the order of `Direction`.
 - `ScreenPicker` can read only the last frame shown, GUI and all, because the game lays out a frame's GUI before it draws the world. So the window isn't drawn while the picker is armed, and a click counts only after `SETTLE` frames, once the window is out of the frame that is read.
-- The game's frame runs from the bottom up, so `ScreenPicker.read` flips its rows.
+- The game's frame runs from the bottom up, so `ScreenPicker.read` flips its rows. `ScreenPicker.read` understands only four bytes a pixel, which the game's main frame has, and reads nothing from any other format.
 - `PaletteBlocks.queryFace` takes the north face for the Side setting, because a block's four sides nearly always look alike.
 - `PaletteBlocks.tint` reads where the player stands unless the biome setting names one biome, because a range over all biomes has no one tint.
+
+## Capture
+
+- `Capture` checks each side of a box against `MAX_VOLUME` before it multiplies them, because three sides typed into the command can multiply past what a `long` holds.
+- `Capture` steps through a box by offset from its corner, because a loop up to a coordinate at the very end of the `int` range would never end.
 
 ## Giving and dyeing items
 
@@ -26,7 +32,7 @@ What the mod does for the player in the game: reading colours off blocks and the
 - `HotbarFill.fill` plans against its own copy of the inventory, updated as each command is sent. An operator's commands run on the server later, and `/give` goes by the inventory as it will be once the earlier commands have run.
 - `/give` first tops up a stack of the same block and drops only what the inventory can't hold. So `HotbarFill.roomFor` looks for that stack in the game's own order, the held slot, then the off hand, then slots 0 to 35, and that slot is remembered for Undo.
 - The server ignores a creative player's drops that come too fast, and the client keeps the same count, so `HotbarFill.drop` stops once the player's drop throttler is over its threshold.
-- `HotbarFill.fill` goes by `intoAxiom` as the player was told it and fills nothing if that is no longer so, because Axiom's hotbars can come or go between the dialog and the fill.
+- When a fill has more than nine blocks, `HotbarFill.fill` goes by `intoAxiom` as the player was told it and fills nothing if that is no longer so, because Axiom's hotbars can come or go between the dialog and the fill.
 - `HotbarFill.whyNoFill` refuses a fill while a failed one waits for Undo, because a new fill would take the place of what Undo has to put back. Undo keeps only the slots it couldn't put back, so a slot the player has used since isn't written again.
 - `CommandReplies` hides one of the game's success lines for each command a fill sent, matched by translation key, and gives up on the count after `TIMEOUT` ticks of silence. It never hides an error line, so a command the player types in that time can lose its reply.
 - `CommandReplies.SUCCESS` also lists `commands.item.entity.set.success.single`, which 26.3's own server never sends, in case another server still does.
@@ -38,7 +44,7 @@ What the mod does for the player in the game: reading colours off blocks and the
 - Axiom saves its hotbars itself a few seconds after a write, so `HotbarFill.fillAxiom` doesn't save them.
 - Axiom numbers its hotbars from 0, and `HotbarFill` names them to the player from 1, as Axiom's menu shows them.
 - `HotbarFill.fillAxiom` treats a write that quietly didn't take as a sign of a changed Axiom, the same as one that threw, and reports it to `AxiomBridge.hotbarsFailed`.
-- `HotbarFill.undo` reads back each slot it writes through Axiom. That works because `whyNoUndo` allows Undo in creative mode alone, where every write takes at once.
+- `HotbarFill.undo` reads back each slot it writes through Axiom's hotbars. That works because `whyNoUndo` allows an Undo through Axiom in creative mode alone, where every write takes at once. An operator's Undo of an ordinary fill goes through commands.
 
 ## Recipe viewers
 
