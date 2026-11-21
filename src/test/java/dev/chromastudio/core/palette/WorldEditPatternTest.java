@@ -45,11 +45,8 @@ class WorldEditPatternTest {
 
     @Test
     void percentagesSumToAHundredByLargestRemainder() {
-        // Thirds are 33.33 each; the one point left over goes to the first of the equal remainders.
         assertEquals("34%a,33%b,33%c", WorldEditPattern.of(palette(block("a", 2), block("b", 2), block("c", 2))));
-        // 1/7, 2/7 and 4/7 are 14.29, 28.57 and 57.14: the middle one has the largest remainder.
         assertEquals("14%a,29%b,57%c", WorldEditPattern.of(palette(block("a", 1), block("b", 2), block("c", 4))));
-        // 1/6 and 5/6 are 16.67 and 83.33.
         assertEquals("17%a,83%b", WorldEditPattern.of(palette(block("a", 1), block("b", 5))));
     }
 

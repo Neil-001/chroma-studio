@@ -14,7 +14,6 @@ import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** The client side that doesn't depend on the mod loader. The loader's client entrypoint, in {@code dev.chromastudio.client.fabric} or {@code dev.chromastudio.client.neoforge}, hooks it up. */
 public final class ChromaStudioClient {
     private ChromaStudioClient() {}
 
@@ -23,7 +22,6 @@ public final class ChromaStudioClient {
 
     public static ClientPlatform platform;
 
-    /** Loads the settings, creates the keys, adds the subcommands of {@code /chroma}, registers the four tabs and hooks up the eyedropper. The loader then registers {@link Keys#ALL} and {@link Keys#CATEGORY}. */
     public static void init(ClientPlatform loader) {
         platform = loader;
         ModSettings.load();
@@ -39,10 +37,8 @@ public final class ChromaStudioClient {
         AxiomBridge.register();
     }
 
-    /** The tab to open the window on at the next tick, or null. */
     private static String openNext;
 
-    /** Call at the end of every client tick. */
     public static void tick(Minecraft mc) {
         if (openNext != null) {
             String tab = openNext;
@@ -61,12 +57,7 @@ public final class ChromaStudioClient {
         AxiomBridge.tick(mc);
     }
 
-    /** Opens the window on the tab it last showed, or brings a pinned one back. */
     public static void openWindow() { ChromaScreen.open(null); }
 
-    /**
-     * Opens the window on a tab at the next tick. A command needs this: the chat screen closes whatever is open once
-     * the command has run.
-     */
     public static void openWindowSoon(String tabId) { openNext = tabId; }
 }

@@ -23,10 +23,6 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
-/**
- * What the analysis finds in a palette, in place of its entries: each finding with its severity and, where one
- * colour would mend it, a Fix button that opens Match on that colour.
- */
 final class AnalysePanel {
     private static final int MIN_ROW_H = 31, LINE_H = 10, STRIP_H = 8;
 
@@ -37,9 +33,7 @@ final class AnalysePanel {
     private Widgets.ScrollList list;
     private Bounds area;
     private int fixW;
-    /** Every row is as tall as the longest finding needs, so none is cut short in a language that takes more lines. */
     private int rowH = MIN_ROW_H;
-    /** The Fix buttons as the last frame drew them, which is where a click finds them. */
     private record Fix(Bounds button, Analyzer.Finding finding) {}
     private final List<Fix> fixes = new ArrayList<>();
 
@@ -75,7 +69,6 @@ final class AnalysePanel {
         }).setTooltip(Tooltip.create(Component.translatable("palettes.chromastudio.analyse.explore.tip")));
         fixW = Widgets.buttonWidth(Component.translatable("palettes.chromastudio.analyse.fix"));
         int top = area.y() + PanelTab.ROW + STRIP_H + PanelTab.GAP;
-        // Measured at the width a row has beside a scrollbar, which is the narrowest it gets.
         int lines = 1, w = area.w() - Widgets.BAR_W - 2;
         for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size());
         rowH = Math.max(MIN_ROW_H, lines * LINE_H + 5);
@@ -84,7 +77,6 @@ final class AnalysePanel {
 
     private Bounds fix(int x, int y, int w) { return new Bounds(x + w - fixW - 2, y + (rowH - Widgets.H) / 2, fixW, Widgets.H); }
 
-    /** A finding's text in the lines it takes in a row this wide, beside its swatch and Fix button when it has them. */
     private List<FormattedCharSequence> wrapped(Analyzer.Finding f, int w) {
         return PanelTab.font().split(Component.translatable(f.key()), w - 10 - (f.suggestedTarget() != null ? fixW + 6 + 14 : 0));
     }
@@ -92,7 +84,6 @@ final class AnalysePanel {
     void draw(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         Component heading = Component.translatable(unknown > 0 ? "palettes.chromastudio.analyse.heading_unknown" : "palettes.chromastudio.analyse.heading", findings.size(), unknown);
         g.text(PanelTab.font(), heading, area.x(), area.y() + 4, Theme.DIM, false);
-        // The colours the findings are about, darkest first, so a gap or a narrow range shows at a glance.
         List<Color> sorted = new ArrayList<>(colours);
         sorted.sort((a, b) -> Double.compare(a.oklch().l(), b.oklch().l()));
         int stripY = area.y() + PanelTab.ROW;

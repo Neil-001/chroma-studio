@@ -24,16 +24,11 @@ import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 
-/**
- * {@code /chroma export <share string> [layout] [format] [place]} writes a palette as a schematic, and
- * {@code /chroma place <file name>} hands one of the export folder's files to Litematica.
- */
 public final class ExportCommand {
     private ExportCommand() {}
 
     private static final String PLACE = "place";
 
-    /** Adds both subcommands to {@code /chroma}. Call once, before the player joins a world. */
     public static void register() {
         ChromaCommand.SUBCOMMANDS.add(new ChromaCommand.Subcommand() {
             @Override
@@ -52,17 +47,8 @@ public final class ExportCommand {
         });
     }
 
-    /** What {@code /chroma export} was asked for. A null layout or format means the settings' own. */
     record Request(String share, Layout layout, Format format, boolean place) {}
 
-    /**
-     * Splits the command's text into the share string and the words after it, or says what's wrong. A palette's
-     * name may hold spaces, so the words are taken off the end for as long as they are a layout, a format or
-     * {@code place}, and what is left is the share string. One whose name ends in such a word goes in double
-     * quotes, and then every word after the closing quote has to be one of those. When what is left can't be read
-     * as a share string but its first words can, the words after those are options that aren't known, and they are
-     * what's wrong, not the share string.
-     */
     static Object parse(String text) {
         String rest = text.strip();
         String quoted = null;
@@ -107,7 +93,6 @@ public final class ExportCommand {
         }
     }
 
-    /** Where the first {@code count} words of {@code text} end, keeping the spaces between them as typed. */
     private static int endOf(String text, int count) {
         int at = 0;
         for (int i = 0; i < count; i++) {
@@ -117,7 +102,6 @@ public final class ExportCommand {
         return at;
     }
 
-    /** A layout by its name with underscores or hyphens, such as {@code patch_grid} or {@code patch-grid}. */
     private static Layout layout(String word) {
         for (Layout l : Layout.values()) if (l.name().equalsIgnoreCase(word.replace('-', '_'))) return l;
         return null;
@@ -143,7 +127,6 @@ public final class ExportCommand {
             return 0;
         }
         Layout layout = request.layout() != null ? request.layout() : Layout.valueOf(ModSettings.defaultLayout.name());
-        // A new seed each time, so asking again rerolls a diorama layout.
         LayoutOptions options = LayoutOptions.of(layout, ModSettings.patchSize, ModSettings.exportGap, System.nanoTime());
         SchematicExporter.Result result;
         try {
@@ -182,7 +165,6 @@ public final class ExportCommand {
         return placeFile(file, baseName(file)) ? 1 : 0;
     }
 
-    /** The named file in the export folder, with or without its extension. Null when there's none, or the name leads out of the folder. */
     static Path find(Path dir, String name) {
         if (name.isEmpty()) return null;
         for (String suffix : List.of("", "." + Format.LITEMATIC.extension, "." + Format.NBT.extension)) {
@@ -205,7 +187,6 @@ public final class ExportCommand {
         return dot > 0 ? name.substring(0, dot) : name;
     }
 
-    /** Offers the layouts, the formats and {@code place} for the word being typed, once the share string is in. */
     private static CompletableFuture<Suggestions> suggestOptions(SuggestionsBuilder builder) {
         String typed = builder.getRemaining();
         int space = Math.max(typed.lastIndexOf(' '), typed.lastIndexOf('\t'));
@@ -224,7 +205,6 @@ public final class ExportCommand {
                     .filter(n -> format(n.substring(n.lastIndexOf('.') + 1)) != null && n.toLowerCase(Locale.ROOT).startsWith(start))
                     .sorted().forEach(builder::suggest);
         } catch (IOException | RuntimeException _) {
-            // No folder yet, or one that can't be read: there's nothing to offer.
         }
         return builder.buildFuture();
     }

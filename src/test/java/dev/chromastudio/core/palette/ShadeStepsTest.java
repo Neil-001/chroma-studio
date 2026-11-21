@@ -17,9 +17,6 @@ import org.junit.jupiter.api.Test;
 class ShadeStepsTest {
     private record Block(String id, Look look) {}
 
-    // Minecraft 26.3's own blocks as the index reads them: OKLab lightness, chroma and hue of each texture's mean,
-    // its spread, and whether its material comes in stairs or slabs. Cracked stone bricks, calcite, clay, terracotta
-    // and concrete don't.
     private static final List<Block> BLOCKS = List.of(
             block("nether_bricks", 0.238, 0.038, 9.1, 0.040, true),
             block("black_concrete", 0.145, 0.011, 266.8, 0.005, false),
@@ -96,7 +93,6 @@ class ShadeStepsTest {
         return i < 0 ? null : BLOCKS.get(i).id;
     }
 
-    /** The blocks a few steps each way from one, darkest first, for a failure to show. */
     private static List<String> ladder(ShadeSteps steps, String id) {
         List<String> out = new ArrayList<>(List.of(id));
         for (Direction d : Direction.values()) {
@@ -109,10 +105,6 @@ class ShadeStepsTest {
         return out;
     }
 
-    /**
-     * Whether a step back came to the block it started from, or to one within two just-noticeable steps of it, as
-     * andesite is of polished andesite and stone of both. Two such blocks can't both pair with smooth stone.
-     */
     private static boolean twins(String start, String back) {
         if (start.equals(back)) return true;
         if (back == null) return false;
@@ -126,12 +118,8 @@ class ShadeStepsTest {
                 ladder(steps, "stone_bricks"));
     }
 
-    // Bricks and white terracotta are left out. No other red block is near bricks, so their steps reach for planks
-    // and mud bricks; and white concrete, white terracotta's step up, is paired down with clay.
     @Test
     void aStepUpThenDownReturnsToTheStartForCommonBlocks() {
-        // At the smaller sizes and the default. A larger step skips rungs that are unevenly spaced, as planks are, so
-        // oak steps down past jungle to spruce, and spruce back up to jungle.
         for (double step : new double[] {ShadeSteps.MIN_STEP, 0.045, DEFAULT}) {
             ShadeSteps steps = steps(step);
             for (String id : List.of("stone_bricks", "tuff_bricks", "deepslate_bricks", "polished_andesite", "cobbled_deepslate",
@@ -146,13 +134,6 @@ class ShadeStepsTest {
         }
     }
 
-    /**
-     * Common building blocks, stepped each way at every size the brush offers, come back to themselves, or to a block
-     * that can't be told from them. The only exceptions are blocks that share their one neighbour that way with
-     * another block, which the closer pair keeps: terracotta and pink terracotta both darken to red terracotta, which
-     * lightens to pink; oak and jungle planks both darken to spruce at the larger steps; and at the two largest,
-     * cobblestone darkens to cobbled deepslate, which lightens to tuff.
-     */
     @Test
     void commonBlocksRoundTripAtEveryStepSize() {
         List<String> failures = new ArrayList<>();
@@ -171,7 +152,6 @@ class ShadeStepsTest {
             }
         }
         assertTrue(failures.isEmpty(), failures.size() + " failures: " + String.join("; ", failures));
-        // Stone bricks, as the brush's own example: darker to tuff bricks and lighter back, at every size.
         for (double step = ShadeSteps.MIN_STEP; step <= ShadeSteps.MAX_STEP + 1e-9; step += 0.005) {
             ShadeSteps steps = steps(step);
             String down = next(steps, "stone_bricks", Direction.DARKER);
@@ -179,7 +159,6 @@ class ShadeStepsTest {
         }
     }
 
-    /** A worn, overgrown or carved block is no shade of a plain one: stone bricks never step to mossy or cracked bricks. */
     @Test
     void aPlainBlockNeverStepsToADecoratedOne() {
         for (double step = ShadeSteps.MIN_STEP; step <= ShadeSteps.MAX_STEP + 1e-9; step += 0.005) {
@@ -192,7 +171,6 @@ class ShadeStepsTest {
                 }
             }
         }
-        // A decorated block itself still has shades.
         assertTrue(next(steps(DEFAULT), "mossy_stone_bricks", Direction.DARKER) != null);
     }
 
@@ -246,7 +224,6 @@ class ShadeStepsTest {
 
     @Test
     void stoneNeverTurnsToWood() {
-        // Mossy stone bricks lighter, as stairs, where poplar is the only near match that comes as stairs.
         List<Look> looks = List.of(new Look(Color.ofOklch(new Oklch(0.575, 0.020, 124.2)), 0.071, "bricks", "stone", true),
                 new Look(Color.ofOklch(new Oklch(0.644, 0.022, 65.0)), 0.063, "planks", "wood", true));
         assertEquals(-1, new ShadeSteps(looks, DEFAULT).next(0, Direction.LIGHTER, _ -> true));
@@ -271,7 +248,6 @@ class ShadeStepsTest {
         assertTrue(large > small * 1.5, small + " and " + large);
     }
 
-    /** The average lightness one step darker moves a block, over the blocks that have a step. */
     private static double rise(ShadeSteps steps) {
         double total = 0;
         int n = 0;
@@ -287,7 +263,6 @@ class ShadeStepsTest {
     @Test
     void aBlockWithNoCloseShadeThatWayStays() {
         ShadeSteps steps = steps(DEFAULT);
-        // Nothing lighter than calcite, and no blue lighter than light blue concrete is close enough in hue.
         assertEquals(null, next(steps, "calcite", Direction.LIGHTER));
         assertEquals(null, next(steps, "light_blue_concrete", Direction.LIGHTER));
         assertEquals(null, next(steps, "black_concrete", Direction.DARKER));
@@ -296,7 +271,6 @@ class ShadeStepsTest {
     @Test
     void onlyAllowedBlocksArePicked() {
         ShadeSteps steps = steps(DEFAULT);
-        // As for stairs, when tuff bricks had none: the next best darker stone.
         int tuffBricks = at("tuff_bricks");
         int picked = steps.next(at("stone_bricks"), Direction.DARKER, i -> i != tuffBricks);
         assertTrue(picked >= 0 && picked != tuffBricks);
@@ -307,7 +281,6 @@ class ShadeStepsTest {
     @Test
     void aBlockOutsideTheSetStepsToTheClosest() {
         ShadeSteps steps = steps(DEFAULT);
-        // Chiseled stone bricks, which the set leaves out.
         Look chiseled = new Look(Color.ofOklch(new Oklch(0.577, 0.002, 325.6)), 0.076, "bricks", "stone", false);
         int down = steps.next(chiseled, Direction.DARKER, _ -> true);
         assertTrue(down >= 0 && BLOCKS.get(down).id.contains("tuff"), down < 0 ? "none" : BLOCKS.get(down).id);
@@ -319,8 +292,6 @@ class ShadeStepsTest {
         assertEquals(ShadeSteps.MIN_STEP, new ShadeSteps(List.of(), 0).step());
     }
 
-    // Desert's blocks as shades: the full blocks the brush may use, with the faces it averages. Sand falls, so it can't
-    // be a shade.
     private static final List<Block> DESERT = List.of(
             block("terracotta", 0.540, 0.085, 44.7, 0.006, false),
             block("orange_terracotta", 0.532, 0.119, 48.4, 0.007, false),
@@ -340,11 +311,6 @@ class ShadeStepsTest {
         return i < 0 ? null : set.get(i).id;
     }
 
-    /**
-     * With Shades set to Desert, sandstone darkens to the palette's next block down, yellow terracotta, at every step
-     * size, though it's a long step to a flatter, more orange block that no step among every building block takes.
-     * The palette's steps still keep stone from wood and plain blocks from decorated ones.
-     */
     @Test
     void aPalettesBlocksStepToItsNextBlockThatWay() {
         for (double step = ShadeSteps.MIN_STEP; step <= ShadeSteps.MAX_STEP + 1e-9; step += 0.005) {
@@ -355,7 +321,6 @@ class ShadeStepsTest {
             assertEquals("sandstone", nextIn(DESERT, steps, "smooth_sandstone", Direction.DARKER), at);
             assertEquals("smooth_sandstone", nextIn(DESERT, steps, "sandstone", Direction.LIGHTER), at);
             assertEquals("orange_terracotta", nextIn(DESERT, steps, "red_sandstone", Direction.DARKER), at);
-            // On down the palette, through the nearer red sandstone rather than skipping it for another terracotta.
             assertEquals("cut_red_sandstone", nextIn(DESERT, steps, "yellow_terracotta", Direction.DARKER), at);
             for (Block b : DESERT) {
                 for (Direction d : Direction.values()) {
@@ -366,14 +331,11 @@ class ShadeStepsTest {
                 }
             }
         }
-        // Among every building block, nothing darker is close enough to sandstone in colour and texture.
         assertEquals(null, next(steps(DEFAULT), "sandstone", Direction.DARKER));
     }
 
     @Test
     void aGreyInAPaletteStaysGrey() {
-        // Stone bricks among a palette's warm blocks, of which light grey terracotta and bricks are darker: a grey never
-        // takes on colour.
         List<Look> looks = List.of(BLOCKS.get(at("stone_bricks")).look, BLOCKS.get(at("light_gray_terracotta")).look, BLOCKS.get(at("bricks")).look);
         assertEquals(-1, new ShadeSteps(looks, DEFAULT, true).next(0, Direction.DARKER, _ -> true));
     }

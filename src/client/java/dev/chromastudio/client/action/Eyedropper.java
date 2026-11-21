@@ -20,18 +20,11 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
-/**
- * The in-world eyedropper: reads the face of the block the player looks at, or in Axiom's editor the block under the
- * mouse, as it is placed and in the biome it is in, and makes it the Match target. {@code Keys.onEyedropper} runs
- * {@link #press}.
- */
 public final class Eyedropper {
     private Eyedropper() {}
 
-    /** Set by the Match tab's button: the next press opens the window again, as if Shift were held. */
     private static boolean armed;
 
-    /** Makes the next press bring the window back on what it read. */
     public static void arm() {
         armed = true;
         Hud.readout(Component.translatable("eyedropper.chromastudio.armed"),
@@ -42,7 +35,6 @@ public final class Eyedropper {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         boolean open = armed || mc.hasShiftDown();
-        // Axiom's editor hides the crosshair and points with the mouse instead, so there it reads what the mouse is over.
         BlockHitResult hit = AxiomBridge.editorOpen() ? AxiomBridge.blockUnderMouse() : hit(mc);
         if (hit == null) {
             say("eyedropper.chromastudio.no_block", "eyedropper.chromastudio.no_block.how");
@@ -51,10 +43,6 @@ public final class Eyedropper {
         read(hit, open);
     }
 
-    /**
-     * Makes the face that {@code hit} names the Match target, as a press of the key does once it has found a block,
-     * and opens the window on it when {@code open} is set. Returns whether there was a colour to take.
-     */
     public static boolean read(BlockHitResult hit, boolean open) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return false;
@@ -66,7 +54,6 @@ public final class Eyedropper {
             return false;
         }
         Entry entry = index.entryOf(state);
-        // Water and lava are indexed as their blocks; a waterlogged block that isn't indexed still shows its water.
         FluidState fluid = mc.level.getFluidState(pos);
         if (entry == null && !fluid.isEmpty()) {
             state = fluid.createLegacyBlock();
@@ -78,7 +65,6 @@ public final class Eyedropper {
             return false;
         }
         armed = false;
-        // Minecraft's directions and the core's faces are in the same order.
         Face face = Face.values()[hit.getDirection().ordinal()];
         TintContext tint = TintContext.at(pos);
         Color colour = index.colourOf(state, face, tint).orElseThrow();
@@ -86,7 +72,6 @@ public final class Eyedropper {
         MatchState.remember();
         Clipboard.copy(colour.hex());
 
-        // The state as placed, which may be one the index folded into another's entry.
         String properties = Entry.properties(state);
         Component name = properties.isEmpty() ? entry.name() : Component.translatable("match.chromastudio.name_with_state", entry.name(), properties);
         Hud.readout(name, Component.translatable("eyedropper.chromastudio.readout", faceName(face), colour.hex()), ModSettings.readoutSeconds);
@@ -102,7 +87,6 @@ public final class Eyedropper {
         Hud.readout(Component.translatable(line1), Component.translatable(line2), ModSettings.readoutSeconds);
     }
 
-    /** The block looked at within reach, or failing a block, the water or lava. Null for neither. */
     private static BlockHitResult hit(Minecraft mc) {
         if (mc.hitResult instanceof BlockHitResult block && block.getType() == HitResult.Type.BLOCK) return block;
         HitResult withFluids = mc.player.pick(mc.player.blockInteractionRange(), 0, true);

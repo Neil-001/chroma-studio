@@ -8,7 +8,6 @@ import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
-/** A toolbar button: an item as its icon, alone when the toolbar is narrow and with its label when there's room. */
 final class ToolButton extends AbstractButton {
     static final int ICON = 16;
 
@@ -16,7 +15,6 @@ final class ToolButton extends AbstractButton {
     private final boolean labelled, lit;
     private final Runnable action;
 
-    /** {@code lit} marks the button of the panel or mode that's showing now. */
     ToolButton(int x, int y, int w, ItemStack icon, Component label, boolean labelled, boolean lit, Runnable action) {
         super(x, y, w, ICON, label);
         this.icon = icon;
@@ -25,7 +23,6 @@ final class ToolButton extends AbstractButton {
         this.action = action;
     }
 
-    /** The width a button needs with its label showing. */
     static int labelledWidth(Component label) { return ICON + 2 + PanelTab.font().width(label) + 4; }
 
     @Override
@@ -37,7 +34,6 @@ final class ToolButton extends AbstractButton {
         g.fill(x, y, x + width, y + height, !active ? Theme.TOOL_OFF : isHovered() ? Theme.CONTROL_HOVER : lit ? Theme.TOOL_LIT : Theme.TOOL);
         if (lit) g.fill(x, y + height - 1, x + width, y + height, Theme.ACCENT);
         g.fakeItem(icon, x, y);
-        // The game has no greyed-out item drawing, so a veil over the icon stands in for one.
         if (!active) g.fill(x, y, x + ICON, y + height, Theme.TOOL_OFF & 0xB0FFFFFF);
         if (labelled) g.text(PanelTab.font(), getMessage(), x + ICON + 2, y + 4, active ? Theme.TEXT : Theme.GREYED, false);
     }

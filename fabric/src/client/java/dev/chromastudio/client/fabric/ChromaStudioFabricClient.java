@@ -35,7 +35,6 @@ import net.minecraft.server.packs.PackType;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** Fabric's client entrypoint. */
 public class ChromaStudioFabricClient implements ClientModInitializer, ClientPlatform {
     @Override
     public void onInitializeClient() {
@@ -50,7 +49,6 @@ public class ChromaStudioFabricClient implements ClientModInitializer, ClientPla
                 BlockIndex.install(FabricLoader.getInstance().getAllMods().stream()
                         .map(mod -> mod.getMetadata().getId() + " " + mod.getMetadata().getVersion().getFriendlyString()).toList()));
         ClientPlayConnectionEvents.JOIN.register((_, _, _) -> BlockIndex.get().worldJoined());
-        // Keeps the game's replies to an operator's hotbar fill out of chat.
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> !HotbarFill.hidesFeedback(message, overlay));
         PictureInPictureRendererRegistry.register(_ -> new DioramaPip());
         LevelRenderEvents.COLLECT_SUBMITS.register(ctx -> Capture.render(ctx.submitNodeCollector(), ctx.poseStack(), ctx.levelState().cameraRenderState.pos));

@@ -25,11 +25,9 @@ class HotbarPlanTest {
     void whenFullBoxesOnlyWhatHasNoSlot() {
         assertEquals(plan(21, 0), HotbarPlan.of(OverflowMode.WHEN_FULL, 21, 27));
         assertEquals(plan(21, 0), HotbarPlan.of(OverflowMode.WHEN_FULL, 21, 21));
-        // The box takes the fifth free slot, so four blocks keep a slot and seventeen are boxed.
         assertEquals(plan(4, 1, 17), HotbarPlan.of(OverflowMode.WHEN_FULL, 21, 5));
         assertEquals(plan(0, 1, 21), HotbarPlan.of(OverflowMode.WHEN_FULL, 21, 1));
         assertEquals(plan(0, 0, 21), HotbarPlan.of(OverflowMode.WHEN_FULL, 21, 0));
-        // One box and two slots hold 29, one short, so a second box takes another slot.
         assertEquals(plan(1, 2, 27, 2), HotbarPlan.of(OverflowMode.WHEN_FULL, 30, 3));
         assertEquals(plan(0, 0, 27, 27, 6), HotbarPlan.of(OverflowMode.WHEN_FULL, 60, 0));
     }
@@ -67,7 +65,6 @@ class HotbarPlanTest {
         assertEquals(new HotbarPlan.Spot(2, 0), spots.get(9));
         assertEquals(new HotbarPlan.Spot(2, 2), spots.get(11));
         assertEquals(2, HotbarPlan.axiomHotbars(12));
-        // From a hotbar further on, it carries on past it, onto the next page when it gets there.
         assertEquals(List.of(new HotbarPlan.Spot(9, 0), new HotbarPlan.Spot(9, 1)), HotbarPlan.axiom(8, 2));
     }
 

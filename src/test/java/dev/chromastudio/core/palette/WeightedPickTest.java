@@ -31,7 +31,6 @@ class WeightedPickTest {
         WeightedPick<PaletteEntry> pick = new WeightedPick<>(ENTRIES, PaletteEntry::weight);
         Map<String, Integer> counts = new HashMap<>();
         for (int x = 0; x < 40; x++) for (int y = 0; y < 25; y++) for (int z = 0; z < 10; z++) counts.merge(pick.at(7, x, y, z).blockId(), 1, Integer::sum);
-        // 10 000 picks: each share is within two points of its weight's.
         assertTrue(Math.abs(counts.get("minecraft:stone") - 3000) < 200, counts::toString);
         assertTrue(Math.abs(counts.get("minecraft:andesite") - 1000) < 200, counts::toString);
         assertTrue(Math.abs(counts.get("minecraft:cobblestone") - 6000) < 200, counts::toString);

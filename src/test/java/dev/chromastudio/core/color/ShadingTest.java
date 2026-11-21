@@ -19,11 +19,11 @@ class ShadingTest {
 
     @Test
     void applyDarkensTheStoredChannels() {
-        Color c = Color.ofRgb(0xC86432); // 200, 100, 50
+        Color c = Color.ofRgb(0xC86432);
         assertEquals(0xC86432, Shading.apply(c, Face.UP).rgb());
-        assertEquals(0xA05028, Shading.apply(c, Face.NORTH).rgb()); // 160, 80, 40
-        assertEquals(0x783C1E, Shading.apply(c, Face.EAST).rgb());  // 120, 60, 30
-        assertEquals(0x643219, Shading.apply(c, Face.DOWN).rgb());  // 100, 50, 25
+        assertEquals(0xA05028, Shading.apply(c, Face.NORTH).rgb());
+        assertEquals(0x783C1E, Shading.apply(c, Face.EAST).rgb());
+        assertEquals(0x643219, Shading.apply(c, Face.DOWN).rgb());
     }
 
     @Test

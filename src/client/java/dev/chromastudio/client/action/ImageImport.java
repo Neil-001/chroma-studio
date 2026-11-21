@@ -10,22 +10,14 @@ import java.util.List;
 import java.util.function.Consumer;
 import javax.imageio.ImageIO;
 
-/** Reads an image file's main colours. */
 public final class ImageImport {
     private ImageImport() {}
 
-    /** Pixels less opaque than this don't count. */
     private static final int ALPHA_CUTOFF = 128;
-    /** An image is sampled down to about this many pixels a side: the clusters barely move and a huge photo stays quick. */
     private static final int SAMPLE_SIDE = 256;
 
-    /**
-     * Asks for an image with the system's file dialog and hands it to {@code picked}. When no dialog could be
-     * opened {@code failed} runs, and the caller's path field is the way in.
-     */
     public static void choose(Consumer<Path> picked, Runnable failed) { FileDialog.choose("Images", "png;jpg;jpeg;gif;bmp", picked, failed); }
 
-    /** The {@code count} main colours of an image, most common first, with transparent pixels left out. */
     public static List<Color> colours(Path file, int count) throws IOException {
         if (!Files.isRegularFile(file)) throw new IOException("There's no file at " + file);
         BufferedImage image = ImageIO.read(file.toFile());

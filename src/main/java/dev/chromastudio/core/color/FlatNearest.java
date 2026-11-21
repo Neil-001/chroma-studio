@@ -2,18 +2,9 @@ package dev.chromastudio.core.color;
 
 import java.util.List;
 
-/**
- * Finds which of a fixed list of textures comes closest to one flat colour, many times over, as fast as it can. It
- * answers as {@link Distribution#emd} in OKLab would: against a single colour that is the weighted mean distance to
- * the texture's colours, so the texture's colours are kept as plain numbers and nothing is made per question.
- *
- * <p>It never changes after it is made, so any number of threads may ask it at once.
- */
 public final class FlatNearest {
     private final int size;
-    /** Each texture's colours, back to back: its OKLab L, a and b and its share, four numbers a colour. */
     private final double[] colours;
-    /** Where each texture's colours start in {@link #colours}, and one past the last texture's end. */
     private final int[] starts;
 
     public FlatNearest(List<Distribution> textures) {
@@ -43,7 +34,6 @@ public final class FlatNearest {
 
     public int size() { return size; }
 
-    /** The index of the texture closest to a colour, the first among equals, or -1 when there are none. */
     public int nearest(Color c) {
         Oklab lab = c.oklab();
         double least = Double.POSITIVE_INFINITY;
@@ -58,10 +48,8 @@ public final class FlatNearest {
         return best;
     }
 
-    /** The distance from a colour to one texture, as {@link Distribution#emd} in OKLab gives it. */
     public double distance(Color c, int texture) { return distance(c.oklab(), texture, Double.POSITIVE_INFINITY); }
 
-    /** The distance to one texture, given up as soon as it reaches {@code limit}, since it can then only lose. */
     private double distance(Oklab lab, int texture, double limit) {
         double l = lab.l(), a = lab.a(), b = lab.b(), sum = 0;
         for (int at = starts[texture], end = starts[texture + 1]; at < end && sum < limit; at += 4) {

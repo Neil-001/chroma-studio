@@ -1,8 +1,6 @@
 package dev.chromastudio.core.color;
 
-/** A colour in OKLab, by Björn Ottosson's published matrices (https://bottosson.github.io/posts/oklab/). Lightness runs 0 to 1. */
 public record Oklab(double l, double a, double b) {
-    // Below this chroma the hue is rounding noise, so it reads as 0.
     private static final double ACHROMATIC = 1e-6;
 
     public Oklch oklch() {
@@ -16,7 +14,6 @@ public record Oklab(double l, double a, double b) {
         return Math.sqrt(dl * dl + da * da + db * db);
     }
 
-    /** From CIE XYZ with a D65 white of Y = 1, the form Ottosson's reference table is given in. */
     public static Oklab ofXyz(double x, double y, double z) {
         return ofCones(
                 0.8189330101 * x + 0.3618667424 * y - 0.1288597137 * z,
@@ -24,7 +21,6 @@ public record Oklab(double l, double a, double b) {
                 0.0482003018 * x + 0.2643662691 * y + 0.6338517070 * z);
     }
 
-    /** From linear-light sRGB, each channel 0 to 1. */
     static Oklab ofLinear(double r, double g, double b) {
         return ofCones(
                 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b,
@@ -40,7 +36,6 @@ public record Oklab(double l, double a, double b) {
                 0.0259040371 * l3 + 0.7827717662 * m3 - 0.8086757660 * s3);
     }
 
-    /** To linear-light sRGB. Channels fall outside 0 to 1 when the colour is out of gamut. */
     double[] toLinear() {
         double l3 = l + 0.3963377774 * a + 0.2158037573 * b;
         double m3 = l - 0.1055613458 * a - 0.0638541728 * b;
@@ -52,7 +47,6 @@ public record Oklab(double l, double a, double b) {
                 -0.0041960863 * lc - 0.7034186147 * mc + 1.7076147010 * sc};
     }
 
-    /** Whether the colour can be shown in sRGB without clipping. */
     public boolean inGamut() {
         return Color.inGamut(toLinear());
     }

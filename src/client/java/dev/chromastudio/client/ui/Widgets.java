@@ -30,27 +30,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 
-/**
- * A group of the game's own widgets with the mod's habits: buttons as wide as their text, option buttons that step
- * backwards on a right-click, and number fields with arrows that the mouse wheel steps. A tab or screen makes one,
- * adds controls through it, and hands it the drawing and the input. With {@link #viewport} the group scrolls.
- *
- * <p>The static helpers at the end draw the small things the tabs share.
- */
 public final class Widgets extends AbstractContainerEventHandler {
-    /** The height the mod's controls have. The game's own 20 is too tall for the window at its smallest. */
     public static final int H = 16;
-    /** Horizontal space the arrows take from a number field: 8 px of arrows plus a 1 px gap. */
     private static final int ARROW_SLOT = 9;
     public static final int BAR_W = 3;
 
     private final List<AbstractWidget> children = new ArrayList<>();
-    /** What a right-click does on buttons that step through options: step backwards. */
     private final Map<AbstractWidget, Runnable> reverse = new HashMap<>();
-    /** What a wheel notch does on those buttons: forwards for a notch down, backwards for one up. */
     private final Map<AbstractWidget, Consumer<Boolean>> wheel = new HashMap<>();
     private final List<Spinner> spinners = new ArrayList<>();
-    /** Each widget's y before scrolling. */
     private final Map<AbstractWidget, Integer> baseY = new HashMap<>();
     private Bounds viewport;
     private int contentHeight, scroll;
@@ -60,13 +48,11 @@ public final class Widgets extends AbstractContainerEventHandler {
 
     public static int tw(Component text) { return font().width(text); }
     public static int tw(String text) { return font().width(text); }
-    /** The width a button needs for this label. */
     public static int buttonWidth(Component label) { return tw(label) + 10; }
 
     @Override
     public List<AbstractWidget> children() { return children; }
 
-    /** Adds any widget to the group. The methods below call it themselves. */
     public <T extends AbstractWidget> T add(T widget) {
         children.add(widget);
         baseY.put(widget, widget.getY());
@@ -74,10 +60,8 @@ public final class Widgets extends AbstractContainerEventHandler {
         return widget;
     }
 
-    /** Gives a widget something to do on a right-click, as the option buttons step backwards on one. */
     public void onRightClick(AbstractWidget widget, Runnable action) { reverse.put(widget, action); }
 
-    /** Empties the group, ready to lay out again. The scroll position stays. */
     public void clear() {
         setFocused(null);
         children.clear();
@@ -87,23 +71,17 @@ public final class Widgets extends AbstractContainerEventHandler {
         baseY.clear();
     }
 
-    /** A button as wide as its label. */
     public Button button(int x, int y, Component label, Runnable action) { return button(x, y, buttonWidth(label), label, action); }
 
     public Button button(int x, int y, int w, Component label, Runnable action) {
         return add(Button.builder(label, _ -> action.run()).bounds(x, y, w, H).build());
     }
 
-    /** A button that steps through options: click for the next one, right-click for the previous one. */
     public <T> CycleButton<T> cycler(int x, int y, int w, Component label, List<T> values, T initial,
                                      Function<T, Component> names, Consumer<T> onChange) {
         return cycler(x, y, w, label, values, initial, names, onChange, null);
     }
 
-    /**
-     * The same, with a tooltip. It has to be given here rather than set afterwards: the button takes its tooltip
-     * afresh from its builder every time its value changes.
-     */
     public <T> CycleButton<T> cycler(int x, int y, int w, Component label, List<T> values, T initial,
                                      Function<T, Component> names, Consumer<T> onChange, Component tip) {
         CycleButton.Builder<T> builder = CycleButton.builder(names, initial).withValues(values);
@@ -133,11 +111,6 @@ public final class Widgets extends AbstractContainerEventHandler {
 
     private record Spinner(EditBox field, Arrow up, Arrow down, double[] value, double min, double max) {}
 
-    /**
-     * A number field of total width w whose right edge holds up and down arrows, taken from the field rather than
-     * added to it. The arrows and the mouse wheel step the value within the limits, and the arrows grey out at the
-     * ends. A typed number is kept within the limits too, and anything that isn't a number changes nothing.
-     */
     public EditBox spin(int x, int y, int w, double value, double step, double min, double max, boolean integer, DoubleConsumer onChange) {
         EditBox f = new EditBox(font(), x, y, w - ARROW_SLOT, H, Component.empty());
         f.setMaxLength(32);
@@ -160,7 +133,6 @@ public final class Widgets extends AbstractContainerEventHandler {
         return f;
     }
 
-    /** A number as a field shows it: whole, or with up to three decimals and no trailing zeros. */
     public static String number(double v, boolean integer) {
         if (integer) return String.valueOf(Math.round(v));
         String t = String.format(Locale.ROOT, "%.3f", v);
@@ -169,9 +141,6 @@ public final class Widgets extends AbstractContainerEventHandler {
 
     public EditBox field(int x, int y, int w, String value, Consumer<String> onChange) {
         EditBox f = new EditBox(font(), x, y, w, H, Component.empty()) {
-            // The game copies a field's selection itself, and some fields hold more than the clipboard takes without
-            // crashing, such as a palette's notes, so copies and cuts go through Clipboard, and one that large is refused.
-            // Only Widgets.disable makes a field uneditable, and it clears active too, so active says whether it can cut.
             @Override
             public boolean keyPressed(KeyEvent event) {
                 if (event.isCopy() || event.isCut()) {
@@ -190,17 +159,14 @@ public final class Widgets extends AbstractContainerEventHandler {
         return add(f);
     }
 
-    /** A text field that shows a hint while it's empty. */
     public EditBox search(int x, int y, int w, Component hint, Consumer<String> onChange) {
         EditBox f = field(x, y, w, "", onChange);
         f.setHint(hint);
         return f;
     }
 
-    /** A line of text that scrolls with the group. */
     public AbstractWidget label(int x, int y, Component text, int colour) { return add(new Label(x, y, text, colour)); }
 
-    /** Greys a control out and says why in its tooltip. Controls that don't apply are greyed, never hidden. */
     public static <T extends AbstractWidget> T disable(T widget, Component why) {
         widget.active = false;
         if (widget instanceof EditBox f) f.setEditable(false);
@@ -208,20 +174,12 @@ public final class Widgets extends AbstractContainerEventHandler {
         return widget;
     }
 
-    /**
-     * Makes the group scroll inside {@code area}: widgets keep the positions they were added at, as if the area were
-     * {@code contentHeight} tall, and the wheel or the slim bar at the right moves them.
-     */
     public void viewport(Bounds area, int contentHeight) {
         viewport = area;
         this.contentHeight = contentHeight;
         scrollTo(scroll);
     }
 
-    /**
-     * Makes the wheel scroll the group wherever the cursor is, and step only a number field the player has clicked
-     * into. For a long list such as the settings, where scrolling past a control mustn't change it.
-     */
     public void wheelNeedsClick() { wheelNeedsClick = true; }
 
     private int maxScroll() { return viewport == null ? 0 : Math.max(0, contentHeight - viewport.h()); }
@@ -231,7 +189,6 @@ public final class Widgets extends AbstractContainerEventHandler {
         for (AbstractWidget w : children) w.setY(baseY.get(w) - scroll);
     }
 
-    /** Whether the player is typing into one of the group's fields. */
     public boolean typing() { return getFocused() instanceof EditBox f && f.isFocused() && f.active; }
 
     public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
@@ -265,12 +222,12 @@ public final class Widgets extends AbstractContainerEventHandler {
                 AbstractWidget w = e.getKey();
                 if (w.active && w.visible && w.isMouseOver(event.x(), event.y())) {
                     w.playDownSound(Minecraft.getInstance().getSoundManager());
-                    e.getValue().run();   // may rebuild the group, so stop looking straight away
+                    e.getValue().run();
                     return true;
                 }
             }
         boolean hit = super.mouseClicked(event, doubled);
-        if (!hit) setFocused(null);   // a click on nothing ends typing
+        if (!hit) setFocused(null);
         return hit;
     }
 
@@ -292,11 +249,6 @@ public final class Widgets extends AbstractContainerEventHandler {
         return super.mouseDragged(event, dx, dy);
     }
 
-    /**
-     * Steps the number field or option button under the cursor: a notch is an arrow click on a field, and on a button
-     * a notch down is a click and a notch up a right-click. Anywhere else the wheel scrolls a group that scrolls.
-     * After {@link #wheelNeedsClick} it steps only a field the player has clicked into.
-     */
     @Override
     public boolean mouseScrolled(double mx, double my, double h, double v) {
         if (v == 0 || viewport != null && !viewport.contains(mx, my)) return false;
@@ -311,7 +263,7 @@ public final class Widgets extends AbstractContainerEventHandler {
             for (var e : wheel.entrySet()) {
                 AbstractWidget w = e.getKey();
                 if (!w.visible || mx < w.getX() || mx >= w.getRight() || my < w.getY() || my >= w.getBottom()) continue;
-                if (w.active) e.getValue().accept(v < 0);   // may rebuild the group, so stop looking straight away
+                if (w.active) e.getValue().accept(v < 0);
                 return true;
             }
         if (viewport == null) return super.mouseScrolled(mx, my, h, v);
@@ -319,7 +271,6 @@ public final class Widgets extends AbstractContainerEventHandler {
         return true;
     }
 
-    /** A small up or down arrow. Drawn by hand so it stays crisp at 8 pixels, and greyed out when it can't go further. */
     private static final class Arrow extends AbstractButton {
         private final boolean up;
         private final Runnable action;
@@ -337,7 +288,7 @@ public final class Widgets extends AbstractContainerEventHandler {
             int x = getX(), y = getY();
             g.fill(x, y, x + width, y + height, !active ? Theme.CONTROL_OFF : isHovered() ? Theme.CONTROL_HOVER : Theme.CONTROL);
             int c = active ? Theme.TEXT : Theme.GREYED, cx = x + width / 2, cy = y + height / 2;
-            for (int r = 0; r < 3; r++) {          // a 5-pixel-wide triangle
+            for (int r = 0; r < 3; r++) {
                 int half = up ? r : 2 - r, yy = cy - 1 + r - (up ? 1 : 0);
                 g.fill(cx - half, yy, cx + half + 1, yy + 1, c);
             }
@@ -347,7 +298,6 @@ public final class Widgets extends AbstractContainerEventHandler {
         protected void updateWidgetNarration(NarrationElementOutput builder) { defaultButtonNarrationText(builder); }
     }
 
-    /** Text as a widget, so it scrolls and clips with the rest. It never takes a click or the keyboard. */
     private static final class Label extends AbstractWidget {
         private final int colour;
 
@@ -372,7 +322,6 @@ public final class Widgets extends AbstractContainerEventHandler {
 
     private static int barLength(Bounds area, int max) { return Math.max(10, (int) ((long) area.h() * area.h() / (max + area.h()))); }
 
-    /** The scroll position that puts the middle of the bar at the cursor. */
     private static int barScroll(Bounds area, int max, double my) {
         int bar = barLength(area, max), track = area.h() - bar;
         return track <= 0 ? 0 : (int) Math.round((my - area.y() - bar / 2.0) * max / track);
@@ -384,12 +333,7 @@ public final class Widgets extends AbstractContainerEventHandler {
         g.fill(area.right() - BAR_W, by, area.right() - 1, by + bar, Theme.veil(0x80));
     }
 
-    /**
-     * A list of rows of one height that scrolls, with a slim bar at the right. It only knows how many rows there are;
-     * the caller draws each one and asks {@link #rowAt} which one a click landed on.
-     */
     public static final class ScrollList {
-        /** Draws row {@code index} in the given rectangle. */
         public interface Row {
             void render(GuiGraphicsExtractor g, int index, int x, int y, int w, int h, boolean hovered);
         }
@@ -422,14 +366,12 @@ public final class Widgets extends AbstractContainerEventHandler {
             scrollbar(g, area, scroll, max());
         }
 
-        /** The row under the cursor, or -1. The scrollbar isn't part of any row. */
         public int rowAt(double mx, double my) {
             if (!area.contains(mx, my) || max() > 0 && overBar(area, mx, my)) return -1;
             int i = (int) ((my - area.y() + scroll) / rowHeight);
             return i < count.getAsInt() ? i : -1;
         }
 
-        /** Scrolls just far enough to show a row. */
         public void reveal(int index) {
             int top = index * rowHeight;
             scroll = Math.max(0, Math.min(max(), Math.max(Math.min(scroll, top), top + rowHeight - area.h())));
@@ -441,7 +383,6 @@ public final class Widgets extends AbstractContainerEventHandler {
             return true;
         }
 
-        /** Takes a click on the scrollbar. The caller handles clicks on rows through {@link #rowAt}. */
         public boolean mouseClicked(MouseButtonEvent event) {
             if (max() <= 0 || event.button() != InputConstants.MOUSE_BUTTON_LEFT || !overBar(area, event.x(), event.y())) return false;
             draggingBar = true;
@@ -462,18 +403,15 @@ public final class Widgets extends AbstractContainerEventHandler {
         }
     }
 
-    /** Text centred on {@code x}, with the game's drop shadow where the theme's text is light enough for one. */
     public static void centred(GuiGraphicsExtractor g, Component text, int x, int y, int colour) {
         g.text(font(), text, x - tw(text) / 2, y, colour, Theme.shadowed());
     }
 
-    /** A square of one colour, packed 0xRRGGBB, with a dark rim so it shows on any background. */
     public static void swatch(GuiGraphicsExtractor g, int x, int y, int w, int h, int rgb) {
         g.fill(x, y, x + w, y + h, 0xFF000000);
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, 0xFF000000 | rgb);
     }
 
-    /** A block as its item, 16 pixels square. A block with no item draws nothing. */
     public static void blockIcon(GuiGraphicsExtractor g, Block block, int x, int y) { blockIcon(g, new ItemStack(block), x, y); }
 
     public static void blockIcon(GuiGraphicsExtractor g, ItemStack stack, int x, int y) {
