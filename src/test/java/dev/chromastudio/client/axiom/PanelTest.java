@@ -64,6 +64,7 @@ class PanelTest {
         axiom.tools.hit = new BlockPos(1, 0, 0);
         SamplerTool sampler = new SamplerTool();
         GuardedTool tool = new GuardedTool(sampler);
+        frame(tool);
         frame(tool, "axiom.chromastudio.whole_build");
         assertTrue(tool.callUseTool());
         Palette before = PaletteStore.get().selected();
@@ -123,9 +124,11 @@ class PanelTest {
             keys.setAccessible(true);
             FakeAxiom.set(PaletteBrushTool.class, brush, "paletteKey", ((List<?>) keys.invoke(null, List.of(empty))).getFirst());
             FakeAxiom.set(PaletteBrushTool.class, brush, "wholeBuild", true);
-            frame(new GuardedTool(brush), "axiom.chromastudio.brush.recolour");
+            GuardedTool tool = new GuardedTool(brush);
+            frame(tool);
+            frame(tool, "axiom.chromastudio.brush.recolour");
             ImGui.drawn.clear();
-            frame(new GuardedTool(brush));
+            frame(tool);
             assertTrue(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.brush.no_entries")), ImGui.drawn.toString());
             assertFalse(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.brush.pick")), ImGui.drawn.toString());
         } finally {
