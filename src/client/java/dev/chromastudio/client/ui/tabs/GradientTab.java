@@ -741,6 +741,8 @@ public final class GradientTab extends PanelTab {
         Bounds a = filtersArea(), close = filtersClose();
         g.fill(a.x(), a.y(), a.right(), a.bottom(), PANEL);
         g.outline(a.x(), a.y(), a.w(), a.h(), BORDER);
+        Bounds body = filtersBody();
+        g.fill(body.x(), body.y() - 1, body.right(), body.y(), BORDER);
         g.text(font(), tr("match.chromastudio.panel.filters"), a.x() + 5, a.y() + 3, TEXT, false);
         int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = close.contains(mouseX, mouseY) ? Theme.STRONG : DIM;
         for (int i = -3; i <= 2; i++) {

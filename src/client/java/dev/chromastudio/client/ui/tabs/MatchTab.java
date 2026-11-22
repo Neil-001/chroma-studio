@@ -804,6 +804,8 @@ public final class MatchTab extends Tab {
         Bounds r = results;
         g.fill(r.x(), r.y(), r.right(), r.bottom(), PANEL);
         g.outline(r.x(), r.y(), r.w(), r.h(), BORDER);
+        Bounds body = panelBody();
+        g.fill(body.x(), body.y() - 1, body.right(), body.y(), BORDER);
         g.text(font, tr("panel." + panel.name().toLowerCase(Locale.ROOT)), r.x() + 5, r.y() + 3, TEXT, false);
         Bounds close = closeButton();
         boolean overClose = close.contains(mouseX, mouseY);
