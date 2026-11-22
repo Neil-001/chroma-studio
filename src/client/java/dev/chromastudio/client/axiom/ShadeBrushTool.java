@@ -86,7 +86,6 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private int maskedFrame;
     private boolean masked;
     private int receiptOf;
-    private @Nullable String scriptAt;
     private @Nullable BlockPos receiptAt;
     private @Nullable Plan plan;
 
@@ -107,7 +106,6 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         if (AxiomTools.off()) return false;
         stroke.cancel();
         stroke.forget();
-        scriptAt = AxiomMask.script();
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return false;
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
@@ -225,7 +223,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         Component why = stroke.refused();
         if (why == null && dropped) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
         if (why != null) {
-            AxiomPanel.status(AxiomPanel.refusal(why, "axiom.chromastudio.again.brush", scriptAt));
+            AxiomPanel.status(AxiomPanel.refusal(why, "axiom.chromastudio.again.brush"));
             return;
         }
         if (!BlockIndex.get().ready()) {

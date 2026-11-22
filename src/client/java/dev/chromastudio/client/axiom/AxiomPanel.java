@@ -176,11 +176,10 @@ final class AxiomPanel {
         tip(s.tip());
     }
 
-    static Status refusal(Component why, String again, @Nullable String scriptAt) {
+    static Status refusal(Component why, String again) {
         if (!(why.getContents() instanceof TranslatableContents t) || !t.getKey().startsWith(REFUSED)) return Status.of(why);
         Status s = Status.of(why.getString() + " " + tr(again));
-        boolean sameScript = scriptAt != null && scriptAt.equals(AxiomMask.script());
-        return t.getKey().equals(REFUSED + "masks_differ") && sameScript ? s.withTip(tr(REFUSED + "masks_differ.tip")) : s;
+        return t.getKey().equals(REFUSED + "masks_differ") ? s.withTip(tr(REFUSED + "masks_differ.tip")) : s;
     }
 
     static Optional<Status> masks() {

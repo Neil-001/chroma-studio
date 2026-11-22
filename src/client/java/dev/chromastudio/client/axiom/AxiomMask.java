@@ -98,17 +98,6 @@ final class AxiomMask {
         }
     }
 
-    static @Nullable String script() {
-        if (SCRIPT.reason().isPresent()) return null;
-        Script h = SCRIPT.handles();
-        try {
-            return (boolean) h.inUse.invoke() ? (String) h.script.invoke() : null;
-        } catch (Throwable t) {
-            SCRIPT.failed(t);
-            return null;
-        }
-    }
-
     static Optional<Boolean> peek(Level level, int x, int y, int z) {
         if (INTERNALS.reason().isPresent()) return Optional.empty();
         Handles h = INTERNALS.handles();

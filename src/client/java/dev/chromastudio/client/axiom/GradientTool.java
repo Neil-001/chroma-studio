@@ -66,7 +66,6 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
     private @Nullable Search searched;
     private @Nullable Object searchedFor;
     private int receipt;
-    private @Nullable String scriptAt;
 
     GradientTool() {
         one.add(0, 0, 0);
@@ -219,7 +218,6 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
         if (first != null) ends.add(first.getX(), first.getY(), first.getZ());
         if (second != null) ends.add(second.getX(), second.getY(), second.getZ());
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
-        scriptAt = AxiomMask.script();
         AxiomMask.Test mask = AxiomMask.now(level);
         Made made = layNow(level, mask, queue, true);
         if (made == null) return;
@@ -338,7 +336,7 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
     private AxiomPanel.@Nullable Status status() {
         Optional<AxiomPanel.Status> masks = AxiomPanel.masks();
         if (masks.isPresent()) return masks.get();
-        if (refused != null) return AxiomPanel.refusal(refused, "axiom.chromastudio.again.gradient", scriptAt);
+        if (refused != null) return AxiomPanel.refusal(refused, "axiom.chromastudio.again.gradient");
         Choice shown = current(choices());
         if (shown == null) return AxiomPanel.Status.of(tr("axiom.chromastudio.gradient_tool.need"));
         if (BlockIndex.get().ready() && states(shown).size() < 2) {
