@@ -78,6 +78,11 @@ class AxiomScriptsTest {
         assertTrue(kept.properties().contains("has_bottle_0"), kept.toString());
     }
 
+    @Test
+    void theGradientScriptLeavesBedrockAsTheGround() {
+        assertTrue(AxiomScripts.gradientKept().blocks().contains("minecraft:bedrock"));
+    }
+
     private static void keys(AxiomBridge.Script script, List<String> out) {
         keys(script.scope(), out);
         if (script.warning() != null) keys(script.warning(), out);

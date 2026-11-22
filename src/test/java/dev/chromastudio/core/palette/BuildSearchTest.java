@@ -81,6 +81,18 @@ class BuildSearchTest {
     }
 
     @Test
+    void aSearchFromSeveralStartsFindsEachBlockOnceWithinOneCap() {
+        BuildSearch.Member row = (x, y, z) -> y == 0 && z == 0 && x >= 0 && x < 10 && x != 5;
+        long[] starts = {BuildSearch.pack(0, 0, 0), BuildSearch.pack(2, 0, 0), BuildSearch.pack(5, 0, 0), BuildSearch.pack(9, 0, 0)};
+        BuildSearch.Found found = BuildSearch.from(starts, row, 100);
+        assertEquals(9, found.blocks().length);
+        assertEquals(9, java.util.Arrays.stream(found.blocks()).distinct().count());
+        assertFalse(found.capped());
+        assertTrue(BuildSearch.from(starts, row, 6).capped());
+        assertEquals(6, BuildSearch.from(starts, row, 6).blocks().length);
+    }
+
+    @Test
     void positionsPackAndUnpack() {
         int[][] cases = {{0, 0, 0}, {-1, -64, -1}, {30_000_000, 319, -30_000_000}, {-123, 2047, 456}, {5, -2048, 7}};
         for (int[] c : cases) {
