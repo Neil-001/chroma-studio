@@ -145,7 +145,7 @@ final class AxiomMask {
     static Optional<Component> unavailable() {
         if (INTERNALS.reason().isEmpty()) {
             String error = errorThatApplies();
-            if (error != null) return Optional.of(Component.translatable("axiom.chromastudio.mask.lua"));
+            if (error != null) return Optional.of(AxiomNames.text("axiom.chromastudio.mask.lua"));
             return scriptInvalid() ? Optional.of(Component.translatable("axiom.chromastudio.mask.lua_invalid")) : Optional.empty();
         }
         return Optional.of(Component.translatable(INTERNALS.found() ? "axiom.chromastudio.mask.failed" : "axiom.chromastudio.mask.unknown"));

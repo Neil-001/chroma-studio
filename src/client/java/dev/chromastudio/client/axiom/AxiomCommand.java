@@ -82,7 +82,7 @@ final class AxiomCommand {
     }
 
     private static Component copied(Script script) {
-        MutableComponent said = Component.translatable("axiom.chromastudio.copied").append("\n").append(script.scope());
+        MutableComponent said = AxiomNames.text("axiom.chromastudio.copied").append("\n").append(script.scope());
         if (script.warning() != null) said.append("\n").append(script.warning()).append("\n").append(script.nextStep());
         return said;
     }

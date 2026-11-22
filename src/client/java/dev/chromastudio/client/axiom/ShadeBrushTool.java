@@ -245,7 +245,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.point")));
             return;
         }
-        if (masked) {
+        if (masked && !AxiomMask.scripted()) {
             AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.left.masked")).withTip(here.getBlock().getName().getString()));
             return;
         }
@@ -257,7 +257,8 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         swatch("here", here, here.getBlock().getName().getString());
         AxiomPanel.sameLine();
-        swatch("next", next, tr("axiom.chromastudio.shade.becomes", next.getBlock().getName()));
+        boolean scripted = AxiomMask.scripted() && !AxiomMask.windowClosed().orElse(false);
+        swatch("next", next, tr(scripted ? "axiom.chromastudio.shade.becomes.scripted" : "axiom.chromastudio.shade.becomes", next.getBlock().getName()));
     }
 
     private static void swatch(String id, BlockState state, String tip) {
