@@ -24,7 +24,7 @@ Chroma Studio works with Axiom, the building editor, on Fabric. Five Chroma tool
 - After Export and place, the export dialog shows where the file was saved as well as where it was placed (#69)
 - The hotbar fill dialog shows how many blocks go to the hotbar, to free slots and to shulker boxes, and warns before any could drop at your feet (#69)
 - Tooltips across the mod are shorter and say only what a control's label doesn't (#69)
-- In long languages, such as German, the Diorama toolbar takes a second row when its labels don't fit, and the texture filter chips don't overlap (#69)
+- In long languages, such as German, the Diorama toolbar takes a second row when its labels don't fit, and the texture filter chips stay inside the filters panel (#69)
 
 # 1.2.1
 
