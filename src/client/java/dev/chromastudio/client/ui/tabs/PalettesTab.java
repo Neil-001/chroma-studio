@@ -151,7 +151,7 @@ public final class PalettesTab extends PanelTab {
                 Component label = tr("palettes.chromastudio." + a.key);
                 Button button = widgets.button(x, y, label, a.run);
                 if (a.unavailable != null) Widgets.disable(button, a.unavailable);
-                else button.setTooltip(Tooltip.create(tr("palettes.chromastudio." + a.key + ".tip")));
+                else if (a.key.equals("copy")) button.setTooltip(Tooltip.create(tr("palettes.chromastudio.copy.tip")));
                 x += Widgets.buttonWidth(label) + GAP;
             }
             y += ROW;
@@ -167,7 +167,6 @@ public final class PalettesTab extends PanelTab {
             filter();
         });
         field.setValue(search);
-        field.setTooltip(Tooltip.create(tr("palettes.chromastudio.search.tip")));
         return leftW;
     }
 
@@ -213,10 +212,12 @@ public final class PalettesTab extends PanelTab {
             Component label = tr("palettes.chromastudio.tool." + t.key);
             int w = labels ? ToolButton.labelledWidth(label) : ToolButton.ICON;
             ToolButton button = widgets.add(new ToolButton(x, y, w, t.icon, label, labels, t.lit, t.run));
-            Component tip = tr("palettes.chromastudio.tool." + t.key + ".tip");
-            Component named = labels ? tip : Component.empty().append(label).append("\n").append(tip.copy().withColor(Theme.TIP_DIM));
             if (t.unavailable != null) Widgets.disable(button, labels ? t.unavailable : Component.empty().append(label).append("\n").append(t.unavailable));
-            else button.setTooltip(Tooltip.create(named));
+            else if (t.key.equals("capture")) {
+                Component tip = tr(t.lit ? "palettes.chromastudio.tool.capture.cancel" : "palettes.chromastudio.tool.capture.tip");
+                button.setTooltip(Tooltip.create(labels ? tip : Component.empty().append(label).append("\n").append(tip.copy().withColor(Theme.TIP_DIM))));
+            }
+            else if (!labels) button.setTooltip(Tooltip.create(label));
             x += w + GAP;
         }
     }
@@ -307,7 +308,7 @@ public final class PalettesTab extends PanelTab {
             }));
             if (p.preset) for (AbstractWidget w : List.of(weight, up, down, remove)) Widgets.disable(w, fixed);
             else {
-                weight.setTooltip(Tooltip.create(tr("palettes.chromastudio.entry.weight.tip")));
+                weight.setTooltip(Tooltip.create(tr("palettes.chromastudio.entry.weight.tip", 1, BuildSample.MAX_WEIGHT)));
                 if (i == 0) Widgets.disable(up, tr("palettes.chromastudio.entry.first"));
                 if (i == n - 1) Widgets.disable(down, tr("palettes.chromastudio.entry.last"));
             }

@@ -226,7 +226,6 @@ public final class MatchTab extends Tab {
         AbstractWidget dyeButton = controls.button(bx, by, dye, () -> toggle(Panel.DYE));
         Optional<Component> noGive = Give.whyNot();
         if (noGive.isPresent()) Widgets.disable(dyeButton, noGive.get());
-        else dyeButton.setTooltip(Tooltip.create(tr("dye.tip")));
 
         int recentY = by - 12, slidersY = recentY - 3 * (ColourPicker.SLIDER_H + 2) - 1;
         recent = new Bounds(x, recentY, w, 10);
@@ -249,7 +248,7 @@ public final class MatchTab extends Tab {
         controls.add(new Chip(flow.take(Chip.width(gridLabel)), flow.y, gridLabel, () -> grid, () -> {
             grid = !grid;
             build();
-        })).setTooltip(Tooltip.create(tr("grid.tip")));
+        }));
         int distanceW = flow.rest(70);
         distance = new Bounds(flow.x, flow.y, distanceW, Widgets.H);
 
@@ -305,7 +304,7 @@ public final class MatchTab extends Tab {
         controls.add(new Chip(flow.take(Chip.width(label)), flow.y, label, on, () -> {
             flip.run();
             MatchState.changed();
-        })).setTooltip(Tooltip.create(tr(key + ".tip")));
+        }));
     }
 
     private static int widest(List<Component> labels) {
@@ -364,7 +363,7 @@ public final class MatchTab extends Tab {
         if (findButton == null) return;
         Component why = whyNoFind();
         findButton.active = why == null;
-        findButton.setTooltip(Tooltip.create(why != null ? why : tr("find_biome.tip")));
+        findButton.setTooltip(why != null ? Tooltip.create(why) : null);
     }
 
     private static Component whyNoFind() {
@@ -575,7 +574,7 @@ public final class MatchTab extends Tab {
         g.fill(swatch.x() + 1, swatch.y() + 1, swatch.right() - 1, swatch.bottom() - 1, ARGB.multiplyAlpha(0xFF000000 | MatchState.colour().rgb(), opacity));
         if (swatch.contains(mouseX, mouseY)) {
             tip.add(entry == null ? tr("target.colour", MatchState.colour().hex())
-                    : tr("target.block", targetName(), Eyedropper.faceName(MatchState.entryFace()), MatchState.colour().hex()));
+                    : tr("target.block", Eyedropper.faceName(MatchState.entryFace()), MatchState.colour().hex()));
         }
         picker.render(g, font, opacity);
 
@@ -692,7 +691,7 @@ public final class MatchTab extends Tab {
             boolean can = PaletteSink.current() != null;
             Component label = tr("make_palette", BlockIndex.get().materialSet(row.entry).size());
             g.text(font, label, x + 28, y + 5, can ? (over ? Theme.STRONG : ARGB.multiplyAlpha(Theme.HIGHLIGHT, opacity)) : ARGB.multiplyAlpha(GREYED, opacity), false);
-            if (over) tip.add(can ? tr("make_palette.tip") : tr("no_palette"));
+            if (over && !can) tip.add(tr("no_palette"));
             return;
         }
         Entry e = row.entry;
@@ -832,7 +831,6 @@ public final class MatchTab extends Tab {
                     String de = deltaE(fit.distance, MatchState.metric());
                     g2.text(font, de, x + w - 4 - font.width(de), y + 5, DIM, false);
                     g2.text(font, ellipsis(font, fit.biome.identifier().toString(), w - 32 - font.width(de)), x + 20, y + 5, TEXT, false);
-                    if (over) tip.add(tr("find_biome.use"));
                 });
                 if (fits.isEmpty()) {
                     Component why = whyNoFind();
@@ -846,7 +844,7 @@ public final class MatchTab extends Tab {
                     if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
                     g2.fakeItem(stack, x + 3, y + 1);
                     g2.text(font, ellipsis(font, stack.getHoverName().getString(), w - 28), x + 24, y + 5, noGive.isPresent() ? GREYED : TEXT, false);
-                    if (over) tip.add(noGive.isPresent() ? noGive.get() : tr("dye.give", MatchState.colour().hex()));
+                    if (over && noGive.isPresent()) tip.add(noGive.get());
                 });
             }
             default -> { }

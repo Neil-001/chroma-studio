@@ -13,7 +13,6 @@ import java.util.function.Supplier;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
@@ -56,7 +55,7 @@ final class SavedGradients extends Dialog {
         if (why != null) {
             Widgets.disable(button, why);
             Widgets.disable(field, why);
-        } else button.setTooltip(Tooltip.create(tr("gradient.chromastudio.store.save.tip")));
+        }
         Bounds list = new Bounds(in.x(), in.y() + PanelTab.ROW + 2, in.w(), in.bottom() - STATUS_H - (in.y() + PanelTab.ROW + 2));
         if (rows == null) rows = new Widgets.ScrollList(list, ROW_H, () -> Math.max(1, saved.size()));
         else rows.area = list;
@@ -116,8 +115,7 @@ final class SavedGradients extends Dialog {
             g2.text(PanelTab.font(), steps, x + w - CROSS - 6 - stepsW, y + 4, Theme.DIM, false);
             g2.text(PanelTab.font(), PanelTab.fit(s.name(), x + w - CROSS - 10 - stepsW - textX), textX, y + 4, Theme.TEXT, false);
             if (onCross) g2.setTooltipForNextFrame(PanelTab.font(), tr("gradient.chromastudio.store.delete"), mouseX, mouseY);
-            else if (over) g2.setComponentTooltipForNextFrame(PanelTab.font(), List.of(Component.literal(s.name()),
-                    tr("gradient.chromastudio.store.load").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
+            else if (over) g2.setTooltipForNextFrame(PanelTab.font(), Component.literal(s.name()), mouseX, mouseY);
         });
     }
 

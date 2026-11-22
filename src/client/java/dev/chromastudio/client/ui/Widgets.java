@@ -124,6 +124,7 @@ public final class Widgets extends AbstractContainerEventHandler {
                 onChange.accept(current[0]);
             } catch (NumberFormatException _) { }
         });
+        f.setTooltip(Tooltip.create(Component.translatable("widget.chromastudio.range", number(min, integer), number(max, integer))));
         add(f);
         int top = H / 2, ax = x + w - ARROW_SLOT + 1;
         Runnable up = () -> f.setValue(number(Math.min(max, current[0] + step), integer));
