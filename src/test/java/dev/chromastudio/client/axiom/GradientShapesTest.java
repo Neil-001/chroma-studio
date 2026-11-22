@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.chromastudio.client.index.BlockIndex;
+import dev.chromastudio.client.index.Entry;
+import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.client.index.TintContext;
 import dev.chromastudio.core.color.Face;
@@ -14,10 +16,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.FenceBlock;
 import net.minecraft.world.level.block.IronBarsBlock;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -127,6 +131,25 @@ class GradientShapesTest {
         BlockState copper = block("copper_bars").defaultBlockState();
         assertTrue(shapes.shaped(copper));
         assertNull(shapes.apply(block("black_stained_glass").defaultBlockState(), copper));
+    }
+
+    @Test
+    void onlyTheGamesGlassPanesCountAsGlass() {
+        int panes = 0;
+        for (Entry e : BlockIndex.get().entries()) {
+            if (e.kind() != Kind.PANE) continue;
+            panes++;
+            assertEquals(e.id().endsWith("glass_pane"), GradientShapes.glassPane(e), e.id());
+        }
+        assertTrue(panes >= 5);
+        int glass = 0;
+        for (Block b : BuiltInRegistries.BLOCK) {
+            if (!(b instanceof IronBarsBlock)) continue;
+            boolean named = BuiltInRegistries.BLOCK.getKey(b).getPath().endsWith("glass_pane");
+            assertEquals(named, b.defaultBlockState().getSoundType() == SoundType.GLASS, b.toString());
+            if (named) glass++;
+        }
+        assertEquals(17, glass);
     }
 
     @Test
