@@ -47,6 +47,7 @@ class GradientShapesTest {
         }
         blocks.put("glass_pane", "block/glass");
         blocks.put("iron_bars", "block/iron_bars");
+        blocks.put("copper_bars", "block/copper_bars");
         for (String colour : List.of("white", "black")) {
             blocks.put(colour + "_stained_glass", "block/" + colour + "_stained_glass");
             blocks.put(colour + "_stained_glass_pane", "block/" + colour + "_stained_glass");
@@ -114,6 +115,18 @@ class GradientShapesTest {
         assertEquals(block("white_stained_glass"), GradientShapes.glassPair(BlockIndex.get().entryOf(block("white_stained_glass_pane").defaultBlockState())).block());
         assertNull(shapes.apply(block("black_concrete").defaultBlockState(), pane));
         assertNull(shapes.apply(block("stone_bricks").defaultBlockState(), pane));
+    }
+
+    @Test
+    void ironBarsStayIronBarsInAGlassGradient() {
+        GradientShapes shapes = shapes();
+        BlockState bars = block("iron_bars").defaultBlockState().setValue(IronBarsBlock.EAST, true);
+        assertTrue(shapes.shaped(bars));
+        assertNull(shapes.apply(block("black_stained_glass").defaultBlockState(), bars));
+        assertNull(shapes.apply(block("white_stained_glass").defaultBlockState(), bars));
+        BlockState copper = block("copper_bars").defaultBlockState();
+        assertTrue(shapes.shaped(copper));
+        assertNull(shapes.apply(block("black_stained_glass").defaultBlockState(), copper));
     }
 
     @Test
