@@ -39,10 +39,12 @@ final class BrushStroke {
     private final LongArrayList reached = new LongArrayList();
     private final Drawn drawn = new Drawn();
     private @Nullable Component refused;
+    private int sent;
 
     boolean start(ClientLevel level, QueuedChanges<BlockState> queue, int radius, Setup setup) throws Refused {
         cancel();
         refused = null;
+        sent = 0;
         Painter p = setup.make(level);
         if (p == null) return false;
         painter = p;
@@ -59,7 +61,12 @@ final class BrushStroke {
 
     @Nullable Component refused() { return refused; }
 
-    void forget() { refused = null; }
+    int sent() { return sent; }
+
+    void forget() {
+        refused = null;
+        sent = 0;
+    }
 
     void away() {
         if (queued != null) refuse(QueuedChanges.Refusal.EDITOR);
@@ -116,6 +123,7 @@ final class BrushStroke {
         cancel();
         if (q == null || s == null || in == null || m == null) return;
         refused = AxiomChanges.send(q, m, again -> again(in, s, at, again, q.origin())).orElse(null);
+        if (refused == null) sent = q.size();
     }
 
     private void refuse(QueuedChanges.Refusal why) {

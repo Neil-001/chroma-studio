@@ -51,6 +51,24 @@ class PaletteStoreTest {
     }
 
     @Test
+    void aPaletteMadeSavedIsAddedOnlyOnceItsFileIsWritten() throws IOException {
+        Path blocked = dir.resolve("blocked");
+        Files.writeString(blocked, "a file where the folder should be");
+        PaletteStore store = new PaletteStore(blocked);
+        Palette before = store.create("Kept", STONES);
+        assertFalse(store.saved(before), "the Palettes tab keeps a palette it couldn't write");
+        assertTrue(store.createSaved("Sampled", STONES).isEmpty());
+        assertEquals(List.of(before), store.own());
+        assertSame(before, store.selected());
+
+        PaletteStore working = new PaletteStore(dir.resolve("working"));
+        Palette made = working.createSaved("Sampled", STONES).orElseThrow();
+        assertTrue(working.saved(made));
+        assertSame(made, working.selected());
+        assertTrue(Files.isRegularFile(dir.resolve("working").resolve("sampled.json")));
+    }
+
+    @Test
     void aMissingFolderIsEmptyAndIsOnlyMadeOnSaving() {
         Path missing = dir.resolve("not").resolve("there");
         PaletteStore store = new PaletteStore(missing);

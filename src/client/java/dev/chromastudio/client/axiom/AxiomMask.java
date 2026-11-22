@@ -98,6 +98,30 @@ final class AxiomMask {
         }
     }
 
+    static Optional<Boolean> peek(Level level, int x, int y, int z) {
+        if (INTERNALS.reason().isPresent()) return Optional.empty();
+        Handles h = INTERNALS.handles();
+        try {
+            Object context = h.context.invoke(level);
+            h.setPosition.invoke(context, x, y, z);
+            return Optional.of((boolean) h.test.invoke(h.destMask.invoke(), context));
+        } catch (VirtualMachineError e) {
+            throw e;
+        } catch (Throwable _) {
+            return Optional.empty();
+        }
+    }
+
+    static boolean scripted() {
+        if (SCRIPT.reason().isPresent()) return true;
+        try {
+            return (boolean) SCRIPT.handles().inUse.invoke();
+        } catch (Throwable t) {
+            SCRIPT.failed(t);
+            return true;
+        }
+    }
+
     private record Window(Object toolMasks, MethodHandle isOpen) {}
 
     static final AxiomInternals<Window> WINDOW = new AxiomInternals<>("Axiom's Tool Masks window", Component.empty(), () -> {
@@ -121,10 +145,16 @@ final class AxiomMask {
     static Optional<Component> unavailable() {
         if (INTERNALS.reason().isEmpty()) {
             String error = errorThatApplies();
-            if (error != null) return Optional.of(Component.translatable("axiom.chromastudio.mask.lua", error));
+            if (error != null) return Optional.of(Component.translatable("axiom.chromastudio.mask.lua"));
             return scriptInvalid() ? Optional.of(Component.translatable("axiom.chromastudio.mask.lua_invalid")) : Optional.empty();
         }
         return Optional.of(Component.translatable(INTERNALS.found() ? "axiom.chromastudio.mask.failed" : "axiom.chromastudio.mask.unknown"));
+    }
+
+    static Optional<String> detail() {
+        String error = errorThatApplies();
+        if (error != null) return Optional.of(error);
+        return scriptInvalid() ? Optional.of(Component.translatable("axiom.chromastudio.mask.lua_invalid.tip").getString()) : Optional.empty();
     }
 
     private static @Nullable String errorThatApplies() { return windowClosed().orElse(false) ? null : luaError(); }

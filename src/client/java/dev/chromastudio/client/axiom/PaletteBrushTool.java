@@ -89,7 +89,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private @Nullable ClientLevel pickedIn;
     private @Nullable Object previewFor;
     private final Edits toEdits = new Edits(), fromEdits = new Edits();
-    private int kindsBefore, kindsAfter, masked, kept;
+    private int kindsBefore, kindsAfter, masked, kept, receipt;
+    private final Bound paletteBound = new Bound(), fromBound = new Bound();
 
     private List<Palette> listed = List.of();
     private List<String> listedNames = List.of(), labels = List.of(), fromLabels = List.of(), keys = List.of();
@@ -140,6 +141,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         QueuedChanges<BlockState> queue = AxiomChanges.queue(level);
         said = null;
         refused = null;
+        receipt = 0;
         stroke.forget();
         if (wholeBuild()) {
             BlockHitResult hit = AxiomTools.tools.raycastBlock();
@@ -216,13 +218,15 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     @Override
     public boolean callDelete() {
         if (!wholeBuild() || picked == null) return false;
-        reset();
+        cancel();
         return true;
     }
 
     void tick() {
         stroke.tick();
         if (preview.tick()) previewFor = null;
+        current();
+        from();
     }
 
     private boolean wholeBuild() { return mode == Mode.RECOLOUR && wholeBuild; }
@@ -370,12 +374,14 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     private boolean apply() {
         if (preview.isEmpty()) return false;
+        int count = preview.count();
         Optional<Component> why = preview.apply();
         if (why.isPresent()) {
             refused = why.get();
             return false;
         }
         reset();
+        receipt = count;
         return true;
     }
 
@@ -388,70 +394,102 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         boolean ready = ChromaStudioApi.indexReady();
         boolean recolour = mode == Mode.RECOLOUR;
 
-        int clicked = AxiomPanel.list(tr("axiom.chromastudio.brush.palette"), "##palettes", labels, all.indexOf(shown));
+        AxiomPanel.heading(tr("axiom.chromastudio.brush.palette"));
+        int clicked = AxiomPanel.list(layout, "##palettes", labels, all.indexOf(shown));
         if (clicked >= 0) {
-            paletteKey = keys.get(clicked);
-            remember();
+            String key = keys.get(clicked);
+            Palette p = all.get(clicked);
+            layout.later(() -> {
+                paletteKey = key;
+                paletteBound.choose(p, key);
+                remember();
+            });
         }
         if (shown != null) {
             readSwatches(shown);
             AxiomPanel.swatches("swatch", swatches);
         }
+        if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
+            String names = scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "));
+            String line = tr("axiom.chromastudio.brush.scatter_left_out", names), fitted = AxiomPanel.fit(line, ImGui.getContentRegionAvailX());
+            AxiomPanel.note(fitted);
+            AxiomPanel.tip(fitted.equals(line) ? tr("axiom.chromastudio.brush.left_out.tip") : line + "\n" + tr("axiom.chromastudio.brush.left_out.tip"));
+        }
 
+        AxiomPanel.heading(tr("axiom.chromastudio.heading.brush"));
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.scatter"), mode == Mode.SCATTER, ready,
-                tr(ready ? "axiom.chromastudio.brush.scatter.tip" : "axiom.chromastudio.not_ready"))) setMode(Mode.SCATTER);
+                tr(ready ? "axiom.chromastudio.brush.scatter.tip" : "axiom.chromastudio.not_ready"))) layout.later(() -> setMode(Mode.SCATTER));
         AxiomPanel.besideChoice(tr("axiom.chromastudio.brush.recolour"));
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.recolour"), recolour, ready,
-                tr(ready ? "axiom.chromastudio.brush.recolour.tip" : "axiom.chromastudio.not_ready"))) setMode(Mode.RECOLOUR);
+                tr(ready ? "axiom.chromastudio.brush.recolour.tip" : "axiom.chromastudio.not_ready"))) layout.later(() -> setMode(Mode.RECOLOUR));
         if (AxiomPanel.checkbox(tr("axiom.chromastudio.whole_build"), wholeBuild, recolour,
                 tr(recolour ? "axiom.chromastudio.brush.whole.tip" : "axiom.chromastudio.from.na"))) {
-            wholeBuild = !wholeBuild;
-            said = null;
-            reset();
-            remember();
+            layout.later(() -> {
+                wholeBuild = !wholeBuild;
+                said = null;
+                receipt = 0;
+                reset();
+                remember();
+            });
         }
-        if (AxiomPanel.radius(radius, !wholeBuild(), tr(wholeBuild() ? "axiom.chromastudio.radius.whole" : "axiom.chromastudio.radius.tip"))) remember();
+        if (AxiomPanel.radius(radius, !wholeBuild(), wholeBuild() ? tr("axiom.chromastudio.radius.whole") : "")) remember();
+
+        AxiomPanel.heading(tr("axiom.chromastudio.brush.recolour"));
         recolourOptions(all, recolour);
-        if (shown != null && !anyInGame) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.empty"));
-        if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
-            AxiomPanel.note(tr("axiom.chromastudio.brush.left_out",
-                    scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "))));
-            AxiomPanel.tip(tr("axiom.chromastudio.brush.left_out.tip"));
-        }
-        if (!wholeBuild()) {
-            AxiomPanel.note(tr("axiom.chromastudio.stroke.how"));
-            if (recolour && match == Recolour.Mode.SHADING) AxiomPanel.note(tr("axiom.chromastudio.brush.keeps"));
-        } else if (picked != null && found != null && said == null && refused == null) AxiomPanel.note(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
         if (recolour && fromKey.equals(FROM_BUILD) && found != null) {
-            AxiomPanel.note(tr("axiom.chromastudio.brush.found"));
-            AxiomPanel.swatches("found", foundSwatches);
+            String label = wholeBuild() && picked != null && said == null && refused == null
+                    ? tr("axiom.chromastudio.brush.materials.kinds", kindsBefore, kindsAfter) : tr("axiom.chromastudio.brush.materials");
+            if (AxiomPanel.disclosure(label, "materials")) AxiomPanel.swatches("found", foundSwatches);
+            AxiomPanel.tip(tr("axiom.chromastudio.brush.materials.tip"));
         }
     }
 
     private void bottom() {
-        boolean recolour = mode == Mode.RECOLOUR;
-        AxiomPanel.masks();
+        AxiomPanel.Status status = status();
+        AxiomPanel.status(status);
+        if (!wholeBuild()) return;
+        AxiomPanel.applyCancel(!preview.isEmpty(), status != null && preview.isEmpty() && !status.receipt() ? status.text() : tr("axiom.chromastudio.brush.apply.none"),
+                picked != null, this::apply, () -> layout.later(this::cancel), null);
+    }
+
+    private AxiomPanel.@Nullable Status status() {
+        Optional<AxiomPanel.Status> masks = AxiomPanel.masks();
+        if (masks.isPresent()) return masks.get();
+        if (!ChromaStudioApi.indexReady()) return AxiomPanel.Status.of(tr("axiom.chromastudio.not_ready"));
+        Palette to = current();
+        if (to == null) return AxiomPanel.Status.of(tr("axiom.chromastudio.brush.choose"));
+        readSwatches(to);
+        if (!anyInGame) return AxiomPanel.Status.of(tr(to.entries.isEmpty() ? "axiom.chromastudio.brush.no_entries" : "axiom.chromastudio.brush.empty"));
+        if (mode == Mode.SCATTER && scattered != null && scattered.blocks().isEmpty()) return AxiomPanel.Status.of(tr("axiom.chromastudio.brush.scatter_none"));
+        if (mode == Mode.RECOLOUR && fromGone()) return AxiomPanel.Status.of(tr("axiom.chromastudio.brush.from_gone"));
         Component why = wholeBuild() ? refused : stroke.refused();
         if (why == null && dropped && !wholeBuild()) why = AxiomChanges.refusal(QueuedChanges.Refusal.EDITOR);
-        if (why != null) AxiomPanel.wrapped(why);
-        if (recolour && fromGone()) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.from_gone"));
-        else if (said != null) AxiomPanel.wrapped(said);
-        if (!wholeBuild()) return;
-        if (picked == null) {
-            if (said == null) AxiomPanel.wrapped(tr("axiom.chromastudio.brush.pick"));
-        } else if (found != null && said == null && refused == null) {
-            AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.count", found.blocks().length, preview.count(), found.blocks().length));
-            if (kept > 0) AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.brush.kept", kept, kept));
-            if (masked > 0) AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.masked", masked, masked));
-            if (found.capped()) AxiomPanel.wrapped(tr("axiom.chromastudio.capped", FoundBuild.CAP));
-        }
-        AxiomPanel.applyCancel(!preview.isEmpty(), tr("axiom.chromastudio.brush.apply.none"), picked != null, this::apply, this::reset, null);
+        if (why != null) return AxiomPanel.refusal(why, wholeBuild() ? "axiom.chromastudio.again.build" : "axiom.chromastudio.again.brush");
+        if (said != null) return AxiomPanel.Status.of(said);
+        int sent = wholeBuild() ? receipt : stroke.sent();
+        if (sent > 0 && (!wholeBuild() || picked == null)) return AxiomPanel.Status.receipt(AxiomTools.count("axiom.chromastudio.changed", sent, sent));
+        if (!wholeBuild()) return null;
+        if (picked == null) return AxiomPanel.Status.of(tr("axiom.chromastudio.brush.pick"));
+        if (found == null) return null;
+        int total = found.blocks().length;
+        String count = AxiomTools.count("axiom.chromastudio.count", total, preview.count(), total);
+        AxiomPanel.Status s = AxiomPanel.Status.of(kept > 0 ? count + " " + AxiomTools.count("axiom.chromastudio.brush.kept", kept, kept) : count);
+        s = s.withTip(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
+        if (masked > 0) s = s.withTip(AxiomTools.count("axiom.chromastudio.masked", masked, masked));
+        if (found.capped()) s = s.withTip(tr("axiom.chromastudio.capped", FoundBuild.CAP));
+        return s;
+    }
+
+    private void cancel() {
+        receipt = 0;
+        reset();
     }
 
     private void setMode(Mode m) {
         if (mode == m) return;
         mode = m;
         said = null;
+        receipt = 0;
         reset();
         remember();
     }
@@ -459,25 +497,34 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private void recolourOptions(List<Palette> all, boolean recolour) {
         ImGui.beginDisabled(!recolour);
         Palette chosen = from();
-        String preview = fromKey.equals(FROM_BUILD) ? tr("axiom.chromastudio.from.build") : fromKey.equals(FROM_ANY) ? tr("axiom.chromastudio.from.any") : chosen == null ? tr("axiom.chromastudio.brush.from_choose") : fromLabels.get(all.indexOf(chosen));
-        if (ImGui.beginCombo(tr("axiom.chromastudio.from") + "##from", preview)) {
-            if (ImGui.selectable(tr("axiom.chromastudio.from.build") + "##build", fromKey.equals(FROM_BUILD))) setFrom(FROM_BUILD);
-            if (ImGui.selectable(tr("axiom.chromastudio.from.any") + "##any", fromKey.equals(FROM_ANY))) setFrom(FROM_ANY);
+        String shown = fromKey.equals(FROM_BUILD) ? tr("axiom.chromastudio.from.build") : fromKey.equals(FROM_ANY) ? tr("axiom.chromastudio.from.any")
+                : chosen == null ? tr("axiom.chromastudio.brush.from_choose") : fromLabels.get(all.indexOf(chosen));
+        String fitted = AxiomPanel.fit(shown, AxiomPanel.comboWidth());
+        if (ImGui.beginCombo(tr("axiom.chromastudio.from") + "##from", fitted)) {
+            if (ImGui.selectable(tr("axiom.chromastudio.from.build") + "##build", fromKey.equals(FROM_BUILD))) layout.later(() -> setFrom(FROM_BUILD));
+            if (ImGui.selectable(tr("axiom.chromastudio.from.any") + "##any", fromKey.equals(FROM_ANY))) layout.later(() -> setFrom(FROM_ANY));
             for (int i = 0; i < all.size(); i++) {
                 Palette p = all.get(i);
-                if (ImGui.selectable(fromLabels.get(i) + "##from" + i, p == chosen)) setFrom(keys.get(i));
+                String key = keys.get(i);
+                if (ImGui.selectable(fromLabels.get(i) + "##from" + i, p == chosen)) layout.later(() -> {
+                    fromBound.choose(p, key);
+                    setFrom(key);
+                });
             }
             ImGui.endCombo();
         }
         ImGui.endDisabled();
-        AxiomPanel.tip(tr(recolour ? "axiom.chromastudio.brush.from.tip" : "axiom.chromastudio.from.na"));
+        String tip = tr(recolour ? "axiom.chromastudio.brush.from.tip" : "axiom.chromastudio.from.na");
+        AxiomPanel.tip(fitted.equals(shown) ? tip : shown + "\n" + tip);
         for (Recolour.Mode m : Recolour.Mode.values()) {
             String label = tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT));
             if (m.ordinal() > 0) AxiomPanel.besideChoice(label);
             if (AxiomPanel.radio(label, match == m, recolour,
                     tr(recolour ? "axiom.chromastudio.match.tip" : "axiom.chromastudio.from.na"))) {
-                match = m;
-                remember();
+                layout.later(() -> {
+                    match = m;
+                    remember();
+                });
             }
         }
     }
@@ -531,7 +578,14 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     private @Nullable Palette current() {
         List<Palette> all = palettes();
-        for (int i = 0; i < all.size(); i++) if (keys.get(i).equals(paletteKey)) return all.get(i);
+        Palette bound = paletteBound.find(paletteKey, all, keys);
+        if (bound != null) {
+            if (!paletteBound.key().equals(paletteKey)) {
+                paletteKey = paletteBound.key();
+                remember();
+            }
+            return bound;
+        }
         Palette selected = PaletteStore.get().selected();
         return selected != null ? selected : all.isEmpty() ? null : all.getFirst();
     }
@@ -539,9 +593,40 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private boolean fromGone() { return !fromKey.equals(FROM_BUILD) && !fromKey.equals(FROM_ANY) && from() == null; }
 
     private @Nullable Palette from() {
-        List<Palette> all = palettes();
-        for (int i = 0; i < all.size(); i++) if (keys.get(i).equals(fromKey)) return all.get(i);
-        return null;
+        Palette bound = fromBound.find(fromKey, palettes(), keys);
+        if (bound != null && !fromBound.key().equals(fromKey)) {
+            fromKey = fromBound.key();
+            remember();
+        }
+        return bound;
+    }
+
+    private static final class Bound {
+        private @Nullable String key;
+        private @Nullable Palette palette;
+
+        @Nullable Palette find(String wanted, List<Palette> all, List<String> keys) {
+            if (!wanted.equals(key)) {
+                key = wanted;
+                int i = keys.indexOf(wanted);
+                palette = i < 0 ? null : all.get(i);
+                return palette;
+            }
+            for (int i = 0; i < all.size(); i++) {
+                if (all.get(i) == palette) {
+                    key = keys.get(i);
+                    return palette;
+                }
+            }
+            return null;
+        }
+
+        void choose(Palette p, String chosen) {
+            key = chosen;
+            palette = p;
+        }
+
+        String key() { return Objects.requireNonNull(key); }
     }
 
     private static List<String> keys(List<Palette> all) {

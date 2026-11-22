@@ -6,6 +6,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 
@@ -14,6 +15,7 @@ public final class Hud {
 
     private static final long STRIP_MS = 5000, FADE_MS = 600;
     private static final int ABOVE_HOTBAR = 70;
+    private static final int MARGIN = 8;
 
     private static Component line1, line2;
     private static long readoutUntil;
@@ -67,11 +69,24 @@ public final class Hud {
 
         float readout = fade(readoutUntil, now);
         if (readout > 0.05f && line1 != null) {
-            int w = Math.max(font.width(line1), font.width(line2)) + 8;
-            y -= 2 * font.lineHeight + 4;
-            g.fill(centre - w / 2, y - 2, centre + w / 2, y + 2 * font.lineHeight + 2, ARGB.multiplyAlpha(0x90000000, readout));
-            g.centeredText(font, line1, centre, y, ARGB.multiplyAlpha(0xFFFFFFFF, readout));
-            g.centeredText(font, line2, centre, y + font.lineHeight + 1, ARGB.multiplyAlpha(0xFFC8CED6, readout));
+            int room = Math.max(40, g.guiWidth() - 2 * MARGIN);
+            List<FormattedCharSequence> first = font.split(line1, room), second = font.split(line2, room);
+            int w = 0;
+            for (FormattedCharSequence line : first) w = Math.max(w, font.width(line));
+            for (FormattedCharSequence line : second) w = Math.max(w, font.width(line));
+            w += 8;
+            int lines = first.size() + second.size();
+            y -= lines * font.lineHeight + 4;
+            g.fill(centre - w / 2, y - 2, centre + w / 2, y + lines * font.lineHeight + 2, ARGB.multiplyAlpha(0x90000000, readout));
+            for (FormattedCharSequence line : first) {
+                g.text(font, line, centre - font.width(line) / 2, y, ARGB.multiplyAlpha(0xFFFFFFFF, readout), true);
+                y += font.lineHeight;
+            }
+            y += 1;
+            for (FormattedCharSequence line : second) {
+                g.text(font, line, centre - font.width(line) / 2, y, ARGB.multiplyAlpha(0xFFC8CED6, readout), true);
+                y += font.lineHeight;
+            }
         }
     }
 }
