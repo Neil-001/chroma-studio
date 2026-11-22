@@ -765,6 +765,10 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean clicked(MouseButtonEvent e, boolean doubled) {
+        if (pressedStop >= 0) {
+            dropStop();
+            return true;
+        }
         boolean left = e.button() == InputConstants.MOUSE_BUTTON_LEFT;
         Bounds drawn = stepsArea();
         int step = stepAt(e.x(), e.y()), shut = -1;
