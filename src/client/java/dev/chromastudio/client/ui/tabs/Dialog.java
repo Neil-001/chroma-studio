@@ -51,6 +51,8 @@ abstract class Dialog {
 
     protected final void close() { tab.closeDialog(); }
 
+    protected int statusLines() { return STATUS_LINES; }
+
     protected final void status(Component text, int colour) {
         status = text;
         statusColour = colour;
@@ -66,7 +68,7 @@ abstract class Dialog {
         widgets.render(g, mouseX, mouseY, delta);
         if (status != null) {
             List<FormattedCharSequence> lines = PanelTab.font().split(status, in.w());
-            int shown = Math.min(STATUS_LINES, lines.size()), top = in.bottom() - shown * 9;
+            int shown = Math.min(statusLines(), lines.size()), top = in.bottom() - shown * 9;
             for (int i = 0; i < shown; i++) g.text(PanelTab.font(), lines.get(i), in.x(), top + i * 9, statusColour, false);
             if (lines.size() > shown && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
                 g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
