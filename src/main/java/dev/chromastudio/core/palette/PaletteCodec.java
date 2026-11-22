@@ -46,7 +46,7 @@ public final class PaletteCodec {
         JsonObject o = root.getAsJsonObject();
         if (!o.has("format")) throw new UnreadablePalette(UnreadablePalette.Reason.NO_FORMAT);
         if (!isInt(o.get("format"), FORMAT)) {
-            throw new UnreadablePalette(UnreadablePalette.Reason.NEWER_FORMAT, String.valueOf(o.get("format")), String.valueOf(FORMAT));
+            throw new UnreadablePalette(UnreadablePalette.Reason.OTHER_FORMAT, String.valueOf(o.get("format")), String.valueOf(FORMAT));
         }
 
         Palette p = new Palette(string(o.get("name"), ""));

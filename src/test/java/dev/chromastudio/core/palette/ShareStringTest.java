@@ -91,7 +91,7 @@ class ShareStringTest {
         assertRefused(null, UnreadablePalette.Reason.NO_SHARE);
         assertRefused("   ", UnreadablePalette.Reason.NO_SHARE);
         assertRefused("stone,andesite", UnreadablePalette.Reason.NOT_SHARE);
-        assertRefused("chroma2:stone", UnreadablePalette.Reason.NEWER_SHARE);
+        assertRefused("chroma2:stone", UnreadablePalette.Reason.OTHER_VERSION);
         assertRefused("chroma1:stone,,andesite", UnreadablePalette.Reason.EMPTY_ENTRY);
         assertRefused("chroma1:stone,", UnreadablePalette.Reason.EMPTY_ENTRY);
         assertRefused("chroma1:stone*0", UnreadablePalette.Reason.BAD_WEIGHT);

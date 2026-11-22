@@ -5,7 +5,7 @@ import java.util.List;
 public final class UnreadablePalette extends IllegalArgumentException {
     public enum Reason {
         NO_SHARE,
-        NEWER_SHARE,
+        OTHER_VERSION,
         NOT_SHARE,
         EMPTY_ENTRY,
         OPEN_BRACKET,
@@ -15,7 +15,7 @@ public final class UnreadablePalette extends IllegalArgumentException {
         NOT_JSON,
         NOT_PALETTE,
         NO_FORMAT,
-        NEWER_FORMAT
+        OTHER_FORMAT
     }
 
     private static final long serialVersionUID = 1;

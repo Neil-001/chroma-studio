@@ -8,7 +8,7 @@ Palettes and gradients: their files and share strings, generation, analysis, rec
 - `blocks.stone` is a block's id and `blocks.create.casing` one of another mod's, either nil for a block the game lacks. A script returns a block, or nil to leave the position alone.
 - `$int(Name, default, min, max)$` and its kin anywhere in the text become controls in the brush's window. So `AxiomScript.safe` and `AxiomScript.quote` keep every `$` from a name out of the script.
 - Axiom's `setBlock` doesn't ask the tool masks. The recolour script sets a door's other half itself, which may lie past the edge of the stroke, so when a mask cuts a door in two neither half is left behind.
-- Caves are filled with cave air, so the Paint air box of the scatter and gradient scripts covers cave air as well as air. The scripts also name void air, but Axiom 6.1.5's Script Brush skips void air before it calls any script, so no script fills it in Axiom.
+- Caves are filled with cave air, so the Paint air box of the scatter and gradient scripts covers cave air as well as air. The scripts also name void air, but Axiom 6.1.5's Script Brush doesn't call a script for a position that holds void air, so neither script fills void air in Axiom.
 
 Length:
 

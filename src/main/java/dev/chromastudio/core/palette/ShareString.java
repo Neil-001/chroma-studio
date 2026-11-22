@@ -31,7 +31,7 @@ public final class ShareString {
         String text = s.strip();
         if (!text.startsWith(PREFIX)) {
             if (VERSIONED.matcher(text).matches()) {
-                throw new UnreadablePalette(UnreadablePalette.Reason.NEWER_SHARE);
+                throw new UnreadablePalette(UnreadablePalette.Reason.OTHER_VERSION);
             }
             throw new UnreadablePalette(UnreadablePalette.Reason.NOT_SHARE, PREFIX);
         }
