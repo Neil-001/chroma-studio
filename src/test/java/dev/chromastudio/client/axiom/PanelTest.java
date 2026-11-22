@@ -195,8 +195,6 @@ class PanelTest {
     void underALuaMaskTheShadeBrushLeavesTheReplacementToTheScript() {
         axiom.level.put(0, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
         axiom.tools.hit = new BlockPos(0, 0, 0);
-        MaskManager.useLuaScript = true;
-        MaskManager.luaScript = "return false";
         MaskManager.mask = _ -> false;
         Palette shades = PaletteStore.get().create("Panel test shades",
                 List.of(new PaletteEntry("minecraft:stone_bricks", ""), new PaletteEntry("minecraft:tuff_bricks", "")));
@@ -205,6 +203,12 @@ class PanelTest {
             FakeAxiom.set(ShadeBrushTool.class, shade, "from", shades);
             GuardedTool tool = new GuardedTool(shade);
             tool.render(axiom.rc);
+            frame(tool);
+            assertTrue(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.shade.left.masked")), ImGui.drawn.toString());
+
+            MaskManager.useLuaScript = true;
+            MaskManager.luaScript = "return false";
+            ImGui.reset();
             frame(tool);
             Component tuff = TestIndex.block("tuff_bricks").getName();
             String scripted = AxiomTools.tr("axiom.chromastudio.shade.becomes.scripted", tuff);

@@ -2,7 +2,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 ## Entry and failure
 
-- `AxiomBridge` and `AxiomCommand` name no Axiom or ImGui class, in signatures or bodies, because they load on NeoForge and on clients without Axiom. The same holds for every class a script maker reaches (`AxiomScripts`, `RecolourPlan`, `ScatterBlocks`, `GradientShapes`, `FoundBuild`), which `WithoutAxiomTest` checks with Axiom's classes hidden. The bridge's paths that need Axiom enter the other classes only once `AxiomBridge.isPresent` is true.
+- `AxiomBridge` and `AxiomCommand` name no Axiom or ImGui class, in signatures or bodies, because they load on NeoForge and on clients without Axiom. The same holds for every class a script maker reaches (`AxiomScripts`, `AxiomNames`, `RecolourPlan`, `ScatterBlocks`, `GradientShapes`, `FoundBuild`), which `WithoutAxiomTest` checks with Axiom's classes hidden. The bridge's paths that need Axiom enter the other classes only once `AxiomBridge.isPresent` is true.
 - The UI asks `AxiomBridge.whyNot` and greys a control out with its answer, rather than checking the mod id. The bridge's script makers call `AxiomScripts` without that guard, as scripts are only text, and the controls that offer them check `whyNot` instead.
 - Brigadier merges literals of the same name, so `AxiomCommand` builds the whole `/chroma axiom` tree, and a new subcommand is one more child of `axiom`.
 - `AxiomBridge.register` runs after Axiom's own entrypoint, so Axiom's tool list is there to add to. `AxiomTools.register` makes every tool before it adds any, so a tool this Axiom can't make leaves none behind.
@@ -157,7 +157,9 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - A tool reads a slider's value through `AxiomPanel.held` or `AxiomPanel.radius`, as the panel may not have been drawn since the value was set, and a value typed in or remembered could be anything.
 - `AxiomPanel.applyCancel` drops the panel's focus after Apply. Otherwise the panel keeps the keyboard, and Axiom's undo key goes to it.
 - A panel opens Chroma Studio's window with `ChromaStudioClient.openWindowSoon`, so it opens at the next tick, after Axiom has finished drawing its panels.
-- A text that names a part of Axiom's interface, such as its Tool Masks window, takes the name from Axiom's own translation key through `AxiomNames`, which falls back to the English name when no key is loaded, so it matches what Axiom shows in every language. Axiom 6.1.5 ships only English and downloads the rest from its Weblate into `config/axiom/translations.zip`, which it loads as a resource pack, so its keys are in the game's `Language`. Its Mask and Scripting tabs are English literals with no key, so the texts that name them carry them as they are.
+- A text that names a part of Axiom's interface, such as its Tool Masks window, takes the name from Axiom's own translation key through `AxiomNames`, which falls back to the English name when no key is loaded, so it matches what Axiom shows in every language.
+- Axiom 6.1.5 ships only English and downloads the rest from its Weblate into `config/axiom/translations.zip`, which it loads as a resource pack, so its keys are in the game's `Language`.
+- Axiom's Mask and Scripting tabs are English literals with no key, so the texts that name them carry them as they are.
 - Panels translate their text each frame through `AxiomTools.tr`, and tools keep what they say as a `Component`, so a change of language shows at once. `AxiomTools.count` uses `key.one` for one, and languages with more plural forms word `key` so that it fits any other number.
 
 ## Shade brush
@@ -166,7 +168,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - The shade brush doesn't change trapdoors, whose textures are see-through, unlike their planks'.
 - A full block that turns, such as a log or glazed terracotta, is neither shaded nor a shade. Its colour is read from one face, one way round, so a step judged by it could make a turned one darker when asked for lighter.
 - Stairs and other shapes turn too, but they take their full block's shade.
-- The shade brush asks the masks about the block under the pointer, at most once a block or every 20 frames, to say when they keep it out. It asks through `AxiomMask.peek`, whose failure only leaves the panel without an answer, as a hover must never stop the tools. It never asks a Lua mask, which could raise an error that stops every tool, or answer differently from the stroke. So while a Lua mask applies, the replacement's swatch says the script decides (`axiom.chromastudio.shade.becomes.scripted`).
+- The shade brush asks the masks about the block under the pointer, at most once a block or every 20 frames, to say when they keep it out. It asks through `AxiomMask.peek`, whose failure only leaves the panel without an answer, as a hover must never stop the tools. It never asks a Lua mask, which could raise an error that stops every tool, or answer differently from the stroke. So while a Lua mask applies, the replacement's swatch says the script decides (`axiom.chromastudio.shade.becomes.scripted`), and an answer the mask tab gave before the switch is ignored.
 - With any block as a shade, the brush takes only plain building blocks from the Building blocks and Coloured blocks tabs, which are empty until a world is joined. It leaves out blocks of coal, lapis and raw ore, which the Building blocks tab lists but no builder takes for a shade of stone, and chiseled blocks, whose carved motif is an accent rather than a shade.
 
 ## Scatter and sampler

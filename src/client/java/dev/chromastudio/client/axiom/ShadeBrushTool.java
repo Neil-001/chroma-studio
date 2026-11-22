@@ -245,7 +245,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.point")));
             return;
         }
-        if (masked) {
+        if (masked && !AxiomMask.scripted()) {
             AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.left.masked")).withTip(here.getBlock().getName().getString()));
             return;
         }
