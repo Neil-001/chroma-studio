@@ -97,7 +97,7 @@ final class AxiomScripts {
             case Z -> at.getZ();
         };
         MutableComponent scope = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name().toLowerCase(Locale.ROOT));
-        List<Component> details = new ArrayList<>(List.of(Component.translatable("axiom.chromastudio.gradient.rules"),
+        List<Component> details = new ArrayList<>(List.of(AxiomNames.text("axiom.chromastudio.gradient.rules"),
                 Component.translatable("axiom.chromastudio.gradient.left_alone")));
         int skipped = steps.size() - full.size();
         if (skipped > 0) {

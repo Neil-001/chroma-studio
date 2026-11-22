@@ -257,7 +257,8 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         swatch("here", here, here.getBlock().getName().getString());
         AxiomPanel.sameLine();
-        swatch("next", next, tr("axiom.chromastudio.shade.becomes", next.getBlock().getName()));
+        boolean scripted = AxiomMask.scripted() && !AxiomMask.windowClosed().orElse(false);
+        swatch("next", next, tr(scripted ? "axiom.chromastudio.shade.becomes.scripted" : "axiom.chromastudio.shade.becomes", next.getBlock().getName()));
     }
 
     private static void swatch(String id, BlockState state, String tip) {

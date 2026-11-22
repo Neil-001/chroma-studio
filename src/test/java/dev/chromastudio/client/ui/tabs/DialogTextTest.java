@@ -51,6 +51,18 @@ class DialogTextTest {
             Character.UnicodeBlock.KATAKANA, Character.UnicodeBlock.HANGUL_SYLLABLES, Character.UnicodeBlock.CJK_SYMBOLS_AND_PUNCTUATION,
             Character.UnicodeBlock.HALFWIDTH_AND_FULLWIDTH_FORMS);
 
+    private static final Map<String, String> ENGLISH_NAMES = Map.of("tool_masks", "Tool Masks", "file", "File", "import", "Import Schematic...");
+    private static final Map<String, Map<String, String>> AXIOM_NAMES = Map.of(
+            "de_de", Map.of("tool_masks", "Werkzeugmasken", "file", "Datei", "import", "Schematic Importieren..."),
+            "es_es", Map.of("tool_masks", "Máscaras de Herramienta", "file", "Archivo", "import", "Importar Esquema..."),
+            "fr_fr", Map.of("tool_masks", "Masque d'outil", "file", "Fichier", "import", "Importer une Schematic…"),
+            "ja_jp", Map.of("tool_masks", "マスクツール"),
+            "ko_kr", Map.of("tool_masks", "도구 마스크", "file", "파일", "import", "도면(.Schematic) 가져오기..."),
+            "pl_pl", Map.of("tool_masks", "Maski narzędzi"),
+            "pt_br", Map.of("tool_masks", "Ferramentas de Máscara", "file", "Arquivc", "import", "Importart Esquemática"),
+            "ru_ru", Map.of("tool_masks", "Маски инструментов", "file", "Файл", "import", "Импортировать схематику..."),
+            "zh_cn", Map.of("tool_masks", "蒙版工具编辑面板", "file", "文件", "import", "导入原理图..."));
+
     private static final List<GlyphProvider> glyphs = new ArrayList<>();
     private static StringSplitter splitter;
     private static Language before;
@@ -87,12 +99,17 @@ class DialogTextTest {
         throw new AssertionError(language + ": no width known for U+" + Integer.toHexString(c));
     }
 
-    private static void use(String lang) throws IOException {
-        language = lang;
+    private static void use(String lang, boolean axiomsOwn) throws IOException {
+        language = axiomsOwn ? lang + " with Axiom's names" : lang;
         Map<String, String> text = new HashMap<>();
         try (InputStream in = DialogTextTest.class.getResourceAsStream("/assets/chromastudio/lang/" + lang + ".json")) {
             Language.loadFromJson(in, text::put);
         }
+        Map<String, String> names = new HashMap<>(ENGLISH_NAMES);
+        if (axiomsOwn) names.putAll(AXIOM_NAMES.getOrDefault(lang, Map.of()));
+        text.put("axiom.editorui.window.tool_masks", names.get("tool_masks"));
+        text.put("axiom.editorui.mainmenu.file", names.get("file"));
+        text.put("axiom.editorui.mainmenu.file.import_schematic", names.get("import"));
         Language.inject(new Language() {
             @Override public String getOrDefault(String key, String fallback) { return text.getOrDefault(key, fallback); }
             @Override public boolean has(String key) { return text.containsKey(key); }
@@ -132,12 +149,12 @@ class DialogTextTest {
     @Test
     void theAxiomDialogsTextsFitTheSmallestWindowInEveryLanguage() throws Exception {
         failures.clear();
-        for (String lang : LANGUAGES) {
-            use(lang);
+        for (String lang : LANGUAGES) for (boolean axiomsOwn : List.of(false, true)) {
+            use(lang, axiomsOwn);
             scriptDialog();
             hotbarDialog();
-            within("the export dialog's Axiom hint", width(tr("palettes.chromastudio.export.axiom")), inner(290));
-            fits("the export dialog's Axiom hint", tr("palettes.chromastudio.export.axiom"), inner(290), 1);
+            within("the export dialog's Axiom hint", width(AxiomBridge.named("palettes.chromastudio.export.axiom")), inner(290));
+            fits("the export dialog's Axiom hint", AxiomBridge.named("palettes.chromastudio.export.axiom"), inner(290), 1);
             gradientActions();
         }
         assertTrue(failures.isEmpty(), String.join("\n", failures));
@@ -170,7 +187,7 @@ class DialogTextTest {
                 tr("axiom.chromastudio.gradient_tool.missing"), tr("axiom.chromastudio.too_long", "99.9", "40.0"), tr("axiom.chromastudio.too_long.from", "99.9", "40.0"),
                 tr("palettes.chromastudio.index_building"), tr("axiom.chromastudio.scatter.none"));
         for (Component p : problems) fits("a refusal", p, w, PaletteDialogs.Axiom.BODY_LINES);
-        fits("the receipt", tr("axiom.chromastudio.copied"), w, Dialog.STATUS_LINES);
+        fits("the receipt", AxiomBridge.named("axiom.chromastudio.copied"), w, Dialog.STATUS_LINES);
         int labelW = 6;
         for (String key : List.of("axiom.chromastudio.script", "axiom.chromastudio.from", "axiom.chromastudio.match")) labelW = Math.max(labelW, width(tr(key)) + 6);
         for (String key : List.of("axiom.chromastudio.script.recolour", "axiom.chromastudio.script.scatter", "axiom.chromastudio.from.any",

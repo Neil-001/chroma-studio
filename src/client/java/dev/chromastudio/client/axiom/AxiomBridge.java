@@ -13,6 +13,7 @@ import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
@@ -29,6 +30,8 @@ public final class AxiomBridge {
     private static @Nullable Component broken;
     private static boolean version;
     private static boolean told;
+
+    public static MutableComponent named(String key) { return AxiomNames.text(key); }
 
     public static Optional<Component> whyNot() {
         if (!isPresent()) {

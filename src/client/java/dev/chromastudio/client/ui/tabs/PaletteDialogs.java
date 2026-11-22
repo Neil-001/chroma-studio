@@ -478,7 +478,7 @@ final class PaletteDialogs {
             if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
             int room = box.w() - 10 - Widgets.tw(tr("command.chromastudio.export.done", ""));
             String path = shortPath(result.file()), shown = middle(path, room);
-            Component route = format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty() ? tr("palettes.chromastudio.export.axiom").withColor(Theme.DIM) : null;
+            Component route = format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty() ? AxiomBridge.named("palettes.chromastudio.export.axiom").withColor(Theme.DIM) : null;
             MutableComponent done = tr("command.chromastudio.export.done", shown);
             if (route != null) done.append("\n").append(route);
             if (!shown.equals(path)) statusTip.add(Component.literal(path));
@@ -740,7 +740,7 @@ final class PaletteDialogs {
             Component copyLabel = tr("palettes.chromastudio.copy");
             Button copy = widgets.button(in.right() - Widgets.buttonWidth(copyLabel), copyY(in), copyLabel, () -> {
                 AxiomBridge.copy(made);
-                status(tr("axiom.chromastudio.copied"), Theme.GOOD);
+                status(AxiomBridge.named("axiom.chromastudio.copied"), Theme.GOOD);
             });
             if (made == null) Widgets.disable(copy, problem);
         }

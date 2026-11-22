@@ -188,7 +188,7 @@ final class AxiomPanel {
         if (failed.isPresent()) return Optional.of(Status.of(failed.get()).withTip(AxiomMask.detail().orElse("")));
         Optional<Boolean> closed = AxiomMask.windowClosed();
         note(tr(closed.isEmpty() ? "axiom.chromastudio.masks" : closed.get() ? "axiom.chromastudio.masks.off" : "axiom.chromastudio.masks.on"));
-        tip(tr(closed.orElse(false) ? "axiom.chromastudio.masks.off.tip" : "axiom.chromastudio.masks.tip"));
+        tip(AxiomNames.text(closed.orElse(false) ? "axiom.chromastudio.masks.off.tip" : "axiom.chromastudio.masks.tip").getString());
         return Optional.empty();
     }
 
