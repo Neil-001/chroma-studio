@@ -41,6 +41,7 @@ The window's tabs and the state they share.
 - `TargetModel` keeps the figures of the picker the player moved instead of working them out from the colour, so that picker's handle stays where it was put. A grey has no hue of its own, and an OKLCH colour outside sRGB is shown clipped.
 - `TargetModel.CHROMA_MAX` is 0.4, above the 0.32 or so that sRGB itself reaches.
 - `TargetModel.HUE_MAX` is 359.99 and `setLch` clamps to it, because `Oklch` turns a hue of 360 into 0 and the handle would jump from one end of the slider to the other.
+- `MatchTab.panel` draws a rule between a panel's title and its body. A row scrolled partway out sits right under the title, and without the rule it reads as written over it.
 
 ## Palettes and dialogs
 
