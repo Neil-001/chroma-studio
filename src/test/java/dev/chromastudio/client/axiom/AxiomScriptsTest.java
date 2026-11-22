@@ -40,17 +40,18 @@ class AxiomScriptsTest {
         assertTrue(script.text().contains("blocks.terracotta or false"), script.text());
         assertTrue(script.text().contains("$int(Bottom, -53, -64, 319)$") && script.text().contains("$int(Top, -40, -64, 319)$"), script.text());
         List<String> keys = new ArrayList<>();
-        keys(script.summary(), keys);
+        keys(script, keys);
         assertTrue(keys.contains("axiom.chromastudio.gradient.done[7, y]"), keys.toString());
-        assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped[2]"), keys.toString());
+        assertTrue(keys.contains("axiom.chromastudio.script.left_out[2]"), keys.toString());
         keys.clear();
-        keys(AxiomScripts.gradient("Tower", tower.subList(0, 3), AxiomScript.Axis.Y, BlockPos.ZERO).summary(), keys);
-        assertTrue(keys.contains("axiom.chromastudio.gradient_tool.skipped.one[1]"), keys.toString());
+        keys(AxiomScripts.gradient("Tower", tower.subList(0, 3), AxiomScript.Axis.Y, BlockPos.ZERO), keys);
+        assertTrue(keys.contains("axiom.chromastudio.script.left_out[1]"), keys.toString());
         AxiomBridge.Script two = AxiomScripts.gradient("Tower", tower.subList(2, 4), AxiomScript.Axis.Y, new BlockPos(68, -53, 6));
         for (AxiomBridge.Script made : List.of(script, two)) {
             keys.clear();
-            keys(made.summary(), keys);
-            assertTrue(keys.contains("axiom.chromastudio.long[" + AxiomScript.SERVER_LIMIT + "]"), keys.toString());
+            keys(made, keys);
+            assertTrue(keys.contains("axiom.chromastudio.script.over[" + AxiomScript.SERVER_LIMIT + "]"), keys.toString());
+            assertTrue(keys.contains("axiom.chromastudio.long[]"), keys.toString());
         }
     }
 
@@ -58,13 +59,15 @@ class AxiomScriptsTest {
     void theScatterScriptPlacesWhatTheBrushsScatterPlaces() throws Exception {
         Palette p = new Palette("Mixed");
         p.entries.addAll(steps("stone", "oak_stairs", "lantern"));
+        p.entries.add(new PaletteEntry("missing_mod:block", ""));
         AxiomBridge.Script script = AxiomScripts.scatter(p);
         assertTrue(script.text().contains("blocks.oak_planks") && script.text().contains("blocks.stone"), script.text());
         assertFalse(script.text().contains("oak_stairs") || script.text().contains("lantern"), script.text());
         List<String> keys = new ArrayList<>();
-        keys(script.summary(), keys);
+        keys(script, keys);
         assertTrue(keys.stream().anyMatch(k -> k.startsWith("axiom.chromastudio.brush.left_out")), keys.toString());
         assertTrue(keys.contains("axiom.chromastudio.scatter.done[2]"), keys.toString());
+        assertTrue(keys.contains("axiom.chromastudio.script.left_out[2]"), keys.toString());
     }
 
     @Test
@@ -78,6 +81,13 @@ class AxiomScriptsTest {
     @Test
     void theGradientScriptLeavesBedrockAsTheGround() {
         assertTrue(AxiomScripts.gradientKept().blocks().contains("minecraft:bedrock"));
+    }
+
+    private static void keys(AxiomBridge.Script script, List<String> out) {
+        keys(script.scope(), out);
+        if (script.warning() != null) keys(script.warning(), out);
+        if (script.nextStep() != null) keys(script.nextStep(), out);
+        for (Component c : script.details()) keys(c, out);
     }
 
     private static void keys(Component c, List<String> out) {

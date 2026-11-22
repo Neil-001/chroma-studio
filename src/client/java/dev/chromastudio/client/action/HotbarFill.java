@@ -26,7 +26,8 @@ import net.minecraft.world.item.component.ItemContainerContents;
 public final class HotbarFill {
     private HotbarFill() {}
 
-    private static final int HOTBAR = 9, INVENTORY = 36;
+    public static final int HOTBAR = 9;
+    private static final int INVENTORY = 36;
     private static final int MENU_OFFHAND = 45;
 
     private record Was(int slot, ItemStack stack) {}
@@ -92,16 +93,13 @@ public final class HotbarFill {
         LocalPlayer player = Minecraft.getInstance().player;
         Inventory inventory = player.getInventory();
         List<ItemStack> stacks = new ArrayList<>();
-        List<Integer> places = new ArrayList<>();
-        for (int i = 0; i < entries.size(); i++) {
-            ItemStack stack = PaletteBlocks.icon(entries.get(i));
-            if (stack.isEmpty()) continue;
-            stacks.add(stack);
-            places.add(i + 1);
+        for (PaletteEntry e : entries) {
+            ItemStack stack = PaletteBlocks.icon(e);
+            if (!stack.isEmpty()) stacks.add(stack);
         }
         if (stacks.isEmpty()) return Component.translatable("hotbar.chromastudio.nothing");
         if (stacks.size() > HOTBAR && axiom != intoAxiom) return Component.translatable("hotbar.chromastudio.axiom.moved");
-        if (stacks.size() > HOTBAR && axiom) return fillAxiom(stacks, places);
+        if (stacks.size() > HOTBAR && axiom) return fillAxiom(stacks);
         int hotbar = heldHotbar();
 
         List<ItemStack> now = new ArrayList<>();
@@ -162,7 +160,7 @@ public final class HotbarFill {
         return said;
     }
 
-    private static Component fillAxiom(List<ItemStack> stacks, List<Integer> places) {
+    private static Component fillAxiom(List<ItemStack> stacks) {
         LocalPlayer player = Minecraft.getInstance().player;
         for (ItemStack stack : stacks)
             if (!stack.isItemEnabled(player.connection.enabledFeatures())) return Component.translatable("give.chromastudio.disabled", stack.getHoverName());
@@ -187,21 +185,7 @@ public final class HotbarFill {
         }
         rememberAxiom(result.undo());
         Hud.strip(stacks.subList(0, HOTBAR), Component.translatable("hotbar.chromastudio.mode.axiom", axiomHotbarNames(active, rest)));
-        int hotbars = HotbarPlan.axiomHotbars(rest);
-        MutableComponent parts = Component.empty();
-        if (hotbars > 2 && places.getLast() - places.get(HOTBAR) == rest - 1) {
-            parts.append(Component.translatable("hotbar.chromastudio.rest.axiom.blocks", places.get(HOTBAR), places.getLast(), axiomHotbarNames(active, rest)));
-        } else {
-            for (int h = 0; h < hotbars; h++) {
-                int from = HOTBAR + 9 * h, to = Math.min(HOTBAR + rest, from + 9) - 1;
-                Component hotbar = Component.translatable("hotbar.chromastudio.axiom.hotbar", active + h + 2);
-                if (h > 0) parts.append(", ");
-                parts.append(from == to ? Component.translatable("hotbar.chromastudio.rest.axiom.block", places.get(from), hotbar)
-                        : Component.translatable("hotbar.chromastudio.rest.axiom.blocks", places.get(from), places.get(to), hotbar));
-            }
-        }
-        return Component.translatable("hotbar.chromastudio.filled", HOTBAR).append(" ")
-                .append(Component.translatable("hotbar.chromastudio.rest.axiom", rest, parts, AxiomBridge.hotbarKey()));
+        return Component.translatable("hotbar.chromastudio.filled.axiom", axiomHotbarNames(active, rest), AxiomBridge.hotbarKey());
     }
 
     private static Component axiomHotbarNames(int active, int rest) {
@@ -211,6 +195,14 @@ public final class HotbarFill {
     }
 
     public record AxiomPreview(Component hotbars, int replaced) {}
+
+    public static int freeSlots() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return 0;
+        int free = 0;
+        for (int i = HOTBAR; i < INVENTORY; i++) if (player.getInventory().getItem(i).isEmpty()) free++;
+        return free;
+    }
 
     public static int holdable(List<PaletteEntry> entries) {
         return (int) entries.stream().filter(e -> !PaletteBlocks.icon(e).isEmpty()).count();

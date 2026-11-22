@@ -36,36 +36,46 @@ final class AxiomScripts {
 
     static Script recolour(Palette to, @Nullable Palette from, Recolour.Mode mode) throws Refused {
         RecolourPlan plan = RecolourPlan.of(to, from, mode);
+        Component kept = Component.translatable("axiom.chromastudio.recolour.kept", plan.kept());
         if (plan.size() == 0) {
             MutableComponent why = Component.translatable("axiom.chromastudio.nothing_to_change");
-            throw new Refused(plan.kept() == 0 ? why : why.append(" ").append(kept(plan)));
+            throw new Refused(plan.kept() == 0 ? why : why.append(" ").append(kept));
         }
         String title = from == null ? to.name : from.name + " to " + to.name;
-        Script made = made(AxiomScript.recolour(title, plan.rows()), Component.translatable("axiom.chromastudio.recolour.done", plan.size(), plan.unshaped()),
+        MutableComponent scope = counted("axiom.chromastudio.recolour.done", plan.size());
+        int stay = plan.kept() + plan.unshaped();
+        if (stay > 0) scope.append(" ").append(counted("axiom.chromastudio.recolour.stay", stay));
+        List<Component> details = new ArrayList<>(List.of(Component.translatable("axiom.chromastudio.recolour.rules")));
+        if (plan.kept() > 0) details.add(kept);
+        if (plan.unshaped() > 0) details.add(Component.translatable("axiom.chromastudio.recolour.unshaped", plan.unshaped()));
+        return made(AxiomScript.recolour(title, plan.rows()), scope, details,
                 from == null ? "axiom.chromastudio.long.from" : "axiom.chromastudio.long.brush",
                 from == null ? "axiom.chromastudio.too_long.from" : "axiom.chromastudio.too_long");
-        return plan.kept() == 0 ? made : new Script(made.text(), made.summary().copy().append(" ").append(kept(plan)));
-    }
-
-    private static Component kept(RecolourPlan plan) {
-        return Component.translatable(plan.kept() == 1 ? "axiom.chromastudio.recolour.kept.one" : "axiom.chromastudio.recolour.kept", plan.kept());
     }
 
     static Script scatter(Palette p) throws Refused {
         if (p.entries.isEmpty()) throw new Refused(Component.translatable("palettes.chromastudio.need_entries"));
         ScatterBlocks blocks = ScatterBlocks.of(p);
+        List<PaletteEntry> skipped = p.entries.stream().filter(e -> PaletteBlocks.state(e) == null || blocks.leftOut().contains(e)).toList();
         Component leftOut = Component.translatable("axiom.chromastudio.brush.left_out",
-                blocks.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", ")));
-        if (blocks.blocks().isEmpty()) throw new Refused(blocks.leftOut().isEmpty() ? Component.translatable("axiom.chromastudio.no_blocks") : leftOut);
+                skipped.stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", ")));
+        if (blocks.blocks().isEmpty()) {
+            throw new Refused(Component.translatable(blocks.leftOut().isEmpty() ? "axiom.chromastudio.no_blocks" : "axiom.chromastudio.scatter.none"));
+        }
         Palette placed = new Palette(p.name);
         for (ScatterBlocks.Placed b : blocks.blocks()) placed.entries.add(PaletteBlocks.of(b.state()).withWeight(b.weight()));
-        MutableComponent summary = Component.translatable("axiom.chromastudio.scatter.done", placed.entries.size());
-        if (!blocks.leftOut().isEmpty()) summary.append(" ").append(leftOut);
+        MutableComponent scope = counted("axiom.chromastudio.scatter.done", placed.entries.size());
+        List<Component> details = new ArrayList<>(List.of(Component.translatable("axiom.chromastudio.scatter.rules")));
+        if (!skipped.isEmpty()) {
+            scope.append(" ").append(Component.translatable("axiom.chromastudio.script.left_out", skipped.size()));
+            details.add(leftOut);
+            details.add(Component.translatable("axiom.chromastudio.brush.left_out.tip"));
+        }
         AxiomScript.Kept kept = kept(s -> !ScatterBlocks.paintsOver(s), s -> {
             String half = property(s, "half");
             return "upper".equals(half) || "lower".equals(half) || "true".equals(property(s, "waterlogged"));
         });
-        return made(AxiomScript.scatter(placed, kept), summary, "axiom.chromastudio.long.brush", "axiom.chromastudio.too_long");
+        return made(AxiomScript.scatter(placed, kept), scope, details, "axiom.chromastudio.long.brush", "axiom.chromastudio.too_long");
     }
 
     static Script gradient(String name, List<PaletteEntry> steps, AxiomScript.Axis axis) throws Refused {
@@ -86,12 +96,19 @@ final class AxiomScripts {
             case Y -> at.getY();
             case Z -> at.getZ();
         };
-        MutableComponent summary = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name().toLowerCase(Locale.ROOT));
+        MutableComponent scope = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name().toLowerCase(Locale.ROOT));
+        List<Component> details = new ArrayList<>(List.of(Component.translatable("axiom.chromastudio.gradient.rules"),
+                Component.translatable("axiom.chromastudio.gradient.left_alone")));
         int skipped = steps.size() - full.size();
         if (skipped > 0) {
-            summary.append(" ").append(Component.translatable(skipped == 1 ? "axiom.chromastudio.gradient_tool.skipped.one" : "axiom.chromastudio.gradient_tool.skipped", skipped));
+            scope.append(" ").append(Component.translatable("axiom.chromastudio.script.left_out", skipped));
+            details.add(Component.translatable("axiom.chromastudio.gradient.skipped"));
         }
-        return made(AxiomScript.gradient(name, full, axis, start, full.size() * 2, gradientKept()), summary, "axiom.chromastudio.long", "axiom.chromastudio.too_long");
+        return made(AxiomScript.gradient(name, full, axis, start, full.size() * 2, gradientKept()), scope, details, "axiom.chromastudio.long", "axiom.chromastudio.too_long");
+    }
+
+    private static MutableComponent counted(String key, int n) {
+        return n == 1 ? Component.translatable(key + ".one") : Component.translatable(key, n);
     }
 
     static AxiomScript.Kept gradientKept() {
@@ -148,16 +165,16 @@ final class AxiomScripts {
 
     static void copy(Script script) { Clipboard.copy(script.text()); }
 
-    private static Script made(String script, Component summary, String tooLong, String tooBig) throws Refused {
+    private static Script made(String script, Component scope, List<Component> details, String nextStep, String tooBig) throws Refused {
         int bytes = ClipboardSize.bytes(script), counted = AxiomScript.counted(script);
         if (bytes > ClipboardSize.MAX_BYTES) {
             throw new Refused(Component.translatable(tooBig, ClipboardSize.kilobytes(bytes), ClipboardSize.kilobytes(ClipboardSize.MAX_BYTES)));
         }
-        MutableComponent out = Component.empty().append(summary).append(" ")
-                .append(Component.translatable("axiom.chromastudio.size", ClipboardSize.kilobytes(bytes), counted));
-        if (counted > AxiomScript.SERVER_LIMIT) {
-            out.append(" ").append(Component.translatable(tooLong, AxiomScript.SERVER_LIMIT));
-        }
-        return new Script(script, out);
+        Component size = Component.translatable("axiom.chromastudio.size", ClipboardSize.kilobytes(bytes), counted);
+        if (counted <= AxiomScript.SERVER_LIMIT) return new Script(script, scope, size, null, null, List.copyOf(details));
+        Component next = Component.translatable(nextStep);
+        List<Component> all = new ArrayList<>(details);
+        all.add(next);
+        return new Script(script, scope, size, Component.translatable("axiom.chromastudio.script.over", AxiomScript.SERVER_LIMIT), next, List.copyOf(all));
     }
 }
