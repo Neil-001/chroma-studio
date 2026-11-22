@@ -4,7 +4,8 @@ Chroma Studio works with Axiom, the building editor, on Fabric. Five Chroma tool
 
 ## Features
 
-- Recolour a build into a palette with the Chroma palette brush, keeping its shading, its stairs and slabs, and its windows. Brush it stroke by stroke, or preview the whole build and press Apply. Scatter mode paints the palette's blocks at random by weight (#69)
+- Recolour a build into a palette with the Chroma palette brush, keeping its shading, its stairs and slabs, and its windows. Brush it stroke by stroke, or preview the whole build and press Apply (#69)
+- Scatter a palette's blocks at random by weight with the palette brush's Scatter mode (#69)
 - Lay a gradient across a build with the Chroma gradient tool: right-click where it starts and where it ends, choose how far the steps blend, and press Apply. Stairs, slabs and walls take their step's block in the same shape (#69)
 - Shade a build darker or lighter with the Chroma shade brush, which turns each block into a near shade, close in hue and texture, or into a palette's next block (#69)
 - Sample a build into a weighted palette with the Chroma build sampler, by brushing over it or taking the whole build (#69)
@@ -20,6 +21,7 @@ Chroma Studio works with Axiom, the building editor, on Fabric. Five Chroma tool
 - Comparing blocks whose colours are almost tied could run forever, and now always finishes (#69)
 - A saved gradient loaded while Chroma Studio reads the blocks again, as after a resource pack change, takes its blocks from the new read (#69)
 - The import dialog and `/chroma export` say in your language why a palette can't be read (#69)
+- After Export and place, the export dialog shows where the file was saved as well as where it was placed (#69)
 - The hotbar fill dialog shows how many blocks go to the hotbar, to free slots and to shulker boxes, and warns before any could drop at your feet (#69)
 - Tooltips across the mod are shorter and say only what a control's label doesn't (#69)
 
