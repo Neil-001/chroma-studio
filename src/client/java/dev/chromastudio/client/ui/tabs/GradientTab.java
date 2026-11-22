@@ -698,7 +698,8 @@ public final class GradientTab extends PanelTab {
             if (stop instanceof Entry e) Widgets.blockIcon(g, e.block(), x + 1, y);
             if (!draggingStop && mouseX >= x && mouseX < x + CHIP && mouseY >= y && mouseY < y + Widgets.H) {
                 Component what = stop instanceof Entry e ? e.name() : Component.literal(colourOf(stop).hex());
-                g.setComponentTooltipForNextFrame(font(), List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
+                g.setComponentTooltipForNextFrame(font(), STOPS.size() > 2 ? List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM))
+                        : List.of(what, tr("gradient.chromastudio.stop.drag").copy().withColor(Theme.TIP_DIM), tr("gradient.chromastudio.stop.two_needed").copy().withColor(Theme.TIP_GREYED)), mouseX, mouseY);
             }
         }
 
