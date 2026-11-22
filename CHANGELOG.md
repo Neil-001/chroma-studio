@@ -25,6 +25,8 @@ Chroma Studio works with Axiom, the building editor, on Fabric. Five Chroma tool
 - The hotbar fill dialog shows how many blocks go to the hotbar, to free slots and to shulker boxes, and warns before any could drop at your feet (#69)
 - Tooltips across the mod are shorter and say only what a control's label doesn't (#69)
 - In long languages, such as German, the Diorama toolbar takes a second row when its labels don't fit, and the texture filter chips stay inside the filters panel (#69)
+- The nine translations use the game's own words for the hotbar, shulker boxes and bedrock, and name a block's face once (#69)
+- A filters panel's title has a line under it, so a row scrolled partway no longer runs into it (#69)
 
 # 1.2.1
 
