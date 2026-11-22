@@ -488,8 +488,8 @@ final class PaletteDialogs {
             String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
             Optional<Component> problem = LitematicaBridge.place(result.file(), origin, name);
             Component placed = problem.orElseGet(() -> tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()));
-            String line = PanelTab.fit(placed.getString(), box.w() - 10);
-            if (!line.equals(placed.getString())) statusTip.add(placed);
+            String flat = placed.getString().replace('\n', ' '), line = PanelTab.fit(flat, box.w() - 10);
+            if (!line.equals(flat)) statusTip.add(placed);
             done.append("\n").append(Component.literal(line).withColor(problem.isPresent() ? Theme.BAD : Theme.GOOD));
             status(done, Theme.GOOD);
         }
