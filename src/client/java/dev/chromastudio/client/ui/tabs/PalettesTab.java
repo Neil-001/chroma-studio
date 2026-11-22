@@ -214,7 +214,7 @@ public final class PalettesTab extends PanelTab {
             ToolButton button = widgets.add(new ToolButton(x, y, w, t.icon, label, labels, t.lit, t.run));
             if (t.unavailable != null) Widgets.disable(button, labels ? t.unavailable : Component.empty().append(label).append("\n").append(t.unavailable));
             else if (t.key.equals("capture")) button.setTooltip(Tooltip.create(labels ? tr("palettes.chromastudio.tool.capture.tip")
-                    : Component.empty().append(label).append("\n").append(tr("palettes.chromastudio.tool.capture.tip").withColor(Theme.TIP_DIM))));
+                    : Component.empty().append(label).append("\n").append(tr("palettes.chromastudio.tool.capture.tip").copy().withColor(Theme.TIP_DIM))));
             else if (!labels) button.setTooltip(Tooltip.create(label));
             x += w + GAP;
         }
