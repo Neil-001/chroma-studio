@@ -172,7 +172,7 @@ final class PaletteDialogs {
             Component browse = tr("palettes.chromastudio.browse"), go = tr("palettes.chromastudio.import");
             int y = in.y() + PanelTab.ROW;
             widgets.button(in.x(), y, browse, () -> FileDialog.choose("JSON", "json", path -> field.setValue(path.toString()),
-                    () -> status(tr("palettes.chromastudio.no_dialog"), Theme.FAIR))).setTooltip(Tooltip.create(tr("palettes.chromastudio.import.browse.tip")));
+                    () -> status(tr("palettes.chromastudio.no_dialog"), Theme.FAIR)));
             widgets.button(in.right() - Widgets.buttonWidth(go), y, go, this::confirm);
         }
 

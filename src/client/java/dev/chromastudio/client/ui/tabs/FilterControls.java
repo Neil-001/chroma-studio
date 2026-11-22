@@ -42,26 +42,26 @@ final class FilterControls {
 
         if (basics) {
             filterLabel(w, x, y, cx - x - 3, tr("filter.cube"));
-            w.toggle(cx, y, cw, null, f.fullCube, v -> { f.fullCube = v; MatchState.changed(); }, tr("filter.cube.tip"));
+            w.toggle(cx, y, cw, null, f.fullCube, v -> { f.fullCube = v; MatchState.changed(); });
             y += ROW;
             filterLabel(w, x, y, cx - x - 3, tr("filter.solid"));
-            w.toggle(cx, y, cw, null, f.solid, v -> { f.solid = v; MatchState.changed(); }, tr("filter.solid.tip"));
+            w.toggle(cx, y, cw, null, f.solid, v -> { f.solid = v; MatchState.changed(); });
             y += ROW;
             filterLabel(w, x, y, cx - x - 3, tr("filter.opaque"));
-            w.toggle(cx, y, cw, null, f.opaque, v -> { f.opaque = v; MatchState.changed(); }, tr("filter.opaque.tip"));
+            w.toggle(cx, y, cw, null, f.opaque, v -> { f.opaque = v; MatchState.changed(); });
             y += ROW;
         }
         filterLabel(w, x, y, cx - x - 3, tr("filter.same_texture"));
-        w.toggle(cx, y, cw, null, f.sameTexture, v -> { f.sameTexture = v; MatchState.changed(); }, tr("filter.same_texture.tip"));
+        w.toggle(cx, y, cw, null, f.sameTexture, v -> { f.sameTexture = v; MatchState.changed(); });
         y += ROW;
         filterLabel(w, x, y, cx - x - 3, tr("filter.tinted"));
-        w.cycler(cx, y, cw, null, tris, f.tinted, triName, v -> { f.tinted = v; MatchState.changed(); }, tr("filter.tinted.tip"));
+        w.cycler(cx, y, cw, null, tris, f.tinted, triName, v -> { f.tinted = v; MatchState.changed(); });
         y += ROW;
         filterLabel(w, x, y, cx - x - 3, tr("filter.creative_only"));
-        w.cycler(cx, y, cw, null, tris, f.creativeOnly, triName, v -> { f.creativeOnly = v; MatchState.changed(); }, tr("filter.creative_only.tip"));
+        w.cycler(cx, y, cw, null, tris, f.creativeOnly, triName, v -> { f.creativeOnly = v; MatchState.changed(); });
         y += ROW;
         filterLabel(w, x, y, cx - x - 3, tr("filter.light"));
-        w.cycler(cx, y, cw, null, tris, f.lightSource, triName, v -> { f.lightSource = v; MatchState.changed(); }, tr("filter.light.tip"));
+        w.cycler(cx, y, cw, null, tris, f.lightSource, triName, v -> { f.lightSource = v; MatchState.changed(); });
         y += ROW;
         filterLabel(w, x, y, cx - x - 3, tr("filter.technical"));
         w.toggle(cx, y, cw, null, f.technical, v -> { f.technical = v; MatchState.changed(); }, tr("filter.technical.tip"));
@@ -75,15 +75,15 @@ final class FilterControls {
         w.cycler(cx, y, cw, null, tones, f.tone == null ? ALL : f.tone.name(), t -> Component.translatable("tone.chromastudio." + t.toLowerCase(Locale.ROOT)), t -> {
             f.tone = t.equals(ALL) ? null : Tone.valueOf(t);
             MatchState.changed();
-        }, tr("filter.tone.tip"));
+        });
         y += ROW;
         int sw = (cw - GAP) / 2;
         filterLabel(w, x, y, cx - x - 3, tr("filter.lightness"));
-        w.spin(cx, y, sw, f.lightnessMin, 0.05, 0, 1, false, v -> { f.lightnessMin = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.lightness.tip")));
-        w.spin(cx + sw + GAP, y, cw - sw - GAP, f.lightnessMax, 0.05, 0, 1, false, v -> { f.lightnessMax = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.lightness.tip")));
+        w.spin(cx, y, sw, f.lightnessMin, 0.05, 0, 1, false, v -> { f.lightnessMin = v; MatchState.changed(); });
+        w.spin(cx + sw + GAP, y, cw - sw - GAP, f.lightnessMax, 0.05, 0, 1, false, v -> { f.lightnessMax = v; MatchState.changed(); });
         y += ROW;
         filterLabel(w, x, y, cx - x - 3, tr("filter.chroma"));
-        w.spin(cx, y, sw, f.chromaMin, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMin = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.chroma.tip")));
+        w.spin(cx, y, sw, f.chromaMin, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMin = v; MatchState.changed(); });
         w.spin(cx + sw + GAP, y, cw - sw - GAP, f.chromaMax, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMax = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.chroma.tip")));
         y += ROW;
         filterLabel(w, x, y, cx - x - 3, tr("filter.badge"));
@@ -101,7 +101,7 @@ final class FilterControls {
         w.button(cx, y, reset, () -> {
             MatchState.resetFilters();
             afterReset.run();
-        }).setTooltip(Tooltip.create(tr("filter.reset.tip")));
+        });
         y += ROW + 2;
         w.label(x, y + 4, tr("filter.mods"), DIM);
         y += 14;
@@ -111,7 +111,7 @@ final class FilterControls {
                 if (v == Tri.ANY) f.namespaces.remove(namespace);
                 else f.namespaces.put(namespace, v);
                 MatchState.changed();
-            }, tr("filter.mods.tip"));
+            });
             y += ROW;
         }
         w.viewport(body, y - body.y() + 2);

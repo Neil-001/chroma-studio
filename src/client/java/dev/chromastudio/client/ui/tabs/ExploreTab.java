@@ -70,18 +70,18 @@ public final class ExploreTab extends Tab {
         controls.spin(x, y, 50, f.chromaMin, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> {
             f.chromaMin = v;
             MatchState.changed();
-        }).setTooltip(Tooltip.create(tr("chroma.min.tip")));
+        });
         x += 50 + GAP;
         controls.spin(x, y, 50, f.chromaMax, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> {
             f.chromaMax = v;
             MatchState.changed();
-        }).setTooltip(Tooltip.create(tr("chroma.max.tip")));
+        }).setTooltip(Tooltip.create(Component.translatable("match.chromastudio.filter.chroma.tip")));
         x += 50 + GAP;
         Component reset = tr("reset_view");
         controls.button(x, y, reset, () -> {
             zoom = 1;
             centreX = centreY = 0.5;
-        }).setTooltip(Tooltip.create(tr("reset_view.tip")));
+        });
         x += Widgets.buttonWidth(reset) + GAP;
         clear = controls.button(x, y, tr("clear_highlight"), () -> {
             Handoff.exploreHighlight = null;
@@ -102,7 +102,7 @@ public final class ExploreTab extends Tab {
         boolean ringing = highlight != null && !highlight.isEmpty();
         if (clear != null && clear.active != ringing) {
             clear.active = ringing;
-            clear.setTooltip(Tooltip.create(ringing ? tr("clear_highlight.tip") : tr("clear_highlight.none")));
+            clear.setTooltip(ringing ? null : Tooltip.create(tr("clear_highlight.none")));
         }
         if (seenRevision == MatchState.revision() && seenVersion == index.version()) return;
         seenRevision = MatchState.revision();
@@ -150,7 +150,6 @@ public final class ExploreTab extends Tab {
             List<Component> tip = new ArrayList<>();
             tip.add(e.properties().isEmpty() ? e.name() : Component.translatable("match.chromastudio.name_with_state", e.name(), e.properties()));
             tip.add(Component.literal(String.format("#%06X", over.rgb)).withColor(Theme.TIP_DIM));
-            tip.add(tr("click").withColor(Theme.TIP_DIM));
             int tipWidth = tip.stream().mapToInt(font::width).max().orElse(0);
             boolean tipOnLeft = mouseX + TIP_OFFSET + tipWidth + TIP_MARGIN > Minecraft.getInstance().getWindow().getGuiScaledWidth();
             int ix = tipOnLeft ? Math.min(b.right() - 17, mouseX + 6) : Math.max(b.x() + 1, mouseX - 22), iy = Math.max(b.y() + 1, mouseY - 22);

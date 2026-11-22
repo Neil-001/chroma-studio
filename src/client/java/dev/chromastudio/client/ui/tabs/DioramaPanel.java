@@ -21,7 +21,6 @@ import java.util.Locale;
 import java.util.function.BiConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -86,14 +85,13 @@ final class DioramaPanel implements AutoCloseable {
                 Component.translatable("palettes.chromastudio.diorama.view.tip"));
         x += viewW + PanelTab.GAP;
         int layoutW = LAYOUTS.stream().mapToInt(l -> Widgets.tw(name(l))).max().orElse(60) + 10;
-        widgets.cycler(x, y, layoutW, null, LAYOUTS, layout, DioramaPanel::name, l -> { layout = l; arrange(); });
+        widgets.cycler(x, y, layoutW, null, LAYOUTS, layout, DioramaPanel::name, l -> { layout = l; arrange(); },
+                Component.translatable("palettes.chromastudio.export.layout"));
         x += layoutW + PanelTab.GAP;
         Component reroll = Component.translatable("palettes.chromastudio.diorama.reroll");
-        widgets.button(x, y, reroll, () -> { seed = System.nanoTime(); arrange(); })
-                .setTooltip(Tooltip.create(Component.translatable("palettes.chromastudio.diorama.reroll.tip")));
+        widgets.button(x, y, reroll, () -> { seed = System.nanoTime(); arrange(); });
         x += Widgets.buttonWidth(reroll) + PanelTab.GAP;
-        widgets.button(x, y, Component.translatable("palettes.chromastudio.tool.export"), () -> export.accept(layout, seed))
-                .setTooltip(Tooltip.create(Component.translatable("palettes.chromastudio.diorama.export.tip")));
+        widgets.button(x, y, Component.translatable("palettes.chromastudio.tool.export"), () -> export.accept(layout, seed));
         widgets.add(new IconButton(area.right() - Widgets.H, y, Widgets.H, Widgets.H, IconButton.Glyph.CLOSE, Component.translatable("palettes.chromastudio.panel.close"), close));
         view = new Bounds(area.x(), y + PanelTab.ROW, area.w(), area.bottom() - y - PanelTab.ROW);
     }

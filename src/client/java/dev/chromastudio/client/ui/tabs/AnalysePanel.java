@@ -18,7 +18,6 @@ import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -66,7 +65,7 @@ final class AnalysePanel {
             Handoff.exploreHighlight = entries;
             ChromaScreen screen = ChromaScreen.current();
             if (screen != null) screen.select("explore");
-        }).setTooltip(Tooltip.create(Component.translatable("palettes.chromastudio.analyse.explore.tip")));
+        });
         fixW = Widgets.buttonWidth(Component.translatable("palettes.chromastudio.analyse.fix"));
         int top = area.y() + PanelTab.ROW + STRIP_H + PanelTab.GAP;
         int lines = 1, w = area.w() - Widgets.BAR_W - 2;

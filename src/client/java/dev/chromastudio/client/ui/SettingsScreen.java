@@ -74,7 +74,7 @@ public final class SettingsScreen extends Screen {
         int room = colW - 3 * GAP, wanted = w[0] + w[1] + w[2] + w[3];
         if (wanted > room) for (int i = 0; i < w.length; i++) w[i] = w[i] * room / wanted;
         int by = height - 22, right = left + colW;
-        addRenderableWidget(Button.builder(keys, _ -> openKeys()).bounds(left, by, w[0], 18).tooltip(Tooltip.create(tr("keys.tip"))).build());
+        addRenderableWidget(Button.builder(keys, _ -> openKeys()).bounds(left, by, w[0], 18).build());
         addRenderableWidget(Button.builder(done, _ -> onClose()).bounds(right - w[3], by, w[3], 18).build());
         addRenderableWidget(Button.builder(resetAll, _ -> open(new Confirm())).bounds(right - w[3] - GAP - w[2], by, w[2], 18)
                 .tooltip(Tooltip.create(tr("reset_all.tip"))).build());

@@ -189,7 +189,6 @@ public final class GradientTab extends PanelTab {
             }
         });
         if (full != null) Widgets.disable(addButton, full);
-        else addButton.setTooltip(Tooltip.create(tr("gradient.chromastudio.stop.add.tip")));
         x += addW + GAP;
         Entry held = inHand();
         Button handButton = widgets.button(x, y, hand, () -> {
@@ -198,7 +197,6 @@ public final class GradientTab extends PanelTab {
         });
         if (full != null) Widgets.disable(handButton, full);
         else if (held == null) Widgets.disable(handButton, tr("palettes.chromastudio.generate.in_hand.none"));
-        else handButton.setTooltip(Tooltip.create(tr("gradient.chromastudio.stop.in_hand.tip")));
 
         x = b.x() + PAD;
         y += ROW;
@@ -209,7 +207,7 @@ public final class GradientTab extends PanelTab {
             if ((int) v == steps) return;
             steps = (int) v;
             solve();
-        }).setTooltip(Tooltip.create(tr("gradient.chromastudio.steps.tip")));
+        });
         x += 38 + GAP;
         int w = widest(List.of(Easing.values()).stream().map(GradientTab::option).toList());
         widgets.cycler(x, y, w, null, List.of(Easing.values()), easing, GradientTab::option, v -> { easing = v; solve(); }, tr("gradient.chromastudio.easing.tip"));
@@ -224,7 +222,6 @@ public final class GradientTab extends PanelTab {
         MatchFilters filters = MatchState.filters();
         int others = filters.besidesKind();
         Component more = others == 0 ? tr("match.chromastudio.filter.more") : tr("gradient.chromastudio.filters.more", others);
-        Component counted = tr(others == 0 ? "gradient.chromastudio.filters.none" : others == 1 ? "gradient.chromastudio.filters.one" : "gradient.chromastudio.filters.many", others);
         int moreW = Chip.width(tr("gradient.chromastudio.filters.more", 88));
         List<String> kinds = new ArrayList<>(List.of(ALL_KINDS));
         for (Kind k : Kind.values()) kinds.add(k.name());
@@ -239,7 +236,7 @@ public final class GradientTab extends PanelTab {
             filtersOpen = !filtersOpen;
             swapStep = -1;
             rebuild();
-        })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip", counted)));
+        })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip")));
 
         int[] actionWidths = new int[ACTIONS.length];
         for (int i = 0; i < ACTIONS.length; i++) actionWidths[i] = Widgets.buttonWidth(tr("gradient.chromastudio.action." + ACTIONS[i]));
@@ -314,7 +311,6 @@ public final class GradientTab extends PanelTab {
         Flow.Spot spot = actionSpots[index];
         Button button = widgets.button(spot.x(), y + spot.row() * ROW, tr("gradient.chromastudio.action." + key), run);
         if (unavailable != null) Widgets.disable(button, unavailable);
-        else button.setTooltip(Tooltip.create(tr("gradient.chromastudio.action." + key + ".tip")));
     }
 
     private static Entry inHand() {
@@ -599,8 +595,7 @@ public final class GradientTab extends PanelTab {
                 g2.text(font(), de, x + w - 4 - font().width(de), y + 5, DIM, false);
                 g2.text(font(), fit(o.entry.name().getString(), w - 30 - font().width(de)), x + 22, y + 5, TEXT, false);
                 if (over) {
-                    g2.setComponentTooltipForNextFrame(font(), List.of(o.entry.name(), tr("gradient.chromastudio.step.tip", swapStep + 1, step.ideal.hex(), de).copy().withColor(Theme.TIP_DIM),
-                            tr("gradient.chromastudio.swap.use").copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
+                    g2.setComponentTooltipForNextFrame(font(), List.of(o.entry.name(), tr("gradient.chromastudio.step.tip", swapStep + 1, step.ideal.hex(), de).copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
                 }
             }
         });
@@ -686,7 +681,6 @@ public final class GradientTab extends PanelTab {
                 List<Component> tip = new ArrayList<>(List.of(s.entry.name(), tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE))
                         .copy().withColor(Theme.TIP_DIM)));
                 if (s.pinned) tip.add(tr("gradient.chromastudio.step.pinned").copy().withColor(Theme.TIP_SWAPPED));
-                tip.add(tr("gradient.chromastudio.step.swap").copy().withColor(Theme.TIP_DIM));
                 g.setComponentTooltipForNextFrame(font(), tip, mouseX, mouseY);
             }
         }
