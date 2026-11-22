@@ -6,7 +6,7 @@ What the mod does for the player in the game: reading colours off blocks and the
 - `FileDialog.choose` hands `extensions` to SDL as they are, so they are separated by semicolons with no leading dot, such as `png;jpg`.
 - Every caller of `FileDialog.choose` also offers a field to type a path into, because some systems bring up no dialog.
 - SDL hands `FileDialog`'s callback a null list on an error, such as a system with no dialog to show, and an empty list when the player cancels or picks nothing. Only the null list calls `failed`.
-- `FileDialog` frees a dialog's callback when the next dialog opens. A callback can't be freed from inside its own call, nor before its dialog answers, however long the player leaves it open.
+- `FileDialog` frees a dialog's callback when the next dialog opens. A callback can't be freed from inside its own call, nor before its dialog answers, however long the player leaves it open. A callback whose dialog failed to open is freed then too.
 
 ## Reading colours
 
