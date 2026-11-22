@@ -44,10 +44,9 @@ public final class PaletteCodec {
         }
         if (!root.isJsonObject()) throw new UnreadablePalette(UnreadablePalette.Reason.NOT_PALETTE);
         JsonObject o = root.getAsJsonObject();
-        if (!o.has("format")) throw new UnreadablePalette(UnreadablePalette.Reason.NO_FORMAT);
-        if (!isInt(o.get("format"), FORMAT)) {
-            throw new UnreadablePalette(UnreadablePalette.Reason.OTHER_FORMAT, String.valueOf(o.get("format")), String.valueOf(FORMAT));
-        }
+        JsonElement format = o.get("format");
+        if (format == null || !format.isJsonPrimitive() || !format.getAsJsonPrimitive().isNumber()) throw new UnreadablePalette(UnreadablePalette.Reason.NO_FORMAT);
+        if (format.getAsDouble() != FORMAT) throw new UnreadablePalette(UnreadablePalette.Reason.OTHER_FORMAT, format.getAsString(), String.valueOf(FORMAT));
 
         Palette p = new Palette(string(o.get("name"), ""));
         p.notes = string(o.get("notes"), "");
@@ -66,11 +65,6 @@ public final class PaletteCodec {
             }
         }
         return p;
-    }
-
-    private static boolean isInt(JsonElement e, int value) {
-        if (e == null || !e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) return false;
-        return e.getAsDouble() == value;
     }
 
     private static String string(JsonElement e, String fallback) {

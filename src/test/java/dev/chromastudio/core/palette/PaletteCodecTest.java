@@ -88,7 +88,11 @@ class PaletteCodecTest {
         UnreadablePalette newer = assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"format\": 2}"));
         assertEquals(UnreadablePalette.Reason.OTHER_FORMAT, newer.reason());
         assertEquals(List.of("2", "1"), newer.args());
-        assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"format\": \"1\"}"));
+        for (String format : List.of("\"1\"", "\"2\"", "null", "{}", "[2]")) {
+            UnreadablePalette notNumber = assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"format\": " + format + "}"));
+            assertEquals(UnreadablePalette.Reason.NO_FORMAT, notNumber.reason(), format);
+        }
+        assertEquals(List.of("2.5", "1"), assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"format\": 2.5}")).args());
         assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("[1]"));
         assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"format\": 1"));
         assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson(""));
