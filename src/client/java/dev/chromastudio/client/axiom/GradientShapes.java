@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Fallable;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.StainedGlassPaneBlock;
 import net.minecraft.world.level.block.WeatheringCopper;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
@@ -77,7 +78,9 @@ final class GradientShapes {
         }
     }
 
-    static boolean glassPane(Entry e) { return e.kind() == Kind.PANE && e.block().defaultBlockState().getSoundType() == SoundType.GLASS; }
+    static boolean glassPane(Entry e) {
+        return e.kind() == Kind.PANE && (e.block() instanceof StainedGlassPaneBlock || e.block().defaultBlockState().getSoundType() == SoundType.GLASS);
+    }
 
     static @Nullable Entry glassPair(Entry e) {
         String id = e.id();
