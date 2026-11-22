@@ -8,3 +8,4 @@ Tests of the window, its tabs and widgets.
 ## Text that fits
 
 - `DialogTextTest` measures with the game's bitmap fonts, which the jar holds. The jar's unifont list is empty because the game downloads unifont as an asset, so a Chinese, Japanese or Korean character counts `UNIFONT_MOST`, 9: a unifont glyph advances half its width plus one, and the widest is 16 pixels.
+- `DialogTextTest` measures each language with Axiom's windows named in English and again with the names Axiom shows in that language, which `AXIOM_NAMES` copies from Axiom's translations by hand. A name it lacks stays English.

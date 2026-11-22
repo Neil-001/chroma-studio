@@ -17,7 +17,7 @@ The client code that doesn't depend on the mod loader: the entrypoint, the loade
 - To add a setting, declare a static field in `ModSettings` with its default, name it in a group in `GROUPS`, and give a number its limits in the static block. The file, the reset and the settings screen all work from those, and the file's keys are the field names. Call `ModSettings.save()` after changing a setting.
 - `ModSettings.read` also reads the boolean `hotbarOverflow` key that versions before `hotbarOverflowMode` wrote, true as `ALWAYS` and false as `NEVER`, so an old settings file keeps the player's choice.
 - `GradientStore`'s public methods are synchronized because `ChromaStudioApi` reads it from other threads. The private `load` and `save` take no lock of their own, so call them only with the store's lock held.
-- The stores never throw away a file they can't read, such as one a later version wrote or one broken by hand. `GradientStore` moves it aside as `.unreadable` before it saves, and `PaletteStore` skips it and gives no new palette its name.
+- The stores never throw away a file they can't read, such as one a later version wrote or one broken by hand. `GradientStore` moves it aside as `.unreadable` before it saves, and `PaletteStore` skips it and gives no new palette its file name.
 - `LayoutChoice` keeps the constant names of `core.export.Layout`, because the code converts one to the other with `Layout.valueOf(name())`.
 
 ## Export

@@ -9,8 +9,7 @@ The mod's logic that needs no game: colour maths, palettes and gradients, schema
 
 ## hotbar
 
-- The hotbars `HotbarWrites` writes are Axiom's, reached through calls that may throw or return without taking the item. So every slot is read before anything changes, and a failed read writes nothing. Every slot is read back after the writes. When a write fails, `HotbarWrites` puts back the slots it tried, including the one whose write threw, reads them back, and names in the result any slot still changed or not confirmed, since putting back can fail too.
-- A set that threw may still have taken, so `HotbarWrites.write` puts that slot back too.
+- The hotbars `HotbarWrites` writes are Axiom's, reached through calls that may throw or return without taking the item. So every slot is read before anything changes, and a failed read writes nothing. Every slot is read back after the writes. When a write fails, `HotbarWrites` puts back the slots it tried, including the one whose write threw, as a set that threw may still have taken, reads them back, and names in the result any slot still changed or not confirmed, since putting back can fail too.
 - `HotbarWrites` never writes a slot's own item back to it first to test that it can be set. That would send the server a change for every slot and save Axiom's hotbars for nothing, and it still couldn't catch a slot that ignores writes. Reading back after the writes catches that.
 - `HotbarWrites.together` checks that two failures are different objects before `addSuppressed`, because a mod may throw the same exception object again and `Throwable` refuses to suppress itself.
 

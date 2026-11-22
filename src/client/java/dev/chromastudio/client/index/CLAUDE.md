@@ -12,18 +12,17 @@ The block index: every block's colours per face, read from the game's models and
 
 - `BlockIndex.current` reads the creative tabs only on the client thread once the player is connected, because the tabs are filled with the world's registries. Each loader calls `BlockIndex.worldJoined` when the player joins, so the loading screen hides the moment the read takes.
 - `BlockIndex` fills the creative tabs from `tabRegistries`, a copy of the world's registries under another identity. The game refills its tabs and feeds its creative search only when its features, operator rights or registries differ from the last fill. A provider it has never seen makes it refill even when nothing else differs. Asked with the world's own registries, it could find nothing changed and leave that search empty.
-- The game's own rebuild fills the tabs with every feature and the operator items on, so modded tabs and experimental blocks count as listed.
-- `BlockIndex.listedBlocks` skips every tab that isn't a category, because the search tab repeats every other tab, the operator one included.
+- `BlockIndex.listedBlocks` has the game rebuild the tabs with every feature and the operator items on, so modded tabs and experimental blocks count as listed. It counts a block as listed only in a category tab other than Operator Utilities, and skips the tabs that aren't categories, because the search tab repeats every other tab, the operator one included.
 - `CreativeOnly` is kept by hand because the game has no flag for blocks a survival player can't get or can't place as they are. Add a block when no survival player can hold it, such as one with no item or one that can't be mined, even if a creative tab lists it. Infested blocks are found by class, so modded ones count.
 
 ## Models and states
 
-- `IndexBuilder.Look` compares models by their texture names alone, not by the areas their quads cover, so a stair's states, which cover different areas with the same textures, fold into one entry.
+- `IndexBuilder.Look` compares models by each face's textures and tint indexes, not by the areas their quads cover, so a stair's states, which cover different areas with the same textures, fold into one entry.
 - `IndexBuilder` skips waterlogged states other than the default, because water doesn't change a block's textures and those states would crowd out the ones that do.
 - States that share their textures share an `Entry`, but a tint may still tell them apart, as redstone dust's power does. So `Entry.face` and `Entry.mean` with a `BlockState`, and `Target`, take the tint from the state asked about.
 - `Entry.blockEntityRendered` counts a bell as drawn by its block entity, because a bell's model is only the frame it hangs in. A block drawn by its block entity has faces that hold only the texture it breaks into, a guess at how it looks.
 - `Entry.BY_PREFERENCE` lists the top face first, and the search keeps the first of equal faces, so a block that looks the same all round is matched by its top, the face a builder most often sees.
-- `Kind.BY_CLASS` is matched in order, and the first class a block is an instance of decides, so a modded block that extends one of them gets its kind too. Put a subclass that shouldn't take its parent's kind above the parent. Stained glass panes extend the iron bars, so `IronBarsBlock` covers glass panes. Copper grates share glass's class, so `WaterloggedTransparentBlock` goes on to the later rules.
+- `Kind.BY_CLASS` is matched in order, and the first class a block is an instance of decides, so a modded block that extends one of them gets its kind too. Put a subclass that shouldn't take its parent's kind above the parent. Stained glass panes extend the iron bars, so `IronBarsBlock` covers glass panes. Copper grates share glass's class, so `WaterloggedTransparentBlock` ends the class rules, and a grate's kind comes from its light and shape.
 - `MaterialSets.SUFFIXES` is in the order a set lists its shapes after its full blocks. A suffix that ends another must come after it, so `_wall_hanging_sign` is tried before `_hanging_sign`, and that before `_sign`.
 
 ## Modded blocks and NeoForge
@@ -39,6 +38,6 @@ The block index: every block's colours per face, read from the game's models and
 ## Textures and the cache
 
 - A texture's stats are always worked out from its `Textures.Frame`, so a texture read from the cache gives the same numbers as one read from its image.
-- `Textures.Frame.stats` hands a cell that isn't simply full or empty to `TextureStats` as 8 by 8 pixels, as many of them filled as the cell's alpha asks for. `TextureStats` takes 8-bit alpha and counts none under its cutoff, and a cell of a large texture can be far less filled: one texel in 64 is 4 in 255. This keeps coverage and the colours' weights true to within a thousandth.
+- `Textures.Frame.stats` hands a texture with any partly filled cell to `TextureStats` at 8 by 8 pixels a cell, as many of them filled as the cell's alpha asks for. `TextureStats` takes 8-bit alpha and counts none under its cutoff, and a cell of a large texture can be far less filled: one texel in 64 is 4 in 255. This keeps coverage and the colours' weights true to within a thousandth.
 - Raise `TextureCache.FORMAT` whenever `Textures` works out frames differently, so old cache files stop being read.
 - `TextureCache.file` keys the cache by the selected packs in their order, as a later pack overrides an earlier one. A pack changed in place keeps its file, and Refresh reads the images again.

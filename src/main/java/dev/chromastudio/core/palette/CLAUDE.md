@@ -13,8 +13,7 @@ Palettes and gradients: their files and share strings, generation, analysis, rec
 Length:
 
 - A server lets a player without import rights run a script of at most `AxiomScript.SERVER_LIMIT` characters, as Axiom counts them: without whitespace and the keywords in `NOT_COUNTED`. Servers count comments too, so the scatter and gradient scripts carry only their title. A plain block of the game is named as `blocks.name`, and the blocks a script leaves alone are one string of names, which counts only by its letters. Only another mod's block, or one with properties, needs the function that finds it.
-- The game copies text through a buffer of 64 KiB. A recolour of every block runs to a thousand rows or more, so `AxiomScript.recolour` writes each block it puts down once, in a list, and the rows as one string of `from=number` pairs.
-- A recolour script without a door row leaves the door code out.
+- The game copies text through a buffer of 64 KiB. A recolour of every block runs to a thousand rows or more, so `AxiomScript.recolour` writes each block it puts down once, in a list, and the rows as one string of `from=number` pairs. It writes the door code only when a row has a door.
 
 What a script leaves alone:
 
@@ -43,7 +42,7 @@ What a script leaves alone:
 - See-through blocks are kept apart from solid ones, so windows stay windows.
 - `Recolour.SHARE` is one just-noticeable step in OKLab. Materials a builder mixed on purpose, such as cobblestone and andesite, then keep blocks of their own while the palette has a near one for each.
 - Two neighbouring shades may share a block to put the walls on a heavier one, as a builder puts stone walls on stone bricks, not on planks. Each sharing pair adds a table as large as the first, so beyond one pair the shades either side are shared out by weight instead.
-- The cost tables in `Recolour` keep only the places where each row's running minimum drops. Adding the same fit to each can round two costs to the same total, which must let the earlier block win, so the first place whose total rounds to the least is found by halving.
+- The cost tables in `Recolour.matched` keep only the places where each row's running minimum drops. Adding the same fit to each can round two costs to the same total, which must let the earlier block win, so the first place whose total rounds to the least is found by halving.
 - A look with weight 0 is in the build without adding to how much there is, as a stair is when its material's full block already counts it. When no look of a class weighs anything, each counts as one.
 - A shade's amount is the square root of its looks' weights, so a build's bulk material counts for more without the rest counting for nothing.
 
@@ -53,7 +52,7 @@ What a script leaves alone:
 - A plain block never steps to a mossy, cracked, chiseled or infested one, so a wall brushed lighter never grows moss. A decorated block may still step to a plain one.
 - Among a palette's blocks a step reaches further, because a palette rarely has a block one small step from each of its others: Desert's next block darker than sandstone is yellow terracotta, a long step that is flatter and more orange. It still never turns a grey to a colour, stone to wood, or a plain block to a decorated one.
 - The limits are measured on Minecraft 26.3's blocks, in OKLab:
-  - `MAX_HUE` and `CHROMA_SHARE`: orange to red terracotta is about 0.035 in hue, red concrete to red terracotta 0.03 in chroma, and stone bricks to tuff bricks 0.01. A grey must not take on colour: polished blackstone bricks to nether bricks is 0.021, and white terracotta to smooth stone 0.044.
+  - `MAX_HUE`, `CHROMA_SHARE` and `MIN_CHROMA_CHANGE`: orange to red terracotta is about 0.035 in hue, and red concrete to red terracotta 0.03 in chroma. A near grey may change chroma by `MIN_CHROMA_CHANGE` whatever its share allows, as stone bricks to tuff bricks does by 0.01, but no further: polished blackstone bricks to nether bricks is 0.021. White terracotta to smooth stone, 0.044, is a grey to a colour, which the `Tone.MIN_CHROMA` check refuses too.
   - `MAX_SPREAD`: a flat block such as concrete and a textured one such as planks are more than 0.04 apart in spread.
   - `OTHER_FAMILY` and `OTHER_SHAPES`: tuff bricks are a nearer step from stone bricks than tuff is, and cracked stone bricks are a worn stone brick rather than the next material along.
   - `SHORTEST` and `LONGEST`: below half the step asked for the change can hardly be seen, and past two and a half times it is a jump, not a shade.
@@ -78,9 +77,9 @@ What a script leaves alone:
 ## Saved files and strings
 
 - `PaletteCodec` and `GradientCodec` refuse a file without their version, or with another, rather than guess at it. Within a version they give a missing or mistyped field its default and ignore unknown fields, so a file edited by hand still loads.
-- `StoredGradient` keeps `easing` and `arc` as text, so a file from a later version with a new one still loads. `MIN_STEPS` and `MAX_STEPS` match the limits of the `gradientSteps` setting in `ModSettings`.
+- `StoredGradient` keeps `easing` and `arc` as text, so a file from a later version with a new one still loads.
 - A share string's entries end at a slash, so `ShareString` writes a slash in a block id's path as `%2F`. Block ids can't hold a percent sign, so it can't be mistaken for anything else.
-- `ShareString` and `PaletteCodec` refuse with an `UnreadablePalette`, which carries a `Reason` and its arguments instead of an English message, because the core can't translate. The client shows it as the text under `palettes.chromastudio.unreadable.` and the reason's name in lower case, and `LangTest` checks that every reason has one.
+- `ShareString` and `PaletteCodec` refuse with an `UnreadablePalette`, which carries a `Reason` and its arguments instead of an English message, because the core can't translate. The client shows it as the text under `palettes.chromastudio.unreadable.` and the reason's name in lower case, and `LangTest` checks that every reason has one. `GradientCodec` throws English `IllegalArgumentException`s, as its only caller, `GradientStore`, logs them and moves the file aside, so the player never sees the text.
 
 ## WorldEdit
 
@@ -88,4 +87,4 @@ What a script leaves alone:
 
 ## Analysis
 
-- `Analyzer.KEYS` lists every key a finding can have, so `LangTest` can check the language files against it. The filter tokens are mapped to filter presets by the window.
+- `Analyzer.KEYS` lists every key a finding can have, so `LangTest` can check the language files against it. `MatchFilters.preset` turns its filter tokens into the Match tab's filters.

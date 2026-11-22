@@ -40,9 +40,7 @@ What the mod does for the player in the game: reading colours off blocks and the
 ## Axiom hotbars
 
 - Axiom swaps the player's hotbar for one of its own, so the hotbar a fill wrote may not be the one in hand at Undo. `HotbarFill` keeps what a fill replaced by Axiom's number for that hotbar, and Undo writes it back there, through Axiom when that hotbar is no longer held.
-- The Axiom hotbar in hand is the player's own inventory, so `HotbarFill.axiomHotbars` writes it with `put` like any slot, and only the other hotbars through Axiom.
-- Axiom saves its hotbars itself a few seconds after a write, so `HotbarFill.fillAxiom` doesn't save them.
-- Axiom numbers its hotbars from 0, and `HotbarFill` names them to the player from 1, as Axiom's menu shows them.
+- `HotbarFill` names Axiom's hotbars to the player from 1, as Axiom's menu shows them.
 - `HotbarFill.fillAxiom` treats a write that quietly didn't take as a sign of a changed Axiom, the same as one that threw, and reports it to `AxiomBridge.hotbarsFailed`.
 - `HotbarFill.undo` reads back each slot it writes through Axiom's hotbars. That works because `whyNoUndo` allows an Undo through Axiom in creative mode alone, where every write takes at once. An operator in survival undoes an ordinary fill through commands.
 

@@ -15,9 +15,9 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 ## Axiom internals
 
 - `AxiomInternals` holds the handles into one Axiom feature that isn't in its API. Axiom's internals change between releases without notice, so nothing is compiled against them.
-- `AxiomInternals` finds each method by its exact signature with `MethodHandles.publicLookup()` the first time the feature is asked about. A missing handle, or a call through one that throws, turns that feature off for the session, and the log says why once.
+- Each `AxiomInternals` finds its handles by their exact signatures the first time its feature is asked about, with `MethodHandles.publicLookup()`, except that `AxiomMask.SCRIPT` reads a private field and `AxiomIcons` takes `Method` objects for its proxy. A missing handle, or a call through one that throws, turns that feature off for the session, and the log says why once.
 - New work waits for `AxiomInternals.reason` to be empty. Handles that were found stay usable after a failed call, so an Undo can still put back what a hotbar fill wrote (`AxiomHotbars.unreachable`), which is how the player recovers.
-- `AxiomMask.SCRIPT` and `AxiomMask.WINDOW` are optional, and `SCRIPT` reads `lastLuaCompile`, which is private to Axiom's `ToolMaskWindow`. When they're missing, the masks are still followed, and only the check for a script that doesn't compile and the panels' masks line are lost.
+- `AxiomMask.SCRIPT` and `AxiomMask.WINDOW` are optional, and `SCRIPT` reads `lastLuaCompile`, which is private to Axiom's `ToolMaskWindow`. The masks are still followed without them. Without `SCRIPT`, a script that doesn't compile isn't caught, and `AxiomMask.scripted` counts the masks as a script, so the shade brush never asks them on hover. Without `WINDOW`, the masks line can't say whether the masks are on or off.
 
 ## Axiom's editor
 
@@ -30,8 +30,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - Outside the editor, and until the editor counts as active, Axiom's API answers stone for the active block. So `AxiomEditor` remembers the block while the editor is active, and `AxiomBlock` takes the remembered one, as Chroma Studio's window is never open inside the editor.
 - When this Axiom can't say whether its editor is open, `AxiomBlock` takes the API's answer and adds a note when it's stone.
 - Outside Axiom's own drawing, the current ImGui context may be none, and asking it then crashes the game in native code, past any catch. So `AxiomEditor.frame` makes the editor's context current around the one question, as Axiom does, and asks only once `isImGuiContextActive` says there is one.
-- Axiom's `pushImGuiContext` returns the context it replaced, for `popImGuiContext`.
-- `AxiomTools.visit` counts the times the player has left the editor, so changes queued on one visit are never sent on the next. It goes up whenever the editor is seen switched off after being seen on, and it's read on every tick, every frame a tool is drawn and every time changes are queued or sent.
+- `AxiomTools.visit` counts the times the player has left the editor, so changes queued on one visit are never sent on the next. It goes up whenever the editor is seen switched off after being seen on, and it's read on every tick, every frame of a brush stroke and every time changes are queued or sent.
 
 ## How Axiom treats a tool
 
@@ -66,7 +65,6 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 - Axiom's API doesn't apply the tool masks to a tool's changes, so the tools ask Axiom's `MaskManager.getDestMask` for the destination mask, as Axiom's Script Brush does: the mask set under Tool Masks, kept within the selection when there is one, or every block when neither is set.
 - Axiom applies the masks only while its Tool Masks window is open, docked or minimised; closed, every block passes, or the selection's when there is one. The tools follow Axiom in that, as its own brushes do, and the panels say which it is (`AxiomMask.windowClosed`).
-- When opening or closing the Tool Masks window between a stroke and its sending changes the plan, nothing is sent.
 - Ask the masks on the client thread, as Axiom does.
 - Masks that can't be read, or a call into them that fails, let no block through, and the tools change nothing until the game restarts. No version of Axiom counts as having no masks.
 - A mask whose Lua script fails answers no from then on. Axiom says so only in `ToolMaskWindow.luaExecutionError`, which stays until a fresh context compiles the script or the player closes the message.
@@ -89,28 +87,27 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 ## Recolour
 
-- `RecolourPlan` works a recolour out once for the script and the palette brush alike, so the two change a build the same way. Each block is decided whole, by the look of its first state in the index, as a script can only ask which block stands somewhere.
+- `RecolourPlan` works a recolour out once for the script and the palette brush alike, so the two change a build the same way. Each block is decided whole, by the look of one state, the first the From palette lists or without a From palette the one the index lists, as a script can only ask which block stands somewhere.
 - The block a recolour gives keeps the properties both blocks share, such as a stair's facing.
 - Without a From palette, the ground (grass, dirt, sand, gravel and bedrock) is left alone, so a brush that reaches past a build doesn't repaint the lawn.
 - The script can't see Axiom's tool masks, so with a mask that cuts a door in two, the script changes both halves where the brush changes neither.
 - A palette that lists full blocks recolours full blocks only into those, and a block it lists only a shape of, such as oak stairs beside stone bricks, lends just that shape.
 - A solid block turns see-through only when the palette has nothing solid at all, so a palette of glass and sea lanterns leaves walls alone rather than glazing them.
 - The same block in another state, such as a log the palette lists on its side, stays as it is and counts as kept. The kept count only chooses what the player is told, because a build mostly of the palette's own blocks hardly changes, which would look like the tool failing.
-- In a script's summary the kept count goes last, after the note on servers' limit, which the dialog is sized to show. The palette brush gives it only in Shading, as Closest colour may still swap a block for one of the same colour listed first.
 - In Shading, a shape such as a stair or a door counts as its material's full block, as `SampleKind` counts it for a sampled palette, so a build and a palette sampled from it as From find the same main material. Each block knows its family, so variants share a shade and different materials don't.
 - The palette brush's default From is the build found from the block it's used on (`FoundBuild`), whose darkest and lightest blocks set the range the palette is spread over. Against every block in the game, a grey stone house would use only the palette's few middle shades.
 
 ## Gradient
 
 - `GradientShapes` gives a stair, slab, wall or other shaped block its step's block in the same shape, facing and half, through `RecolourPlan`, so the gradient and the recolour shape blocks alike. When the step's material has no block of that shape, as concrete has no stairs, the shape comes from the block of that shape closest in colour to the step.
-- A glass pane follows only a gradient of glass, taking the pane closest in colour to its step's glass, so a window in a stone gradient keeps its glass. A pane is its own kind to a recolour, so the step's pane itself is the recolour's palette, where a stair comes from the full block.
-- The index keeps a glass and its pane in separate materials, as their ids differ by more than a shape's suffix, so `GradientShapes.glassPair` pairs them by id. The index counts iron bars as panes, and they never take part.
+- A glass pane follows only a gradient of glass. It takes its step's own pane (`GradientShapes.glassPair`), or the pane closest in colour when that glass has none, as tinted glass has none, so a window in a stone gradient keeps its glass. A pane is its own kind to a recolour, so the step's pane itself is the recolour's palette, where a stair comes from the full block.
+- The index keeps a glass and its pane in separate materials, as their ids differ by more than a shape's suffix, so `GradientShapes.glassPair` pairs them by id. The index counts iron bars as panes, so `GradientShapes` never offers them as a step's pane.
 - `GradientShapes` never borrows a shape from copper that isn't waxed, which would weather to another colour after it was placed. It caches what a step does by the step's state, not its block, as two states of one block, such as a lit and an unlit lamp, differ in colour.
 - `GradientTool.ON_TAB` is the empty string, which no saved gradient's name can be, as names are never blank.
 - Swap ends sets `GradientTool.reversed` and leaves the ends and `seed` where they are. `GradientLine.between` anchors a straightened line on the first end, and Like the first block keeps to the seed's material, so swapping the ends could move the line or change the material, where Swap ends should only turn the steps round.
 - With Only blocks like the first, `GradientTool.search` joins only blocks like the first, but starts from each of them on the straight line from the first block towards the other end, up to the first air, liquid or ground on that line (ground stops it only when the first block isn't ground), so a stripe of trim across the wall doesn't cut the gradient off and a build beyond a gap stays out. Joining through other materials would cross a footing to the same stone below and fill the cap with unchanged terrain. Blocks like the first that touch the line's blocks only through another material stay as they are.
 - Blend starts at 75, which fades steps into each other on a tower a few blocks a step as on a long wall, while each step still shows pure along its middle.
-- The Gradient tab works its gradient out only once it has been shown, so until then the gradient tool's panel offers to open it, but only when no saved gradient it shows is usable.
+- The Gradient tab works its gradient out only once it has been shown, so until then the gradient tool's panel offers to open it, but only while the gradient it shows can't be used.
 
 ## Scripts
 
@@ -149,15 +146,15 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - A list that can grow takes the height the options part has left, less what was drawn below it in the last frame (`AxiomPanel.Layout.grow`), so it never pushes the controls under it out of view, and shows at least three rows.
 - A click in a panel acts through `AxiomPanel.Layout.later`, after the whole panel is drawn, so nothing drawn later in the same frame reads state the click cleared. Apply still acts at once, as its tool resets itself right after.
 - Axiom's panel shows no scrollbar, so `AxiomPanel.Layout` scrolls a tool's options in their own area and holds a bottom part to the panel's bottom edge. The bottom part has the first claim on the space, and holds what the player must read before acting: the masks line in the tools that change blocks, the one status row, then the buttons.
-- The status row says one thing, chosen in the tool's `status` method, with a failure of the masks or the editor always first. Details of a preview go in its tooltip, and a receipt stays until the next action, so a greyed Apply gives the next step, not the receipt. A refusal from `AxiomChanges.send` says only what happened, and `AxiomPanel.refusal` adds the tool's next step, and for `refused.masks_differ` the advice on seeding a Lua mask's noise, worded for a player who didn't change the mask. The tools can't tell an edit from a script's own noise without asking the masks again, which `aloneChanged` never does. A status that is a receipt says so (`AxiomPanel.Status.receipt`), so a greyed Apply never repeats it.
+- The status row says one thing, chosen in the tool's `status` method, with a failure of the masks or the editor always first. Details of a preview go in its tooltip, and a receipt stays until the next action, except the shade brush's, so a greyed Apply gives the next step, not the receipt. A refusal from `AxiomChanges.send` says only what happened, and `AxiomPanel.refusal` adds the tool's next step, and for `refused.masks_differ` the advice on seeding a Lua mask's noise, worded for a player who didn't change the mask. A status that is a receipt says so (`AxiomPanel.Status.receipt`), so a greyed Apply never repeats it.
 - Axiom keeps no text for a Lua script that doesn't compile, only marks in its editor, so the status's tooltip sends the player to the Scripting tab.
-- In the options part, a line that comes and goes with a mode or a result sits below every control, so no control moves. In the bottom part, the lines sit above the buttons, so a button's tooltip never covers them.
+- In the options part, a line that comes and goes with a mode or a result sits below every control, or right under a list that can grow, whose height then makes room for it (`AxiomPanel.Layout.grow`), so no control moves while the list fills its room. In the bottom part, the lines sit above the buttons, so a button's tooltip never covers them.
 - ImGui lays a window out top to bottom, so `AxiomPanel.Layout` keeps the bottom part's height from the last frame. In a panel too short for both parts, the two scroll together.
 - `AxiomPanel` closes an ImGui child in `finally`, as ImGui left with an open child fails on Axiom's next call into it.
 - A tool reads a slider's value through `AxiomPanel.held` or `AxiomPanel.radius`, as the panel may not have been drawn since the value was set, and a value typed in or remembered could be anything.
 - `AxiomPanel.applyCancel` drops the panel's focus after Apply. Otherwise the panel keeps the keyboard, and Axiom's undo key goes to it.
 - A panel opens Chroma Studio's window with `ChromaStudioClient.openWindowSoon`, so it opens at the next tick, after Axiom has finished drawing its panels.
-- A text that names a part of Axiom's interface, such as its Tool Masks window, takes the name from Axiom's own translation key through `AxiomNames`, which falls back to the English name when no key is loaded, so it matches what Axiom shows in every language.
+- A text that names a part of Axiom's interface, such as its Tool Masks window, takes the name from Axiom's own translation key through `AxiomNames`, which falls back to the English name when no key is loaded, so it matches what Axiom shows in every language. `AxiomNames` drops the trailing "..." or "…" of a menu item's name, such as "Import Schematic...", as the text names the item mid-sentence. The nine translations put each such name in quotes after a generic noun, so the name needs no inflection.
 - Axiom 6.1.5 ships only English and downloads the rest from its Weblate into `config/axiom/translations.zip`, which it loads as a resource pack, so its keys are in the game's `Language`.
 - Axiom's Mask and Scripting tabs are English literals with no key, so the texts that name them carry them as they are.
 - Panels translate their text each frame through `AxiomTools.tr`, and tools keep what they say as a `Component`, so a change of language shows at once. `AxiomTools.count` uses `key.one` for one, and languages with more plural forms word `key` so that it fits any other number.
@@ -165,6 +162,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 ## Shade brush
 
 - `ShadeBrushTool.STEPS` are OKLab lightness steps. The smallest is about one shade a builder can see.
+- The shade brush's status describes the block under the pointer, so `ShadeBrushTool` shows a stroke's receipt only until the pointer moves to another block. Axiom's raycast finds no block while the pointer is over a panel, so `ShadeBrushTool` keeps the block it last pointed at while `overPanel` is true.
 - The shade brush doesn't change trapdoors, whose textures are see-through, unlike their planks'.
 - A full block that turns, such as a log or glazed terracotta, is neither shaded nor a shade. Its colour is read from one face, one way round, so a step judged by it could make a turned one darker when asked for lighter.
 - Stairs and other shapes turn too, but they take their full block's shade.
