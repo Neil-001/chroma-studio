@@ -86,8 +86,10 @@ final class FilterControls {
         w.spin(cx, y, sw, f.chromaMin, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMin = v; MatchState.changed(); });
         w.spin(cx + sw + GAP, y, cw - sw - GAP, f.chromaMax, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> { f.chromaMax = v; MatchState.changed(); }).setTooltip(Tooltip.create(tr("filter.chroma.tip")));
         y += ROW;
-        filterLabel(w, x, y, cx - x - 3, tr("filter.badge"));
-        int bx = cx;
+        int chips = (Badge.values().length - 1) * GAP;
+        for (Badge badge : Badge.values()) chips += Chip.width(lower("badge.chromastudio.", badge));
+        int bx = Math.min(cx, cx + cw - chips);
+        filterLabel(w, x, y, bx - x - 3, tr("filter.badge"));
         for (Badge badge : Badge.values()) {
             Component label = lower("badge.chromastudio.", badge);
             w.add(new Chip(bx, y, label, () -> f.badges.contains(badge), () -> {
