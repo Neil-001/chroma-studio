@@ -655,7 +655,7 @@
   "axiom.chromastudio.recolour.rules": "Daje każdemu blokowi blok palety o tym samym kształcie, wybrany według „Dopasuj”.",
   "axiom.chromastudio.recolour.kept": "Już w palecie, więc bez zmian: %s",
   "axiom.chromastudio.recolour.unshaped": "Bez zmian, bo paleta nie ma bloku o ich kształcie ani przezroczystego dla szkła: %s",
-  "axiom.chromastudio.scatter.done": "Rozsyp: bloki (%s), też w powietrzu.",
+  "axiom.chromastudio.scatter.done": "Rozsypuje losowo (%s), też w powietrzu.",
   "axiom.chromastudio.scatter.done.one": "Rozsypuje jeden blok, także w powietrzu.",
   "axiom.chromastudio.scatter.rules": "Maluje blokami palety tak często, jak mówią ich wagi, i nie rusza drzwi, wysokich roślin ani bloków z zawartością.",
   "axiom.chromastudio.scatter.none": "Żadnego bloku palety nie da się rozsypać, bo Rozsyp stawia tylko pełne bloki, które zostają na miejscu.",
