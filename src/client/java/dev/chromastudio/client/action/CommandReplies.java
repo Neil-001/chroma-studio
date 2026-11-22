@@ -4,7 +4,7 @@ import java.util.Set;
 
 public final class CommandReplies {
     static final Set<String> SUCCESS = Set.of("commands.item.entity.replace.success.single.known_item", "commands.item.entity.replace.success.single",
-            "commands.item.entity.set.success.single", "commands.give.success.single");
+            "commands.give.success.single");
     static final int TIMEOUT = 200;
 
     private int awaiting, idle;

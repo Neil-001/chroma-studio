@@ -35,7 +35,6 @@ What the mod does for the player in the game: reading colours off blocks and the
 - When a fill has more than nine blocks, `HotbarFill.fill` goes by `intoAxiom` as the player was told it and fills nothing if that is no longer so, because Axiom's hotbars can come or go between the dialog and the fill.
 - `HotbarFill.whyNoFill` refuses a fill while a failed one waits for Undo, because a new fill would take the place of what Undo has to put back. Undo keeps only the slots it couldn't put back, so a slot the player has used since isn't written again.
 - `CommandReplies` hides one of the game's success lines for each command a fill sent, matched by translation key, and gives up on the count after `TIMEOUT` ticks of silence. It never hides an error line, so a command the player types in that time can lose its reply.
-- `CommandReplies.SUCCESS` also lists `commands.item.entity.set.success.single`, which 26.3's own server never sends, in case another server still does.
 
 ## Axiom hotbars
 
