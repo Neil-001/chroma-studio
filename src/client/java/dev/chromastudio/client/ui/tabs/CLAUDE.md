@@ -53,7 +53,7 @@ The window's tabs and the state they share.
 
 ## Drawing
 
-- `DioramaPanel` arranges the wall with `Arrangement`, the export dialog's starting sizes without its gap, and the entries this game has blocks for, as `SchematicExporter` does, and hands its layout and seed to the export dialog. An export with the dialog's starting options writes the wall that shows only while the `exportGap` setting is off.
+- `DioramaPanel` arranges the wall with `Arrangement`, the export dialog's starting sizes and the entries this game has blocks for, as `SchematicExporter` does, and hands its layout and seed to the export dialog. An export with the dialog's starting options writes the wall that shows.
 - `DioramaPip.State.yaw` turns the wall's front to the viewer's right and `pitch` tips its top towards the viewer, in degrees, so `DioramaPanel` adds a drag's movement to them and the wall follows the cursor.
 - `DioramaPip.renderToTexture` makes its own `BlockModelResolver`, because the game keeps its own private on Fabric. A resolver is only a handle on the model manager.
 - The GUI's y runs down the screen, so `DioramaPip.renderToTexture` turns the wall 180 degrees about z before tilting it.
