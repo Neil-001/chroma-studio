@@ -27,13 +27,13 @@ public final class ShareString {
     }
 
     public static Palette decode(String s) {
-        if (s == null || s.isBlank()) throw new IllegalArgumentException("There is no share string");
+        if (s == null || s.isBlank()) throw new UnreadablePalette(UnreadablePalette.Reason.NO_SHARE);
         String text = s.strip();
         if (!text.startsWith(PREFIX)) {
             if (VERSIONED.matcher(text).matches()) {
-                throw new IllegalArgumentException("This share string is from a newer version of Chroma Studio");
+                throw new UnreadablePalette(UnreadablePalette.Reason.OTHER_VERSION);
             }
-            throw new IllegalArgumentException("A share string starts with " + PREFIX);
+            throw new UnreadablePalette(UnreadablePalette.Reason.NOT_SHARE, PREFIX);
         }
         int slash = text.indexOf('/', PREFIX.length());
         String entries = text.substring(PREFIX.length(), slash < 0 ? text.length() : slash);
@@ -61,7 +61,7 @@ public final class ShareString {
     }
 
     private static PaletteEntry entry(String text) {
-        if (text.isEmpty()) throw new IllegalArgumentException("There is an empty entry between two commas");
+        if (text.isEmpty()) throw new UnreadablePalette(UnreadablePalette.Reason.EMPTY_ENTRY);
         String rest = text;
         int weight = 1;
         int star = rest.lastIndexOf('*');
@@ -72,15 +72,15 @@ public final class ShareString {
         String properties = "";
         int open = rest.indexOf('[');
         if (open >= 0) {
-            if (!rest.endsWith("]")) throw new IllegalArgumentException("The properties of \"" + text + "\" have no closing bracket");
+            if (!rest.endsWith("]")) throw new UnreadablePalette(UnreadablePalette.Reason.OPEN_BRACKET, text);
             properties = rest.substring(open + 1, rest.length() - 1);
             if (!PROPERTIES.matcher(properties).matches()) {
-                throw new IllegalArgumentException("\"" + properties + "\" in \"" + text + "\" isn't a list of properties like axis=y");
+                throw new UnreadablePalette(UnreadablePalette.Reason.BAD_PROPERTIES, properties);
             }
             rest = rest.substring(0, open);
         }
         String id = rest.replace(SLASH, "/");
-        if (!ID.matcher(id).matches()) throw new IllegalArgumentException("\"" + rest + "\" isn't a block id");
+        if (!ID.matcher(id).matches()) throw new UnreadablePalette(UnreadablePalette.Reason.NOT_BLOCK, rest);
         return new PaletteEntry(id.contains(":") ? id : PaletteEntry.DEFAULT_NAMESPACE + id, properties, weight);
     }
 
@@ -90,6 +90,6 @@ public final class ShareString {
             if (weight >= 1) return weight;
         } catch (NumberFormatException _) {
         }
-        throw new IllegalArgumentException("The weight in \"" + entry + "\" isn't a whole number from 1 up");
+        throw new UnreadablePalette(UnreadablePalette.Reason.BAD_WEIGHT, entry);
     }
 }

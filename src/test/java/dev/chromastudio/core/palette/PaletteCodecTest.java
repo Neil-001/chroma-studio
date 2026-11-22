@@ -84,14 +84,14 @@ class PaletteCodecTest {
 
     @Test
     void aMissingOrWrongFormatIsRefusedInPlainWords() {
-        assertEquals("This palette has no format number",
-                assertThrows(IllegalArgumentException.class, () -> PaletteCodec.fromJson("{\"name\": \"x\"}")).getMessage());
-        assertEquals("This palette has format 2, and only format 1 can be read",
-                assertThrows(IllegalArgumentException.class, () -> PaletteCodec.fromJson("{\"format\": 2}")).getMessage());
-        assertThrows(IllegalArgumentException.class, () -> PaletteCodec.fromJson("{\"format\": \"1\"}"));
-        assertThrows(IllegalArgumentException.class, () -> PaletteCodec.fromJson("[1]"));
-        assertThrows(IllegalArgumentException.class, () -> PaletteCodec.fromJson("{\"format\": 1"));
-        assertThrows(IllegalArgumentException.class, () -> PaletteCodec.fromJson(""));
+        assertEquals(UnreadablePalette.Reason.NO_FORMAT, assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"name\": \"x\"}")).reason());
+        UnreadablePalette newer = assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"format\": 2}"));
+        assertEquals(UnreadablePalette.Reason.OTHER_FORMAT, newer.reason());
+        assertEquals(List.of("2", "1"), newer.args());
+        assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"format\": \"1\"}"));
+        assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("[1]"));
+        assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson("{\"format\": 1"));
+        assertThrows(UnreadablePalette.class, () -> PaletteCodec.fromJson(""));
     }
 
     @Test

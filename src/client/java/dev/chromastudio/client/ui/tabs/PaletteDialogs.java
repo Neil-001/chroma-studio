@@ -28,6 +28,7 @@ import dev.chromastudio.core.palette.Generator;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Recolour;
+import dev.chromastudio.core.palette.UnreadablePalette;
 import dev.chromastudio.core.palette.ShareString;
 import dev.chromastudio.core.palette.WorldEditPattern;
 import java.io.IOException;
@@ -189,9 +190,10 @@ final class PaletteDialogs {
                 else p = PaletteStore.get().importJson(Files.readString(Path.of(s)));
                 close();
                 done.accept(p);
-            } catch (IllegalArgumentException e) {
-                // The codecs' own messages are in English only; the line before them is translated.
-                status(tr("palettes.chromastudio.import.bad", e instanceof InvalidPathException ? s : String.valueOf(e.getMessage())), Theme.BAD);
+            } catch (UnreadablePalette e) {
+                status(tr("palettes.chromastudio.import.bad", PaletteStore.why(e)), Theme.BAD);
+            } catch (InvalidPathException _) {
+                status(tr("palettes.chromastudio.import.bad", s), Theme.BAD);
             } catch (IOException _) {
                 status(tr("palettes.chromastudio.import.no_file", s), Theme.BAD);
             }

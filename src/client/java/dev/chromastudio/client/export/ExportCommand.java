@@ -7,11 +7,13 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import dev.chromastudio.client.ChromaCommand;
 import dev.chromastudio.client.ModSettings;
+import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.export.SchematicExporter.Format;
 import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.export.LayoutOptions;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.ShareString;
+import dev.chromastudio.core.palette.UnreadablePalette;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -88,7 +90,7 @@ public final class ExportCommand {
         try {
             ShareString.decode(share);
             return true;
-        } catch (IllegalArgumentException _) {
+        } catch (UnreadablePalette _) {
             return false;
         }
     }
@@ -122,8 +124,8 @@ public final class ExportCommand {
         Palette palette;
         try {
             palette = ShareString.decode(request.share());
-        } catch (IllegalArgumentException e) {
-            ChromaCommand.say(Component.translatable("command.chromastudio.export.bad_share", e.getMessage()));
+        } catch (UnreadablePalette e) {
+            ChromaCommand.say(Component.translatable("command.chromastudio.export.bad_share", PaletteStore.why(e)));
             return 0;
         }
         Layout layout = request.layout() != null ? request.layout() : Layout.valueOf(ModSettings.defaultLayout.name());

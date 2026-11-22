@@ -14,6 +14,7 @@ import dev.chromastudio.core.palette.Analyzer;
 import dev.chromastudio.core.palette.QueuedChanges;
 import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.ShadeSteps;
+import dev.chromastudio.core.palette.UnreadablePalette;
 import dev.chromastudio.core.palette.WorldEditPattern;
 import java.io.IOException;
 import java.io.InputStream;
@@ -87,6 +88,7 @@ class LangTest {
         for (QueuedChanges.Refusal r : QueuedChanges.Refusal.values()) {
             if (r != QueuedChanges.Refusal.NONE && r != QueuedChanges.Refusal.EMPTY) keys.add("axiom.chromastudio.refused." + r.name().toLowerCase(Locale.ROOT));
         }
+        for (UnreadablePalette.Reason r : UnreadablePalette.Reason.values()) keys.add("palettes.chromastudio.unreadable." + r.name().toLowerCase(Locale.ROOT));
         for (String counted : List.of("count", "masked", "gradient_tool.skipped", "gradient_tool.left_alone")) {
             keys.add("axiom.chromastudio." + counted);
             keys.add("axiom.chromastudio." + counted + ".one");
