@@ -70,6 +70,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - Ask the masks on the client thread, as Axiom does.
 - Masks that can't be read, or a call into them that fails, let no block through, and the tools change nothing until the game restarts. No version of Axiom counts as having no masks.
 - A mask whose Lua script fails answers no from then on. Axiom says so only in `ToolMaskWindow.luaExecutionError`, which stays until a fresh context compiles the script or the player closes the message.
+- With the Tool Masks window closed, Axiom runs no mask script, so a message left from before stops nothing, as it doesn't stop Axiom's own brushes (`AxiomMask.errorThatApplies`). When the window's state can't be told, the message still stops the tools.
 - Axiom makes a new message object for each Lua failure, so `AxiomMask.now` compares the error by identity to tell an error its own answer raised from one left earlier.
 - A test that saw its own Lua error stays failed for good, because the check's fresh context compiles the script and so clears Axiom's error. A stroke or preview whose masks failed at any point is never sent or shown (`BrushStroke.render`, `GradientTool.preview`, `PaletteBrushTool.makePreview`).
 - With the Scripting tab in use and a script that doesn't compile, Axiom keeps no script and applies no mask at all, quietly. So while the masks apply, or the window's state can't be told, `AxiomMask.scriptInvalid` stops the tools until the script is fixed.
@@ -90,7 +91,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 
 - `RecolourPlan` works a recolour out once for the script and the palette brush alike, so the two change a build the same way. Each block is decided whole, by the look of its first state in the index, as a script can only ask which block stands somewhere.
 - The block a recolour gives keeps the properties both blocks share, such as a stair's facing.
-- Without a From palette, the ground (grass, dirt, sand and gravel) is left alone, so a brush that reaches past a build doesn't repaint the lawn.
+- Without a From palette, the ground (grass, dirt, sand, gravel and bedrock) is left alone, so a brush that reaches past a build doesn't repaint the lawn.
 - The script can't see Axiom's tool masks, so with a mask that cuts a door in two, the script changes both halves where the brush changes neither.
 - A palette that lists full blocks recolours full blocks only into those, and a block it lists only a shape of, such as oak stairs beside stone bricks, lends just that shape.
 - A solid block turns see-through only when the palette has nothing solid at all, so a palette of glass and sea lanterns leaves walls alone rather than glazing them.
@@ -107,6 +108,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - `GradientShapes` never borrows a shape from copper that isn't waxed, which would weather to another colour after it was placed. It caches what a step does by the step's state, not its block, as two states of one block, such as a lit and an unlit lamp, differ in colour.
 - `GradientTool.ON_TAB` is the empty string, which no saved gradient's name can be, as names are never blank.
 - Swap ends sets `GradientTool.reversed` and leaves the ends and `seed` where they are. `GradientLine.between` anchors a straightened line on the first end, and Like the first block keeps to the seed's material, so swapping the ends could move the line or change the material, where Swap ends should only turn the steps round.
+- With Only blocks like the first, `GradientTool.search` joins only blocks like the first, but starts from each of them on the straight line from the first block towards the other end, up to the first air, liquid or ground on that line (ground stops it only when the first block isn't ground), so a stripe of trim across the wall doesn't cut the gradient off and a build beyond a gap stays out. Joining through other materials would cross a footing to the same stone below and fill the cap with unchanged terrain. Blocks like the first that touch the line's blocks only through another material stay as they are.
 - Blend starts at 75, which fades steps into each other on a tower a few blocks a step as on a long wall, while each step still shows pure along its middle.
 - The Gradient tab works its gradient out only once it has been shown, so until then the gradient tool's panel offers to open it, but only when no saved gradient it shows is usable.
 

@@ -199,11 +199,12 @@ class ScriptSafetyTest {
     private static void check(String name, String script, Predicate<BlockState> allowed) {
         for (boolean air : new boolean[] {false, true}) {
             Brush brush = new Brush(script, air);
-            List<BlockState> wrong = new ArrayList<>();
+            List<BlockState> wrong = new ArrayList<>(), unfilled = new ArrayList<>();
             int replaced = 0;
             for (BlockState s : everyState()) {
                 Map<BlockPos, BlockState> writes = brush.run(s);
                 replaced += writes.size();
+                if (air && s.isAir() && !writes.containsKey(BlockPos.ZERO)) unfilled.add(s);
                 for (Map.Entry<BlockPos, BlockState> w : writes.entrySet()) {
                     BlockState there = brush.world.get(w.getKey());
                     if (!allowed.test(there) || !air && there.isAir() || waterlogged(there) && !waterlogged(w.getValue())) wrong.add(there);
@@ -212,6 +213,7 @@ class ScriptSafetyTest {
             assertTrue(replaced > 0, name + " replaced nothing, so it proves nothing");
             assertTrue(wrong.isEmpty(), "The " + name + " script (Paint air " + air + ", " + AxiomScript.counted(script) + " characters) replaces "
                     + wrong.size() + " states its tool leaves alone, of " + blocks(wrong));
+            if (script.contains("$boolean(Paint air")) assertTrue(unfilled.isEmpty(), "The " + name + " script leaves " + blocks(unfilled) + " unfilled with Paint air ticked");
         }
     }
 

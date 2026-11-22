@@ -144,7 +144,7 @@ final class AxiomMask {
 
     static Optional<Component> unavailable() {
         if (INTERNALS.reason().isEmpty()) {
-            String error = luaError();
+            String error = errorThatApplies();
             if (error != null) return Optional.of(Component.translatable("axiom.chromastudio.mask.lua"));
             return scriptInvalid() ? Optional.of(Component.translatable("axiom.chromastudio.mask.lua_invalid")) : Optional.empty();
         }
@@ -152,10 +152,12 @@ final class AxiomMask {
     }
 
     static Optional<String> detail() {
-        String error = luaError();
+        String error = errorThatApplies();
         if (error != null) return Optional.of(error);
         return scriptInvalid() ? Optional.of(Component.translatable("axiom.chromastudio.mask.lua_invalid.tip").getString()) : Optional.empty();
     }
+
+    private static @Nullable String errorThatApplies() { return windowClosed().orElse(false) ? null : luaError(); }
 
     private static @Nullable String luaError() {
         if (INTERNALS.reason().isPresent()) return null;
@@ -205,7 +207,7 @@ final class AxiomMask {
             }
 
             @Override
-            public boolean failed() { return threw || errored || INTERNALS.reason().isPresent() || luaError() != null || scriptInvalid(); }
+            public boolean failed() { return threw || errored || INTERNALS.reason().isPresent() || errorThatApplies() != null || scriptInvalid(); }
 
             @Override
             public Map<Long, Boolean> answers() { return Collections.unmodifiableMap(asked); }

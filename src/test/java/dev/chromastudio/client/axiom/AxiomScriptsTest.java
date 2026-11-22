@@ -75,6 +75,11 @@ class AxiomScriptsTest {
         assertTrue(kept.properties().contains("has_bottle_0"), kept.toString());
     }
 
+    @Test
+    void theGradientScriptLeavesBedrockAsTheGround() {
+        assertTrue(AxiomScripts.gradientKept().blocks().contains("minecraft:bedrock"));
+    }
+
     private static void keys(Component c, List<String> out) {
         if (c.getContents() instanceof TranslatableContents t) out.add(t.getKey() + List.of(t.getArgs()));
         for (Component sibling : c.getSiblings()) keys(sibling, out);

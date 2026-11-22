@@ -12,13 +12,20 @@ public final class BuildSearch {
 
     private BuildSearch() {}
 
-    public static Found from(int x, int y, int z, Member member, int cap) {
-        if (cap <= 0 || !member.test(x, y, z)) return new Found(new long[0], false);
+    public static Found from(int x, int y, int z, Member member, int cap) { return from(new long[] {pack(x, y, z)}, member, cap); }
+
+    public static Found from(long[] starts, Member member, int cap) {
+        if (cap <= 0) return new Found(new long[0], false);
         long[] out = new long[Math.min(cap, 1024)];
-        out[0] = pack(x, y, z);
-        int size = 1;
+        int size = 0;
         Seen seen = new Seen();
-        seen.add(x, y, z);
+        for (long s : starts) {
+            int sx = x(s), sy = y(s), sz = z(s);
+            if (!seen.add(sx, sy, sz) || !member.test(sx, sy, sz)) continue;
+            if (size == cap) return new Found(out, true);
+            if (size == out.length) out = Arrays.copyOf(out, Math.min(cap, out.length * 2));
+            out[size++] = s;
+        }
         for (int next = 0; next < size; next++) {
             long p = out[next];
             int px = x(p), py = y(p), pz = z(p);
