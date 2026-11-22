@@ -28,7 +28,7 @@ The window's tabs and the state they share.
 - The index can publish a new build on its own thread at any moment. `GradientTab.restore` reads the version once, stores it as the build of the pins and steps it resolves, and starts again if a new build landed meanwhile, so it never keeps blocks from two builds.
 - `GradientTab.solve` adds each pinned block to the candidates even when the filters now leave it out or offer another state of it, because the player chose that exact state.
 - `GradientTab`'s quality badge measures ΔE in OKLab whatever metric chose the blocks, because `GOOD_UP_TO` and `FAIR_UP_TO` are OKLab bands.
-- `ChromaScreen` gives the tab no press or release outside its area, and none while the window is closed or pinned, so a stop press can outlive its button. `GradientTab.clicked` drops it at the next press, and `closed` and `init` drop it too, since pinning skips `closed` and the pinned window opens again through `init`. Only a left release ends a stop press.
+- `ChromaScreen` gives the tab no press outside its area, and then no release outside it either, and none while the window is closed or pinned, so a stop press can outlive its button. `GradientTab.clicked` drops it at the next press, and `closed` and `init` drop it too, since pinning skips `closed` and the pinned window opens again through `init`. Only a left release ends a stop press.
 - `GradientTab.openSwap` opens no swap list while a solve is on its way, because the list would be made from the answer about to be replaced.
 - `GradientTab.stepsArea` is the whole strip whether a swap list is open or not, so the steps never move when a list opens.
 
