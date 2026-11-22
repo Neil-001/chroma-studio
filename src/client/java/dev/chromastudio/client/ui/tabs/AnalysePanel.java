@@ -31,7 +31,7 @@ final class AnalysePanel {
     private final int unknown;
     private Widgets.ScrollList list;
     private Bounds area;
-    private int fixW;
+    private int fixW, headingW;
     private int rowH = MIN_ROW_H;
     private record Fix(Bounds button, Analyzer.Finding finding) {}
     private final List<Fix> fixes = new ArrayList<>();
@@ -66,6 +66,7 @@ final class AnalysePanel {
             ChromaScreen screen = ChromaScreen.current();
             if (screen != null) screen.select("explore");
         });
+        headingW = area.w() - backW - exploreW - 2 * PanelTab.GAP;
         fixW = Widgets.buttonWidth(Component.translatable("palettes.chromastudio.analyse.fix"));
         int top = area.y() + PanelTab.ROW + STRIP_H + PanelTab.GAP;
         int lines = 1, w = area.w() - Widgets.BAR_W - 2;
@@ -82,7 +83,11 @@ final class AnalysePanel {
 
     void draw(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         Component heading = Component.translatable(unknown > 0 ? "palettes.chromastudio.analyse.heading_unknown" : "palettes.chromastudio.analyse.heading", findings.size(), unknown);
-        g.text(PanelTab.font(), heading, area.x(), area.y() + 4, Theme.DIM, false);
+        String fitted = MatchTab.ellipsis(PanelTab.font(), heading.getString(), headingW);
+        g.text(PanelTab.font(), fitted, area.x(), area.y() + 4, Theme.DIM, false);
+        if (!fitted.equals(heading.getString()) && mouseX >= area.x() && mouseX < area.x() + headingW && mouseY >= area.y() && mouseY < area.y() + Widgets.H) {
+            g.setTooltipForNextFrame(PanelTab.font(), heading, mouseX, mouseY);
+        }
         List<Color> sorted = new ArrayList<>(colours);
         sorted.sort((a, b) -> Double.compare(a.oklch().l(), b.oklch().l()));
         int stripY = area.y() + PanelTab.ROW;
