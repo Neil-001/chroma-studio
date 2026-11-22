@@ -765,10 +765,7 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean clicked(MouseButtonEvent e, boolean doubled) {
-        if (pressedStop >= 0) {
-            dropStop();
-            return true;
-        }
+        dropStop();
         boolean left = e.button() == InputConstants.MOUSE_BUTTON_LEFT;
         Bounds drawn = stepsArea();
         int step = stepAt(e.x(), e.y()), shut = -1;
@@ -821,7 +818,7 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean released(MouseButtonEvent e) {
-        if (pressedStop < 0) return swapStep >= 0 && swapRows.mouseReleased() || filtersOpen && filterWidgets.mouseReleased(e);
+        if (pressedStop < 0 || e.button() != InputConstants.MOUSE_BUTTON_LEFT) return swapStep >= 0 && swapRows.mouseReleased() || filtersOpen && filterWidgets.mouseReleased(e);
         boolean moved = draggingStop && pressedStop < STOPS.size() && Reorder.target(pressedStop, dropGap) != pressedStop;
         if (moved) selectedStop = Reorder.move(STOPS, pressedStop, dropGap);
         dropStop();
