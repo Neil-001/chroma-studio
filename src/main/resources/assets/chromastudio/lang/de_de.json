@@ -655,7 +655,7 @@
   "axiom.chromastudio.recolour.rules": "Gibt jedem Block einen gleich geformten Palettenblock, gewählt nach „Abgleich“.",
   "axiom.chromastudio.recolour.kept": "Schon in der Palette, daher behalten: %s",
   "axiom.chromastudio.recolour.unshaped": "Unverändert, da die Palette keinen Block ihrer Form oder keinen durchsichtigen für Glas hat: %s",
-  "axiom.chromastudio.scatter.done": "Streut %s Blöcke, auch in die Luft.",
+  "axiom.chromastudio.scatter.done": "%s Blöcke zufällig, auch in der Luft.",
   "axiom.chromastudio.scatter.done.one": "Streut einen Block, auch in die Luft.",
   "axiom.chromastudio.scatter.rules": "Setzt die Blöcke der Palette so oft, wie ihr Gewicht sagt, und lässt Türen, hohe Pflanzen und Blöcke mit Inhalt in Ruhe.",
   "axiom.chromastudio.scatter.none": "Keiner der Blöcke der Palette lässt sich streuen, denn „Streuen“ setzt nur volle Blöcke, die an ihrem Platz bleiben.",
