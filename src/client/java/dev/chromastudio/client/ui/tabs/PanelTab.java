@@ -37,7 +37,7 @@ abstract class PanelTab extends Tab {
     }
 
     @Override
-    public final void init(Bounds b) {
+    public void init(Bounds b) {
         bounds = b;
         rebuild();
     }

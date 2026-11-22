@@ -12,7 +12,7 @@ Palettes and gradients: their files and share strings, generation, analysis, rec
 
 Length:
 
-- A server lets a player without import rights run a script of at most `AxiomScript.SERVER_LIMIT` characters, as Axiom counts them: without whitespace and the keywords in `NOT_COUNTED`. Servers count comments too, so the scatter and gradient scripts carry only their title. A plain block of the game is named as `blocks.name`, and the blocks a script leaves alone are one string of names, which counts only by its letters. Only another mod's block, or one with properties, needs the function that finds it.
+- A server lets a player without import rights run a script of at most `AxiomScript.SERVER_LIMIT` characters, as Axiom counts them: without whitespace and the keywords in `NOT_COUNTED`. Axiom 6.1.5's `ScriptBrushTool` strips them with the same pattern, inside words too, so `NOT_COUNTED` has no word boundaries. Servers count comments too, so the scatter and gradient scripts carry only their title. A plain block of the game is named as `blocks.name`, and the blocks a script leaves alone are one string of names, which counts only by its letters. Only another mod's block, or one with properties, needs the function that finds it.
 - The game copies text through a buffer of 64 KiB. A recolour of every block runs to a thousand rows or more, so `AxiomScript.recolour` writes each block it puts down once, in a list, and the rows as one string of `from=number` pairs. It writes the door code only when a row has a door.
 
 What a script leaves alone:

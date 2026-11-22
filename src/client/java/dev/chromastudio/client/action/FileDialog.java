@@ -47,9 +47,16 @@ public final class FileDialog {
                     }
                 });
             });
-            SDL_DialogFileFilter.Buffer filters = SDL_DialogFileFilter.malloc(1, stack);
-            filters.get(0).set(stack.UTF8(filterName), stack.UTF8(extensions));
-            SDLDialog.SDL_ShowOpenFileDialog(callback, 0, mc.getWindow().handle(), filters, (CharSequence) null, false);
+            try {
+                SDL_DialogFileFilter.Buffer filters = SDL_DialogFileFilter.malloc(1, stack);
+                filters.get(0).set(stack.UTF8(filterName), stack.UTF8(extensions));
+                SDLDialog.SDL_ShowOpenFileDialog(callback, 0, mc.getWindow().handle(), filters, (CharSequence) null, false);
+            } catch (Throwable t) {
+                synchronized (ANSWERED) {
+                    ANSWERED.add(callback);
+                }
+                throw t;
+            }
         } catch (Throwable t) {
             ChromaStudioClient.LOGGER.warn("Couldn't open a file dialog", t);
             failed.run();

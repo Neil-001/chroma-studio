@@ -130,6 +130,7 @@ class AxiomScriptTest {
     void lengthIsCountedAsAxiomCountsIt() {
         assertEquals(0, AxiomScript.counted("local function end return \n\t "));
         assertEquals("x=1".length(), AxiomScript.counted("local x = 1"));
+        assertEquals("blmath.flo".length(), AxiomScript.counted("blend math.floor"));
         assertTrue(AxiomScript.counted(AxiomScript.scatter(palette("P", new PaletteEntry("minecraft:stone", "")), NONE)) < AxiomScript.SERVER_LIMIT);
         assertTrue(AxiomScript.counted(AxiomScript.recolour("P", ROWS)) > 300);
     }

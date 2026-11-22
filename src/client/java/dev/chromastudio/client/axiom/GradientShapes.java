@@ -23,6 +23,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Fallable;
+import net.minecraft.world.level.block.StainedGlassPaneBlock;
 import net.minecraft.world.level.block.WeatheringCopper;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
@@ -55,13 +56,14 @@ final class GradientShapes {
     @Nullable BlockState apply(BlockState step, BlockState here) {
         Entry e = index.entryOf(here);
         if (e == null || !SHAPES.contains(e.kind()) || here.getBlock() instanceof EntityBlock) return null;
-        return changes.computeIfAbsent(List.of(step, here.getBlock()), _ -> change(step, here, e.kind())).apply(here);
+        return changes.computeIfAbsent(List.of(step, here.getBlock()), _ -> change(step, here, e)).apply(here);
     }
 
-    private UnaryOperator<BlockState> change(BlockState step, BlockState here, Kind kind) {
+    private UnaryOperator<BlockState> change(BlockState step, BlockState here, Entry hereEntry) {
+        Kind kind = hereEntry.kind();
         Entry stepEntry = index.entryOf(step);
         if (stepEntry == null) return _ -> null;
-        if (kind == Kind.PANE && stepEntry.kind() != Kind.GLASS) return _ -> null;
+        if (kind == Kind.PANE && (stepEntry.kind() != Kind.GLASS || !glassPane(hereEntry))) return _ -> null;
         Optional<Entry> own = kind == Kind.PANE ? Optional.ofNullable(glassPair(stepEntry))
                 : index.materialSet(stepEntry).stream().filter(m -> m.kind() == kind).findFirst();
         BlockState to = own.isEmpty() ? borrowed(kind, step) : kind == Kind.PANE ? own.get().block().defaultBlockState() : step;
@@ -75,9 +77,13 @@ final class GradientShapes {
         }
     }
 
+    static boolean glassPane(Entry e) {
+        return e.kind() == Kind.PANE && (e.block() instanceof StainedGlassPaneBlock || e.id().endsWith("glass_pane"));
+    }
+
     static @Nullable Entry glassPair(Entry e) {
         String id = e.id();
-        String want = e.kind() == Kind.GLASS ? id + "_pane" : e.kind() == Kind.PANE && id.endsWith("glass_pane") ? id.substring(0, id.length() - "_pane".length()) : null;
+        String want = e.kind() == Kind.GLASS ? id + "_pane" : glassPane(e) && id.endsWith("_pane") ? id.substring(0, id.length() - "_pane".length()) : null;
         if (want == null) return null;
         for (Entry m : BlockIndex.get().entries()) if (m.id().equals(want)) return m;
         return null;
@@ -95,7 +101,7 @@ final class GradientShapes {
         for (Entry e : index.entries()) {
             Block b = e.block();
             if (e.kind() != kind || b instanceof EntityBlock || b instanceof Fallable || b instanceof WeatheringCopper) continue;
-            if (kind == Kind.PANE && !e.id().endsWith("glass_pane")) continue;
+            if (kind == Kind.PANE && !glassPane(e)) continue;
             Optional<Color> colour = index.colourOf(b.defaultBlockState(), face, tint);
             if (colour.isEmpty()) continue;
             states.add(b.defaultBlockState());

@@ -41,7 +41,7 @@ Source files carry no comments. A decision a maintainer could not work out from 
 - A tint comes from `BlockTintSource.colorInWorld(state, getter, pos)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
 - Signs and beds have block models and are matched as any block.
 - The game runs on SDL, not GLFW, and ships no tinyfd. Ask for a mouse cursor each frame with `g.requestCursor`; a frame that asks for none gets the arrow back. `CursorType.createStandardCursor` makes a shape `CursorTypes` lacks, such as the diagonal arrows, and falls back where the system has none.
-- Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number. Axiom's `ToolService.isMouseDown` is the exception: it counts in ImGui's order from 0, so 1 is the right button.
+- Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number. Axiom's `ToolService.isMouseDown` is the exception: it counts in ImGui's order from 0, but in Axiom's editor 1 is Axiom's "Use Tool" key, the right button unless the player rebinds it.
 - `NativeImage.getPixel` and `setPixel` take ARGB.
 
 ## Conventions
