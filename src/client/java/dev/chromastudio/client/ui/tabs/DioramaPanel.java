@@ -6,6 +6,7 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.ui.Bounds;
+import dev.chromastudio.client.ui.Flow;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Scale;
@@ -21,7 +22,6 @@ import java.util.Locale;
 import java.util.function.BiConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -79,22 +79,21 @@ final class DioramaPanel implements AutoCloseable {
 
     void layout(Widgets widgets, Bounds area, Runnable close, BiConsumer<Layout, Long> export) {
         this.area = area;
-        int x = area.x(), y = area.y();
+        int y = area.y();
         Component flat = Component.translatable("palettes.chromastudio.diorama.flat"), solid = Component.translatable("palettes.chromastudio.diorama.3d");
+        Component reroll = Component.translatable("palettes.chromastudio.diorama.reroll"), exportLabel = Component.translatable("palettes.chromastudio.tool.export");
         int viewW = Math.max(Widgets.tw(flat), Widgets.tw(solid)) + 10;
-        widgets.cycler(x, y, viewW, null, List.of(false, true), threeD, v -> v ? solid : flat, v -> threeD = v,
-                Component.translatable("palettes.chromastudio.diorama.view.tip"));
-        x += viewW + PanelTab.GAP;
         int layoutW = LAYOUTS.stream().mapToInt(l -> Widgets.tw(name(l))).max().orElse(60) + 10;
-        widgets.cycler(x, y, layoutW, null, LAYOUTS, layout, DioramaPanel::name, l -> { layout = l; arrange(); });
-        x += layoutW + PanelTab.GAP;
-        Component reroll = Component.translatable("palettes.chromastudio.diorama.reroll");
-        widgets.button(x, y, reroll, () -> { seed = System.nanoTime(); arrange(); })
-                .setTooltip(Tooltip.create(Component.translatable("palettes.chromastudio.diorama.reroll.tip")));
-        x += Widgets.buttonWidth(reroll) + PanelTab.GAP;
-        widgets.button(x, y, Component.translatable("palettes.chromastudio.tool.export"), () -> export.accept(layout, seed))
-                .setTooltip(Tooltip.create(Component.translatable("palettes.chromastudio.diorama.export.tip")));
+        Flow.Spot[] spots = Flow.place(new int[] {viewW, layoutW, Widgets.buttonWidth(reroll), Widgets.buttonWidth(exportLabel)},
+                area.x(), area.right() - Widgets.H - PanelTab.GAP, PanelTab.GAP);
+        widgets.cycler(spots[0].x(), y + spots[0].row() * PanelTab.ROW, viewW, null, List.of(false, true), threeD, v -> v ? solid : flat, v -> threeD = v,
+                Component.translatable("palettes.chromastudio.diorama.view.tip"));
+        widgets.cycler(spots[1].x(), y + spots[1].row() * PanelTab.ROW, layoutW, null, LAYOUTS, layout, DioramaPanel::name, l -> { layout = l; arrange(); },
+                Component.translatable("palettes.chromastudio.export.layout"));
+        widgets.button(spots[2].x(), y + spots[2].row() * PanelTab.ROW, reroll, () -> { seed = System.nanoTime(); arrange(); });
+        widgets.button(spots[3].x(), y + spots[3].row() * PanelTab.ROW, exportLabel, () -> export.accept(layout, seed));
         widgets.add(new IconButton(area.right() - Widgets.H, y, Widgets.H, Widgets.H, IconButton.Glyph.CLOSE, Component.translatable("palettes.chromastudio.panel.close"), close));
+        y += (Flow.rows(spots) - 1) * PanelTab.ROW;
         view = new Bounds(area.x(), y + PanelTab.ROW, area.w(), area.bottom() - y - PanelTab.ROW);
     }
 

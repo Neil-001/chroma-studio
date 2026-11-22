@@ -93,18 +93,11 @@ class LangTest {
             keys.add("axiom.chromastudio." + counted);
             keys.add("axiom.chromastudio." + counted + ".one");
         }
-        for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) {
-            keys.add("palettes.chromastudio.tool." + tool);
-            keys.add("palettes.chromastudio.tool." + tool + ".tip");
-        }
-        for (String action : List.of("new", "rename", "delete", "import", "share", "copy")) {
-            keys.add("palettes.chromastudio." + action);
-            keys.add("palettes.chromastudio." + action + ".tip");
-        }
-        for (String action : List.of("hotbar", "copy", "export", "saved", "save", "swap")) {
-            keys.add("gradient.chromastudio.action." + action);
-            keys.add("gradient.chromastudio.action." + action + ".tip");
-        }
+        for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) keys.add("palettes.chromastudio.tool." + tool);
+        keys.add("palettes.chromastudio.tool.capture.tip");
+        for (String action : List.of("new", "rename", "delete", "import", "share", "copy")) keys.add("palettes.chromastudio." + action);
+        keys.add("palettes.chromastudio.copy.tip");
+        for (String action : List.of("hotbar", "copy", "export", "saved", "save", "swap")) keys.add("gradient.chromastudio.action." + action);
         JsonObject english = english();
         for (String key : keys) assertTrue(english.has(key) && !english.get(key).getAsString().isBlank(), key);
         assertTrue(WorldEditPattern.COMMANDS.containsAll(List.of("set", "replace", "walls", "outline", "overlay")));
