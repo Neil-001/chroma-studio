@@ -2,7 +2,6 @@ package dev.chromastudio.core.palette;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -83,26 +82,25 @@ class ShareStringTest {
         assertEquals(List.of(new PaletteEntry("minecraft:stone", ""), new PaletteEntry("minecraft:andesite", "", 2)), p.entries);
     }
 
-    private static void assertRefused(String s, String messagePart) {
-        String message = assertThrows(IllegalArgumentException.class, () -> ShareString.decode(s)).getMessage();
-        assertTrue(message.contains(messagePart), s + " gave: " + message);
+    private static void assertRefused(String s, UnreadablePalette.Reason reason) {
+        assertEquals(reason, assertThrows(UnreadablePalette.class, () -> ShareString.decode(s)).reason(), s);
     }
 
     @Test
     void malformedStringsSayWhatIsWrong() {
-        assertRefused(null, "no share string");
-        assertRefused("   ", "no share string");
-        assertRefused("stone,andesite", "starts with chroma1:");
-        assertRefused("chroma2:stone", "newer version");
-        assertRefused("chroma1:stone,,andesite", "empty entry");
-        assertRefused("chroma1:stone,", "empty entry");
-        assertRefused("chroma1:stone*0", "weight");
-        assertRefused("chroma1:stone*lots", "weight");
-        assertRefused("chroma1:stone*", "weight");
-        assertRefused("chroma1:oak_log[axis=y", "closing bracket");
-        assertRefused("chroma1:oak_log[axis]", "properties");
-        assertRefused("chroma1:oak_log[]", "properties");
-        assertRefused("chroma1:Stone Bricks", "isn't a block id");
-        assertRefused("chroma1:a:b:c", "isn't a block id");
+        assertRefused(null, UnreadablePalette.Reason.NO_SHARE);
+        assertRefused("   ", UnreadablePalette.Reason.NO_SHARE);
+        assertRefused("stone,andesite", UnreadablePalette.Reason.NOT_SHARE);
+        assertRefused("chroma2:stone", UnreadablePalette.Reason.NEWER_SHARE);
+        assertRefused("chroma1:stone,,andesite", UnreadablePalette.Reason.EMPTY_ENTRY);
+        assertRefused("chroma1:stone,", UnreadablePalette.Reason.EMPTY_ENTRY);
+        assertRefused("chroma1:stone*0", UnreadablePalette.Reason.BAD_WEIGHT);
+        assertRefused("chroma1:stone*lots", UnreadablePalette.Reason.BAD_WEIGHT);
+        assertRefused("chroma1:stone*", UnreadablePalette.Reason.BAD_WEIGHT);
+        assertRefused("chroma1:oak_log[axis=y", UnreadablePalette.Reason.OPEN_BRACKET);
+        assertRefused("chroma1:oak_log[axis]", UnreadablePalette.Reason.BAD_PROPERTIES);
+        assertRefused("chroma1:oak_log[]", UnreadablePalette.Reason.BAD_PROPERTIES);
+        assertRefused("chroma1:Stone Bricks", UnreadablePalette.Reason.NOT_BLOCK);
+        assertRefused("chroma1:a:b:c", UnreadablePalette.Reason.NOT_BLOCK);
     }
 }

@@ -4,6 +4,7 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteCodec;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.ShareString;
+import dev.chromastudio.core.palette.UnreadablePalette;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -175,6 +176,10 @@ public final class PaletteStore implements PaletteSink {
     public Palette importJson(String json) { return adoptImported(PaletteCodec.fromJson(json)); }
 
     public Palette importShare(String share) { return adoptImported(ShareString.decode(share)); }
+
+    public static Component why(UnreadablePalette e) {
+        return Component.translatable("palettes.chromastudio.unreadable." + e.reason().name().toLowerCase(Locale.ROOT), e.args().toArray());
+    }
 
     private Palette adoptImported(Palette p) {
         p.preset = false;

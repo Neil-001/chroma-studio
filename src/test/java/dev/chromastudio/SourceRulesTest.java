@@ -22,8 +22,7 @@ class SourceRulesTest {
     private static final Set<String> OUTPUTS = Set.of("bin", "build", "logs", "out", "run");
     private static final String API = "src/client/java/dev/chromastudio/api/";
     private static final Map<String, Integer> ALLOWED = Map.of(
-            "src/client/java/dev/chromastudio/api/ChromaStudioApi.java", 2,
-            "src/client/java/dev/chromastudio/client/ui/tabs/PaletteDialogs.java", 1);
+            "src/client/java/dev/chromastudio/api/ChromaStudioApi.java", 2);
 
     @Test
     void everyClaudeMdHasAnAgentsMdLinkBesideIt() throws IOException {

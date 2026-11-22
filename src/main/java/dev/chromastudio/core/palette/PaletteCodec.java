@@ -40,13 +40,13 @@ public final class PaletteCodec {
         try {
             root = JsonParser.parseString(json == null ? "" : json);
         } catch (JsonParseException e) {
-            throw new IllegalArgumentException("This isn't valid JSON", e);
+            throw new UnreadablePalette(UnreadablePalette.Reason.NOT_JSON, e);
         }
-        if (!root.isJsonObject()) throw new IllegalArgumentException("This isn't a palette");
+        if (!root.isJsonObject()) throw new UnreadablePalette(UnreadablePalette.Reason.NOT_PALETTE);
         JsonObject o = root.getAsJsonObject();
-        if (!o.has("format")) throw new IllegalArgumentException("This palette has no format number");
+        if (!o.has("format")) throw new UnreadablePalette(UnreadablePalette.Reason.NO_FORMAT);
         if (!isInt(o.get("format"), FORMAT)) {
-            throw new IllegalArgumentException("This palette has format " + o.get("format") + ", and only format " + FORMAT + " can be read");
+            throw new UnreadablePalette(UnreadablePalette.Reason.NEWER_FORMAT, String.valueOf(o.get("format")), String.valueOf(FORMAT));
         }
 
         Palette p = new Palette(string(o.get("name"), ""));

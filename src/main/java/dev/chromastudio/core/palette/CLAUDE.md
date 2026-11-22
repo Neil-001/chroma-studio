@@ -80,6 +80,7 @@ What a script leaves alone:
 - `PaletteCodec` and `GradientCodec` refuse a file without their version, or with another, rather than guess at it. Within a version they give a missing or mistyped field its default and ignore unknown fields, so a file edited by hand still loads.
 - `StoredGradient` keeps `easing` and `arc` as text, so a file from a later version with a new one still loads. `MIN_STEPS` and `MAX_STEPS` match the limits of the `gradientSteps` setting in `ModSettings`.
 - A share string's entries end at a slash, so `ShareString` writes a slash in a block id's path as `%2F`. Block ids can't hold a percent sign, so it can't be mistaken for anything else.
+- `ShareString` and `PaletteCodec` refuse with an `UnreadablePalette`, which carries a `Reason` and its arguments instead of an English message, because the core can't translate. The client shows it as the text under `palettes.chromastudio.unreadable.` and the reason's name in lower case, and `LangTest` checks that every reason has one.
 
 ## WorldEdit
 
