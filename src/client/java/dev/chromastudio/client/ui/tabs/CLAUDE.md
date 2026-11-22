@@ -28,7 +28,7 @@ The window's tabs and the state they share.
 - The index can publish a new build on its own thread at any moment. `GradientTab.restore` reads the version once, stores it as the build of the pins and steps it resolves, and starts again if a new build landed meanwhile, so it never keeps blocks from two builds.
 - `GradientTab.solve` adds each pinned block to the candidates even when the filters now leave it out or offer another state of it, because the player chose that exact state.
 - `GradientTab`'s quality badge measures ΔE in OKLab whatever metric chose the blocks, because `GOOD_UP_TO` and `FAIR_UP_TO` are OKLab bands.
-- `GradientTab.clicked` clears the stop press and drag first. A press whose release was lost when the window closed would otherwise turn the next drag into a stop drag.
+- A stop's release is lost when the window closes or is pinned during the press, so `GradientTab.closed` and `GradientTab.init` drop the press. Pinning skips `closed`, and the pinned window opens again through `init`.
 - `GradientTab.openSwap` opens no swap list while a solve is on its way, because the list would be made from the answer about to be replaced.
 - `GradientTab.stepsArea` is the whole strip whether a swap list is open or not, so the steps never move when a list opens.
 
