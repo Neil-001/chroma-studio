@@ -1,31 +1,27 @@
 # 1.3.0
 
-Chroma Studio now works with Axiom, the building editor, on Fabric. In Axiom's editor, its tools can recolour, shade or lay a gradient across a build, and sample one into a palette. They change blocks only when you use them, and only through Axiom, so Axiom's undo and permissions apply. The rest of Chroma Studio still places nothing, and without Axiom the Axiom controls are greyed out with the reason. This release is for Minecraft 26.3 on Fabric and NeoForge. The Axiom features need Fabric, and were made with Axiom 6.1.5.
+Chroma Studio works with Axiom, the building editor, on Fabric. Five Chroma tools in Axiom's editor recolour, shade or lay a gradient across a build, sample a build into a palette, and pick a block's colour. They change blocks only when you use them, and only through Axiom, so Axiom's undo, permissions and tool masks apply. The rest of Chroma Studio still places nothing, and without Axiom the Axiom controls are greyed out with the reason. This release is for Minecraft 26.3 on Fabric and NeoForge. The Axiom features need Fabric, and were made with Axiom 6.1.5.
 
 ## Features
 
-- Copy a palette or gradient as a script for Axiom's Script Brush, from the Palettes and Gradient tabs or with `/chroma axiom`. Match Axiom's active block from the Match tab, and pick colours with the Chroma eyedropper in Axiom's editor (#52)
-- A hotbar fill can put the blocks past the ninth into Axiom's hotbars. The dialog says which hotbars and how many of their slots it replaces, and Undo puts back what it replaced, even after you switch hotbars (#53)
-- Lay a gradient across a build with the Chroma gradient tool in Axiom's editor: right-click where it starts and where it ends, see the result in the world, then Apply (#54)
-- Opened in Axiom's editor, Chroma Studio's window steps out of the editor and goes back when it closes. The eyedropper reads the block under the mouse there, and the export dialog says how to import a `.litematic` into Axiom (#55)
-- Recolour a build into a palette with the Chroma palette brush or a script, keeping its shading. Stairs, slabs and walls keep their shape, windows stay windows, and grass, dirt, sand and gravel are left alone unless you recolour from a palette that has them (#56)
-- Recolour a whole build at once, shaded by its own blocks, and limit it with Axiom's tool masks. Scatter places only whole blocks that stay put, and the brush remembers its choices (#57)
-- Set how far the gradient tool blends its steps into each other, from hard bands to a fade across each step. Stairs, slabs, walls and fences take their step's block in the same shape (#58)
-- Shade a build lighter or darker with the Chroma shade brush, which turns each block into a near shade, close in hue and texture (#59)
-- Sample a build into a weighted palette with the Chroma build sampler, by brushing over it or taking the whole build (#60)
-- A recolour changes a door as a whole, so a door never ends up in two materials. A fill into Axiom's hotbars that fails partway names the slots it left changed, and Undo puts them back (#62)
-- The Chroma tools in Axiom's editor each have their own icon, and the palette brush, gradient tool and shade brush all follow Axiom's tool masks. A stroke or Apply changes everything you saw, or nothing if something changed meanwhile. The gradient tool straightens ends that are nearly in line, and a `%` in a palette or block name shows as written (#63)
-- Axiom's tool masks always fail safe: when the tools can't read them, or a mask fails during a stroke, nothing changes and the panel says why (#64)
-- A stroke or Apply is worked out again from the world and the tool masks when you let go or press Apply, and changes nothing unless it comes out as you saw it. The panel says when no tool mask applies because Axiom's Tool Masks window is closed (#65)
-- A tool's change is also refused when the brush's radius, or an option that changes the result, changed as you confirmed it. A tool mask whose script doesn't compile stops the tools, and a refusal caused by a mask whose noise has no seed says how to fix it (#66)
-- Among Chroma's tools in Axiom's grid, the ones that change blocks come first, the shade brush has a clearer icon, and the panels keep their main buttons at the bottom (#67)
-- Recolour keeps the blocks the palette already has and puts the build's main material on one of the palette's main blocks. A From palette also changes the stairs and slabs of its blocks. The shade brush never turns a plain block mossy, cracked, chiseled or infested, the scatter script places the same blocks as the brush's Scatter, and the gradient script leaves out steps that aren't full blocks (#68)
-- A recolour says how many blocks stay as they are because the palette already has them, in the palette brush and in the script's summary. With Shades set to a palette, the shade brush steps to that palette's next block darker or lighter, so a wall recoloured to Desert can be darkened from sandstone to yellow terracotta (#70)
-- Scatter, in the palette brush and as a script, leaves chests, signs, brewing stands and every other block that holds items or text as they are, and blocks you put something in, such as a potted plant or a waterlogged slab. The gradient script leaves alone every block the gradient tool does, such as a brewing stand, a head or a flower pot, and every tool and script changes a waterlogged block only into one that keeps the water. Scripts now name each block they leave alone, so a gradient script is about 2,100 characters and a scatter script about 3,100, over the 1,000 some servers allow players who can't import blocks; the dialog says so, and the gradient tool and palette brush do the same without a script (#71)
+- Recolour a build into a palette with the Chroma palette brush, keeping its shading, its stairs and slabs, and its windows. Brush it stroke by stroke, or preview the whole build and press Apply. Scatter mode paints the palette's blocks at random by weight (#69)
+- Lay a gradient across a build with the Chroma gradient tool: right-click where it starts and where it ends, choose how far the steps blend, and press Apply. Stairs, slabs and walls take their step's block in the same shape (#69)
+- Shade a build darker or lighter with the Chroma shade brush, which turns each block into a near shade, close in hue and texture, or into a palette's next block (#69)
+- Sample a build into a weighted palette with the Chroma build sampler, by brushing over it or taking the whole build (#69)
+- Pick a block's colour in Axiom's editor with the Chroma eyedropper tool, or with X, which reads the block under the mouse there (#69)
+- Copy a palette or gradient as a script for Axiom's Script Brush, with Axiom script on the Palettes and Gradient tabs or with `/chroma axiom` (#69)
+- Put the blocks of a hotbar fill past the ninth into Axiom's hotbars, and undo it (#69)
+- Match Axiom's active block with the Axiom button on the Match tab or `/chroma axiom block` (#69)
+- Open Chroma Studio's window from Axiom's editor: the window leaves the editor, and the editor comes back when you close it. The export dialog says how to import a `.litematic` into Axiom (#69)
 
 ## Fixes
 
-- Copying very long text, such as a long share string or palette notes, no longer crashes the game. It says the text is too long to copy instead (#55)
+- Copying very long text, such as a long share string or palette notes, says the text is too long instead of crashing the game (#69)
+- Comparing blocks whose colours are almost tied could run forever, and now always finishes (#69)
+- A saved gradient loaded while Chroma Studio reads the blocks again, as after a resource pack change, takes its blocks from the new read (#69)
+- The import dialog and `/chroma export` say in your language why a palette can't be read (#69)
+- The hotbar fill dialog shows how many blocks go to the hotbar, to free slots and to shulker boxes, and warns before any could drop at your feet (#69)
+- Tooltips across the mod are shorter and say only what a control's label doesn't (#69)
 
 # 1.2.1
 
