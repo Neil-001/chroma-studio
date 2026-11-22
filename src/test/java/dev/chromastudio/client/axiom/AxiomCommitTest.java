@@ -572,6 +572,145 @@ class AxiomCommitTest {
         assertNull(ToolMaskWindow.luaExecutionError);
     }
 
+    @Test
+    void aLuaErrorLeftWhileTheToolMasksWindowIsClosedDoesntStopAStroke() throws Exception {
+        axiom.level.put(0, 0, 0, STONE);
+        ToolMaskWindow.luaExecutionError = "attempt to index a nil value";
+        EditorWindowType.TOOL_MASKS.open = false;
+        assertTrue(AxiomMask.unavailable().isEmpty());
+        BrushStroke stroke = bricks();
+        frame(stroke, true, at(0));
+        frame(stroke, false);
+        assertEquals(List.of(Map.of(at(0), BRICKS)), axiom.tools.pushed);
+        assertNull(stroke.refused());
+    }
+
+    @Test
+    void aLuaErrorLeftStillStopsAStrokeWhenTheToolMasksWindowCantBeTold() throws Exception {
+        axiom.level.put(0, 0, 0, STONE);
+        ToolMaskWindow.luaExecutionError = "attempt to index a nil value";
+        EditorWindowType.TOOL_MASKS.open = false;
+        AxiomMask.WINDOW.failed(new IllegalStateException("window"));
+        assertEquals(java.util.Optional.empty(), AxiomMask.windowClosed());
+        BrushStroke stroke = bricks();
+        frame(stroke, true, at(0));
+        frame(stroke, false);
+        assertEquals(List.of(), axiom.tools.pushed);
+        assertNotNull(stroke.refused());
+    }
+
+    @Test
+    void reopeningTheToolMasksWindowOverALuaErrorLeftRefusesAPreviewMadeWhileItWasClosed() {
+        axiom.level.put(0, 0, 0, STONE);
+        ToolMaskWindow.luaExecutionError = "attempt to index a nil value";
+        EditorWindowType.TOOL_MASKS.open = false;
+        BuildPreview preview = preview(row());
+        assertEquals(1, preview.count());
+        EditorWindowType.TOOL_MASKS.open = true;
+        assertEquals(FakeAxiom.refusal("mask_failed"), preview.apply().orElse(null));
+        assertEquals(List.of(), axiom.tools.pushed);
+    }
+
+    private GradientTool gradientAlong(int to) {
+        saveGradient("Commit test", "minecraft:spruce_planks", "minecraft:oak_planks");
+        GradientTool tool = new GradientTool();
+        FakeAxiom.set(GradientTool.class, tool, "picked", "Commit test");
+        axiom.tools.hit = at(0);
+        assertTrue(tool.callUseTool());
+        axiom.tools.hit = at(to);
+        assertTrue(tool.callUseTool());
+        axiom.frame++;
+        tool.render(axiom.rc);
+        return tool;
+    }
+
+    private GradientTool gradientAcrossAStripedWall() {
+        axiom.client();
+        BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState(), gravel = Blocks.GRAVEL.defaultBlockState();
+        for (int x = -1; x <= 7; x++) for (int z = -1; z <= 1; z++) axiom.level.put(x, -1, z, gravel);
+        for (int x = 0; x <= 6; x++) for (int y = 0; y <= 1; y++) axiom.level.put(x, y, 0, x == 3 ? tuff : BRICKS);
+        return gradientAlong(6);
+    }
+
+    @Test
+    void onlyBlocksLikeTheFirstReachesEverySectionOfAWallWithTwoStripes() {
+        axiom.client();
+        BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState();
+        for (int x = 0; x <= 8; x++) axiom.level.put(x, 0, 0, x == 3 || x == 6 ? tuff : BRICKS);
+        gradientAlong(8);
+        assertEquals(java.util.Set.of(at(0), at(1), at(2), at(4), at(5), at(7), at(8)), axiom.tools.overrides.keySet());
+    }
+
+    @Test
+    void onlyBlocksLikeTheFirstDoesntJumpAGapInTheLineToAnotherBuild() {
+        axiom.client();
+        for (int x : new int[] {0, 1, 4, 5, 8, 9}) axiom.level.put(x, 0, 0, BRICKS);
+        gradientAlong(9);
+        assertEquals(java.util.Set.of(at(0), at(1)), axiom.tools.overrides.keySet());
+    }
+
+    @Test
+    void onlyBlocksLikeTheFirstDoesntFollowTheLineAcrossTheGround() {
+        axiom.client();
+        BlockState gravel = Blocks.GRAVEL.defaultBlockState();
+        for (int x = 0; x <= 7; x++) axiom.level.put(x, 0, 0, x == 2 || x == 3 ? gravel : BRICKS);
+        gradientAlong(7);
+        assertEquals(java.util.Set.of(at(0), at(1)), axiom.tools.overrides.keySet());
+    }
+
+    @Test
+    void theLineAGradientStartsFromStopsAtTheCap() {
+        BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState();
+        axiom.level.put(0, 0, 0, BRICKS);
+        for (int x = 1; x <= FoundBuild.CAP + 10; x++) axiom.level.put(x, 0, 0, tuff);
+        axiom.level.put(FoundBuild.CAP + 5, 0, 0, BRICKS);
+        GradientTool.Search s = GradientTool.search(axiom.level, at(0), at(250_000), at(0), true, 64);
+        assertEquals(1, s.found().blocks().length);
+    }
+
+    @Test
+    void onlyBlocksLikeTheFirstDoesntCrossAFootingToTheSameMaterialBelow() {
+        axiom.client();
+        BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState();
+        for (int x = 0; x <= 6; x++) {
+            axiom.level.put(x, 0, 0, BRICKS);
+            axiom.level.put(x, -1, 0, tuff);
+            axiom.level.put(x, -2, 0, BRICKS);
+        }
+        gradientAlong(6);
+        assertEquals(7, axiom.tools.overrides.size());
+        assertTrue(axiom.tools.overrides.keySet().stream().allMatch(p -> p.getY() == 0));
+    }
+
+    @Test
+    void onlyBlocksLikeTheFirstSearchesOnlyTheBlocksLikeTheFirst() {
+        BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState();
+        for (int x = -3; x <= 9; x++) for (int z = -3; z <= 3; z++) for (int y = -4; y <= -1; y++) axiom.level.put(x, y, z, tuff);
+        for (int x = 0; x <= 6; x++) axiom.level.put(x, 0, 0, BRICKS);
+        GradientTool.Search s = GradientTool.search(axiom.level, at(0), at(6), at(0), true, 64);
+        assertEquals(7, s.found().blocks().length);
+    }
+
+    @Test
+    void onlyBlocksLikeTheFirstReachesPastAStripeOfAnotherMaterialAndLeavesTheStripeAndGround() {
+        GradientTool tool = gradientAcrossAStripedWall();
+        Map<BlockPos, BlockState> shown = new LinkedHashMap<>(axiom.tools.overrides);
+        assertEquals(TestIndex.block("oak_planks").defaultBlockState(), shown.get(at(6)));
+        assertEquals(12, shown.size());
+        assertTrue(shown.keySet().stream().noneMatch(p -> p.getX() == 3 || p.getY() < 0));
+        assertTrue(tool.callConfirm());
+        assertEquals(List.of(shown), axiom.tools.pushed);
+    }
+
+    @Test
+    void aStripeBlockChangedAfterTheGradientsPreviewRefusesApply() {
+        GradientTool tool = gradientAcrossAStripedWall();
+        axiom.level.put(3, 1, 0, BRICKS);
+        assertFalse(tool.callConfirm());
+        assertEquals(List.of(), axiom.tools.pushed);
+        assertEquals(FakeAxiom.refusal("changed"), FakeAxiom.get(GradientTool.class, tool, "refused"));
+    }
+
     private static final class PreviewTool implements CustomTool, GuardedTool.PutAway {
         final BuildPreview preview = new BuildPreview("test");
 

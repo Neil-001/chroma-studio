@@ -277,7 +277,7 @@ final class RecolourPlan {
     private static boolean takesPart(Entry e) { return OWN_KIND.contains(e.kind()) && (e.kind() != Kind.LIGHT || e.fullCube()); }
 
     static boolean ground(BlockState state) {
-        return state.is(BlockTags.SUBSTRATE_OVERWORLD) || state.is(BlockTags.SAND) || state.is(Blocks.GRAVEL);
+        return state.is(BlockTags.SUBSTRATE_OVERWORLD) || state.is(BlockTags.SAND) || state.is(Blocks.GRAVEL) || state.is(Blocks.BEDROCK);
     }
 
     private static Recolour.@Nullable Look look(BlockIndex index, BlockState state, Face face, TintContext tint, long weight) {
