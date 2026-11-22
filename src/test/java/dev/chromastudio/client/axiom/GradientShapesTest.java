@@ -16,12 +16,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.FenceBlock;
 import net.minecraft.world.level.block.IronBarsBlock;
 import net.minecraft.world.level.block.SlabBlock;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -142,14 +140,6 @@ class GradientShapesTest {
             assertEquals(e.id().endsWith("glass_pane"), GradientShapes.glassPane(e), e.id());
         }
         assertTrue(panes >= 5);
-        int glass = 0;
-        for (Block b : BuiltInRegistries.BLOCK) {
-            if (!(b instanceof IronBarsBlock)) continue;
-            boolean named = BuiltInRegistries.BLOCK.getKey(b).getPath().endsWith("glass_pane");
-            assertEquals(named, b.defaultBlockState().getSoundType() == SoundType.GLASS, b.toString());
-            if (named) glass++;
-        }
-        assertEquals(17, glass);
     }
 
     @Test
