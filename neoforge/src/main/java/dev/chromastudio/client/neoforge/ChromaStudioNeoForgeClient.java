@@ -51,7 +51,6 @@ public final class ChromaStudioNeoForgeClient implements ClientPlatform {
             event.registerCategory(Keys.CATEGORY);
             Keys.ALL.forEach(event::register);
         });
-        // Hud.render checks for a hidden HUD (F1) itself: NeoForge draws modded layers even then.
         modBus.addListener(RegisterGuiLayersEvent.class, event -> event.registerAboveAll(
                 Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "hud"), (graphics, _) -> Hud.render(graphics)));
         modBus.addListener(AddClientReloadListenersEvent.class, event -> event.addListener(Identifier.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "index"),

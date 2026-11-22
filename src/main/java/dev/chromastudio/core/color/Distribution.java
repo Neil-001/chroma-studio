@@ -2,11 +2,16 @@ package dev.chromastudio.core.color;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public final class Distribution {
     public static final int MAX_ENTRIES = 8;
     private static final int PIXEL_CLUSTERS = 4;
-    private static final double EMPTY = 1e-12;
+    private static final double OPTIMAL_SLACK = 1e-9;
+
+    private static volatile Consumer<IllegalStateException> unsolved = e -> {
+        throw e;
+    };
 
     private final Color[] colours;
     private final double[] weights;
@@ -109,8 +114,19 @@ public final class Distribution {
         for (int i = 0; i < colours.length; i++) {
             for (int j = 0; j < other.colours.length; j++) cost[i][j] = metric.distance(colours[i], other.colours[j]);
         }
-        return transport(weights, other.weights, cost);
+        try {
+            return transport(weights, other.weights, cost);
+        } catch (IllegalStateException e) {
+            unsolved.accept(e);
+            double bound = 0;
+            for (int i = 0; i < colours.length; i++) {
+                for (int j = 0; j < other.colours.length; j++) bound += weights[i] * other.weights[j] * cost[i][j];
+            }
+            return bound;
+        }
     }
+
+    public static void whenUnsolved(Consumer<IllegalStateException> handler) { unsolved = handler; }
 
     public Distribution tinted(int rgbMultiplier) {
         Color[] out = new Color[colours.length];
@@ -122,41 +138,63 @@ public final class Distribution {
         int n = supply.length, m = demand.length;
         double[] left = supply.clone(), wanted = demand.clone();
         double[][] flow = new double[n][m];
-        // More than enough paths for eight by eight; a guard against rounding keeping the loop alive.
-        for (int path = 0; path < 64 * (n + m); path++) {
-            double[] dist = new double[n + m];
-            int[] from = new int[n + m];
-            boolean any = false;
+        double[] potential = new double[n + m];
+        double[] dist = new double[n + m];
+        int[] from = new int[n + m];
+        boolean[] settled = new boolean[n + m];
+        double sinkPotential = 0;
+        int paths = 0, mostPaths = (n + m) * n * m;
+        while (true) {
+            double highest = Double.NEGATIVE_INFINITY;
             for (int i = 0; i < n; i++) {
-                dist[i] = left[i] > EMPTY ? 0 : Double.POSITIVE_INFINITY;
-                any |= left[i] > EMPTY;
-                from[i] = -1;
+                if (left[i] > 0) highest = Math.max(highest, potential[i]);
             }
-            if (!any) break;
-            for (int j = 0; j < m; j++) dist[n + j] = Double.POSITIVE_INFINITY;
-            for (int round = 0; round < n + m; round++) {
-                boolean changed = false;
-                for (int i = 0; i < n; i++) {
+            if (highest == Double.NEGATIVE_INFINITY) break;
+            for (int v = 0; v < n + m; v++) {
+                dist[v] = v < n && left[v] > 0 ? highest - potential[v] : Double.POSITIVE_INFINITY;
+                from[v] = -1;
+                settled[v] = false;
+            }
+            int end = -1;
+            double reach = Double.POSITIVE_INFINITY;
+            while (true) {
+                int u = -1;
+                for (int v = 0; v < n + m; v++) {
+                    if (!settled[v] && dist[v] < reach && (u < 0 || dist[v] < dist[u])) u = v;
+                }
+                if (u < 0) break;
+                settled[u] = true;
+                if (u >= n && wanted[u - n] > 0) {
+                    double toSink = dist[u] + Math.max(0, potential[u] - sinkPotential);
+                    if (toSink < reach) {
+                        reach = toSink;
+                        end = u;
+                    }
+                }
+                if (u < n) {
                     for (int j = 0; j < m; j++) {
-                        if (dist[i] + cost[i][j] < dist[n + j] - EMPTY) {
-                            dist[n + j] = dist[i] + cost[i][j];
-                            from[n + j] = i;
-                            changed = true;
+                        int v = n + j;
+                        double through = dist[u] + Math.max(0, cost[u][j] + potential[u] - potential[v]);
+                        if (!settled[v] && through < dist[v]) {
+                            dist[v] = through;
+                            from[v] = u;
                         }
-                        if (flow[i][j] > EMPTY && dist[n + j] - cost[i][j] < dist[i] - EMPTY) {
-                            dist[i] = dist[n + j] - cost[i][j];
-                            from[i] = n + j;
-                            changed = true;
+                    }
+                } else {
+                    for (int i = 0; i < n; i++) {
+                        double through = dist[u] + Math.max(0, potential[u] - cost[i][u - n] - potential[i]);
+                        if (flow[i][u - n] > 0 && !settled[i] && through < dist[i]) {
+                            dist[i] = through;
+                            from[i] = u;
                         }
                     }
                 }
-                if (!changed) break;
             }
-            int end = -1;
-            for (int j = 0; j < m; j++) {
-                if (wanted[j] > EMPTY && (end < 0 || dist[n + j] < dist[end])) end = n + j;
-            }
-            if (end < 0 || Double.isInfinite(dist[end])) break;
+            if (end < 0) break;
+            if (++paths > mostPaths) throw new IllegalStateException("The transport plan took more than " + mostPaths + " paths");
+
+            for (int v = 0; v < n + m; v++) potential[v] += Math.min(dist[v], reach);
+            sinkPotential += reach;
 
             double amount = wanted[end - n];
             int node = end;
@@ -176,10 +214,41 @@ public final class Distribution {
                 node = prev;
             }
         }
+        checkOptimal(supply, demand, left, wanted, flow, cost, potential);
         double total = 0;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) total += flow[i][j] * cost[i][j];
         }
         return total;
+    }
+
+    private static void checkOptimal(double[] supply, double[] demand, double[] left, double[] wanted, double[][] flow, double[][] cost, double[] potential) {
+        int n = supply.length, m = demand.length;
+        double total = 0;
+        for (double s : supply) total += s;
+        double massTolerance = total * OPTIMAL_SLACK;
+        for (int i = 0; i < n; i++) {
+            double sent = left[i];
+            for (int j = 0; j < m; j++) sent += flow[i][j];
+            if (Math.abs(sent - supply[i]) > massTolerance) throw new IllegalStateException("The transport plan loses weight from supply " + i);
+        }
+        for (int j = 0; j < m; j++) {
+            double got = wanted[j];
+            for (int i = 0; i < n; i++) got += flow[i][j];
+            if (Math.abs(got - demand[j]) > massTolerance) throw new IllegalStateException("The transport plan loses weight at demand " + j);
+        }
+        double scale = 1;
+        for (double[] row : cost) {
+            for (double c : row) scale = Math.max(scale, Math.abs(c));
+        }
+        double tolerance = scale * OPTIMAL_SLACK;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                double reduced = cost[i][j] + potential[i] - potential[n + j];
+                if (reduced < -tolerance || flow[i][j] > 0 && reduced > tolerance) {
+                    throw new IllegalStateException("The transport plan is not optimal: cell " + i + ", " + j + " has reduced cost " + reduced);
+                }
+            }
+        }
     }
 }

@@ -6,27 +6,29 @@ A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the bloc
 
 Needs JDK 25. Versions are in `gradle.properties`. Run `./gradlew build` after every change.
 
-- `./gradlew build` builds both jars in `fabric/build/libs/` and `neoforge/build/libs/` and runs the tests. It compiles with `-Xlint:all,-classfile` and must stay free of warnings. The IDE's own, such as unused imports, count too: name a lambda or catch parameter that isn't used `_`.
-- `./gradlew :fabric:test` runs the tests, which only Fabric hosts. `-Dchroma.timing=true` also runs the timing tests.
+- `./gradlew build` builds both jars in `fabric/build/libs/` and `neoforge/build/libs/` and runs the tests. It compiles with `-Xlint:all,-classfile` and must stay free of warnings. `-classfile` is left out because its warnings concern the libraries' own class files, which nothing here can fix. The IDE's own, such as unused imports, count too: name a lambda or catch parameter that isn't used `_`.
+- `./gradlew :fabric:test` runs the tests, which only Fabric hosts. `-Dchroma.timing=true` also runs the timing tests. The tests write Minecraft's log to `fabric/logs/`, which git ignores.
 - `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` starts a dev client. The Fabric one has Litematica, MaLiLib and Mod Menu. `-Pviewer=jei` or `-Pviewer=rei` adds that recipe viewer to either; both need a newer loader API than the builds' minimum, so add `-Pfabric_version=0.161.0+26.3` or `-Pneoforge_version=26.3.0.48-beta`, as CI uses. The game opens its window on a Wayland desktop whenever there is one, whatever `DISPLAY` says. To run it on a virtual display, unset `WAYLAND_DISPLAY` and set `SDL_VIDEODRIVER=x11`.
 
-Both jars target 26.3 only. Minecraft is unobfuscated, so use its own names without mappings. Builds use the minimum supported Fabric API and NeoForge versions; CI also compiles against newer ones.
+Both jars target 26.3 only. Minecraft is unobfuscated, so use its own names without mappings. Builds use the minimum supported Fabric API and NeoForge versions; CI also compiles against newer ones. In CI, `setup-gradle` lets only runs on `main` write the Gradle and Loom cache.
 
 ## Layout and boundaries
 
 Both loaders compile the shared `src/main` and `src/client` code with their own entrypoints and metadata. Fabric splits common and client source sets with Loom's `splitEnvironmentSourceSets()` and also compiles `src/test`; NeoForge combines them in one jar. `src/main/java` holds only `core`, `src/main/resources` the assets, and `src/client` everything else.
 
-Most classes say what they do in a comment at the top, and their fields and methods say the rest. Read those before changing a class, and keep them true. This file has only what no one class says.
+Source files carry no comments. A decision a maintainer could not work out from the code is a record in the `CLAUDE.md` of the package's directory. Read that file before changing the package, and keep its records true. This file has only what no package's file says.
 
 - `dev.chromastudio.core` must have no Minecraft imports.
-- Only `fabric/src/` and `neoforge/src/` may import their loader's classes. Shared client code goes through `ClientPlatform`. Each loader's client entrypoint hooks the shared code into its events, so a change to `ClientPlatform` or a new hook goes into both.
+- Only `fabric/src/` and `neoforge/src/` may import their loader's classes. Shared client code goes through `ClientPlatform`. Each loader's client entrypoint hooks the shared code into its events, so a change to `ClientPlatform` or a new hook goes into both. NeoForge draws modded HUD layers even while F1 hides the HUD, so `Hud.render` checks for that itself.
 - The mod is client-only. Fabric's `environment` is `client` with only a `client` entrypoint. NeoForge's one `@Mod` class has `dist = Dist.CLIENT`, and the mod registers no payloads, so a server never checks for it. Don't add a server entrypoint, a payload or a registry entry.
 - There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
 - `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
 - Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them.
+- REI's API names Architectury's types in the methods the mod calls, so both builds compile against Architectury. NeoForge's build compiles the Litematica bridge against Litematica's and MaLiLib's Fabric jars, because Forgematica keeps their package and class names and Minecraft's names are the same on both loaders. It also has Fabric's loader on the compile path, only so the compiler can read the `@Environment` annotation on REI's classes without a warning. Import nothing from it.
+- The build files fetch JEI, REI, Cloth Config, Architectury, NeoForge's Fabric loader and the jars in `libs/` through `exclusiveContent`, each from its own repository alone, so another repository's outage can't fail the build.
 - Axiom is optional, Fabric-only and closed source. Compile against its client API and ImGui binding only, which `libs/` pins under their MIT licences and the built jars never contain. Never commit, ship or compile against Axiom's own jar. Only `dev.chromastudio.client.axiom` may refer to Axiom, the rest of the mod enters it through `AxiomBridge`, and what isn't in the client API is reached by guarded reflection that fails with a reason the player can read. To try it, put Axiom's jar in `run/fabric/mods/`.
-- A new setting follows the comment on `ModSettings`, and needs a label and a `.tip` in the language file, which the settings screen's search reads.
-- `en_us.json` is written by hand, and the nine other language files are generated from it. A new English key needs its nine translations in the same change, or `LangTest` fails.
+- A new setting follows the steps in `src/client/java/dev/chromastudio/client/CLAUDE.md`, and needs a label and a `.tip` in the language file, which the settings screen's search reads.
+- `en_us.json` is written by hand, and the nine other language files are generated from it. A new or reworded English text needs its nine translations in the same change. `LangTest` fails on a missing key, but not on a stale translation.
 - Read `listing/README.md` before changing anything in `listing/`.
 
 ## Block index
@@ -44,16 +46,18 @@ Most classes say what they do in a comment at the top, and their fields and meth
 
 ## Conventions
 
-- Grey out inapplicable controls with a tooltip explaining why. Don't hide them.
+- Grey out inapplicable controls with a tooltip explaining why and what turns them on. Don't hide them.
 - Use cyclers for options, so right-click steps backwards, and spinners for numbers. Make them through `Widgets`, which lets the mouse wheel step them. In a scrolling list, such as the settings or the Palettes tab's entries, use `Widgets.wheelNeedsClick`, so scrolling past a control doesn't change it.
 - Size buttons with the text's width. Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
 - Take colours from `Theme`, never a hex literal, apart from a colour that is data, such as a swatch, and the black and white marks drawn over one. The game's own tooltips and text fields stay dark on every theme, so text in them uses `Theme.TIP_*` and `Theme.FIELD_BAD`. Centre text with `Widgets.centred`.
 - A tool's panel in Axiom's editor is drawn by ImGui, not with `Widgets`. Draw it through `AxiomPanel`, which keeps these conventions there.
 - Use plain, sentence case UI copy without jargon.
+- A tooltip says only what the control's label and place don't: the name of a control with no text label in one to three words, one sentence on what the player needs before pressing a labelled button and can't see, a field's value and range, or a swatch's datum. Aim for 12 words, and pass 20 only with a reason. A status line says what happened and what to do next, and a panel in Axiom's editor shows at most one line of instruction. Only a refusal, a consequence that can't be undone or a risk of lost data justifies more.
 - Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
 - Visual fixes must preserve other behaviour. Prove it, for example by comparing pixels.
 - Test new core logic. Change a test's reference numbers only on purpose.
-- Comments say why, in plain English.
+- Write no comment that repeats the code. Fix a shortcut instead of writing a comment that excuses it. Put a decision the code can't show in the package's `CLAUDE.md`, as a record of one or two sentences that names the class.
+- Each `CLAUDE.md` has an `AGENTS.md` symlink to it beside it, and a new one needs one too. `SourceRulesTest` checks both, and lists the comments it still allows.
 - Commits follow the conventional style (`feat:`, `fix:`, `docs:`). Pull requests have a short body.
 - The [wiki](https://github.com/Neil-001/chroma-studio/wiki) must be updated with any change a player would notice.
 
