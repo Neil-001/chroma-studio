@@ -367,7 +367,7 @@ final class PaletteDialogs {
         private boolean gap = ModSettings.exportGap;
         private final long seed;
         private Component skipped;
-        private String cutPath;
+        private final List<Component> statusTip = new ArrayList<>();
         private int labelW;
 
         Export(Palette palette, Layout layout, long seed) {
@@ -437,7 +437,7 @@ final class PaletteDialogs {
             label(g, "palettes.chromastudio.export.patch", half, y);
             int statusH = statusLines() * 9;
             if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - statusH - 11, Theme.FAIR, false);
-            if (cutPath != null && over(mouseX, mouseY, in.x(), in.bottom() - statusH, in.w(), statusH)) tip(g, List.of(Component.literal(cutPath)), mouseX, mouseY);
+            if (!statusTip.isEmpty() && over(mouseX, mouseY, in.x(), in.bottom() - statusH, in.w(), statusH)) tip(g, statusTip, mouseX, mouseY);
         }
 
         @Override
@@ -461,7 +461,7 @@ final class PaletteDialogs {
 
         private void run(boolean place) {
             skipped = null;
-            cutPath = null;
+            statusTip.clear();
             LayoutOptions options = new LayoutOptions(layout, height, patch, width, gap, seed);
             SchematicExporter.Result result;
             try {
@@ -479,20 +479,19 @@ final class PaletteDialogs {
             Component route = format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty() ? tr("palettes.chromastudio.export.axiom").withColor(Theme.DIM) : null;
             MutableComponent done = tr("command.chromastudio.export.done", shown);
             if (route != null) done.append("\n").append(route);
-            status(done, Theme.GOOD);
+            if (!shown.equals(path)) statusTip.add(Component.literal(path));
             if (!place) {
-                if (!shown.equals(path)) cutPath = path;
+                status(done, Theme.GOOD);
                 return;
             }
             BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
             String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
             Optional<Component> problem = LitematicaBridge.place(result.file(), origin, name);
-            if (problem.isPresent()) status(problem.get().copy().append("\n").append(done), Theme.BAD);
-            else {
-                MutableComponent placed = tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ());
-                if (route != null) placed.append("\n").append(route);
-                status(placed, Theme.GOOD);
-            }
+            Component placed = problem.orElseGet(() -> tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()));
+            String line = PanelTab.fit(placed.getString(), box.w() - 10);
+            if (!line.equals(placed.getString())) statusTip.add(placed);
+            done.append("\n").append(Component.literal(line).withColor(problem.isPresent() ? Theme.BAD : Theme.GOOD));
+            status(done, Theme.GOOD);
         }
     }
 
@@ -608,10 +607,21 @@ final class PaletteDialogs {
         g.setTooltipForNextFrame(PanelTab.font(), split, mouseX, mouseY);
     }
 
-    private static final int TIP_MARGIN = 16, TIP_LINE = 150;
+    private static final int TIP_MARGIN = 16, TIP_WIDTH = 170;
 
-    private static int tipRoom() {
-        return Math.max(1, (Minecraft.getInstance().getWindow().getGuiScaledHeight() - TIP_MARGIN) / 10 - 1) * TIP_LINE;
+    private static Component screenTip(String text) {
+        List<FormattedText> lines = PanelTab.font().getSplitter().splitLines(text, TIP_WIDTH, Style.EMPTY);
+        int most = Math.max(1, (Minecraft.getInstance().getWindow().getGuiScaledHeight() - TIP_MARGIN) / 10);
+        if (lines.size() > most) {
+            lines = new ArrayList<>(lines.subList(0, most - 1));
+            lines.add(FormattedText.of("..."));
+        }
+        MutableComponent out = Component.empty();
+        for (FormattedText line : lines) {
+            if (line != lines.getFirst()) out.append("\n");
+            out.append(line.getString());
+        }
+        return out;
     }
 
     static final class Axiom extends Dialog {
@@ -716,7 +726,7 @@ final class PaletteDialogs {
                 boolean fitted = Export.middle(name.apply(from), w - 10).equals(name.apply(from));
                 var fromButton = widgets.cycler(x, y, w, null, fromChoices(), from, p -> Component.literal(Export.middle(name.apply(p), w - 10)),
                         p -> { fromKey = p == palette ? "" : key(p); refresh(); },
-                        fitted ? tr("axiom.chromastudio.from.tip") : Component.literal(Export.middle(name.apply(from), tipRoom())));
+                        fitted ? tr("axiom.chromastudio.from.tip") : screenTip(name.apply(from)));
                 y += PanelTab.ROW;
                 var matchButton = widgets.cycler(x, y, w, null, List.of(Recolour.Mode.values()), match,
                         m -> tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT)), m -> { match = m; refresh(); }, tr("axiom.chromastudio.match.tip"));
