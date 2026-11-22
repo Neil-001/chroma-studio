@@ -650,6 +650,15 @@ class AxiomCommitTest {
     }
 
     @Test
+    void onlyBlocksLikeTheFirstDoesntFollowTheLineAcrossTheGround() {
+        axiom.client();
+        BlockState gravel = Blocks.GRAVEL.defaultBlockState();
+        for (int x = 0; x <= 7; x++) axiom.level.put(x, 0, 0, x == 2 || x == 3 ? gravel : BRICKS);
+        gradientAlong(7);
+        assertEquals(java.util.Set.of(at(0), at(1)), axiom.tools.overrides.keySet());
+    }
+
+    @Test
     void theLineAGradientStartsFromStopsAtTheCap() {
         BlockState tuff = Blocks.TUFF_BRICKS.defaultBlockState();
         axiom.level.put(0, 0, 0, BRICKS);

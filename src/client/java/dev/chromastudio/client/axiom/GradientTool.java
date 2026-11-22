@@ -182,13 +182,14 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
     private static long[] starts(BlockGetter level, BlockPos from, BlockPos to) {
         int dx = to.getX() - from.getX(), dy = to.getY() - from.getY(), dz = to.getZ() - from.getZ();
         int n = Math.max(Math.abs(dx), Math.max(Math.abs(dy), Math.abs(dz)));
+        boolean onGround = RecolourPlan.ground(level.getBlockState(from));
         LongArrayList out = new LongArrayList();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int i = 0; i <= Math.min(n, FoundBuild.CAP); i++) {
             pos.set(from.getX() + (int) Math.round((double) dx * i / n), from.getY() + (int) Math.round((double) dy * i / n),
                     from.getZ() + (int) Math.round((double) dz * i / n));
             BlockState s = level.getBlockState(pos);
-            if (s.isAir() || s.getBlock() instanceof LiquidBlock) break;
+            if (s.isAir() || s.getBlock() instanceof LiquidBlock || !onGround && RecolourPlan.ground(s)) break;
             out.add(BuildSearch.pack(pos.getX(), pos.getY(), pos.getZ()));
         }
         return out.toLongArray();
