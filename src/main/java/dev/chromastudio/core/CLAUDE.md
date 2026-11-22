@@ -1,4 +1,4 @@
-The mod's logic that needs no game: colour maths, palettes and gradients, schematic layouts, hotbar writes and line breaking.
+The mod's logic that needs no game: colour maths, palettes and gradients, schematic layouts, hotbar writes, line breaking and the choice of a count's translation key.
 
 `color` and `palette` have their own `CLAUDE.md`. The records of the three small packages are here.
 
@@ -17,3 +17,4 @@ The mod's logic that needs no game: colour maths, palettes and gradients, schema
 
 - `LineBreaks` never breaks at a space next to a Chinese or Japanese character. The translations put spaces around numbers and Latin words, as in "2 個のブロック", only for looks, and a break there would leave a number at the end of one line and its counter at the start of the next. A space between two Latin words still breaks.
 - `LineBreaks.needed` is false for Korean, which spaces its words, so Korean is left to the caller's own wrapping.
+- `Plural.key` gives `key.one` for one and `key` for any other number, and languages with more plural forms word `key` so that it fits any other number.

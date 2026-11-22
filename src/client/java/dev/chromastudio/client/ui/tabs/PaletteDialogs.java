@@ -31,6 +31,7 @@ import dev.chromastudio.core.palette.Recolour;
 import dev.chromastudio.core.palette.UnreadablePalette;
 import dev.chromastudio.core.palette.ShareString;
 import dev.chromastudio.core.palette.WorldEditPattern;
+import dev.chromastudio.core.text.Plural;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -801,10 +802,9 @@ final class PaletteDialogs {
         }
 
         private static MutableComponent counted(String key, int n, Object... before) {
-            if (n == 1) return tr(key + ".one", before);
             Object[] args = Arrays.copyOf(before, before.length + 1);
             args[before.length] = n;
-            return tr(key, args);
+            return tr(Plural.key(key, n), args);
         }
 
         static List<Component> destinations(int blocks, Optional<HotbarFill.AxiomPreview> preview, HotbarPlan plan) {

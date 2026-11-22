@@ -157,7 +157,7 @@ Everything in Chroma Studio that refers to Axiom: its five tools in Axiom's edit
 - A text that names a part of Axiom's interface, such as its Tool Masks window, takes the name from Axiom's own translation key through `AxiomNames`, which falls back to the English name when no key is loaded, so it matches what Axiom shows in every language. `AxiomNames` drops the trailing "..." or "…" of a menu item's name, such as "Import Schematic...", as the text names the item mid-sentence. The translations put a name that stands in a sentence in quotes, so the name needs no inflection.
 - Axiom 6.1.5 ships only English and downloads the rest from its Weblate into `config/axiom/translations.zip`, which it loads as a resource pack, so its keys are in the game's `Language`.
 - Axiom's Mask and Scripting tabs are English literals with no key, so the texts that name them carry them as they are.
-- Panels translate their text each frame through `AxiomTools.tr`, and tools keep what they say as a `Component`, so a change of language shows at once. `AxiomTools.count` uses `key.one` for one, and languages with more plural forms word `key` so that it fits any other number.
+- Panels translate their text each frame through `AxiomTools.tr`, and tools keep what they say as a `Component`, so a change of language shows at once.
 
 ## Shade brush
 

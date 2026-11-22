@@ -5,6 +5,7 @@ import com.moulberry.axiomclientapi.service.RegionProvider;
 import com.moulberry.axiomclientapi.service.ToolPatherProvider;
 import com.moulberry.axiomclientapi.service.ToolRegistryService;
 import com.moulberry.axiomclientapi.service.ToolService;
+import dev.chromastudio.core.text.Plural;
 import java.util.ServiceLoader;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
@@ -88,5 +89,5 @@ final class AxiomTools {
 
     static String tr(String key, Object... args) { return Component.translatable(key, args).getString(); }
 
-    static String count(String key, int n, Object... args) { return tr(n == 1 ? key + ".one" : key, args); }
+    static String count(String key, int n, Object... args) { return tr(Plural.key(key, n), args); }
 }

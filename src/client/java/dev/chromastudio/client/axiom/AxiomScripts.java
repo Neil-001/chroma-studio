@@ -9,6 +9,7 @@ import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import dev.chromastudio.core.palette.Recolour;
+import dev.chromastudio.core.text.Plural;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -108,7 +109,7 @@ final class AxiomScripts {
     }
 
     private static MutableComponent counted(String key, int n) {
-        return n == 1 ? Component.translatable(key + ".one") : Component.translatable(key, n);
+        return Component.translatable(Plural.key(key, n), n);
     }
 
     static AxiomScript.Kept gradientKept() {
