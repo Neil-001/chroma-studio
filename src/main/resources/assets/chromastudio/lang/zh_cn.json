@@ -437,6 +437,7 @@
   "gradient.chromastudio.store.title": "已保存的渐变",
   "gradient.chromastudio.store.save": "保存渐变",
   "gradient.chromastudio.store.none": "还没有保存的渐变。",
+  "gradient.chromastudio.store.hint": "单击渐变即可载入，右键单击可删除。",
   "gradient.chromastudio.store.steps": "%s 步",
   "gradient.chromastudio.store.loaded": "已载入“%s”",
   "gradient.chromastudio.store.done": "已保存渐变“%s”",

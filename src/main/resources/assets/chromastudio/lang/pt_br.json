@@ -437,6 +437,7 @@
   "gradient.chromastudio.store.title": "Gradientes salvos",
   "gradient.chromastudio.store.save": "Salvar gradiente",
   "gradient.chromastudio.store.none": "Nenhum gradiente salvo ainda.",
+  "gradient.chromastudio.store.hint": "Clique em um gradiente para carregá-lo. Clique direito para excluí-lo.",
   "gradient.chromastudio.store.steps": "%s passos",
   "gradient.chromastudio.store.loaded": "\"%s\" carregado",
   "gradient.chromastudio.store.done": "Gradiente \"%s\" salvo",

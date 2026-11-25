@@ -437,6 +437,7 @@
   "gradient.chromastudio.store.title": "保存したグラデーション",
   "gradient.chromastudio.store.save": "グラデーションを保存",
   "gradient.chromastudio.store.none": "保存したグラデーションはまだありません。",
+  "gradient.chromastudio.store.hint": "クリックで読み込み、右クリックで削除します。",
   "gradient.chromastudio.store.steps": "%s ステップ",
   "gradient.chromastudio.store.loaded": "「%s」を読み込みました",
   "gradient.chromastudio.store.done": "グラデーション「%s」を保存しました",

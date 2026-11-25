@@ -437,6 +437,7 @@
   "gradient.chromastudio.store.title": "Gespeicherte Verläufe",
   "gradient.chromastudio.store.save": "Verlauf speichern",
   "gradient.chromastudio.store.none": "Noch keine gespeicherten Verläufe.",
+  "gradient.chromastudio.store.hint": "Klicke auf einen Verlauf, um ihn zu laden. Rechtsklick löscht ihn.",
   "gradient.chromastudio.store.steps": "%s Schritte",
   "gradient.chromastudio.store.loaded": "„%s“ geladen",
   "gradient.chromastudio.store.done": "Verlauf „%s“ gespeichert",

@@ -437,6 +437,7 @@
   "gradient.chromastudio.store.title": "Сохранённые градиенты",
   "gradient.chromastudio.store.save": "Сохранить градиент",
   "gradient.chromastudio.store.none": "Сохранённых градиентов пока нет.",
+  "gradient.chromastudio.store.hint": "Нажмите на градиент, чтобы загрузить его. Правый клик удаляет.",
   "gradient.chromastudio.store.steps": "Шагов: %s",
   "gradient.chromastudio.store.loaded": "Загружено: «%s»",
   "gradient.chromastudio.store.done": "Градиент «%s» сохранён",
