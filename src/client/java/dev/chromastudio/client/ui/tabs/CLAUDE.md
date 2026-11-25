@@ -13,6 +13,9 @@
 - A stop press can survive pinning because pinning skips `Tab.closed`. Clear it on reopening as well as on close. Only a left release ends a stop press.
 - `MatchFilters.candidates` excludes invisible models such as barriers because their item texture would pass as a block colour. Block entity models such as chests have their own filter.
 - The top of the chroma slider means no limit because some textures exceed its range. `MatchTab` scales viewing distance logarithmically because each doubling halves texture detail.
+- `GradientTab.legend` shows step and stop details on a line above the strip instead of tooltips, which covered neighbouring steps and controls. It falls back to a tooltip when the strip is too short for the line.
+- `GradientTab.openSwap` keeps the closest block of each material set so shapes of one material don't fill the list. The kind filter chooses the shape.
+- `GradientTab.layout` labels the easing and hue cyclers only when the row fits them, and moves the kind and filter buttons to the stops row to make room.
 - `TargetModel` keeps the values of the last picker moved so its handle stays put through gamut clipping and greys. `HUE_MAX` stops below 360 because `Oklch` wraps 360 to 0.
 
 ## Dialogs and drawing
