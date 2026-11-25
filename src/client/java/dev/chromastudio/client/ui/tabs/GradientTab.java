@@ -121,7 +121,8 @@ public final class GradientTab extends PanelTab {
     private boolean draggingStop;
     private int dropGap;
     private int badgeY;
-    private static final String[] ACTIONS = {"hotbar", "copy", "export", "axiom", "saved", "save", "swap"};
+    private static final List<String> ACTIONS = List.of("hotbar", "copy", "export", "axiom", "saved", "save", "swap");
+    private List<String> actions = ACTIONS;
     private Flow.Spot[] actionSpots;
     private boolean filtersOpen;
     private final Widgets filterWidgets = new Widgets();
@@ -238,27 +239,27 @@ public final class GradientTab extends PanelTab {
             rebuild();
         })).setTooltip(Tooltip.create(tr("gradient.chromastudio.filters.tip")));
 
-        int[] actionWidths = new int[ACTIONS.length];
-        for (int i = 0; i < ACTIONS.length; i++) actionWidths[i] = Widgets.buttonWidth(tr("gradient.chromastudio.action." + ACTIONS[i]));
+        actions = AxiomBridge.isPresent() ? ACTIONS : ACTIONS.stream().filter(a -> !a.equals("axiom")).toList();
+        int[] actionWidths = actions.stream().mapToInt(a -> Widgets.buttonWidth(tr("gradient.chromastudio.action." + a))).toArray();
         actionSpots = Flow.place(actionWidths, b.x() + PAD, b.right() - PAD, GAP);
         int actionsY = b.bottom() - PAD - Widgets.H - (Flow.rows(actionSpots) - 1) * ROW;
         Component none = result.isEmpty() ? (problem != null ? problem : tr("gradient.chromastudio.working")) : null;
-        action(0, actionsY, () -> open(new PaletteDialogs.Hotbar(entries())), none != null ? none : HotbarFill.unavailable().orElse(null));
-        action(1, actionsY, () -> {
+        action("hotbar", actionsY, () -> open(new PaletteDialogs.Hotbar(entries())), none != null ? none : HotbarFill.unavailable().orElse(null));
+        action("copy", actionsY, () -> {
             Clipboard.copy(entries().stream().map(PaletteEntry::idWithProperties).collect(Collectors.joining("\n")))
                     .ifPresentOrElse(why -> say(why, BAD), () -> say(tr("gradient.chromastudio.copied", result.size()), GOOD));
         }, none);
-        action(2, actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
-        action(3, actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())),
+        action("export", actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
+        action("axiom", actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())),
                 AxiomBridge.whyNot().orElse(none));
-        action(4, actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
-        action(5, actionsY, () -> {
+        action("saved", actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, savedName != null ? savedName : asPalette().name, this::load)), null);
+        action("save", actionsY, () -> {
             Palette p = asPalette();
             PaletteSink sink = PaletteSink.current();
             if (sink != null && sink.createPalette(p.name, p.entries)) say(tr("gradient.chromastudio.saved", p.name), GOOD);
             else say(tr("capture.chromastudio.failed"), BAD);
         }, none);
-        action(6, actionsY, () -> {
+        action("swap", actionsY, () -> {
             Collections.reverse(STOPS);
             selectedStop = STOPS.size() - 1 - selectedStop;
             changed();
@@ -306,8 +307,9 @@ public final class GradientTab extends PanelTab {
 
     private static int widest(List<Component> labels) { return labels.stream().mapToInt(Widgets::tw).max().orElse(40) + 10; }
 
-    private void action(int index, int y, Runnable run, Component unavailable) {
-        String key = ACTIONS[index];
+    private void action(String key, int y, Runnable run, Component unavailable) {
+        int index = actions.indexOf(key);
+        if (index < 0) return;
         Flow.Spot spot = actionSpots[index];
         Button button = widgets.button(spot.x(), y + spot.row() * ROW, tr("gradient.chromastudio.action." + key), run);
         if (unavailable != null) Widgets.disable(button, unavailable);

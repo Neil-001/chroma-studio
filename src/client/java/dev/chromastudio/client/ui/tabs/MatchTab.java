@@ -186,14 +186,17 @@ public final class MatchTab extends Tab {
         slot = new Bounds(x, y - 1, 18, 18);
         swatch = new Bounds(x + 20, y, 16, 16);
         Component axiom = tr("axiom");
+        boolean withAxiom = AxiomBridge.isPresent();
         int axiomW = Widgets.buttonWidth(axiom);
-        hexField = controls.field(x + 38, y, w - 38 - axiomW - GAP, model.hex(), text -> typed(hexField, text, model::typeHex));
+        hexField = controls.field(x + 38, y, w - 38 - (withAxiom ? axiomW + GAP : 0), model.hex(), text -> typed(hexField, text, model::typeHex));
         hexField.setMaxLength(7);
         hexField.setTooltip(Tooltip.create(tr("hex.tip")));
-        AbstractWidget axiomButton = controls.button(x + w - axiomW, y, axiomW, axiom, this::takeAxiom);
-        Optional<Component> noAxiom = AxiomBridge.activeBlockUnavailable();
-        if (noAxiom.isPresent()) Widgets.disable(axiomButton, noAxiom.get());
-        else axiomButton.setTooltip(Tooltip.create(AxiomBridge.activeBlockTip()));
+        if (withAxiom) {
+            AbstractWidget axiomButton = controls.button(x + w - axiomW, y, axiomW, axiom, this::takeAxiom);
+            Optional<Component> noAxiom = AxiomBridge.activeBlockUnavailable();
+            if (noAxiom.isPresent()) Widgets.disable(axiomButton, noAxiom.get());
+            else axiomButton.setTooltip(Tooltip.create(AxiomBridge.activeBlockTip()));
+        }
         y += ROW;
         int half = (w - GAP) / 2;
         fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;

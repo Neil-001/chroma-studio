@@ -1,6 +1,6 @@
 ## Loading and failure
 
-- `AxiomBridge`, `AxiomCommand` and every class reached by the script makers must load without Axiom or ImGui. Scripts are text and can be made without Axiom. Controls that offer them still use `AxiomBridge.whyNot`, which gives the player the reason the integration is unavailable.
+- `AxiomBridge`, `AxiomCommand` and every class reached by the script makers must load without Axiom or ImGui. Scripts are text and can be made without Axiom, but their controls and `/chroma axiom` appear only when `AxiomBridge.isPresent`, as Axiom has no NeoForge release. An installed Axiom that fails keeps them, greyed with `AxiomBridge.whyNot`, so the player sees why.
 - Register through `AxiomBridge` after Axiom's entrypoint. Construct every tool before adding any, so construction failure leaves no partial set. `AxiomTools.service` uses the API class's loader because Axiom's jar supplies the service.
 - Let tool failures reach `GuardedTool` unless the tool can recover. `AxiomBridge.fail` disables the integration for the session and the panels still display the reason. A registration failure or `LinkageError` reports an unsupported Axiom version.
 - `AxiomInternals` resolves exact signatures lazily and disables the affected feature on a failed lookup or call. Keep resolved handles usable for recovery, as when Undo needs to restore a hotbar after a failed fill.

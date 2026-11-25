@@ -29,6 +29,7 @@ import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -192,7 +193,7 @@ public final class PalettesTab extends PanelTab {
         Component needsBlocks = p == null ? tr("palettes.chromastudio.need_palette") : p.entries.isEmpty() ? tr("palettes.chromastudio.need_entries") : null;
         Component needsIndex = PaletteDialogs.indexReady() ? null : tr("palettes.chromastudio.index_building");
         Component noAxiom = AxiomBridge.whyNot().orElse(null);
-        List<Tool> tools = List.of(
+        List<Tool> tools = Stream.of(
                 new Tool("generate", new ItemStack(Items.AMETHYST_SHARD), () -> open(new PaletteDialogs.Generate(MatchState.colour(), _ -> showEntries())), needsIndex, false),
                 new Tool("capture", new ItemStack(Items.SPYGLASS), this::capture, Capture.unavailable().orElse(null), Capture.armed()),
                 new Tool("image", new ItemStack(Items.PAINTING), () -> open(new PaletteDialogs.Image(_ -> showEntries())), needsIndex, false),
@@ -203,7 +204,8 @@ public final class PalettesTab extends PanelTab {
                 new Tool("axiom", new ItemStack(Items.BRUSH), () -> open(new PaletteDialogs.Axiom(p)),
                         noAxiom != null ? noAxiom : needsBlocks != null ? needsBlocks : needsIndex, false),
                 new Tool("hotbar", new ItemStack(Items.CHEST), () -> open(new PaletteDialogs.Hotbar(p.entries)),
-                        needsBlocks != null ? needsBlocks : HotbarFill.unavailable().orElse(null), false));
+                        needsBlocks != null ? needsBlocks : HotbarFill.unavailable().orElse(null), false))
+                .filter(t -> !t.key.equals("axiom") || AxiomBridge.isPresent()).toList();
         int labelled = (tools.size() - 1) * GAP;
         for (Tool t : tools) labelled += ToolButton.labelledWidth(tr("palettes.chromastudio.tool." + t.key));
         boolean labels = labelled <= width;

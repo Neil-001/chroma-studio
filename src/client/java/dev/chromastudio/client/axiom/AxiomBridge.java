@@ -24,7 +24,7 @@ public final class AxiomBridge {
     private static final String MOD_ID = "axiom";
 
     public static boolean isPresent() {
-        return ChromaStudioClient.platform != null && ChromaStudioClient.platform.isModLoaded(MOD_ID);
+        return ChromaStudioClient.platform != null && ChromaStudioClient.platform.isFabric() && ChromaStudioClient.platform.isModLoaded(MOD_ID);
     }
 
     private static @Nullable Component broken;
@@ -50,8 +50,8 @@ public final class AxiomBridge {
     }
 
     public static void register() {
-        AxiomCommand.install();
         if (!isPresent()) return;
+        AxiomCommand.install();
         try {
             AxiomTools.register();
         } catch (Throwable t) {
