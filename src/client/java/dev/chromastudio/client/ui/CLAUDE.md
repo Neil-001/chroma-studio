@@ -14,6 +14,6 @@
 - Clear `Handoff` fields after consuming them. Explore keeps its highlight until the player clears it or another list arrives.
 - The game rebuilds item tooltips every frame. `Tooltips.add` isolates failures and logs once per block.
 - A `Widgets` click or wheel callback may rebuild its group. Return once the callback runs. `SettingsScreen` defers rebuilding rows to keep the widget alive through the click.
-- `SettingsScreen` retains the saved `hotbarAxiom` choice while the integration is unavailable. Only the fill dialog disables it for passing reasons such as survival mode. Also keep a saved `startTab` from a removed mod in the cycler.
+- `SettingsScreen` hides `hotbarAxiom` without Axiom and retains the saved choice while the integration is unavailable. Only the fill dialog disables it for passing reasons such as survival mode. Also keep a saved `startTab` from a removed mod in the cycler.
 - `ColourDialog` and `MatchTab.typed` ignore text they wrote themselves. Rounding then reading it back would shift the colour.
 - Read `Theme` colours while drawing and call `Theme.sync` at the start of a frame. `Theme.LIGHT_FROM` is the OKLab lightness where black and white have equal contrast.

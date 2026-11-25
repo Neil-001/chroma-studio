@@ -96,7 +96,8 @@ public final class SettingsScreen extends Screen {
         list.clear();
         undos.keySet().removeIf(group -> !group.isEmpty());
         Map<String, List<String>> rows = new LinkedHashMap<>();
-        ModSettings.GROUPS.forEach((group, names) -> rows.put(group, names.stream().filter(name -> !ModSettings.MEMORY.contains(name)).toList()));
+        ModSettings.GROUPS.forEach((group, names) -> rows.put(group, names.stream().filter(name -> !ModSettings.MEMORY.contains(name))
+                .filter(name -> !name.equals("hotbarAxiom") || AxiomBridge.isPresent()).toList()));
         rows.computeIfPresent("integrations", (_, names) -> Stream.concat(Stream.of(MOD_KEYS), names.stream()).toList());
         Map<String, List<String>> shown = SettingsFilter.filter(rows, search, SettingsScreen::text);
         noRows = shown.isEmpty();

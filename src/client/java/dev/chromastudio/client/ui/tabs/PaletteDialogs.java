@@ -846,19 +846,23 @@ final class PaletteDialogs {
             built = state();
             shown = false;
             Component fits = blocks <= HotbarFill.HOTBAR ? tr("palettes.chromastudio.hotbar.fits") : null;
-            int x = in.x(), y = in.y() + HEADING, w = (in.w() - PanelTab.GAP) / 2;
-            CycleButton<Boolean> axiomButton = widgets.toggle(x, y, w, tr("palettes.chromastudio.hotbar.axiom"), HotbarFill.usesAxiom(), v -> {
-                ModSettings.hotbarAxiom = v;
-                ModSettings.save();
-                result = null;
-                refresh();
-            }, tr("palettes.chromastudio.hotbar.axiom.tip"));
-            Optional<Component> noAxiom = AxiomBridge.hotbarsUnavailable();
-            if (noAxiom.isPresent()) Widgets.disable(axiomButton, noAxiom.get());
-            else if (fits != null) Widgets.disable(axiomButton, fits);
+            int x = in.x(), y = in.y() + HEADING, w = in.w();
+            if (AxiomBridge.isPresent()) {
+                w = (in.w() - PanelTab.GAP) / 2;
+                CycleButton<Boolean> axiomButton = widgets.toggle(x, y, w, tr("palettes.chromastudio.hotbar.axiom"), HotbarFill.usesAxiom(), v -> {
+                    ModSettings.hotbarAxiom = v;
+                    ModSettings.save();
+                    result = null;
+                    refresh();
+                }, tr("palettes.chromastudio.hotbar.axiom.tip"));
+                Optional<Component> noAxiom = AxiomBridge.hotbarsUnavailable();
+                if (noAxiom.isPresent()) Widgets.disable(axiomButton, noAxiom.get());
+                else if (fits != null) Widgets.disable(axiomButton, fits);
+                x += w + PanelTab.GAP;
+            }
             List<OverflowMode> modes = List.of(OverflowMode.values());
             Function<OverflowMode, Component> names = m -> tr("option.chromastudio.overflowmode." + m.name().toLowerCase(Locale.ROOT));
-            CycleButton<OverflowMode> modeButton = widgets.cycler(x + w + PanelTab.GAP, y, w, tr("palettes.chromastudio.hotbar.boxes"), modes,
+            CycleButton<OverflowMode> modeButton = widgets.cycler(x, y, w, tr("palettes.chromastudio.hotbar.boxes"), modes,
                     ModSettings.hotbarOverflowMode, names, m -> {
                         ModSettings.hotbarOverflowMode = m;
                         ModSettings.save();

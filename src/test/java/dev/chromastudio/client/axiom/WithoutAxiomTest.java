@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.chromastudio.client.ChromaCommand;
+import dev.chromastudio.client.ChromaStudioClient;
+import dev.chromastudio.client.ClientPlatform;
 import dev.chromastudio.client.index.TestIndex;
 import dev.chromastudio.core.palette.AxiomScript;
 import dev.chromastudio.core.palette.Palette;
@@ -13,10 +16,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.state.BlockState;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -88,5 +97,33 @@ class WithoutAxiomTest {
         assertEquals("Script", scatter.getClass().getSimpleName(), String.valueOf(scatter));
         Object recolour = call("recolour", new Class<?>[] {Palette.class, Palette.class, Recolour.Mode.class}, palette("oak_planks"), null, Recolour.Mode.SHADING);
         assertFalse(recolour instanceof Throwable t && !t.getClass().getSimpleName().equals("Refused"), String.valueOf(recolour));
+    }
+
+    private record Platform(boolean isFabric, boolean axiom) implements ClientPlatform {
+        @Override public Path configDir() { return Path.of("build", "without-axiom"); }
+        @Override public Path gameDir() { return configDir(); }
+        @Override public boolean isModLoaded(String id) { return axiom && id.equals("axiom"); }
+        @Override public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockStateModelPart> out) { }
+        @Override public Material.Baked particleMaterial(BlockStateModel model, BlockState state) { return null; }
+        @Override public void sendChatCommand(String command) { }
+    }
+
+    @Test
+    void theFeaturesShowOnlyWithAxiomOnFabric() {
+        ClientPlatform was = ChromaStudioClient.platform;
+        try {
+            for (boolean fabric : List.of(true, false)) for (boolean axiom : List.of(true, false)) {
+                ChromaStudioClient.platform = new Platform(fabric, axiom);
+                assertEquals(fabric && axiom, AxiomBridge.isPresent(), "Fabric " + fabric + ", Axiom " + axiom);
+            }
+            for (boolean fabric : List.of(true, false)) {
+                ChromaStudioClient.platform = new Platform(fabric, !fabric);
+                int before = ChromaCommand.SUBCOMMANDS.size();
+                AxiomBridge.register();
+                assertEquals(before, ChromaCommand.SUBCOMMANDS.size(), "/chroma axiom registered with Fabric " + fabric);
+            }
+        } finally {
+            ChromaStudioClient.platform = was;
+        }
     }
 }
