@@ -749,13 +749,13 @@ public final class GradientTab extends PanelTab {
             icon(g, s.entry, x + (grid.cellW - grid.icon) / 2, iy, grid.icon);
             g.fill(x, by, x + grid.cellW, by + grid.block, ARGB.multiplyAlpha(0xFF000000 | s.mean.rgb(), opacity));
             boolean weak = i == weakest && s.deltaE > GOOD_UP_TO || s.deltaE > FAIR_UP_TO;
-            if (weak) g.fill(x + 1, by + grid.block + 1, x + grid.cellW - 1, by + grid.block + 3, ARGB.multiplyAlpha(s.deltaE > FAIR_UP_TO ? BAD : FAIR, opacity));
+            if (weak && controls) g.fill(x + 1, by + grid.block + 1, x + grid.cellW - 1, by + grid.block + 3, ARGB.multiplyAlpha(s.deltaE > FAIR_UP_TO ? BAD : FAIR, opacity));
             boolean over = mouseX >= x && mouseX < x + grid.cellW && mouseY >= y && mouseY < y + grid.cellH() - CELL_GAP;
             boolean onBack = controls && s.pinned && over && overBack(x, y, grid.cellW, mouseX, mouseY);
             if (s.pinned) {
                 int ix = x + (grid.cellW - grid.icon) / 2, corner = iy + grid.icon;
                 g.fill(ix, corner - 5, ix + 5, corner, ARGB.multiplyAlpha(0xFF10140F, opacity));
-                g.fill(ix, corner - 4, ix + 4, corner, ARGB.multiplyAlpha(TEXT, opacity));
+                g.fill(ix, corner - 4, ix + 4, corner, ARGB.multiplyAlpha(0xFFFFFFFF, opacity));
                 if (controls) {
                     g.fill(x + grid.cellW - BACK, y, x + grid.cellW, y + BACK, onBack ? Theme.LIT_HOVER : Theme.CHIP);
                     sign(g, x + grid.cellW - BACK + 1, y + 1, UNDO, TEXT);
