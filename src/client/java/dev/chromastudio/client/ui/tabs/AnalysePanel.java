@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -80,7 +79,7 @@ final class AnalysePanel {
                 Handoff.matchFilter = f.suggestedFilter();
                 ChromaScreen screen = ChromaScreen.current();
                 if (screen != null) screen.select("match");
-            }).bounds(0, 0, fixW, Widgets.H).tooltip(Tooltip.create(Component.translatable("palettes.chromastudio.analyse.fix.tip"))).build());
+            }).bounds(0, 0, fixW, Widgets.H).build());
         }
         icons = !blocks.isEmpty() && area.w() / blocks.size() >= ToolButton.ICON + 1;
         stripH = icons ? ToolButton.ICON + 1 + ICON_BAR_H : BAR_H;
@@ -123,6 +122,7 @@ final class AnalysePanel {
                 Button button = fixes.get(i);
                 button.setPosition(right - fixW, rowY);
                 button.extractRenderState(gg, mouseX, mouseY, 0);
+                if (button.isHovered()) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, below);
                 Color target = Color.ofOklch(f.suggestedTarget());
                 int sx = button.getX() - 4 - SWATCH;
                 gg.fill(sx - 1, rowY - 1, sx + SWATCH + 1, rowY + SWATCH + 1, Theme.SOFT);
