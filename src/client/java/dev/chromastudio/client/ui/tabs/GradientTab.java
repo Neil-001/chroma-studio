@@ -56,6 +56,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+import net.minecraft.client.gui.screens.inventory.tooltip.BelowOrAboveWidgetTooltipPositioner;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -66,10 +68,10 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 
 public final class GradientTab extends PanelTab {
-    private static final int MAX_STOPS = 8, CHIP = 18, CELL_MIN = 18, CELL_MAX = 56, IDEAL_H = 10, BLOCK_H = 7, BAR_MAX = 22, CELL_GAP = 4, LEGEND = 11;
+    private static final int MAX_STOPS = 8, CHIP = 18, CELL_MIN = 18, CELL_MAX = 56, IDEAL_H = 10, BLOCK_H = 7, BAR_MAX = 34, CELL_GAP = 4, LEGEND = 11;
     private static final double GOOD_UP_TO = 0.02, FAIR_UP_TO = 0.06;
     private static final String ALL_KINDS = "all";
-    private static final int SWAP_OPTIONS = 20, SWAP_LINES = 8, SWAP_LINES_MIN = 2, SWAP_ROW = 18, SWAP_HEAD = 13, SWAP_W = 210;
+    private static final int SWAP_OPTIONS = 20, SWAP_LINES_MIN = 2, SWAP_ROW = 18, SWAP_HEAD = 24, SWAP_W = 210, SWAP_GAP = 4;
     private static final int BACK = 9;
     private static final String[] UNDO = {"..#....", ".##....", "######.", ".##...#", "..#...#", "......#", "..####."};
 
@@ -577,33 +579,45 @@ public final class GradientTab extends PanelTab {
             return;
         }
         Grid grid = stepsGrid();
-        int stripTop = grid.y, stripBottom = grid.y + grid.rows * grid.cellH(), w = Math.min(SWAP_W, stripArea.w());
-        int below = (stripArea.bottom() - stripBottom - 2 - SWAP_HEAD) / SWAP_ROW, above = (stripTop - 2 - SWAP_HEAD - stripArea.y()) / SWAP_ROW;
-        boolean under = below >= SWAP_LINES_MIN || below >= above;
-        int shown = Math.min(swapLines(), Math.clamp(under ? below : above, SWAP_LINES_MIN, SWAP_LINES)), h = SWAP_HEAD + shown * SWAP_ROW + 2;
-        int y = Math.clamp(under ? stripBottom + 2 : stripTop - 2 - h, stripArea.y(), Math.max(stripArea.y(), stripArea.bottom() - h));
-        int centre = grid.x + swapStep % grid.perRow * grid.cellW + grid.cellW / 2;
-        swapBox = new Bounds(Math.clamp(centre - w / 2, stripArea.x(), stripArea.right() - w), y, w, h);
+        int cellX = grid.cellX(swapStep), cellRight = cellX + grid.cellW;
+        int roomRight = stripArea.right() - cellRight - SWAP_GAP, roomLeft = cellX - SWAP_GAP - stripArea.x();
+        boolean toRight = roomRight >= roomLeft;
+        int w = Math.min(SWAP_W, Math.max(roomRight, roomLeft));
+        int shown = Math.min(swapLines(), Math.max(SWAP_LINES_MIN, (stripArea.h() - 2 - SWAP_HEAD) / SWAP_ROW)), h = SWAP_HEAD + shown * SWAP_ROW + 2;
+        int y = Math.max(stripArea.y(), stripArea.y() + (stripArea.h() - h) / 2);
+        swapBox = new Bounds(toRight ? cellRight + SWAP_GAP : cellX - SWAP_GAP - w, y, w, h);
         Bounds inside = new Bounds(swapBox.x() + 1, swapBox.y() + SWAP_HEAD + 1, w - 2, h - SWAP_HEAD - 2);
         if (swapRows == null) swapRows = new Widgets.ScrollList(inside, SWAP_ROW, this::swapLines);
         else swapRows.area = inside;
     }
 
-    private Grid stepsGrid() {
-        if (swapStep < 0) return grid(stripArea, result.size(), false);
-        Grid g = grid(stripArea, result.size(), true);
-        return new Grid(g.perRow, g.rows, g.cellW, g.x, stripArea.y() + 2, g.ideal, g.icon, g.block);
-    }
+    private Grid stepsGrid() { return grid(stripArea, result.size(), false); }
+
+    private Bounds swapClose() { return new Bounds(swapBox.right() - 12, swapBox.y() + 1, 11, 11); }
 
     private void swapList(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         Bounds box = swapBox;
+        Grid grid = stepsGrid();
+        int cellX = grid.cellX(swapStep), linkY = grid.cellY(swapStep) + grid.ideal + grid.icon / 2;
+        if (box.x() > cellX) g.fill(cellX + grid.cellW, linkY - 1, box.x(), linkY + 1, Theme.HIGHLIGHT);
+        else g.fill(box.right(), linkY - 1, cellX, linkY + 1, Theme.HIGHLIGHT);
         g.fill(box.x(), box.y(), box.right(), box.bottom(), PANEL);
         g.outline(box.x(), box.y(), box.w(), box.h(), Theme.HIGHLIGHT);
         int back = swapBack();
         Step step = result.get(swapStep);
-        g.fill(box.x() + 1, box.y() + SWAP_HEAD, box.right() - 1, box.y() + SWAP_HEAD + 1, BORDER);
         Widgets.swatch(g, box.x() + 3, box.y() + 2, 10, 9, step.ideal.rgb());
-        g.text(font(), fit(tr("gradient.chromastudio.swap.head", swapStep + 1, step.ideal.hex()).getString(), box.w() - 20), box.x() + 16, box.y() + 3, DIM, false);
+        g.text(font(), fit(tr("gradient.chromastudio.swap.head", swapStep + 1, step.ideal.hex()).getString(), box.w() - 30), box.x() + 16, box.y() + 3, TEXT, false);
+        Bounds close = swapClose();
+        int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = close.contains(mouseX, mouseY) ? Theme.STRONG : DIM;
+        for (int i = -3; i <= 2; i++) {
+            g.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, c);
+            g.fill(cx + i, cy - 1 - i, cx + i + 1, cy - i, c);
+        }
+        int listW = swapRows.area.w() - (swapLines() * SWAP_ROW > swapRows.area.h() ? Widgets.BAR_W + 2 : 0);
+        Component deHead = tr("gradient.chromastudio.swap.delta");
+        g.text(font(), fit(tr("gradient.chromastudio.swap.closest").getString(), listW - 30), box.x() + 23, box.y() + 14, DIM, false);
+        g.text(font(), deHead, box.x() + 1 + listW - 4 - font().width(deHead), box.y() + 14, DIM, false);
+        g.fill(box.x() + 1, box.y() + SWAP_HEAD, box.right() - 1, box.y() + SWAP_HEAD + 1, BORDER);
         swapRows.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
             if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
             if (i < back) {
@@ -614,19 +628,22 @@ public final class GradientTab extends PanelTab {
             } else {
                 Option o = swapOptions.get(i - back);
                 icon(g2, o.entry, x + 2, y + 1, 16);
-                String de = String.format(Locale.ROOT, "%.3f", o.deltaE);
-                int deX = x + w - 4 - font().width(de);
-                Widgets.swatch(g2, deX - 15, y + 4, 10, 10, o.mean.rgb());
+                g2.fill(x + 20, y + 3, x + 32, y + 15, BORDER);
+                g2.fill(x + 21, y + 4, x + 31, y + 14, 0xFF000000 | o.mean.rgb());
+                String de = String.format(Locale.ROOT, "%.3f", o.deltaE), name = o.entry.name().getString();
+                int deX = x + w - 4 - font().width(de), room = deX - 6 - x - 36;
                 g2.text(font(), de, deX, y + 5, DIM, false);
-                g2.text(font(), fit(o.entry.name().getString(), deX - 19 - x - 22), x + 22, y + 5, TEXT, false);
-                if (over) {
-                    g2.setComponentTooltipForNextFrame(font(), List.of(o.entry.name(), tr("gradient.chromastudio.step.tip", swapStep + 1, step.ideal.hex(), de).copy().withColor(Theme.TIP_DIM)), mouseX, mouseY);
-                }
+                g2.text(font(), fit(name, room), x + 36, y + 5, TEXT, false);
+                if (over && font().width(name) > room) g2.setTooltipForNextFrame(font(), o.entry.name(), mouseX, mouseY);
             }
         });
     }
 
     private void swapClicked(MouseButtonEvent e) {
+        if (e.button() == InputConstants.MOUSE_BUTTON_LEFT && swapClose().contains(e.x(), e.y())) {
+            swapStep = -1;
+            return;
+        }
         if (swapRows.mouseClicked(e) || e.button() != InputConstants.MOUSE_BUTTON_LEFT) return;
         int back = swapBack(), i = swapRows.rowAt(e.x(), e.y()) - back;
         if (i == -1 && back == 1) putBack(swapStep);
@@ -709,13 +726,16 @@ public final class GradientTab extends PanelTab {
     }
 
     private void strip(GuiGraphicsExtractor g, Grid grid, float opacity, boolean controls, int mouseX, int mouseY) {
+        int weakest = 0;
+        for (int i = 1; i < result.size(); i++) if (result.get(i).deltaE > result.get(weakest).deltaE) weakest = i;
         for (int i = 0; i < result.size(); i++) {
             Step s = result.get(i);
             int x = grid.cellX(i), y = grid.cellY(i), iy = y + grid.ideal, by = iy + grid.icon;
             g.fill(x, y, x + grid.cellW, iy, ARGB.multiplyAlpha(0xFF000000 | s.ideal.rgb(), opacity));
             icon(g, s.entry, x + (grid.cellW - grid.icon) / 2, iy, grid.icon);
             g.fill(x, by, x + grid.cellW, by + grid.block, ARGB.multiplyAlpha(0xFF000000 | s.mean.rgb(), opacity));
-            if (s.deltaE > FAIR_UP_TO) g.fill(x + 1, by + grid.block + 1, x + grid.cellW - 1, by + grid.block + 3, ARGB.multiplyAlpha(BAD, opacity));
+            boolean weak = i == weakest && s.deltaE > GOOD_UP_TO || s.deltaE > FAIR_UP_TO;
+            if (weak) g.fill(x + 1, by + grid.block + 1, x + grid.cellW - 1, by + grid.block + 3, ARGB.multiplyAlpha(s.deltaE > FAIR_UP_TO ? BAD : FAIR, opacity));
             boolean over = mouseX >= x && mouseX < x + grid.cellW && mouseY >= y && mouseY < y + grid.cellH() - CELL_GAP;
             boolean onBack = controls && s.pinned && over && overBack(x, y, grid.cellW, mouseX, mouseY);
             if (s.pinned) {
@@ -729,14 +749,21 @@ public final class GradientTab extends PanelTab {
             }
             if (controls && i == swapStep) g.outline(x, y, grid.cellW, grid.cellH() - CELL_GAP, Theme.HIGHLIGHT);
             else if (controls && over && swapStep < 0) g.outline(x, y, grid.cellW, grid.cellH() - CELL_GAP, Theme.veil(0x60));
-            if (onBack) g.setTooltipForNextFrame(font(), tr("gradient.chromastudio.swap.back"), mouseX, mouseY);
+            Bounds cell = new Bounds(x, y, grid.cellW, grid.cellH() - CELL_GAP);
+            if (onBack) tipBeside(g, List.of(tr("gradient.chromastudio.swap.back")), cell, mouseX, mouseY);
             else if (over) {
                 List<Component> tip = new ArrayList<>(List.of(s.entry.name(), tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE))
                         .copy().withColor(Theme.TIP_DIM)));
+                if (weak) tip.add(tr("gradient.chromastudio.step.weakest").copy().withColor(Theme.TIP_DIM));
                 if (s.pinned) tip.add(tr("gradient.chromastudio.step.pinned").copy().withColor(Theme.TIP_SWAPPED));
-                g.setComponentTooltipForNextFrame(font(), tip, mouseX, mouseY);
+                tipBeside(g, tip, cell, mouseX, mouseY);
             }
         }
+    }
+
+    private static void tipBeside(GuiGraphicsExtractor g, List<Component> lines, Bounds anchor, int mouseX, int mouseY) {
+        g.setTooltipForNextFrame(font(), lines.stream().map(Component::getVisualOrderText).toList(),
+                new BelowOrAboveWidgetTooltipPositioner(new ScreenRectangle(anchor.x(), anchor.y(), anchor.w(), anchor.h())), mouseX, mouseY, false);
     }
 
     private int badgeColour() { return meanDeltaE <= GOOD_UP_TO ? GOOD : meanDeltaE <= FAIR_UP_TO ? FAIR : BAD; }
@@ -756,8 +783,9 @@ public final class GradientTab extends PanelTab {
             if (stop instanceof Entry e) icon(g, e, x + 1, y, 16);
             if (!draggingStop && mouseX >= x && mouseX < x + CHIP && mouseY >= y && mouseY < y + Widgets.H) {
                 Component what = stop instanceof Entry e ? e.name() : Component.literal(colourOf(stop).hex());
-                g.setComponentTooltipForNextFrame(font(), STOPS.size() > 2 ? List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM))
-                        : List.of(what, tr("gradient.chromastudio.stop.drag").copy().withColor(Theme.TIP_DIM), tr("gradient.chromastudio.stop.two_needed").copy().withColor(Theme.TIP_GREYED)), mouseX, mouseY);
+                tipBeside(g, STOPS.size() > 2 ? List.of(what, tr("gradient.chromastudio.stop.tip").copy().withColor(Theme.TIP_DIM))
+                        : List.of(what, tr("gradient.chromastudio.stop.drag").copy().withColor(Theme.TIP_DIM), tr("gradient.chromastudio.stop.two_needed").copy().withColor(Theme.TIP_GREYED)),
+                        new Bounds(x, y, CHIP, Widgets.H), mouseX, mouseY);
             }
         }
         int hintX = stopsArea.x() + STOPS.size() * (CHIP + 1) + 3;
@@ -767,6 +795,11 @@ public final class GradientTab extends PanelTab {
         if (draggingStop && Reorder.target(pressedStop, dropGap) != pressedStop) {
             int x = stopsArea.x() + dropGap * (CHIP + 1) - 1;
             g.fill(x - 1, stopsArea.y() - 2, x + 1, stopsArea.bottom() + 2, TEXT);
+        }
+        if (draggingStop && pressedStop < STOPS.size()) {
+            int x = Math.clamp(mouseX - CHIP / 2, stopsArea.x(), stopsArea.right() - CHIP), y = stopsArea.y() + 3;
+            g.fill(x, y, x + CHIP, y + Widgets.H, Theme.ACCENT);
+            g.fill(x + 1, y + 1, x + CHIP - 1, y + Widgets.H - 1, 0xFF000000 | colourOf(STOPS.get(pressedStop)).rgb());
         }
         if (filtersOpen) return;
 
@@ -781,8 +814,10 @@ public final class GradientTab extends PanelTab {
             Grid grid = stepsGrid();
             strip(g, grid, 1, !solving, overSwap || solving ? -1 : mouseX, overSwap || solving ? -1 : mouseY);
             if (solving) g.fill(stripArea.x(), stripArea.y(), stripArea.right(), stripArea.bottom(), ARGB.multiplyAlpha(WELL, 0.6f));
-            else if (swapStep >= 0) swapList(g, mouseX, mouseY);
-            else legend(g, grid);
+            else {
+                legend(g, grid);
+                if (swapStep >= 0) swapList(g, mouseX, mouseY);
+            }
             int colour = badgeColour();
             Component badge = badge();
             g.fill(stripArea.x(), badgeY + 1, stripArea.x() + 8, badgeY + 9, colour);
@@ -807,7 +842,7 @@ public final class GradientTab extends PanelTab {
         int left = grid.x, right = grid.x + grid.perRow * grid.cellW;
         String hint = fit(tr("gradient.chromastudio.step.click").getString(), (right - left) / 2);
         g.text(font(), fit(tr("gradient.chromastudio.legend.wanted").getString(), right - left - font().width(hint) - 8), left, top, DIM, false);
-        g.text(font(), hint, right - font().width(hint), top, DIM, false);
+        if (swapStep < 0) g.text(font(), hint, right - font().width(hint), top, DIM, false);
         g.text(font(), fit(tr("gradient.chromastudio.legend.blocks").getString(), right - left), left, bottom, DIM, false);
     }
 
