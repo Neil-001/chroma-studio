@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -97,7 +96,7 @@ final class AxiomScripts {
             case Y -> at.getY();
             case Z -> at.getZ();
         };
-        MutableComponent scope = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name().toLowerCase(Locale.ROOT));
+        MutableComponent scope = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name());
         List<Component> details = new ArrayList<>(List.of(AxiomNames.text("axiom.chromastudio.gradient.rules"),
                 Component.translatable("axiom.chromastudio.gradient.left_alone")));
         int skipped = steps.size() - full.size();
@@ -171,7 +170,7 @@ final class AxiomScripts {
         if (bytes > ClipboardSize.MAX_BYTES) {
             throw new Refused(Component.translatable(tooBig, ClipboardSize.kilobytes(bytes), ClipboardSize.kilobytes(ClipboardSize.MAX_BYTES)));
         }
-        Component size = Component.translatable("axiom.chromastudio.size", ClipboardSize.kilobytes(bytes), counted);
+        Component size = Component.translatable("axiom.chromastudio.size", counted);
         if (counted <= AxiomScript.SERVER_LIMIT) return new Script(script, scope, size, null, null, List.copyOf(details));
         Component next = Component.translatable(nextStep);
         List<Component> all = new ArrayList<>(details);
