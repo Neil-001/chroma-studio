@@ -23,7 +23,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
 final class AnalysePanel {
-    private static final int MIN_ROW_H = 31, LINE_H = 10, BAR_H = 8, ICON_BAR_H = 4, SWATCH = 16;
+    private static final int LINE_H = 10, BAR_H = 8, ICON_BAR_H = 4, SWATCH = 16, FROM = 10, ARROW_W = 7, PAD = 3;
 
     private final List<PaletteEntry> entries;
     private record Block(PaletteEntry entry, Color colour, int analysed) {}
@@ -35,7 +35,7 @@ final class AnalysePanel {
     private int fixW, headingW, stripH;
     private Analyzer.Finding marked;
     private boolean icons;
-    private int rowH = MIN_ROW_H;
+    private int rowH;
     private record Fix(Bounds button, Analyzer.Finding finding) {}
     private final List<Fix> fixes = new ArrayList<>();
 
@@ -77,16 +77,18 @@ final class AnalysePanel {
         int top = area.y() + PanelTab.ROW + stripH + PanelTab.GAP;
         int lines = 1, w = area.w() - Widgets.BAR_W - 2;
         for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size());
-        rowH = Math.max(MIN_ROW_H, LINE_H + 1 + lines * LINE_H + 10);
+        rowH = PAD + Widgets.H + 2 + lines * LINE_H + PAD + 2;
         list = new Widgets.ScrollList(new Bounds(area.x(), top, area.w(), area.bottom() - top), rowH, findings::size);
     }
 
-    private Bounds fix(int x, int y, int w) { return new Bounds(x + w - fixW - 3, y + (rowH - 2 - Widgets.H) / 2, fixW, Widgets.H); }
+    private static List<FormattedCharSequence> wrapped(Analyzer.Finding f, int w) {
+        return PanelTab.font().split(Component.translatable(f.key()), w - 8 - PAD);
+    }
 
-    private int textW(Analyzer.Finding f, int w) { return w - 12 - (f.suggestedTarget() != null ? fixW + 3 + SWATCH + 10 : 0); }
-
-    private List<FormattedCharSequence> wrapped(Analyzer.Finding f, int w) {
-        return PanelTab.font().split(Component.translatable(f.key()), textW(f, w));
+    private Block from(Analyzer.Finding f) {
+        if (f.suggestedTarget() == null || f.blocks().size() != 1) return null;
+        for (Block b : blocks) if (b.analysed == f.blocks().getFirst()) return b;
+        return null;
     }
 
     void draw(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -104,30 +106,50 @@ final class AnalysePanel {
             Analyzer.Finding f = findings.get(i);
             if (hovered) marked = f;
             gg.fill(x, y, x + w, y + h - 2, hovered ? Theme.HOVER : Theme.PANEL);
-            int below = y + h - 2 + 14;
-            boolean warning = f.severity() == Analyzer.Severity.WARNING;
-            gg.fill(x, y, x + 3, y + h - 2, warning ? Theme.FAIR : Theme.INFO);
-            List<FormattedCharSequence> lines = wrapped(f, w);
-            int textY = y + (h - 2 - (lines.size() + 1) * LINE_H - 1) / 2 + 1;
-            String title = MatchTab.ellipsis(PanelTab.font(), Component.translatable(f.key() + ".title").getString(), textW(f, w));
-            gg.text(PanelTab.font(), title, x + 8, textY, Theme.STRONG, false);
-            for (int k = 0; k < lines.size(); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, textY + LINE_H + 1 + k * LINE_H, Theme.SOFT, false);
-            if (f.suggestedTarget() == null) return;
-            Bounds b = fix(x, y, w);
-            fixes.add(new Fix(b, f));
-            Color target = Color.ofOklch(f.suggestedTarget());
-            int sx = b.x() - SWATCH - 4, sy = b.y();
-            gg.fill(sx - 1, sy - 1, sx + SWATCH + 1, sy + SWATCH + 1, Theme.BORDER);
-            Widgets.swatch(gg, sx, sy, SWATCH, SWATCH, target.rgb());
-            if (mouseX >= sx - 1 && mouseX < sx + SWATCH + 1 && mouseY >= sy - 1 && mouseY < sy + SWATCH + 1) {
-                gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.target", target.hex()), mouseX, below);
+            gg.fill(x, y, x + 3, y + h - 2, f.severity() == Analyzer.Severity.WARNING ? Theme.FAIR : Theme.INFO);
+            int below = y + h - 2 + 14, rowY = y + PAD, right = x + w - PAD;
+            if (f.suggestedTarget() != null) {
+                Bounds b = new Bounds(right - fixW, rowY, fixW, Widgets.H);
+                fixes.add(new Fix(b, f));
+                boolean over = b.contains(mouseX, mouseY);
+                gg.fill(b.x(), b.y(), b.right(), b.bottom(), over ? Theme.CONTROL_HOVER : Theme.CONTROL);
+                if (over) gg.fill(b.x(), b.bottom() - 1, b.right(), b.bottom(), Theme.STRONG);
+                Widgets.centred(gg, Component.translatable("palettes.chromastudio.analyse.fix"), b.x() + b.w() / 2, b.y() + 4, Theme.TEXT);
+                if (over) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, below);
+                Color target = Color.ofOklch(f.suggestedTarget());
+                int sx = b.x() - 4 - SWATCH;
+                outlined(gg, sx, rowY, SWATCH, target);
+                if (inside(mouseX, mouseY, sx, rowY, SWATCH)) {
+                    gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.target", target.hex()), mouseX, below);
+                }
+                right = sx - 4;
+                Block from = from(f);
+                if (from != null) {
+                    int ax = right - ARROW_W, cy = rowY + Widgets.H / 2;
+                    gg.fill(ax, cy, ax + ARROW_W - 1, cy + 1, Theme.DIM);
+                    gg.fill(ax + ARROW_W - 3, cy - 2, ax + ARROW_W - 2, cy + 3, Theme.DIM);
+                    gg.fill(ax + ARROW_W - 2, cy - 1, ax + ARROW_W - 1, cy + 2, Theme.DIM);
+                    int fx = ax - 3 - FROM, fy = rowY + (Widgets.H - FROM) / 2;
+                    outlined(gg, fx, fy, FROM, from.colour);
+                    if (inside(mouseX, mouseY, fx, fy, FROM)) gg.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(from.entry), mouseX, below);
+                    right = fx - 4;
+                }
             }
-            boolean over = b.contains(mouseX, mouseY);
-            gg.fill(b.x(), b.y(), b.right(), b.bottom(), over ? Theme.CONTROL_HOVER : Theme.CONTROL);
-            Widgets.centred(gg, Component.translatable("palettes.chromastudio.analyse.fix"), b.x() + b.w() / 2, b.y() + 4, Theme.TEXT);
-            if (over) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, below);
+            String title = MatchTab.ellipsis(PanelTab.font(), Component.translatable(f.key() + ".title").getString(), right - x - 8);
+            gg.text(PanelTab.font(), title, x + 8, rowY + 4, Theme.STRONG, false);
+            List<FormattedCharSequence> lines = wrapped(f, w);
+            for (int k = 0; k < lines.size(); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, rowY + Widgets.H + 2 + k * LINE_H, Theme.SOFT, false);
         });
         drawStrip(g, mouseX, mouseY);
+    }
+
+    private static boolean inside(int mouseX, int mouseY, int x, int y, int size) {
+        return mouseX >= x - 1 && mouseX < x + size + 1 && mouseY >= y - 1 && mouseY < y + size + 1;
+    }
+
+    private static void outlined(GuiGraphicsExtractor g, int x, int y, int size, Color colour) {
+        g.fill(x - 1, y - 1, x + size + 1, y + size + 1, Theme.SOFT);
+        Widgets.swatch(g, x, y, size, size, colour.rgb());
     }
 
     private void drawStrip(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -138,8 +160,9 @@ final class AnalysePanel {
             int barY = stripY + stripH - (icons ? ICON_BAR_H : BAR_H);
             if (icons) Widgets.blockIcon(g, PaletteBlocks.icon(blocks.get(i).entry), (x0 + x1 - ToolButton.ICON) / 2, stripY);
             g.fill(x0, barY, x1 - gap, stripY + stripH, 0xFF000000 | blocks.get(i).colour.rgb());
-            if (marked != null && marked.blocks().contains(blocks.get(i).analysed)) {
-                g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 2, Theme.STRONG);
+            if (marked != null && !marked.blocks().isEmpty()) {
+                if (marked.blocks().contains(blocks.get(i).analysed)) g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 2, Theme.STRONG);
+                else g.fill(x0, stripY, x1, stripY + stripH, Theme.sink(0xB0));
             }
             if (mouseX >= x0 && mouseX < x1 && mouseY >= stripY && mouseY < stripY + stripH) {
                 g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 1, Theme.STRONG);
