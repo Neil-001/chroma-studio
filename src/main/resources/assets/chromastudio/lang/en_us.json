@@ -467,7 +467,7 @@
   "chromastudio.analysis.no_accent.title": "No accent",
   "chromastudio.analysis.too_saturated": "Most of the blocks are strongly coloured. A muted block would balance them.",
   "chromastudio.analysis.too_saturated.title": "Too saturated",
-  "chromastudio.analysis.accent_contrast": "The most colourful block is as light as the rest, so it won't stand out. A lighter or darker accent would.",
+  "chromastudio.analysis.accent_contrast": "The most colourful block is as light as the rest, so it won't stand out. Use a lighter or darker accent.",
   "chromastudio.analysis.accent_contrast.title": "Accent blends in",
   "chromastudio.analysis.too_busy": "Most of the textures are busy. A flat or grainy block would calm the build.",
   "chromastudio.analysis.too_busy.title": "Too busy",

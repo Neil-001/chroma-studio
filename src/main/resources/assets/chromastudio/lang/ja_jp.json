@@ -468,7 +468,7 @@
   "chromastudio.analysis.no_accent.title": "アクセントなし",
   "chromastudio.analysis.too_saturated": "ほとんどのブロックが強い色です。落ち着いた色のブロックを入れると、バランスが取れます。",
   "chromastudio.analysis.too_saturated.title": "彩度が高すぎ",
-  "chromastudio.analysis.accent_contrast": "最も鮮やかなブロックが他と同じ明るさなので、目立ちません。もっと明るいか暗いアクセントなら目立ちます。",
+  "chromastudio.analysis.accent_contrast": "最も鮮やかなブロックが他と同じ明るさなので、目立ちません。もっと明るいか暗いアクセントを使ってください。",
   "chromastudio.analysis.accent_contrast.title": "アクセントが埋もれる",
   "chromastudio.analysis.too_busy": "ほとんどのテクスチャが複雑です。平坦またはざらざらのブロックを入れると、落ち着きます。",
   "chromastudio.analysis.too_busy.title": "にぎやかすぎ",

@@ -468,7 +468,7 @@
   "chromastudio.analysis.no_accent.title": "Aucun accent",
   "chromastudio.analysis.too_saturated": "La plupart des blocs sont très colorés. Un bloc terne les équilibrerait.",
   "chromastudio.analysis.too_saturated.title": "Trop saturée",
-  "chromastudio.analysis.accent_contrast": "Le bloc le plus coloré est aussi clair que les autres, il ne ressortira donc pas. Un accent plus clair ou plus sombre y parviendrait.",
+  "chromastudio.analysis.accent_contrast": "Le bloc le plus coloré est aussi clair que les autres, il ne ressortira donc pas. Utilise un accent plus clair ou plus sombre.",
   "chromastudio.analysis.accent_contrast.title": "Accent noyé",
   "chromastudio.analysis.too_busy": "La plupart des textures sont chargées. Un bloc uniforme ou granuleux calmerait la construction.",
   "chromastudio.analysis.too_busy.title": "Trop chargée",

@@ -468,7 +468,7 @@
   "chromastudio.analysis.no_accent.title": "Sem destaque",
   "chromastudio.analysis.too_saturated": "A maioria dos blocos tem cores fortes. Um bloco apagado os equilibraria.",
   "chromastudio.analysis.too_saturated.title": "Saturada demais",
-  "chromastudio.analysis.accent_contrast": "O bloco mais colorido é tão claro quanto os outros, então não vai se destacar. Um destaque mais claro ou mais escuro resolveria.",
+  "chromastudio.analysis.accent_contrast": "O bloco mais colorido é tão claro quanto os outros, então não vai se destacar. Use um destaque mais claro ou mais escuro.",
   "chromastudio.analysis.accent_contrast.title": "Destaque se perde",
   "chromastudio.analysis.too_busy": "A maioria das texturas é cheia de detalhes. Um bloco liso ou granulado acalmaria a construção.",
   "chromastudio.analysis.too_busy.title": "Carregada demais",

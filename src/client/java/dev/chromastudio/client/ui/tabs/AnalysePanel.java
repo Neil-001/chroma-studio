@@ -26,13 +26,14 @@ final class AnalysePanel {
     private static final int MIN_ROW_H = 31, LINE_H = 10, BAR_H = 8, ICON_BAR_H = 4, SWATCH = 16;
 
     private final List<PaletteEntry> entries;
-    private record Block(PaletteEntry entry, Color colour) {}
+    private record Block(PaletteEntry entry, Color colour, int analysed) {}
     private final List<Block> blocks = new ArrayList<>();
     private final List<Analyzer.Finding> findings;
     private final int unknown;
     private Widgets.ScrollList list;
     private Bounds area;
     private int fixW, headingW, stripH;
+    private Analyzer.Finding marked;
     private boolean icons;
     private int rowH = MIN_ROW_H;
     private record Fix(Bounds button, Analyzer.Finding finding) {}
@@ -50,7 +51,7 @@ final class AnalysePanel {
                 missing++;
                 continue;
             }
-            blocks.add(new Block(e, stats.mean(scale)));
+            blocks.add(new Block(e, stats.mean(scale), lch.size()));
             lch.add(stats.mean(scale).oklch());
             badges.add(stats.badge());
         }
@@ -95,27 +96,15 @@ final class AnalysePanel {
         if (!fitted.equals(heading.getString()) && mouseX >= area.x() && mouseX < area.x() + headingW && mouseY >= area.y() && mouseY < area.y() + Widgets.H) {
             g.setTooltipForNextFrame(PanelTab.font(), heading, mouseX, mouseY);
         }
-        int stripY = area.y() + PanelTab.ROW;
-        for (int i = 0; i < blocks.size(); i++) {
-            int x0 = area.x() + area.w() * i / blocks.size(), x1 = area.x() + area.w() * (i + 1) / blocks.size();
-            int gap = x1 - x0 > 3 && i < blocks.size() - 1 ? 1 : 0;
-            int barY = stripY + stripH - (icons ? ICON_BAR_H : BAR_H);
-            if (icons) Widgets.blockIcon(g, PaletteBlocks.icon(blocks.get(i).entry), (x0 + x1 - ToolButton.ICON) / 2, stripY);
-            g.fill(x0, barY, x1 - gap, stripY + stripH, 0xFF000000 | blocks.get(i).colour.rgb());
-            if (mouseX >= x0 && mouseX < x1 && mouseY >= stripY && mouseY < stripY + stripH) {
-                g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 1, Theme.STRONG);
-                g.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(blocks.get(i).entry), mouseX, mouseY);
-            }
-        }
         fixes.clear();
         g.fill(list.area.x(), list.area.y(), list.area.right(), list.area.bottom(), Theme.WELL);
-        if (findings.isEmpty()) {
-            Widgets.centred(g, Component.translatable("palettes.chromastudio.analyse.none"), area.x() + area.w() / 2, list.area.y() + 12, Theme.GOOD);
-            return;
-        }
-        list.render(g, mouseX, mouseY, (gg, i, x, y, w, h, hovered) -> {
+        marked = null;
+        if (findings.isEmpty()) Widgets.centred(g, Component.translatable("palettes.chromastudio.analyse.none"), area.x() + area.w() / 2, list.area.y() + 12, Theme.GOOD);
+        else list.render(g, mouseX, mouseY, (gg, i, x, y, w, h, hovered) -> {
             Analyzer.Finding f = findings.get(i);
+            if (hovered) marked = f;
             gg.fill(x, y, x + w, y + h - 2, hovered ? Theme.HOVER : Theme.PANEL);
+            int below = y + h - 2 + 14;
             boolean warning = f.severity() == Analyzer.Severity.WARNING;
             gg.fill(x, y, x + 3, y + h - 2, warning ? Theme.FAIR : Theme.INFO);
             List<FormattedCharSequence> lines = wrapped(f, w);
@@ -131,13 +120,32 @@ final class AnalysePanel {
             gg.fill(sx - 1, sy - 1, sx + SWATCH + 1, sy + SWATCH + 1, Theme.BORDER);
             Widgets.swatch(gg, sx, sy, SWATCH, SWATCH, target.rgb());
             if (mouseX >= sx - 1 && mouseX < sx + SWATCH + 1 && mouseY >= sy - 1 && mouseY < sy + SWATCH + 1) {
-                gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.target", target.hex()), mouseX, mouseY);
+                gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.target", target.hex()), mouseX, below);
             }
             boolean over = b.contains(mouseX, mouseY);
             gg.fill(b.x(), b.y(), b.right(), b.bottom(), over ? Theme.CONTROL_HOVER : Theme.CONTROL);
             Widgets.centred(gg, Component.translatable("palettes.chromastudio.analyse.fix"), b.x() + b.w() / 2, b.y() + 4, Theme.TEXT);
-            if (over) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, mouseY);
+            if (over) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, below);
         });
+        drawStrip(g, mouseX, mouseY);
+    }
+
+    private void drawStrip(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+        int stripY = area.y() + PanelTab.ROW;
+        for (int i = 0; i < blocks.size(); i++) {
+            int x0 = area.x() + area.w() * i / blocks.size(), x1 = area.x() + area.w() * (i + 1) / blocks.size();
+            int gap = x1 - x0 > 3 && i < blocks.size() - 1 ? 1 : 0;
+            int barY = stripY + stripH - (icons ? ICON_BAR_H : BAR_H);
+            if (icons) Widgets.blockIcon(g, PaletteBlocks.icon(blocks.get(i).entry), (x0 + x1 - ToolButton.ICON) / 2, stripY);
+            g.fill(x0, barY, x1 - gap, stripY + stripH, 0xFF000000 | blocks.get(i).colour.rgb());
+            if (marked != null && marked.blocks().contains(blocks.get(i).analysed)) {
+                g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 2, Theme.STRONG);
+            }
+            if (mouseX >= x0 && mouseX < x1 && mouseY >= stripY && mouseY < stripY + stripH) {
+                g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 1, Theme.STRONG);
+                g.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(blocks.get(i).entry), mouseX, mouseY);
+            }
+        }
     }
 
     boolean clicked(MouseButtonEvent e) {

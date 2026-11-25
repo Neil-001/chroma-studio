@@ -468,7 +468,7 @@
   "chromastudio.analysis.no_accent.title": "Kein Akzent",
   "chromastudio.analysis.too_saturated": "Die meisten Blöcke sind stark gefärbt. Ein gedämpfter Block würde sie ausgleichen.",
   "chromastudio.analysis.too_saturated.title": "Zu gesättigt",
-  "chromastudio.analysis.accent_contrast": "Der farbigste Block ist so hell wie der Rest, deshalb fällt er nicht auf. Ein hellerer oder dunklerer Akzent würde das ändern.",
+  "chromastudio.analysis.accent_contrast": "Der farbigste Block ist so hell wie der Rest, deshalb fällt er nicht auf. Nimm einen helleren oder dunkleren Akzent.",
   "chromastudio.analysis.accent_contrast.title": "Akzent geht unter",
   "chromastudio.analysis.too_busy": "Die meisten Texturen sind unruhig. Ein gleichmäßiger oder körniger Block würde den Bau beruhigen.",
   "chromastudio.analysis.too_busy.title": "Zu unruhig",

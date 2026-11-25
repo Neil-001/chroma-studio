@@ -468,7 +468,7 @@
   "chromastudio.analysis.no_accent.title": "没有点缀色",
   "chromastudio.analysis.too_saturated": "大多数方块的颜色都很浓。加入柔和的方块可以平衡。",
   "chromastudio.analysis.too_saturated.title": "饱和度过高",
-  "chromastudio.analysis.accent_contrast": "最鲜艳的方块与其余方块一样亮，所以不会显眼。更亮或更暗的点缀色就可以。",
+  "chromastudio.analysis.accent_contrast": "最鲜艳的方块与其余方块一样亮，所以不会显眼。请使用更亮或更暗的点缀色。",
   "chromastudio.analysis.accent_contrast.title": "点缀色不突出",
   "chromastudio.analysis.too_busy": "大多数纹理都很复杂。加入平整或颗粒状的方块能让建筑更平静。",
   "chromastudio.analysis.too_busy.title": "过于杂乱",
