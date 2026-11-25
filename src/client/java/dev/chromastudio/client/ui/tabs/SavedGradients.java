@@ -25,6 +25,7 @@ final class SavedGradients extends Dialog {
     private final Supplier<Component> unsaveable;
     private final Supplier<List<Integer>> preview;
     private final Consumer<StoredGradient> load;
+    private final String opened;
     private String name;
     private EditBox field;
     private Button button;
@@ -39,6 +40,7 @@ final class SavedGradients extends Dialog {
         this.unsaveable = unsaveable;
         this.preview = preview;
         this.name = name;
+        this.opened = name;
         this.load = load;
     }
 
@@ -135,7 +137,7 @@ final class SavedGradients extends Dialog {
                 g2.fill(x, y, x + w, y + h, Theme.SELECTED);
                 g2.fill(x, y, x + 2, y + h, Theme.ACCENT);
             }
-            if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
+            if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x30));
             swatch(g2, colours(s), x + 4, y + 3, SWATCH_W, h - 6);
             boolean onCross = over && overCross(x, w, mouseX);
             int cx = x + w - CROSS - 3, cy = y + (h - CROSS) / 2;
@@ -158,8 +160,11 @@ final class SavedGradients extends Dialog {
         if (status != null || saved.isEmpty()) return;
         g.text(PanelTab.font(), PanelTab.fit(tr("gradient.chromastudio.store.hint").getString(), in.w()), in.x(), in.bottom() - 9, Theme.DIM, false);
         if (hovered != null) g.text(PanelTab.font(), PanelTab.fit(hovered, in.w()), in.x(), in.bottom() - 18, Theme.TEXT, false);
-        else if (target != null)
-            g.text(PanelTab.font(), PanelTab.fit(tr("gradient.chromastudio.store.replaces", target).getString(), in.w()), in.x(), in.bottom() - 18, Theme.FAIR, false);
+        else if (target != null) {
+            boolean loaded = name.strip().equalsIgnoreCase(opened.strip());
+            Component note = tr(loaded ? "gradient.chromastudio.store.editing" : "gradient.chromastudio.store.replaces", target);
+            g.text(PanelTab.font(), PanelTab.fit(note.getString(), in.w()), in.x(), in.bottom() - 18, loaded ? Theme.TEXT : Theme.FAIR, false);
+        }
     }
 
     private static List<Integer> colours(StoredGradient s) {
@@ -171,7 +176,7 @@ final class SavedGradients extends Dialog {
         for (int k = 0; k < n; k++) g.fill(x + k * w / n, y, x + (k + 1) * w / n, y + h, 0xFF000000 | colours.get(k));
     }
 
-    private static boolean overCross(int x, int w, double mx) { return mx >= x + w - CROSS - 3 && mx < x + w - 3; }
+    private static boolean overCross(int x, int w, double mx) { return mx >= x + w - CROSS - 6 && mx < x + w; }
 
     @Override
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
