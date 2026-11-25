@@ -470,7 +470,7 @@
   "chromastudio.analysis.no_accent.title": "Нет акцента",
   "chromastudio.analysis.too_saturated": "Большинство блоков имеет сильные цвета. Приглушённый блок их уравновесил бы.",
   "chromastudio.analysis.too_saturated.title": "Слишком насыщенно",
-  "chromastudio.analysis.accent_contrast": "Самый яркий блок почти так же светел, как остальные. Попробуйте акцент светлее или темнее.",
+  "chromastudio.analysis.accent_contrast": "Самый яркий блок почти так же светел, как остальные, поэтому он не выделяется.",
   "chromastudio.analysis.accent_contrast.title": "Акцент теряется",
   "chromastudio.analysis.too_busy": "Большинство текстур пёстрые. Ровный или зернистый блок успокоил бы постройку.",
   "chromastudio.analysis.too_busy.title": "Слишком пёстро",

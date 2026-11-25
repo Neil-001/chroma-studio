@@ -470,7 +470,7 @@
   "chromastudio.analysis.no_accent.title": "Brak akcentu",
   "chromastudio.analysis.too_saturated": "Większość bloków ma mocne kolory. Stonowany blok by je zrównoważył.",
   "chromastudio.analysis.too_saturated.title": "Zbyt nasycona",
-  "chromastudio.analysis.accent_contrast": "Najbarwniejszy blok jest mniej więcej tak jasny jak reszta. Spróbuj jaśniejszego lub ciemniejszego akcentu.",
+  "chromastudio.analysis.accent_contrast": "Najbarwniejszy blok jest mniej więcej tak jasny jak reszta, więc się nie wyróżnia.",
   "chromastudio.analysis.accent_contrast.title": "Akcent ginie",
   "chromastudio.analysis.too_busy": "Większość tekstur jest wzorzysta. Gładki lub ziarnisty blok uspokoiłby budowlę.",
   "chromastudio.analysis.too_busy.title": "Zbyt chaotyczna",
