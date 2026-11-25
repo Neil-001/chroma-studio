@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.KeyEvent;
@@ -26,10 +27,11 @@ final class ColourDialog extends Popup {
     private final EditBox[] fields = new EditBox[3];
     private final boolean[] bad = new boolean[3];
     private Bounds compare;
+    private Button done;
     private boolean filling;
 
     ColourDialog(Component title, Color start, Consumer<Color> onChange, Runnable onClose) {
-        super(title, 260, 124, onClose);
+        super(title, 260, 144, onClose);
         this.start = start;
         this.onChange = onChange;
         picker = new ColourPicker(start, _ -> picked(-1));
@@ -52,21 +54,33 @@ final class ColourDialog extends Popup {
             int at = i;
             fields[i] = widgets.field(fx, in.y() + i * ROW, fw, values[i], text -> typed(at, text, takes.get(at)));
             fields[i].setMaxLength(LENGTHS[i]);
-            fields[i].setTooltip(Tooltip.create(tr(NAMES[i] + ".tip")));
             bad[i] = false;
         }
+        compare = new Bounds(cx, in.y() + 3 * ROW + 2, in.right() - cx, Widgets.H);
         Component done = Component.translatable("gui.done"), cancel = Component.translatable("gui.cancel");
         int y = in.bottom() - Widgets.H, doneW = Widgets.buttonWidth(done) + 14, cancelW = Widgets.buttonWidth(cancel) + 6;
-        widgets.button(in.right() - doneW, y, doneW, done, this::close);
-        int cancelX = in.right() - doneW - 2 - cancelW;
-        widgets.button(cancelX, y, cancelW, cancel, this::cancel);
-        compare = new Bounds(cx, y, Math.max(Widgets.H, cancelX - 4 - cx), Widgets.H);
+        this.done = widgets.button(in.right() - doneW, y, doneW, done, this::close);
+        widgets.button(in.right() - doneW - 2 - cancelW, y, cancelW, cancel, this::cancel);
+        widgets.setFocused(fields[0]);
+        showBad();
+    }
+
+    private int firstBad() {
+        for (int i = 0; i < bad.length; i++) if (bad[i]) return i;
+        return -1;
+    }
+
+    private void showBad() {
+        boolean ok = firstBad() < 0;
+        done.active = ok;
+        done.setTooltip(ok ? null : Tooltip.create(tr("fix")));
     }
 
     private void typed(int i, String text, Predicate<String> take) {
         if (filling || fields[i] == null) return;
         bad[i] = !take.test(text);
         fields[i].setTextColor(bad[i] ? Theme.FIELD_BAD : EditBox.DEFAULT_TEXT_COLOR);
+        showBad();
         if (!bad[i]) picked(i);
     }
 
@@ -81,6 +95,7 @@ final class ColourDialog extends Popup {
             bad[i] = false;
         }
         filling = false;
+        showBad();
         onChange.accept(model.colour());
     }
 
@@ -100,16 +115,20 @@ final class ColourDialog extends Popup {
             g.text(font, tr(NAMES[i]), labelX, f.getY() + 4, Theme.FIXED_SOFT, false);
             if (bad[i]) g.outline(f.getX() - 1, f.getY() - 1, f.getWidth() + 2, f.getHeight() + 2, Theme.FIELD_BAD);
         }
-        for (int i = 0; i < NAMES.length; i++) {
-            if (!bad[i]) continue;
-            g.textWithWordWrap(font, tr(NAMES[i] + ".tip"), labelX, fields[2].getY() + ROW + 2, in.right() - labelX, Theme.FIELD_BAD, false);
-            break;
-        }
+        int hint = firstBad();
+        for (int i = 0; i < fields.length && hint < 0; i++) if (fields[i].isFocused()) hint = i;
+        for (int i = 0; i < fields.length && hint < 0; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
+        if (hint >= 0)
+            g.textWithWordWrap(font, tr(NAMES[hint] + ".tip"), labelX, compare.bottom() + 4, in.right() - labelX, bad[hint] ? Theme.FIELD_BAD : Theme.FIXED_SOFT, false);
         int half = compare.w() / 2;
-        g.fill(compare.x(), compare.y(), compare.right(), compare.bottom(), 0xFF000000);
-        g.fill(compare.x() + 1, compare.y() + 1, compare.x() + half, compare.bottom() - 1, 0xFF000000 | start.rgb());
-        g.fill(compare.x() + half, compare.y() + 1, compare.right() - 1, compare.bottom() - 1, 0xFF000000 | picker.model.colour().rgb());
-        if (compare.contains(mouseX, mouseY)) g.setTooltipForNextFrame(font, tr("compare.tip"), mouseX, mouseY);
+        swatch(g, font, compare.x(), half, start.rgb(), tr("old"));
+        swatch(g, font, compare.x() + half, compare.w() - half, picker.model.colour().rgb(), tr("new"));
+    }
+
+    private void swatch(GuiGraphicsExtractor g, Font font, int x, int w, int rgb, Component label) {
+        Widgets.swatch(g, x, compare.y(), w, compare.h(), rgb);
+        int ink = Color.ofRgb(rgb).oklab().l() < Theme.LIGHT_FROM ? 0xFFFFFFFF : 0xFF000000;
+        g.text(font, label, x + (w - font.width(label)) / 2, compare.y() + 4, ink, false);
     }
 
     @Override
@@ -135,7 +154,10 @@ final class ColourDialog extends Popup {
     }
 
     @Override
-    protected void confirm() { close(); }
+    protected void confirm() {
+        if (firstBad() < 0) close();
+        else picked(-1);
+    }
 
     @Override
     void close() {
