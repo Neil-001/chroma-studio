@@ -1,6 +1,6 @@
 # 1.3.0
 
-Chroma Studio works with Axiom, the building editor, on Fabric. Five Chroma tools in Axiom's editor recolour, shade or lay a gradient across a build, sample a build into a palette, and pick a block's colour. They change blocks only when you use them, and only through Axiom, so Axiom's undo, permissions and tool masks apply. The rest of Chroma Studio still places nothing, and without Axiom the Axiom controls are greyed out with the reason. This release is for Minecraft 26.3 on Fabric and NeoForge. The Axiom features need Fabric, and were made with Axiom 6.1.5.
+Chroma Studio works with Axiom, the building editor, on Fabric. Five Chroma tools in Axiom's editor recolour, shade or lay a gradient across a build, sample a build into a palette, and pick a block's colour. They change blocks only when you use them, and only through Axiom, so Axiom's undo, permissions and tool masks apply. The rest of Chroma Studio still places nothing. Axiom controls appear only when Axiom is installed on Fabric. This release is for Minecraft 26.3 on Fabric and NeoForge. The Axiom features need Fabric, and were made with Axiom 6.1.5.
 
 ## Features
 
