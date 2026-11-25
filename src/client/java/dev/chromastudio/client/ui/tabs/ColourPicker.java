@@ -46,9 +46,11 @@ public final class ColourPicker implements AutoCloseable {
         }
     }
 
-    public void layout(Bounds top) {
-        hueBar = new Bounds(top.right() - 8, top.y(), 8, top.h());
-        square = new Bounds(top.x(), top.y(), top.w() - 10, top.h());
+    public void layout(Bounds top) { layout(top, 8); }
+
+    public void layout(Bounds top, int hueW) {
+        hueBar = new Bounds(top.right() - hueW, top.y(), hueW, top.h());
+        square = new Bounds(top.x(), top.y(), top.w() - hueW - 2, top.h());
         for (int i = 0; i < 3; i++) sliders[i] = new Bounds(0, 0, 0, 0);
     }
 
