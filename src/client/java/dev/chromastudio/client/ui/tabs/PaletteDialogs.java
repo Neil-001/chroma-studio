@@ -54,6 +54,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.locale.Language;
@@ -177,28 +178,131 @@ final class PaletteDialogs {
     }
 
     static final class Confirm extends Dialog {
-        private final Component question, action;
-        private final Runnable done;
+        record Row(@Nullable Component label, @Nullable List<Integer> colours, Component detail) {}
 
-        Confirm(Component title, Component question, Component action, Runnable done) {
-            super(title, 220, 70);
+        private static final int W = 240, NAME_W = W - 20, TIP_LINE = 10, TIP_MARGIN = 12, LINE = 11, NAME_LINE = 10, ROW = 11, SWATCH_W = 48, BUTTON_GAP = 6;
+        private static final Component WARNING = tr("palettes.chromastudio.irreversible");
+        private final Component question, action;
+        private final String name;
+        private final List<String> names;
+        private final List<Row> rows;
+        private final Runnable done;
+        private final @Nullable Runnable back;
+        private Button no, yes;
+
+        Confirm(Component title, Component question, String name, List<Row> rows, Component action, Runnable done, @Nullable Runnable back) {
+            this(title, question, name.replace('\n', ' '), nameLines(name.replace('\n', ' ')), rows, action, done, back);
+        }
+
+        private Confirm(Component title, Component question, String name, List<String> names, List<Row> rows, Component action, Runnable done, @Nullable Runnable back) {
+            super(title, W, TITLE_H + 7 + (lines(question) + lines(WARNING)) * LINE + 2 + cardHeight(names, rows) + 7 + Widgets.H);
             this.question = question;
+            this.name = name;
+            this.names = names;
+            this.rows = rows;
             this.action = action;
             this.done = done;
+            this.back = back;
         }
+
+        private static int lines(Component text) { return PanelTab.font().split(text, W - 10).size(); }
+
+        private static List<String> wrapped(String name) {
+            return PanelTab.font().getSplitter().splitLines(name, NAME_W, Style.EMPTY).stream().map(FormattedText::getString).toList();
+        }
+
+        private static List<String> nameLines(String name) {
+            List<String> lines = wrapped(name);
+            if (lines.size() < 2) return lines;
+            if (lines.size() == 2) return balanced(name, lines);
+            String rest = name.substring(Math.min(name.length(), lines.get(0).length())).strip();
+            return List.of(lines.get(0), PanelTab.fit(rest, NAME_W));
+        }
+
+        private static List<String> balanced(String name, List<String> lines) {
+            var font = PanelTab.font();
+            List<String> best = lines;
+            int bestW = Math.max(font.width(lines.get(0)), font.width(lines.get(1)));
+            boolean words = name.indexOf(' ') > 0;
+            for (int i = 1; i < name.length(); i++) {
+                if (words ? name.charAt(i) != ' ' : Character.isLowSurrogate(name.charAt(i))) continue;
+                String a = name.substring(0, i), b = name.substring(words ? i + 1 : i);
+                int w = Math.max(font.width(a), font.width(b));
+                if (w <= NAME_W && w < bestW) {
+                    best = List.of(a, b);
+                    bestW = w;
+                }
+            }
+            return best;
+        }
+
+        private static int cardHeight(List<String> names, List<Row> rows) { return 5 + names.size() * NAME_LINE + rows.size() * ROW + 3; }
 
         @Override
         protected void build(Bounds in) {
-            int w = Widgets.buttonWidth(action);
-            widgets.button(in.right() - w, in.bottom() - Widgets.H, action, () -> {
+            Component cancel = CommonComponents.GUI_CANCEL;
+            int noW = Widgets.buttonWidth(cancel), yesW = Widgets.buttonWidth(action), y = in.bottom() - Widgets.H;
+            no = widgets.button(in.right() - noW, y, cancel, this::cancel);
+            yes = widgets.button(in.right() - noW - BUTTON_GAP - yesW, y, action.copy().withColor(Theme.FIELD_BAD), () -> {
                 close();
                 done.run();
             });
+            widgets.setFocused(no);
+        }
+
+        @Override
+        boolean keyPressed(KeyEvent e) {
+            if (e.isCycleFocus() || e.isLeft() || e.isRight() || e.isUp() || e.isDown()) {
+                widgets.setFocused(widgets.getFocused() == no ? yes : no);
+                return true;
+            }
+            return super.keyPressed(e);
+        }
+
+        @Override
+        void cancel() {
+            if (back == null) close();
+            else back.run();
+        }
+
+        private static int paragraph(GuiGraphicsExtractor g, Component text, Bounds in, int y, int colour) {
+            for (FormattedCharSequence line : PanelTab.font().split(text, in.w())) {
+                g.text(PanelTab.font(), line, in.x(), y, colour, false);
+                y += LINE;
+            }
+            return y;
         }
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            g.textWithWordWrap(PanelTab.font(), question, in.x(), in.y(), in.w(), Theme.TEXT, false);
+            var font = PanelTab.font();
+            int top = paragraph(g, question, in, in.y(), Theme.TEXT);
+            top = paragraph(g, WARNING, in, top, Theme.FAIR);
+            Bounds card = new Bounds(in.x(), top + 2, in.w(), cardHeight(names, rows));
+            g.fill(card.x(), card.y(), card.right(), card.bottom(), Theme.WELL);
+            g.outline(card.x(), card.y(), card.w(), card.h(), Theme.BORDER);
+            int x = card.x() + 5, y = card.y() + 5;
+            for (String line : names) {
+                g.text(font, line, x, y, Theme.STRONG, false);
+                y += NAME_LINE;
+            }
+            int labelW = 0;
+            for (Row row : rows) if (row.label() != null) labelW = Math.max(labelW, font.width(row.label()) + 6);
+            for (Row row : rows) {
+                int rx = x;
+                if (row.label() != null) g.text(font, row.label(), rx, y + 1, Theme.DIM, false);
+                rx += labelW;
+                if (row.colours() != null) {
+                    SavedGradients.swatch(g, row.colours(), rx, y, SWATCH_W, 9);
+                    rx += SWATCH_W + 5;
+                }
+                g.text(font, row.detail(), rx, y + 1, Theme.DIM, false);
+                y += ROW;
+            }
+            if (card.contains(mouseX, mouseY) && names.size() < wrapped(name).size()) {
+                List<FormattedCharSequence> tip = Tooltip.splitTooltip(Minecraft.getInstance(), Component.literal(name));
+                g.setTooltipForNextFrame(font, tip.subList(0, Math.min(tip.size(), (g.guiHeight() - TIP_MARGIN) / TIP_LINE)), mouseX, mouseY);
+            }
         }
     }
 

@@ -130,8 +130,8 @@ public final class PalettesTab extends PanelTab {
                         name -> store.taken(name, null), name -> { store.create(name, List.of()); showEntries(); })), null),
                 new Action("rename", () -> open(new PaletteDialogs.Name(tr("palettes.chromastudio.rename.title"), tr("palettes.chromastudio.rename"), p.name,
                         name -> store.taken(name, p), name -> { flush(); store.rename(p, name); rebuild(); })), editable),
-                new Action("delete", () -> open(new PaletteDialogs.Confirm(tr("palettes.chromastudio.delete.title"), tr("palettes.chromastudio.delete.question", p.name),
-                        tr("palettes.chromastudio.delete"), () -> { dirty = false; store.delete(p); say(tr("palettes.chromastudio.deleted", p.name)); showEntries(); })), editable));
+                new Action("delete", () -> open(new PaletteDialogs.Confirm(tr("palettes.chromastudio.delete.title"), tr("palettes.chromastudio.delete.question"), p.name,
+                        List.of(new PaletteDialogs.Confirm.Row(null, null, tr("palettes.chromastudio.count", p.entries.size()))), tr("palettes.chromastudio.delete"), () -> { dirty = false; store.delete(p); say(tr("palettes.chromastudio.deleted", p.name)); showEntries(); }, null)), editable));
         List<Action> bottom = List.of(
                 new Action("import", () -> open(new PaletteDialogs.Import(made -> { say(tr("palettes.chromastudio.imported", made.name), GOOD); showEntries(); })), null),
                 new Action("share", () -> {
