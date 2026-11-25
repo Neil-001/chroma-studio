@@ -97,14 +97,14 @@ final class SavedGradients extends Dialog {
             status(tr("palettes.chromastudio.name_needed"), Theme.FAIR);
             return true;
         }
-        StoredGradient g = current.apply(name.strip());
-        StoredGradient old = GradientStore.get().get(g.name());
+        String n = name.strip();
+        StoredGradient old = GradientStore.get().get(n);
         if (old == null) {
-            store(g);
+            store(current.apply(n));
             return true;
         }
         tab.open(new PaletteDialogs.Confirm(tr("gradient.chromastudio.store.replace.title"), tr("gradient.chromastudio.store.replace.question", old.name()),
-                tr("gradient.chromastudio.store.replace"), () -> store(g)));
+                tr("gradient.chromastudio.store.replace"), () -> store(current.apply(n))));
         return true;
     }
 
