@@ -1,20 +1,14 @@
-The mod's logic that needs no game: colour maths, palettes and gradients, schematic layouts, hotbar writes, line breaking and the choice of a count's translation key.
+## Export
 
-`color` and `palette` have their own `CLAUDE.md`. The records of the three small packages are here.
+- `ClipboardSize.MAX_BYTES` leaves room for other data on LWJGL's 64 KiB stack. An oversized UTF-8 clipboard write crashes the game.
+- `LitematicBits` follows `LitematicaBitArray`, whose indices may straddle longs. Vanilla chunk sections pad each long.
 
-## export
+## Hotbar
 
-- `ClipboardSize.MAX_BYTES` is 40,000 because the game hands the clipboard its text as UTF-8 through LWJGL's stack of 64 KiB, and text longer than what is left of that stack crashes the game. The margin is for whatever else is on the stack at the time.
-- `LitematicBits` packs palette indices the way Litematica's `LitematicaBitArray` does: values are laid end to end and may straddle two longs. Vanilla chunk sections pad each long instead, so their packing can't be reused.
+- Axiom writes may throw after taking effect or return without changing anything. `HotbarWrites` snapshots every slot first, verifies writes by reading back and includes the failed slot when rolling back. Report any slot whose restoration can't be confirmed.
+- Avoid probe writes in `HotbarWrites`. They can send needless packets and save hotbars without detecting ignored writes. A mod can throw the same exception instance twice, which must not be suppressed onto itself.
 
-## hotbar
+## Text
 
-- The hotbars `HotbarWrites` writes are Axiom's, reached through calls that may throw or return without taking the item. So every slot is read before anything changes, and a failed read writes nothing. Every slot is read back after the writes. When a write fails, `HotbarWrites` puts back the slots it tried, including the one whose write threw, as a set that threw may still have taken, reads them back, and names in the result any slot still changed or not confirmed, since putting back can fail too.
-- `HotbarWrites` never writes a slot's own item back to it first to test that it can be set. That would send the server a change for every slot and save Axiom's hotbars for nothing, and it still couldn't catch a slot that ignores writes. Reading back after the writes catches that.
-- `HotbarWrites.together` checks that two failures are different objects before `addSuppressed`, because a mod may throw the same exception object again and `Throwable` refuses to suppress itself.
-
-## text
-
-- `LineBreaks` never breaks at a space next to a Chinese or Japanese character. The translations put spaces around numbers and Latin words, as in "2 個のブロック", only for looks, and a break there would leave a number at the end of one line and its counter at the start of the next. A space between two Latin words still breaks.
-- `LineBreaks.needed` is false for Korean, which spaces its words, so Korean is left to the caller's own wrapping.
-- `Plural.key` gives `key.one` for one and `key` for any other number, and languages with more plural forms word `key` so that it fits any other number.
+- `LineBreaks` keeps spaces next to Chinese or Japanese characters inside a line, so a number stays with its counter in text such as "2 個のブロック". Korean spaces its words and uses the caller's wrapping.
+- `Plural.key` uses `.one` for one. Each translation's base key needs wording that fits every other number.

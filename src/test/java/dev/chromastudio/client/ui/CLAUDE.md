@@ -1,11 +1,2 @@
-Tests of the window, its tabs and widgets.
-
-## Theme
-
-- The default theme's colours in `Theme` are written out by hand, not worked out. `ThemeTest.workingTheDefaultOutGivesNearlyWhatIsWritten` allows 0.02 in OKLab between each written colour and the one worked out from `Theme.DEFAULT_BASE`, which is a just noticeable step.
-- In `ThemeTest.anyCustomColourReads`, a middling custom colour leaves the least room: black and white text both reach only about 4.6 contrast on the worst grey. The final `worst < 5` check proves the sweep reaches those colours.
-
-## Text that fits
-
-- `DialogTextTest` measures with the game's bitmap fonts, which the jar holds. The jar's unifont list is empty because the game downloads unifont as an asset, so a Chinese, Japanese or Korean character counts `UNIFONT_MOST`, 9: a unifont glyph advances half its width plus one, and the widest is 16 pixels.
-- `DialogTextTest` measures each language with Axiom's windows named in English and again with the names Axiom shows in that language, which `AXIOM_NAMES` copies from Axiom's translations by hand. A name it lacks stays English. The Brazilian Portuguese names keep the typos Axiom's translation has, such as "Arquivc".
+- `ThemeTest.workingTheDefaultOutGivesNearlyWhatIsWritten` compares the hand-picked default with the generated theme within 0.02 OKLab, about one noticeable step. The custom-theme sweep checks `worst < 5` to prove it reaches middle greys, where black and white contrast both approach 4.6.
+- `DialogTextTest` uses the game's bitmap fonts. The game downloads unifont separately, so approximate Chinese, Japanese and Korean glyphs with the maximum advance of 9 pixels, half the widest glyph plus one. `AXIOM_NAMES` copies Axiom's translations including its typos. Test those names and the English fallback.
