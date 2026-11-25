@@ -439,6 +439,8 @@
   "gradient.chromastudio.store.overwrite": "Zastąp gradient",
   "gradient.chromastudio.store.none": "Nie ma jeszcze zapisanych gradientów.",
   "gradient.chromastudio.store.hint": "Kliknij gradient, aby go wczytać. Prawy przycisk go usuwa.",
+  "gradient.chromastudio.store.replaces": "„%s” jest już zapisany. Przed zastąpieniem pojawi się pytanie.",
+  "gradient.chromastudio.store.preview": "Gradient do zapisania, kroki: %s",
   "gradient.chromastudio.store.steps": "Kroki: %s",
   "gradient.chromastudio.store.loaded": "Wczytano „%s”",
   "gradient.chromastudio.store.done": "Zapisano gradient „%s”",

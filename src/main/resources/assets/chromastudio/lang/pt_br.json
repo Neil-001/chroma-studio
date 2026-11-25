@@ -439,6 +439,8 @@
   "gradient.chromastudio.store.overwrite": "Substituir gradiente",
   "gradient.chromastudio.store.none": "Nenhum gradiente salvo ainda.",
   "gradient.chromastudio.store.hint": "Clique em um gradiente para carregá-lo. Clique direito para excluí-lo.",
+  "gradient.chromastudio.store.replaces": "\"%s\" já está salvo. Será pedida confirmação antes de substituí-lo.",
+  "gradient.chromastudio.store.preview": "O gradiente a salvar, %s passos",
   "gradient.chromastudio.store.steps": "%s passos",
   "gradient.chromastudio.store.loaded": "\"%s\" carregado",
   "gradient.chromastudio.store.done": "Gradiente \"%s\" salvo",

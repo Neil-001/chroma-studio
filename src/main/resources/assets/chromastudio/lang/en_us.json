@@ -438,6 +438,8 @@
   "gradient.chromastudio.store.overwrite": "Replace gradient",
   "gradient.chromastudio.store.none": "No saved gradients yet.",
   "gradient.chromastudio.store.hint": "Click a gradient to load it. Right-click to delete it.",
+  "gradient.chromastudio.store.replaces": "\"%s\" is already saved. Saving asks before replacing it.",
+  "gradient.chromastudio.store.preview": "The gradient to save, %s steps",
   "gradient.chromastudio.store.steps": "%s steps",
   "gradient.chromastudio.store.loaded": "Loaded \"%s\"",
   "gradient.chromastudio.store.done": "Saved the gradient \"%s\"",

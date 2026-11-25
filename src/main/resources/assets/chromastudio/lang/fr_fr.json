@@ -439,6 +439,8 @@
   "gradient.chromastudio.store.overwrite": "Remplacer le dégradé",
   "gradient.chromastudio.store.none": "Aucun dégradé enregistré pour l’instant.",
   "gradient.chromastudio.store.hint": "Clique sur un dégradé pour le charger. Clic droit pour le supprimer.",
+  "gradient.chromastudio.store.replaces": "« %s » est déjà enregistré. Une confirmation sera demandée avant de le remplacer.",
+  "gradient.chromastudio.store.preview": "Le dégradé à enregistrer, %s étapes",
   "gradient.chromastudio.store.steps": "%s étapes",
   "gradient.chromastudio.store.loaded": "« %s » chargé",
   "gradient.chromastudio.store.done": "Dégradé « %s » enregistré",

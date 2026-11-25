@@ -439,6 +439,8 @@
   "gradient.chromastudio.store.overwrite": "Verlauf ersetzen",
   "gradient.chromastudio.store.none": "Noch keine gespeicherten Verläufe.",
   "gradient.chromastudio.store.hint": "Klicke auf einen Verlauf, um ihn zu laden. Rechtsklick löscht ihn.",
+  "gradient.chromastudio.store.replaces": "„%s“ ist schon gespeichert. Vor dem Ersetzen wird nachgefragt.",
+  "gradient.chromastudio.store.preview": "Der zu speichernde Verlauf, %s Schritte",
   "gradient.chromastudio.store.steps": "%s Schritte",
   "gradient.chromastudio.store.loaded": "„%s“ geladen",
   "gradient.chromastudio.store.done": "Verlauf „%s“ gespeichert",

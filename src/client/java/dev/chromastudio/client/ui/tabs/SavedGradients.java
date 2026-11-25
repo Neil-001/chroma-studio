@@ -25,13 +25,12 @@ final class SavedGradients extends Dialog {
     private final Supplier<Component> unsaveable;
     private final Supplier<List<Integer>> preview;
     private final Consumer<StoredGradient> load;
-    private final String active;
     private String name;
     private EditBox field;
     private Button button;
     private List<StoredGradient> saved = List.of();
     private Widgets.ScrollList rows;
-    private String hovered;
+    private String hovered, target;
 
     SavedGradients(Function<String, StoredGradient> current, Supplier<Component> unsaveable, Supplier<List<Integer>> preview, String name,
             Consumer<StoredGradient> load) {
@@ -40,7 +39,6 @@ final class SavedGradients extends Dialog {
         this.unsaveable = unsaveable;
         this.preview = preview;
         this.name = name;
-        this.active = name;
         this.load = load;
     }
 
@@ -80,7 +78,9 @@ final class SavedGradients extends Dialog {
         boolean blank = name.isBlank();
         button.active = !blank;
         button.setTooltip(blank ? Tooltip.create(tr("palettes.chromastudio.name_needed")) : null);
-        button.setMessage(tr(!blank && GradientStore.get().get(name) != null ? "gradient.chromastudio.store.overwrite" : "gradient.chromastudio.store.save"));
+        StoredGradient same = blank ? null : GradientStore.get().get(name);
+        target = same == null ? null : same.name();
+        button.setMessage(tr(target != null ? "gradient.chromastudio.store.overwrite" : "gradient.chromastudio.store.save"));
         if (blank) status(tr("palettes.chromastudio.name_needed"), Theme.FAIR);
         else if (status != null && status.getContents() instanceof TranslatableContents t && t.getKey().equals("palettes.chromastudio.name_needed")) status = null;
     }
@@ -118,7 +118,12 @@ final class SavedGradients extends Dialog {
         Bounds list = rows.area;
         g.fill(list.x(), list.y(), list.right(), list.bottom(), Theme.WELL);
         List<Integer> colours = preview.get();
-        if (!colours.isEmpty()) swatch(g, colours, in.x() + 4, in.y() + 3, SWATCH_W, PanelTab.ROW - 6);
+        if (!colours.isEmpty()) {
+            int px = in.x() + 4, py = in.y() + 3;
+            swatch(g, colours, px, py, SWATCH_W, PanelTab.ROW - 6);
+            if (mouseX >= px && mouseX < px + SWATCH_W && mouseY >= py && mouseY < py + PanelTab.ROW - 6)
+                g.setTooltipForNextFrame(PanelTab.font(), tr("gradient.chromastudio.store.preview", colours.size()), mouseX, mouseY);
+        }
         hovered = null;
         rows.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
             if (saved.isEmpty()) {
@@ -126,8 +131,7 @@ final class SavedGradients extends Dialog {
                 return;
             }
             StoredGradient s = saved.get(i);
-            boolean current = s.name().equalsIgnoreCase(active.strip());
-            if (current) {
+            if (s.name().equals(target)) {
                 g2.fill(x, y, x + w, y + h, Theme.SELECTED);
                 g2.fill(x, y, x + 2, y + h, Theme.ACCENT);
             }
@@ -136,10 +140,11 @@ final class SavedGradients extends Dialog {
             boolean onCross = over && overCross(x, w, mouseX);
             int cx = x + w - CROSS - 3, cy = y + (h - CROSS) / 2;
             if (over) {
-                g2.fill(cx, cy, cx + CROSS, cy + CROSS, onCross ? Theme.DANGER : Theme.CONTROL);
+                if (onCross) g2.fill(cx, cy, cx + CROSS, cy + CROSS, Theme.DANGER);
+                int ink = onCross ? Theme.TEXT : Theme.BAD;
                 for (int k = 2; k < CROSS - 2; k++) {
-                    g2.fill(cx + k, cy + k, cx + k + 1, cy + k + 1, Theme.TEXT);
-                    g2.fill(cx + CROSS - 1 - k, cy + k, cx + CROSS - k, cy + k + 1, Theme.TEXT);
+                    g2.fill(cx + k, cy + k, cx + k + 1, cy + k + 1, ink);
+                    g2.fill(cx + CROSS - 1 - k, cy + k, cx + CROSS - k, cy + k + 1, ink);
                 }
             }
             String steps = tr("gradient.chromastudio.store.steps", s.steps()).getString();
@@ -150,10 +155,11 @@ final class SavedGradients extends Dialog {
             if (onCross) g2.setTooltipForNextFrame(PanelTab.font(), tr("gradient.chromastudio.store.delete"), mouseX, mouseY);
             else if (over && !shown.equals(s.name())) hovered = s.name();
         });
-        if (status == null && !saved.isEmpty()) {
-            String footer = hovered != null ? hovered : tr("gradient.chromastudio.store.hint").getString();
-            g.text(PanelTab.font(), PanelTab.fit(footer, in.w()), in.x(), in.bottom() - 9, hovered != null ? Theme.TEXT : Theme.DIM, false);
-        }
+        if (status != null || saved.isEmpty()) return;
+        g.text(PanelTab.font(), PanelTab.fit(tr("gradient.chromastudio.store.hint").getString(), in.w()), in.x(), in.bottom() - 9, Theme.DIM, false);
+        if (hovered != null) g.text(PanelTab.font(), PanelTab.fit(hovered, in.w()), in.x(), in.bottom() - 18, Theme.TEXT, false);
+        else if (target != null)
+            g.text(PanelTab.font(), PanelTab.fit(tr("gradient.chromastudio.store.replaces", target).getString(), in.w()), in.x(), in.bottom() - 18, Theme.FAIR, false);
     }
 
     private static List<Integer> colours(StoredGradient s) {

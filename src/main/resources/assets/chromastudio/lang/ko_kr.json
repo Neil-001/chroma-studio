@@ -439,6 +439,8 @@
   "gradient.chromastudio.store.overwrite": "그라데이션 바꾸기",
   "gradient.chromastudio.store.none": "아직 저장한 그라데이션이 없습니다.",
   "gradient.chromastudio.store.hint": "클릭하면 불러오고, 오른쪽 클릭하면 삭제합니다.",
+  "gradient.chromastudio.store.replaces": "\"%s\"은(는) 이미 저장되어 있습니다. 바꾸기 전에 확인합니다.",
+  "gradient.chromastudio.store.preview": "저장할 그라데이션, %s단계",
   "gradient.chromastudio.store.steps": "%s단계",
   "gradient.chromastudio.store.loaded": "\"%s\"을(를) 불러왔습니다",
   "gradient.chromastudio.store.done": "그라데이션 \"%s\"을(를) 저장했습니다",
