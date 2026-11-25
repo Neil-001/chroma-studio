@@ -37,6 +37,7 @@
 - `BuildSample` keeps a removed kind out while any sampled position still has it. Forget it when the last position goes so it can be sampled again.
 - `BuildSearch` joins edges and corners so diagonal builds stay together. Its search cap bounds the cost when a build joins the terrain. Section bit sets avoid boxing and hashing every position.
 - `WeightedPick` is stable for a seed and position so a second pass during the same stroke picks the same block.
+- `Analyzer.Finding.blocks` indexes the colours passed to `analyse`, not the palette entries. The client leaves out blocks it can't measure, so map the indices through the list it built.
 
 ## Saved files and commands
 
