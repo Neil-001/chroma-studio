@@ -436,6 +436,7 @@
   "gradient.chromastudio.action.saved": "保存済み…",
   "gradient.chromastudio.store.title": "保存したグラデーション",
   "gradient.chromastudio.store.save": "グラデーションを保存",
+  "gradient.chromastudio.store.overwrite": "グラデーションを置き換え",
   "gradient.chromastudio.store.none": "保存したグラデーションはまだありません。",
   "gradient.chromastudio.store.hint": "クリックで読み込み、右クリックで削除します。",
   "gradient.chromastudio.store.steps": "%s ステップ",

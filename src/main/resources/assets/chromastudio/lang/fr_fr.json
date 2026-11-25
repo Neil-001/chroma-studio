@@ -436,6 +436,7 @@
   "gradient.chromastudio.action.saved": "Enregistrés…",
   "gradient.chromastudio.store.title": "Dégradés enregistrés",
   "gradient.chromastudio.store.save": "Enregistrer le dégradé",
+  "gradient.chromastudio.store.overwrite": "Remplacer le dégradé",
   "gradient.chromastudio.store.none": "Aucun dégradé enregistré pour l’instant.",
   "gradient.chromastudio.store.hint": "Clique sur un dégradé pour le charger. Clic droit pour le supprimer.",
   "gradient.chromastudio.store.steps": "%s étapes",
