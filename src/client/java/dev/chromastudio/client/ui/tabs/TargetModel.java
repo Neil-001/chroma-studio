@@ -80,7 +80,7 @@ public final class TargetModel {
         return Math.round(hsl[0]) % 360 + "," + Math.round(hsl[1] * 100) + "," + Math.round(hsl[2] * 100);
     }
 
-    public String hsvText() { return Math.round(hsv[0]) % 360 + "," + Math.round(hsv[1] * 100) + "," + Math.round(hsv[2] * 100); }
+    public String hsvText() { return Math.round(hsv[0]) % 360 + "°," + Math.round(hsv[1] * 100) + "%," + Math.round(hsv[2] * 100) + "%"; }
 
     public String oklchText() {
         return String.format(Locale.ROOT, "%.2f", lch.l()) + "," + String.format(Locale.ROOT, "%.3f", lch.c()).substring(1) + "," + Math.round(lch.h()) % 360;

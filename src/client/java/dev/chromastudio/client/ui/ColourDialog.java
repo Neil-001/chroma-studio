@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.ui.tabs.ColourPicker;
 import dev.chromastudio.client.ui.tabs.TargetModel;
 import dev.chromastudio.core.color.Color;
@@ -19,7 +20,9 @@ import net.minecraft.network.chat.Component;
 final class ColourDialog extends Popup {
     private static final int LABEL_W = 26, ROW = Widgets.H + 2, HUE_W = 12, GAP = 8;
     private static final String[] NAMES = {"hex", "rgb", "hsv"};
-    private static final int[] LENGTHS = {7, 13, 13};
+    private static final int[] LENGTHS = {7, 13, 15};
+    private static final int KEYS = 3;
+    private static final int STALE = 0xFF000000 | Theme.TIP_GREYED;
 
     private final ColourPicker picker;
     private final Color start;
@@ -32,7 +35,7 @@ final class ColourDialog extends Popup {
     private int hint;
 
     ColourDialog(Component title, Color start, Consumer<Color> onChange, Runnable onClose) {
-        super(title, 260, 144, onClose);
+        super(title, 260, 152, onClose);
         this.start = start;
         this.onChange = onChange;
         picker = new ColourPicker(start, _ -> picked(-1));
@@ -73,6 +76,7 @@ final class ColourDialog extends Popup {
 
     private void showBad() {
         int at = firstBad();
+        for (int i = 0; i < fields.length; i++) fields[i].setTextColor(bad[i] ? Theme.FIELD_BAD : at >= 0 ? STALE : EditBox.DEFAULT_TEXT_COLOR);
         done.active = at < 0;
         done.setTooltip(at < 0 ? null : Tooltip.create(Component.translatable("settings.chromastudio.colour.fix", tr(NAMES[at]))));
     }
@@ -80,7 +84,6 @@ final class ColourDialog extends Popup {
     private void typed(int i, String text, Predicate<String> take) {
         if (filling || fields[i] == null) return;
         bad[i] = !take.test(text);
-        fields[i].setTextColor(bad[i] ? Theme.FIELD_BAD : EditBox.DEFAULT_TEXT_COLOR);
         showBad();
         if (!bad[i]) picked(i);
     }
@@ -92,7 +95,6 @@ final class ColourDialog extends Popup {
         for (int i = 0; i < fields.length; i++) {
             if (i == except) continue;
             fields[i].setValue(values[i]);
-            fields[i].setTextColor(EditBox.DEFAULT_TEXT_COLOR);
             bad[i] = false;
         }
         filling = false;
@@ -118,15 +120,14 @@ final class ColourDialog extends Popup {
         }
         for (int i = 0; i < fields.length; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
         for (int i = 0; i < fields.length; i++) if (fields[i].isFocused()) hint = i;
-        if (firstBad() >= 0) hint = firstBad();
-        g.textWithWordWrap(font, tr(NAMES[hint] + ".tip"), labelX, compare.bottom() + 4, in.right() - labelX, bad[hint] ? Theme.FIELD_BAD : Theme.FIXED_SOFT, false);
+        int wrong = firstBad();
+        Component text = wrong >= 0 ? tr(NAMES[wrong] + ".bad") : tr(hint == KEYS ? "keys.tip" : NAMES[hint] + ".tip");
+        g.textWithWordWrap(font, text, labelX, compare.bottom() + 4, in.right() - labelX, wrong >= 0 ? Theme.FIELD_BAD : Theme.FIXED_SOFT, false);
         int half = compare.w() / 2;
         swatch(g, font, compare.x(), half, start.rgb(), tr("old"));
         swatch(g, font, compare.x() + half, compare.w() - half, picker.model.colour().rgb(), tr("new"));
-        if (old().contains(mouseX, mouseY)) {
-            g.outline(compare.x(), compare.y(), half, compare.h(), 0xFFFFFFFF);
-            g.setTooltipForNextFrame(font, tr("old.tip"), mouseX, mouseY);
-        }
+        if (wrong >= 0) g.fill(compare.x() + half, compare.y(), compare.right(), compare.bottom(), 0xB0000000 | Theme.FIXED_PANEL & 0xFFFFFF);
+        if (old().contains(mouseX, mouseY)) g.outline(compare.x(), compare.y(), half, compare.h(), 0xFFFFFFFF);
     }
 
     private Bounds old() { return new Bounds(compare.x(), compare.y(), compare.w() / 2, compare.h()); }
@@ -141,6 +142,7 @@ final class ColourDialog extends Popup {
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         if (box.contains(e.x(), e.y()) && picker.mouseClicked(e.x(), e.y())) {
             widgets.setFocused(null);
+            hint = KEYS;
             return true;
         }
         if (old().contains(e.x(), e.y())) {
@@ -159,8 +161,31 @@ final class ColourDialog extends Popup {
 
     @Override
     boolean keyPressed(KeyEvent e) {
-        if (!e.isEscape()) return super.keyPressed(e);
-        cancel();
+        if (e.isEscape()) {
+            cancel();
+            return true;
+        }
+        if (widgets.getFocused() == null && nudge(e)) return true;
+        return super.keyPressed(e);
+    }
+
+    private boolean nudge(KeyEvent e) {
+        float[] hsv = picker.model.hsv();
+        float step = e.hasShiftDown() ? 0.1f : 0.01f, hue = e.hasShiftDown() ? 10 : 1;
+        switch (e.key()) {
+            case InputConstants.KEY_LEFT -> hsv[1] -= step;
+            case InputConstants.KEY_RIGHT -> hsv[1] += step;
+            case InputConstants.KEY_UP -> hsv[2] += step;
+            case InputConstants.KEY_DOWN -> hsv[2] -= step;
+            case InputConstants.KEY_PAGEUP -> hsv[0] = (hsv[0] - hue + 360) % 360;
+            case InputConstants.KEY_PAGEDOWN -> hsv[0] = (hsv[0] + hue) % 360;
+            default -> {
+                return false;
+            }
+        }
+        picker.model.setHsv(hsv[0], hsv[1], hsv[2]);
+        hint = KEYS;
+        picked(-1);
         return true;
     }
 

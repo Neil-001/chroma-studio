@@ -14,7 +14,7 @@ class TargetModelTest {
         assertEquals("#FF8800", m.hex());
         assertEquals("255,136,0", m.rgbText());
         assertEquals("32,100,50", m.hslText());
-        assertEquals("32,100,100", m.hsvText());
+        assertEquals("32°,100%,100%", m.hsvText());
         assertEquals(Color.ofRgb(0xFF8800).oklch(), m.lch());
         assertEquals(32, m.hsv()[0], 0.01);
     }
@@ -31,7 +31,7 @@ class TargetModelTest {
         assertEquals(m.colour().oklch(), m.lch(), "the sliders follow a typed colour");
         assertTrue(m.typeHsv("120 50% 80%"));
         assertEquals(Color.fromHsv(120, 0.5f, 0.8f), m.colour());
-        assertEquals("120,50,80", m.hsvText());
+        assertEquals("120°,50%,80%", m.hsvText());
     }
 
     @Test
