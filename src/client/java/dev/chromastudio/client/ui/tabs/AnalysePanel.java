@@ -85,13 +85,21 @@ final class AnalysePanel {
         stripH = icons ? ToolButton.ICON + 1 + ICON_BAR_H : BAR_H;
         int top = area.y() + PanelTab.ROW + stripH + PanelTab.GAP;
         int lines = 1, w = area.w() - Widgets.BAR_W - 2;
-        for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size() + (from(f) != null ? 1 : 0));
+        for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size() + suggestion(f, w).size());
         rowH = PAD + Widgets.H + 2 + lines * LINE_H + PAD + 2;
         list = new Widgets.ScrollList(new Bounds(area.x(), top, area.w(), area.bottom() - top), rowH, findings::size);
     }
 
     private static List<FormattedCharSequence> wrapped(Analyzer.Finding f, int w) {
         return PanelTab.font().split(Component.translatable(f.key()), w - 8 - PAD);
+    }
+
+    private List<FormattedCharSequence> suggestion(Analyzer.Finding f, int w) {
+        Block from = from(f);
+        if (from == null) return List.of();
+        boolean lighter = f.suggestedTarget().l() > from.colour.oklch().l();
+        Component way = Component.translatable(lighter ? "palettes.chromastudio.analyse.lighter" : "palettes.chromastudio.analyse.darker", PaletteBlocks.name(from.entry));
+        return PanelTab.font().split(way, w - 8 - PAD);
     }
 
     private Block from(Analyzer.Finding f) {
@@ -146,11 +154,8 @@ final class AnalysePanel {
             gg.text(PanelTab.font(), title, x + 8, rowY + 4, Theme.STRONG, false);
             List<FormattedCharSequence> lines = wrapped(f, w);
             for (int k = 0; k < lines.size(); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, rowY + Widgets.H + 2 + k * LINE_H, Theme.SOFT, false);
-            if (from != null) {
-                boolean lighter = f.suggestedTarget().l() > from.colour.oklch().l();
-                Component way = Component.translatable(lighter ? "palettes.chromastudio.analyse.lighter" : "palettes.chromastudio.analyse.darker", PaletteBlocks.name(from.entry));
-                gg.text(PanelTab.font(), MatchTab.ellipsis(PanelTab.font(), way.getString(), w - 8 - PAD), x + 8, rowY + Widgets.H + 2 + lines.size() * LINE_H, Theme.HIGHLIGHT, false);
-            }
+            List<FormattedCharSequence> way = suggestion(f, w);
+            for (int k = 0; k < way.size(); k++) gg.text(PanelTab.font(), way.get(k), x + 8, rowY + Widgets.H + 2 + (lines.size() + k) * LINE_H, Theme.HIGHLIGHT, false);
         });
         drawStrip(g, mouseX, mouseY);
     }
