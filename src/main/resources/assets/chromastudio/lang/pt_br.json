@@ -336,6 +336,8 @@
   "palettes.chromastudio.analyse.fix": "Buscar blocos",
   "palettes.chromastudio.analyse.fix.tip": "Abre Combinar com esta cor para buscar blocos.",
   "palettes.chromastudio.analyse.target": "Cor sugerida %s",
+  "palettes.chromastudio.analyse.lighter": "Sugestão: uma cor mais clara que %s",
+  "palettes.chromastudio.analyse.darker": "Sugestão: uma cor mais escura que %s",
   "palettes.chromastudio.analyse.explore": "Ver em Explorar",
   "palettes.chromastudio.diorama.flat": "Plano",
   "palettes.chromastudio.diorama.3d": "3D",

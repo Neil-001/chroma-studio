@@ -23,7 +23,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
 final class AnalysePanel {
-    private static final int LINE_H = 10, BAR_H = 8, ICON_BAR_H = 4, SWATCH = 16, FROM = 10, ARROW_W = 7, PAD = 3;
+    private static final int LINE_H = 10, BAR_H = 8, ICON_BAR_H = 4, SWATCH = 16, ARROW_W = 7, PAD = 3;
 
     private final List<PaletteEntry> entries;
     private record Block(PaletteEntry entry, Color colour, int analysed) {}
@@ -76,7 +76,7 @@ final class AnalysePanel {
         stripH = icons ? ToolButton.ICON + 1 + ICON_BAR_H : BAR_H;
         int top = area.y() + PanelTab.ROW + stripH + PanelTab.GAP;
         int lines = 1, w = area.w() - Widgets.BAR_W - 2;
-        for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size());
+        for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size() + (from(f) != null ? 1 : 0));
         rowH = PAD + Widgets.H + 2 + lines * LINE_H + PAD + 2;
         list = new Widgets.ScrollList(new Bounds(area.x(), top, area.w(), area.bottom() - top), rowH, findings::size);
     }
@@ -108,6 +108,7 @@ final class AnalysePanel {
             gg.fill(x, y, x + w, y + h - 2, hovered ? Theme.HOVER : Theme.PANEL);
             gg.fill(x, y, x + 3, y + h - 2, f.severity() == Analyzer.Severity.WARNING ? Theme.FAIR : Theme.INFO);
             int below = y + h - 2 + 14, rowY = y + PAD, right = x + w - PAD;
+            Block from = from(f);
             if (f.suggestedTarget() != null) {
                 Bounds b = new Bounds(right - fixW, rowY, fixW, Widgets.H);
                 fixes.add(new Fix(b, f));
@@ -118,20 +119,20 @@ final class AnalysePanel {
                 if (over) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, below);
                 Color target = Color.ofOklch(f.suggestedTarget());
                 int sx = b.x() - 4 - SWATCH;
-                outlined(gg, sx, rowY, SWATCH, target);
+                gg.fill(sx - 1, rowY - 1, sx + SWATCH + 1, rowY + SWATCH + 1, Theme.SOFT);
+                gg.fill(sx, rowY, sx + SWATCH, rowY + SWATCH, 0xFF000000 | target.rgb());
                 if (inside(mouseX, mouseY, sx, rowY, SWATCH)) {
                     gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.target", target.hex()), mouseX, below);
                 }
                 right = sx - 4;
-                Block from = from(f);
                 if (from != null) {
                     int ax = right - ARROW_W, cy = rowY + Widgets.H / 2;
                     gg.fill(ax, cy, ax + ARROW_W - 1, cy + 1, Theme.DIM);
                     gg.fill(ax + ARROW_W - 3, cy - 2, ax + ARROW_W - 2, cy + 3, Theme.DIM);
                     gg.fill(ax + ARROW_W - 2, cy - 1, ax + ARROW_W - 1, cy + 2, Theme.DIM);
-                    int fx = ax - 3 - FROM, fy = rowY + (Widgets.H - FROM) / 2;
-                    outlined(gg, fx, fy, FROM, from.colour);
-                    if (inside(mouseX, mouseY, fx, fy, FROM)) gg.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(from.entry), mouseX, below);
+                    int fx = ax - 3 - ToolButton.ICON;
+                    Widgets.blockIcon(gg, PaletteBlocks.icon(from.entry), fx, rowY);
+                    if (inside(mouseX, mouseY, fx, rowY, ToolButton.ICON)) gg.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(from.entry), mouseX, below);
                     right = fx - 4;
                 }
             }
@@ -139,17 +140,17 @@ final class AnalysePanel {
             gg.text(PanelTab.font(), title, x + 8, rowY + 4, Theme.STRONG, false);
             List<FormattedCharSequence> lines = wrapped(f, w);
             for (int k = 0; k < lines.size(); k++) gg.text(PanelTab.font(), lines.get(k), x + 8, rowY + Widgets.H + 2 + k * LINE_H, Theme.SOFT, false);
+            if (from != null) {
+                boolean lighter = f.suggestedTarget().l() > from.colour.oklch().l();
+                Component way = Component.translatable(lighter ? "palettes.chromastudio.analyse.lighter" : "palettes.chromastudio.analyse.darker", PaletteBlocks.name(from.entry));
+                gg.text(PanelTab.font(), MatchTab.ellipsis(PanelTab.font(), way.getString(), w - 8 - PAD), x + 8, rowY + Widgets.H + 2 + lines.size() * LINE_H, Theme.DIM, false);
+            }
         });
         drawStrip(g, mouseX, mouseY);
     }
 
     private static boolean inside(int mouseX, int mouseY, int x, int y, int size) {
         return mouseX >= x - 1 && mouseX < x + size + 1 && mouseY >= y - 1 && mouseY < y + size + 1;
-    }
-
-    private static void outlined(GuiGraphicsExtractor g, int x, int y, int size, Color colour) {
-        g.fill(x - 1, y - 1, x + size + 1, y + size + 1, Theme.SOFT);
-        Widgets.swatch(g, x, y, size, size, colour.rgb());
     }
 
     private void drawStrip(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -162,7 +163,7 @@ final class AnalysePanel {
             g.fill(x0, barY, x1 - gap, stripY + stripH, 0xFF000000 | blocks.get(i).colour.rgb());
             if (marked != null && !marked.blocks().isEmpty()) {
                 if (marked.blocks().contains(blocks.get(i).analysed)) g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 2, Theme.STRONG);
-                else g.fill(x0, stripY, x1, stripY + stripH, Theme.sink(0xB0));
+                else g.fill(x0, stripY, x1, stripY + stripH, Theme.sink(0x80));
             }
             if (mouseX >= x0 && mouseX < x1 && mouseY >= stripY && mouseY < stripY + stripH) {
                 g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 1, Theme.STRONG);

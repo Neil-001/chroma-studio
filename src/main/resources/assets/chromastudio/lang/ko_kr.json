@@ -336,6 +336,8 @@
   "palettes.chromastudio.analyse.fix": "블록 찾기",
   "palettes.chromastudio.analyse.fix.tip": "이 색상으로 매치를 열어 맞는 블록을 찾습니다.",
   "palettes.chromastudio.analyse.target": "추천 색상 %s",
+  "palettes.chromastudio.analyse.lighter": "추천: %s보다 밝은 색상",
+  "palettes.chromastudio.analyse.darker": "추천: %s보다 어두운 색상",
   "palettes.chromastudio.analyse.explore": "탐색에서 보기",
   "palettes.chromastudio.diorama.flat": "평면",
   "palettes.chromastudio.diorama.3d": "3D",

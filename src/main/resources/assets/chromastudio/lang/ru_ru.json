@@ -336,6 +336,8 @@
   "palettes.chromastudio.analyse.fix": "Найти блоки",
   "palettes.chromastudio.analyse.fix.tip": "Открывает «Подбор» с этим цветом, чтобы найти блоки.",
   "palettes.chromastudio.analyse.target": "Предложенный цвет %s",
+  "palettes.chromastudio.analyse.lighter": "Совет: цвет светлее, чем %s",
+  "palettes.chromastudio.analyse.darker": "Совет: цвет темнее, чем %s",
   "palettes.chromastudio.analyse.explore": "К «Обзору»",
   "palettes.chromastudio.diorama.flat": "Плоская",
   "palettes.chromastudio.diorama.3d": "3D",

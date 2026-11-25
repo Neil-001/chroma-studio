@@ -335,6 +335,8 @@
   "palettes.chromastudio.analyse.fix": "Find blocks",
   "palettes.chromastudio.analyse.fix.tip": "Opens Match on this colour to find blocks for it.",
   "palettes.chromastudio.analyse.target": "Suggested colour %s",
+  "palettes.chromastudio.analyse.lighter": "Suggested: a lighter colour than %s",
+  "palettes.chromastudio.analyse.darker": "Suggested: a darker colour than %s",
   "palettes.chromastudio.analyse.explore": "Show on Explore",
   "palettes.chromastudio.diorama.flat": "Flat",
   "palettes.chromastudio.diorama.3d": "3D",

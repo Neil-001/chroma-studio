@@ -336,6 +336,8 @@
   "palettes.chromastudio.analyse.fix": "ブロックを探す",
   "palettes.chromastudio.analyse.fix.tip": "この色でマッチを開き、合うブロックを探します。",
   "palettes.chromastudio.analyse.target": "提案色 %s",
+  "palettes.chromastudio.analyse.lighter": "提案: %s より明るい色",
+  "palettes.chromastudio.analyse.darker": "提案: %s より暗い色",
   "palettes.chromastudio.analyse.explore": "探索で表示",
   "palettes.chromastudio.diorama.flat": "平面",
   "palettes.chromastudio.diorama.3d": "3D",

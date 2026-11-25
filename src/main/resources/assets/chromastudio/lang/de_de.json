@@ -336,6 +336,8 @@
   "palettes.chromastudio.analyse.fix": "Blöcke finden",
   "palettes.chromastudio.analyse.fix.tip": "Öffnet Abgleich mit dieser Farbe, um passende Blöcke zu finden.",
   "palettes.chromastudio.analyse.target": "Vorgeschlagene Farbe %s",
+  "palettes.chromastudio.analyse.lighter": "Vorschlag: eine hellere Farbe als %s",
+  "palettes.chromastudio.analyse.darker": "Vorschlag: eine dunklere Farbe als %s",
   "palettes.chromastudio.analyse.explore": "In Erkunden zeigen",
   "palettes.chromastudio.diorama.flat": "Flach",
   "palettes.chromastudio.diorama.3d": "3D",

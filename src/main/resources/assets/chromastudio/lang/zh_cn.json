@@ -336,6 +336,8 @@
   "palettes.chromastudio.analyse.fix": "查找方块",
   "palettes.chromastudio.analyse.fix.tip": "在匹配页打开此颜色以查找方块。",
   "palettes.chromastudio.analyse.target": "建议颜色 %s",
+  "palettes.chromastudio.analyse.lighter": "建议：比%s更亮的颜色",
+  "palettes.chromastudio.analyse.darker": "建议：比%s更暗的颜色",
   "palettes.chromastudio.analyse.explore": "在探索中显示",
   "palettes.chromastudio.diorama.flat": "平面",
   "palettes.chromastudio.diorama.3d": "3D",
