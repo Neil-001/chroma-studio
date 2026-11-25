@@ -18,7 +18,7 @@ import net.minecraft.network.chat.Component;
 
 final class ColourDialog extends Popup {
     private static final int LABEL_W = 26, ROW = Widgets.H + 2, HUE_W = 12, GAP = 8;
-    private static final String[] NAMES = {"hex", "rgb", "hsl"};
+    private static final String[] NAMES = {"hex", "rgb", "hsv"};
     private static final int[] LENGTHS = {7, 13, 13};
 
     private final ColourPicker picker;
@@ -29,6 +29,7 @@ final class ColourDialog extends Popup {
     private Bounds compare;
     private Button done;
     private boolean filling;
+    private int hint;
 
     ColourDialog(Component title, Color start, Consumer<Color> onChange, Runnable onClose) {
         super(title, 260, 144, onClose);
@@ -48,8 +49,8 @@ final class ColourDialog extends Popup {
         int side = Math.min(in.h(), in.w() / 2 - HUE_W - 2 - GAP);
         picker.layout(new Bounds(in.x(), in.y(), side + 2 + HUE_W, side), HUE_W);
         int cx = in.x() + side + 2 + HUE_W + GAP, fx = cx + LABEL_W, fw = in.right() - fx;
-        String[] values = {model.hex(), model.rgbText(), model.hslText()};
-        List<Predicate<String>> takes = List.of(model::typeHex, model::typeRgb, model::typeHsl);
+        String[] values = {model.hex(), model.rgbText(), model.hsvText()};
+        List<Predicate<String>> takes = List.of(model::typeHex, model::typeRgb, model::typeHsv);
         for (int i = 0; i < fields.length; i++) {
             int at = i;
             fields[i] = widgets.field(fx, in.y() + i * ROW, fw, values[i], text -> typed(at, text, takes.get(at)));
@@ -71,9 +72,9 @@ final class ColourDialog extends Popup {
     }
 
     private void showBad() {
-        boolean ok = firstBad() < 0;
-        done.active = ok;
-        done.setTooltip(ok ? null : Tooltip.create(tr("fix")));
+        int at = firstBad();
+        done.active = at < 0;
+        done.setTooltip(at < 0 ? null : Tooltip.create(Component.translatable("settings.chromastudio.colour.fix", tr(NAMES[at]))));
     }
 
     private void typed(int i, String text, Predicate<String> take) {
@@ -86,7 +87,7 @@ final class ColourDialog extends Popup {
 
     private void picked(int except) {
         TargetModel model = picker.model;
-        String[] values = {model.hex(), model.rgbText(), model.hslText()};
+        String[] values = {model.hex(), model.rgbText(), model.hsvText()};
         filling = true;
         for (int i = 0; i < fields.length; i++) {
             if (i == except) continue;
@@ -115,15 +116,20 @@ final class ColourDialog extends Popup {
             g.text(font, tr(NAMES[i]), labelX, f.getY() + 4, Theme.FIXED_SOFT, false);
             if (bad[i]) g.outline(f.getX() - 1, f.getY() - 1, f.getWidth() + 2, f.getHeight() + 2, Theme.FIELD_BAD);
         }
-        int hint = firstBad();
-        for (int i = 0; i < fields.length && hint < 0; i++) if (fields[i].isFocused()) hint = i;
-        for (int i = 0; i < fields.length && hint < 0; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
-        if (hint >= 0)
-            g.textWithWordWrap(font, tr(NAMES[hint] + ".tip"), labelX, compare.bottom() + 4, in.right() - labelX, bad[hint] ? Theme.FIELD_BAD : Theme.FIXED_SOFT, false);
+        for (int i = 0; i < fields.length; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
+        for (int i = 0; i < fields.length; i++) if (fields[i].isFocused()) hint = i;
+        if (firstBad() >= 0) hint = firstBad();
+        g.textWithWordWrap(font, tr(NAMES[hint] + ".tip"), labelX, compare.bottom() + 4, in.right() - labelX, bad[hint] ? Theme.FIELD_BAD : Theme.FIXED_SOFT, false);
         int half = compare.w() / 2;
         swatch(g, font, compare.x(), half, start.rgb(), tr("old"));
         swatch(g, font, compare.x() + half, compare.w() - half, picker.model.colour().rgb(), tr("new"));
+        if (old().contains(mouseX, mouseY)) {
+            g.outline(compare.x(), compare.y(), half, compare.h(), 0xFFFFFFFF);
+            g.setTooltipForNextFrame(font, tr("old.tip"), mouseX, mouseY);
+        }
     }
+
+    private Bounds old() { return new Bounds(compare.x(), compare.y(), compare.w() / 2, compare.h()); }
 
     private void swatch(GuiGraphicsExtractor g, Font font, int x, int w, int rgb, Component label) {
         Widgets.swatch(g, x, compare.y(), w, compare.h(), rgb);
@@ -135,6 +141,11 @@ final class ColourDialog extends Popup {
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         if (box.contains(e.x(), e.y()) && picker.mouseClicked(e.x(), e.y())) {
             widgets.setFocused(null);
+            return true;
+        }
+        if (old().contains(e.x(), e.y())) {
+            picker.model.setColour(start);
+            picked(-1);
             return true;
         }
         return super.mouseClicked(e, doubled);
@@ -156,7 +167,6 @@ final class ColourDialog extends Popup {
     @Override
     protected void confirm() {
         if (firstBad() < 0) close();
-        else picked(-1);
     }
 
     @Override

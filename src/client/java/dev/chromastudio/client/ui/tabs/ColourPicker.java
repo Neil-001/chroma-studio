@@ -64,7 +64,7 @@ public final class ColourPicker implements AutoCloseable {
         int hx = square.x() + Math.round(hsv[1] * (square.w() - 1)), hy = square.y() + Math.round((1 - hsv[2]) * (square.h() - 1));
         g.outline(hx - 3, hy - 3, 7, 7, 0xFF000000);
         g.outline(hx - 2, hy - 2, 5, 5, 0xFFFFFFFF);
-        int by = hueBar.y() + Math.round(hsv[0] / 360f * (hueBar.h() - 1));
+        int by = Math.clamp(hueBar.y() + Math.round(hsv[0] / 360f * (hueBar.h() - 1)), hueBar.y() + 1, hueBar.bottom() - 2);
         g.fill(hueBar.x() - 1, by - 1, hueBar.right() + 1, by + 2, 0xFF000000);
         g.fill(hueBar.x() - 1, by, hueBar.right() + 1, by + 1, 0xFFFFFFFF);
 
