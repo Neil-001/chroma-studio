@@ -90,7 +90,7 @@
   "settings.chromastudio.colour.hex.bad": "Keine Hex-Farbe. Nutze sechs Ziffern aus 0–9 und A–F.",
   "settings.chromastudio.colour.rgb.bad": "Keine RGB-Farbe. Nutze drei Zahlen von 0 bis 255.",
   "settings.chromastudio.colour.hsv.bad": "Keine HSV-Farbe. Nutze einen Farbton 0–360, dann zwei Zahlen 0–100.",
-  "settings.chromastudio.colour.keys.tip": "Pfeiltasten bewegen die Markierung. Bild auf und Bild ab ändern den Farbton.",
+  "settings.chromastudio.colour.keys.tip": "Pfeiltasten bewegen die Markierung, Bild auf/ab den Farbton.",
   "settings.chromastudio.colour.old": "Alt",
   "settings.chromastudio.colour.new": "Neu",
   "settings.chromastudio.colour.fix": "Korrigiere zuerst den %s-Wert.",

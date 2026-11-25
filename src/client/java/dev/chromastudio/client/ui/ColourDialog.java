@@ -140,7 +140,8 @@ final class ColourDialog extends Popup {
 
     @Override
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
-        if (box.contains(e.x(), e.y()) && picker.mouseClicked(e.x(), e.y())) {
+        if (!box.contains(e.x(), e.y())) return true;
+        if (picker.mouseClicked(e.x(), e.y())) {
             widgets.setFocused(null);
             hint = KEYS;
             return true;
