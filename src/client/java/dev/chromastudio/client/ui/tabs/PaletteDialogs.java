@@ -929,10 +929,10 @@ final class PaletteDialogs {
             try {
                 result = SchematicExporter.export(palette, options, format);
             } catch (SchematicExporter.NoBlocksException _) {
-                status(withReason(tr("command.chromastudio.export.empty")), Theme.BAD);
+                fail(tr("command.chromastudio.export.empty"));
                 return;
             } catch (IOException e) {
-                status(withReason(tr("command.chromastudio.export.failed", String.valueOf(e.getMessage()))), Theme.BAD);
+                fail(tr("command.chromastudio.export.failed", String.valueOf(e.getMessage())));
                 return;
             }
             String path = shortPath(result.file()), skipped = String.join(", ", result.skippedIds());
@@ -947,7 +947,7 @@ final class PaletteDialogs {
             int room = box.w() - 10;
             Component shown = result(middle(path, room - Widgets.tw(tr("command.chromastudio.export.done", ""))), placed,
                     skipped.isEmpty() ? null : PanelTab.fit(tr("palettes.chromastudio.export.skipped", skipped).getString(), room));
-            Component full = result(path, placed, skipped.isEmpty() ? null : tr("palettes.chromastudio.export.skipped", skipped).getString());
+            Component full = result(path, placed, skipped.isEmpty() ? null : PanelTab.fit(tr("palettes.chromastudio.export.skipped", skipped).getString(), 4 * room));
             status(shown, Theme.GOOD);
             if (!full.getString().equals(shown.getString())) fullStatus = full;
         }
@@ -962,8 +962,10 @@ final class PaletteDialogs {
             return done;
         }
 
-        private Component withReason(Component failure) {
-            return placeWhy == null ? failure : failure.copy().append("\n").append(placeWhy.copy().withColor(Theme.FAIR));
+        private void fail(Component failure) {
+            Component line = Component.literal(PanelTab.fit(failure.getString(), box.w() - 10));
+            status(placeWhy == null ? line : line.copy().append("\n").append(placeWhy.copy().withColor(Theme.FAIR)), Theme.BAD);
+            if (!line.getString().equals(failure.getString())) fullStatus = placeWhy == null ? failure : failure.copy().append("\n").append(placeWhy.copy().withColor(Theme.FAIR));
         }
     }
 
