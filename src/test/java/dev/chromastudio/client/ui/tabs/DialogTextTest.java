@@ -156,6 +156,7 @@ class DialogTextTest {
             within("the export dialog's Axiom hint", width(AxiomBridge.named("palettes.chromastudio.export.axiom")), inner(290));
             fits("the export dialog's Axiom hint", AxiomBridge.named("palettes.chromastudio.export.axiom"), inner(290), 1);
             gradientActions();
+            generateDialog();
         }
         assertTrue(failures.isEmpty(), String.join("\n", failures));
     }
@@ -231,5 +232,15 @@ class DialogTextTest {
         int left = content.x() + PanelTab.PAD, right = content.right() - PanelTab.PAD;
         int rows = Flow.rows(Flow.place(named, left, right, PanelTab.GAP)), plainRows = Flow.rows(Flow.place(plain, left, right, PanelTab.GAP));
         if (rows > plainRows) failures.add(language + ": \"Axiom script\" puts the Gradient tab's actions on " + rows + " rows instead of " + plainRows);
+    }
+
+    private static void generateDialog() {
+        int w = inner(PaletteDialogs.Generate.WIDTH);
+        int labels = 6 + Math.max(width(tr("palettes.chromastudio.generate.seed")),
+                Math.max(width(tr("palettes.chromastudio.generate.harmony")), width(tr("palettes.chromastudio.generate.count"))));
+        int field = width(Component.literal("#3A7BD5")) + 8;
+        within("the Generate dialog's colour row", labels + 18 + field + 2 * PanelTab.GAP + 2
+                + button(tr("palettes.chromastudio.generate.in_hand")) + button(tr("palettes.chromastudio.generate.random")), w);
+        within("the Generate dialog's height", PaletteDialogs.Generate.HEIGHT, new Window().content(427, 240).h() - 8);
     }
 }
