@@ -263,6 +263,7 @@
   "capture.chromastudio.second.size": "Wybierz przeciwległy róg: %s × %s × %s",
   "capture.chromastudio.keys": "Naciśnij %s na bloku. Escape, aby anulować.",
   "capture.chromastudio.keys.second": "Niebieski oznacza pierwszy róg. Naciśnij %s na bloku. Escape, aby anulować.",
+  "capture.chromastudio.keys.second.feet": "Niebieski oznacza pierwszy róg. Brak bloku w zasięgu, więc %s zaznacza miejsce pod stopami. Escape, aby anulować.",
   "capture.chromastudio.keys.feet": "Brak bloku w zasięgu, więc %s zaznacza miejsce pod stopami. Escape, aby anulować.",
   "capture.chromastudio.cancelled": "Anulowano przechwytywanie",
   "capture.chromastudio.too_big": "Ten obszar jest za duży. Przechwycenie liczy najwyżej %s bloków.",

@@ -263,6 +263,7 @@
   "capture.chromastudio.second.size": "Выберите противоположный угол: %s × %s × %s",
   "capture.chromastudio.keys": "Нажмите %s, глядя на блок. Escape для отмены.",
   "capture.chromastudio.keys.second": "Синим отмечен первый угол. Нажмите %s, глядя на блок. Escape для отмены.",
+  "capture.chromastudio.keys.second.feet": "Синим отмечен первый угол. Блока в зоне досягаемости нет, поэтому %s отметит место под ногами. Escape для отмены.",
   "capture.chromastudio.keys.feet": "Блока в зоне досягаемости нет, поэтому %s отметит место под ногами. Escape для отмены.",
   "capture.chromastudio.cancelled": "Захват отменён",
   "capture.chromastudio.too_big": "Эта область слишком велика. Захват считает не более %s блоков.",

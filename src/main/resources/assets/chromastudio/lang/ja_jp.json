@@ -263,6 +263,7 @@
   "capture.chromastudio.second.size": "反対側の角を選んでください: %s × %s × %s",
   "capture.chromastudio.keys": "ブロックに向けて %s を押します。取り消すには Esc。",
   "capture.chromastudio.keys.second": "青い枠が 1 つ目の角です。ブロックに向けて %s を押します。取り消すには Esc。",
+  "capture.chromastudio.keys.second.feet": "青い枠が 1 つ目の角です。届く範囲にブロックがないため、%s で足元を選びます。取り消すには Esc。",
   "capture.chromastudio.keys.feet": "届く範囲にブロックがないため、%s で足元を選びます。取り消すには Esc。",
   "capture.chromastudio.cancelled": "キャプチャを取り消しました",
   "capture.chromastudio.too_big": "その範囲は大きすぎます。1 回のキャプチャで数えられるのは最大 %s ブロックです。",

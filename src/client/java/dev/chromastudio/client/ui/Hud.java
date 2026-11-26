@@ -33,7 +33,7 @@ public final class Hud {
         }
     }
 
-    private static final long STRIP_MS = 5000, FADE_MS = 600, MISSED_MS = 250;
+    private static final long STRIP_MS = 5000, FADE_MS = 600;
     private static final int ABOVE_HOTBAR = 70;
     private static final int MARGIN = 6, PAD = 4, ACCENT = 3, ICON = 16, MIN_WIDTH = 210;
     private static final int BACK = 0xB0000000;
@@ -84,8 +84,7 @@ public final class Hud {
     public static void render(GuiGraphicsExtractor g) {
         Minecraft mc = Minecraft.getInstance();
         long now = Util.getMillis();
-        long gap = lastFrame > 0 ? now - lastFrame : 0;
-        long covered = mc.gui.screen() != null || gap > MISSED_MS ? gap : 0;
+        long covered = mc.gui.screen() != null && lastFrame > 0 ? now - lastFrame : 0;
         lastFrame = now;
         if (covered > 0 && !ScreenPicker.armed()) {
             readoutUntil += covered;

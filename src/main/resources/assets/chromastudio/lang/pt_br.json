@@ -263,6 +263,7 @@
   "capture.chromastudio.second.size": "Escolha o canto oposto: %s × %s × %s",
   "capture.chromastudio.keys": "Pressione %s em um bloco. Esc para cancelar.",
   "capture.chromastudio.keys.second": "O azul marca o primeiro canto. Pressione %s em um bloco. Esc para cancelar.",
+  "capture.chromastudio.keys.second.feet": "O azul marca o primeiro canto. Nenhum bloco ao alcance, então %s marca os seus pés. Esc para cancelar.",
   "capture.chromastudio.keys.feet": "Nenhum bloco ao alcance, então %s marca os seus pés. Esc para cancelar.",
   "capture.chromastudio.cancelled": "Captura cancelada",
   "capture.chromastudio.too_big": "Essa caixa é grande demais. Uma captura conta no máximo %s blocos.",

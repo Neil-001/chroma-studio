@@ -1,6 +1,8 @@
 package dev.chromastudio.client.action;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,5 +23,24 @@ class ScreenPickerTest {
                 int at = pickX - lx + (pickY - ly) * LOUPE;
                 assertArrayEquals(picked, ScreenPicker.centre(loupe, at), "pointer at " + pickX + ", " + pickY);
             }
+    }
+
+    @Test
+    void theReticleNeverDrawsWhereTheLoupeReadsEvenAtTheEdges() {
+        for (int scale = 1; scale <= 4; scale++) {
+            int guiW = 427, guiH = 240, width = guiW * scale, height = guiH * scale;
+            for (int x = 0; x < guiW; x++)
+                for (int y = 0; y < guiH; y += x % 7 == 0 ? 1 : 37) {
+                    int lx = ScreenPicker.loupeStart(ScreenPicker.pick(x, scale, width), width);
+                    int ly = ScreenPicker.loupeStart(ScreenPicker.pick(y, scale, height), height);
+                    for (int[] bar : ScreenPicker.reticle(x, y, scale, width, height)) {
+                        boolean apart = (bar[2] + 1) * scale <= lx || (bar[0] - 1) * scale >= lx + LOUPE
+                                || (bar[3] + 1) * scale <= ly || (bar[1] - 1) * scale >= ly + LOUPE;
+                        assertTrue(apart, "scale " + scale + ", pointer at " + x + ", " + y);
+                    }
+                    if (x > 20 && x < guiW - 20 && y > 20 && y < guiH - 20)
+                        assertEquals(4, ScreenPicker.reticle(x, y, scale, width, height).size(), "all arms show away from the edges");
+                }
+        }
     }
 }

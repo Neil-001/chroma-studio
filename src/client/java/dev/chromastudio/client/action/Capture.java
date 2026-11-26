@@ -10,6 +10,7 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
+import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.core.palette.PaletteEntry;
@@ -103,8 +104,8 @@ public final class Capture {
     private static void prompt() {
         Minecraft mc = Minecraft.getInstance();
         Component key = Hud.key(Keys.EYEDROPPER);
-        Component keys = Component.translatable(!aimsAtBlock(mc) ? "capture.chromastudio.keys.feet"
-                : first == null ? "capture.chromastudio.keys" : "capture.chromastudio.keys.second", key);
+        String hint = first == null ? "capture.chromastudio.keys" : "capture.chromastudio.keys.second";
+        Component keys = Component.translatable(aimsAtBlock(mc) ? hint : hint + ".feet", key);
         Component step;
         if (first == null) step = Component.translatable("capture.chromastudio.first");
         else {
@@ -141,7 +142,7 @@ public final class Capture {
         disarm();
         Result result = capture(from, at);
         Hud.readout(result.made ? Hud.Kind.DONE : Hud.Kind.PROBLEM, result.message, result.detail, 4);
-        if (result.made) ChromaStudioClient.openWindow();
+        if (result.made) ChromaScreen.open("palettes");
     }
 
     public static void tick(Minecraft mc) {

@@ -263,6 +263,7 @@
   "capture.chromastudio.second.size": "选取对角：%s × %s × %s",
   "capture.chromastudio.keys": "对准方块按 %s。按 Esc 取消。",
   "capture.chromastudio.keys.second": "蓝框标出第一个角。对准方块按 %s。按 Esc 取消。",
+  "capture.chromastudio.keys.second.feet": "蓝框标出第一个角。够不到方块，按 %s 将标记你脚下的位置。按 Esc 取消。",
   "capture.chromastudio.keys.feet": "够不到方块，按 %s 将标记你脚下的位置。按 Esc 取消。",
   "capture.chromastudio.cancelled": "已取消捕获",
   "capture.chromastudio.too_big": "该范围太大。一次捕获最多统计 %s 个方块。",

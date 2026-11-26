@@ -9,6 +9,8 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ui.Hud;
 import dev.chromastudio.client.ui.Widgets;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.IntConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -45,9 +47,10 @@ public final class ScreenPicker {
     }
 
     public static void click(double x, double y) {
-        if (frames < SETTLE) return;
+        if (frames < SETTLE || clickX >= 0) return;
         clickX = x;
         clickY = y;
+        frames = 0;
     }
 
     public static void render(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -65,9 +68,15 @@ public final class ScreenPicker {
             });
         }
 
+        if (picking) return;
         Hud.banner(g, Component.translatable("picker.chromastudio.title"), Component.translatable("picker.chromastudio.hint"));
 
-        reticle(g, mouseX, mouseY, (double) mc.getWindow().getWidth() / mc.getWindow().getGuiScaledWidth());
+        RenderTarget target = mc.gameRenderer.mainRenderTarget();
+        double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
+        for (int[] bar : target.width < LOUPE || target.height < LOUPE ? List.<int[]>of() : reticle(mouseX, mouseY, scale, target.width, target.height)) {
+            g.fill(bar[0] - 1, bar[1] - 1, bar[2] + 1, bar[3] + 1, 0xFF000000);
+            g.fill(bar[0], bar[1], bar[2], bar[3], 0xFFFFFFFF);
+        }
         if (seen == null) return;
         int rgb = mean(centre(seen, seenAt));
         String hex = String.format("#%06X", rgb);
@@ -91,18 +100,20 @@ public final class ScreenPicker {
         g.text(font, hex, x + 2 + SWATCH + 3, sy + 1, 0xFFFFFFFF, false);
     }
 
-    private static void reticle(GuiGraphicsExtractor g, int x, int y, double scale) {
-        int near = (int) Math.ceil((LOUPE / 2 + 2) / scale) + 1, far = near + RETICLE;
-        bar(g, x - far, y, x - near + 1, y + 2);
-        bar(g, x + near, y, x + far + 1, y + 2);
-        bar(g, x, y - far, x + 2, y - near + 1);
-        bar(g, x, y + near, x + 2, y + far + 1);
+    static List<int[]> reticle(int x, int y, double scale, int width, int height) {
+        int near = (int) Math.ceil(LOUPE / 2 / scale) + 2, far = near + RETICLE;
+        int lx = loupeStart(pick(x, scale, width), width), ly = loupeStart(pick(y, scale, height), height);
+        List<int[]> bars = new ArrayList<>();
+        for (int[] bar : List.of(new int[] {x - far, y, x - near + 1, y + 2}, new int[] {x + near, y, x + far + 1, y + 2},
+                new int[] {x, y - far, x + 2, y - near + 1}, new int[] {x, y + near, x + 2, y + far + 1})) {
+            boolean clearX = (bar[2] + 1) * scale <= lx || (bar[0] - 1) * scale >= lx + LOUPE;
+            boolean clearY = (bar[3] + 1) * scale <= ly || (bar[1] - 1) * scale >= ly + LOUPE;
+            if (clearX || clearY) bars.add(bar);
+        }
+        return bars;
     }
 
-    private static void bar(GuiGraphicsExtractor g, int x0, int y0, int x1, int y1) {
-        g.fill(x0 - 1, y0 - 1, x1 + 1, y1 + 1, 0xFF000000);
-        g.fill(x0, y0, x1, y1, 0xFFFFFFFF);
-    }
+    static int pick(double gui, double scale, int size) { return Math.clamp((int) (gui * scale) - 1, 0, size - SIDE); }
 
     static int loupeStart(int picked, int size) { return Math.clamp(picked - (LOUPE - SIDE) / 2, 0, size - LOUPE); }
 
@@ -140,8 +151,7 @@ public final class ScreenPicker {
         int bytes = texture == null ? 0 : texture.getFormat().blockSize();
         if (bytes != 4 || target.width < LOUPE || target.height < LOUPE) return;
         double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
-        int pickX = Math.clamp((int) (guiX * scale) - 1, 0, target.width - SIDE);
-        int pickTop = Math.clamp((int) (guiY * scale) - 1, 0, target.height - SIDE);
+        int pickX = pick(guiX, scale, target.width), pickTop = pick(guiY, scale, target.height);
         int px = loupeStart(pickX, target.width), fromTop = loupeStart(pickTop, target.height);
         int at = pickX - px + (pickTop - fromTop) * LOUPE;
         int py = target.height - LOUPE - fromTop;

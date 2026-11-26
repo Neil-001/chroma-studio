@@ -263,6 +263,7 @@
   "capture.chromastudio.second.size": "Wähle die gegenüberliegende Ecke: %s × %s × %s",
   "capture.chromastudio.keys": "Drücke %s auf einen Block. Esc zum Abbrechen.",
   "capture.chromastudio.keys.second": "Blau markiert die erste Ecke. Drücke %s auf einen Block. Esc zum Abbrechen.",
+  "capture.chromastudio.keys.second.feet": "Blau markiert die erste Ecke. Kein Block in Reichweite, also markiert %s deine Füße. Esc zum Abbrechen.",
   "capture.chromastudio.keys.feet": "Kein Block in Reichweite, also markiert %s deine Füße. Esc zum Abbrechen.",
   "capture.chromastudio.cancelled": "Erfassung abgebrochen",
   "capture.chromastudio.too_big": "Dieser Bereich ist zu groß. Eine Erfassung zählt höchstens %s Blöcke.",

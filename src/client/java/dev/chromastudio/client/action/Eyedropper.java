@@ -73,14 +73,19 @@ public final class Eyedropper {
         Color colour = index.colourOf(state, face, tint).orElseThrow();
         MatchState.setEntry(entry, state, face, tint);
         MatchState.remember();
-        boolean copied = Clipboard.copy(colour.hex()).isEmpty();
+        boolean copied = Clipboard.copy(colour.hex()).isEmpty() && colour.hex().equals(mc.keyboardHandler.getClipboard());
 
         String properties = Entry.properties(state);
         Component name = properties.isEmpty() ? entry.name() : Component.translatable("match.chromastudio.name_with_state", entry.name(), properties);
-        Hud.readout(Hud.Kind.DONE, new ItemStack(entry.block()), colour.rgb(), name,
+        Hud.readout(Hud.Kind.DONE, icon(state), colour.rgb(), name,
                 Component.translatable(copied ? "eyedropper.chromastudio.readout.copied" : "eyedropper.chromastudio.readout", faceName(face), colour.hex()), ModSettings.readoutSeconds);
         if (open) ChromaScreen.open("match");
         return true;
+    }
+
+    private static ItemStack icon(BlockState state) {
+        ItemStack block = new ItemStack(state.getBlock());
+        return block.isEmpty() && !state.getFluidState().isEmpty() ? new ItemStack(state.getFluidState().getType().getBucket()) : block;
     }
 
     public static Component faceName(Face face) {

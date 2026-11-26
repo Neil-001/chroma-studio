@@ -263,6 +263,7 @@
   "capture.chromastudio.second.size": "Elige la esquina opuesta: %s × %s × %s",
   "capture.chromastudio.keys": "Pulsa %s sobre un bloque. Escape para cancelar.",
   "capture.chromastudio.keys.second": "El azul marca la primera esquina. Pulsa %s sobre un bloque. Escape para cancelar.",
+  "capture.chromastudio.keys.second.feet": "El azul marca la primera esquina. No hay ningún bloque al alcance, así que %s marca tus pies. Escape para cancelar.",
   "capture.chromastudio.keys.feet": "No hay ningún bloque al alcance, así que %s marca tus pies. Escape para cancelar.",
   "capture.chromastudio.cancelled": "Captura cancelada",
   "capture.chromastudio.too_big": "Esa caja es demasiado grande. Una captura cuenta como máximo %s bloques.",

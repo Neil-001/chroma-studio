@@ -263,6 +263,7 @@
   "capture.chromastudio.second.size": "Choisis le coin opposé : %s × %s × %s",
   "capture.chromastudio.keys": "Appuie sur %s sur un bloc. Échap pour annuler.",
   "capture.chromastudio.keys.second": "Le bleu marque le premier coin. Appuie sur %s sur un bloc. Échap pour annuler.",
+  "capture.chromastudio.keys.second.feet": "Le bleu marque le premier coin. Aucun bloc à portée, donc %s marque tes pieds. Échap pour annuler.",
   "capture.chromastudio.keys.feet": "Aucun bloc à portée, donc %s marque tes pieds. Échap pour annuler.",
   "capture.chromastudio.cancelled": "Capture annulée",
   "capture.chromastudio.too_big": "Cette zone est trop grande. Une capture compte au plus %s blocs.",
