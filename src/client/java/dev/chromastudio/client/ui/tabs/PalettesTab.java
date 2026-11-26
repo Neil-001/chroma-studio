@@ -345,7 +345,7 @@ public final class PalettesTab extends PanelTab {
         for (int i = 0; i < n; i++) {
             int index = i, y = entriesArea.y() + i * ENTRY_ROW;
             PaletteEntry e = p.entries.get(i);
-            rows.add(new EntryCell(cellX, y, spinX - 3 - cellX, ENTRY_ROW - 1, p, index, i % 2 == 1 ? left : 0, right, shareRight, () -> shownShares));
+            rows.add(new EntryCell(cellX, y, spinX - 3 - cellX, ENTRY_ROW - 1, e, index, i % 2 == 1 ? left : 0, right, shareRight, () -> shownShares));
             IconButton up = rows.add(new IconButton(left + 1, y + 1, 10, 8, IconButton.Glyph.UP, tr("palettes.chromastudio.entry.up"), () -> move(index, -1)));
             IconButton down = rows.add(new IconButton(left + 1, y + 9, 10, 8, IconButton.Glyph.DOWN, tr("palettes.chromastudio.entry.down"), () -> move(index, 1)));
             if (p.preset) rows.add(new EntryCell.Weight(spinX, y, WEIGHT_W, ENTRY_ROW - 1, e.weight(), fixed));
@@ -399,7 +399,6 @@ public final class PalettesTab extends PanelTab {
     }
 
     private static final class EntryCell extends AbstractWidget {
-        private final Palette palette;
         private final int index, stripeFrom, stripeTo, shareRight;
         private final Supplier<int[]> shares;
         private final PaletteEntry entry;
@@ -407,15 +406,14 @@ public final class PalettesTab extends PanelTab {
         private final Color colour;
         private final boolean known;
 
-        EntryCell(int x, int y, int w, int h, Palette palette, int index, int stripeFrom, int stripeTo, int shareRight, Supplier<int[]> shares) {
-            super(x, y, w, h, PaletteBlocks.name(palette.entries.get(index)));
-            this.palette = palette;
+        EntryCell(int x, int y, int w, int h, PaletteEntry entry, int index, int stripeFrom, int stripeTo, int shareRight, Supplier<int[]> shares) {
+            super(x, y, w, h, PaletteBlocks.name(entry));
             this.index = index;
             this.stripeFrom = stripeFrom;
             this.stripeTo = stripeTo;
             this.shareRight = shareRight;
             this.shares = shares;
-            entry = palette.entries.get(index);
+            this.entry = entry;
             icon = PaletteBlocks.icon(entry);
             colour = PaletteBlocks.colour(entry);
             known = PaletteBlocks.state(entry) != null;
