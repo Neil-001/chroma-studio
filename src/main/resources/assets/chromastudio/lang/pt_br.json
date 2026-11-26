@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "Restaurar padrões",
   "settings.chromastudio.reset_all.confirm": "Restaurar o padrão de todas as configurações? As teclas continuam.",
   "settings.chromastudio.reset_all.changed": "Diferentes do padrão: %s",
+  "settings.chromastudio.reset_all.more": "mais %s",
   "settings.chromastudio.undo_all": "Desfazer tudo",
   "settings.chromastudio.undo_all.tip": "Desfaz todas as alterações desde que você abriu as configurações.",
   "settings.chromastudio.undo_all.none": "Nada mudou.",

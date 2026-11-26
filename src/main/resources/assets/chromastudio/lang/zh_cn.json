@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "恢复默认值",
   "settings.chromastudio.reset_all.confirm": "将所有设置恢复为默认值吗？按键设置保持不变。",
   "settings.chromastudio.reset_all.changed": "与默认值不同：%s",
+  "settings.chromastudio.reset_all.more": "另外 %s 项",
   "settings.chromastudio.undo_all": "全部撤销",
   "settings.chromastudio.undo_all.tip": "撤销打开设置后所做的全部更改。",
   "settings.chromastudio.undo_all.none": "没有任何更改。",

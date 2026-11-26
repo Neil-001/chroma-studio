@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "기본값으로 되돌리기",
   "settings.chromastudio.reset_all.confirm": "모든 설정을 기본값으로 되돌릴까요? 키 지정은 그대로 둡니다.",
   "settings.chromastudio.reset_all.changed": "기본값과 다름: %s",
+  "settings.chromastudio.reset_all.more": "외 %s개",
   "settings.chromastudio.undo_all": "모두 되돌리기",
   "settings.chromastudio.undo_all.tip": "설정을 연 뒤 바꾼 내용을 모두 되돌립니다.",
   "settings.chromastudio.undo_all.none": "바뀐 것이 없습니다.",

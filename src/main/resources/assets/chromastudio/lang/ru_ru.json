@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "Сброс к стандартным",
   "settings.chromastudio.reset_all.confirm": "Вернуть всем настройкам значения по умолчанию? Клавиши останутся.",
   "settings.chromastudio.reset_all.changed": "Отличаются от стандартных: %s",
+  "settings.chromastudio.reset_all.more": "ещё %s",
   "settings.chromastudio.undo_all": "Отменить всё",
   "settings.chromastudio.undo_all.tip": "Отменяет все изменения с момента открытия настроек.",
   "settings.chromastudio.undo_all.none": "Ничего не изменилось.",

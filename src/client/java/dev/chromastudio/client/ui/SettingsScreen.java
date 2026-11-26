@@ -1,5 +1,6 @@
 package dev.chromastudio.client.ui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.ThemeChoice;
@@ -33,7 +34,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 
 public final class SettingsScreen extends Screen {
-    private static final int TOP = 24, BOTTOM = 26, ROW = 20, HEADING = 22, CONTROL_W = 130, M = 12, GAP = 2, FADE = 6;
+    private static final int TOP = 24, BOTTOM = 26, ROW = 20, HEADING = 22, CONTROL_W = 130, M = 12, GAP = 2, FADE = 6, COUNT_H = 14;
     private static final String MOD_KEYS = "modKeys";
 
     private final Screen parent;
@@ -164,6 +165,7 @@ public final class SettingsScreen extends Screen {
             y += 4;
         }
         y += 6;
+        if (!search.isEmpty() && !shown.isEmpty()) y += COUNT_H;
         contentH = y - TOP;
         list.viewport(new Bounds(left - 4, TOP, colW + 16, listBottom() - TOP), contentH);
         clear.visible = !search.isEmpty();
@@ -205,12 +207,23 @@ public final class SettingsScreen extends Screen {
             String here = current;
             for (String id : groupTops.keySet()) {
                 Component name = tr("group." + id);
-                widgets.button(in.x(), y, in.w(), id.equals(here) ? name.copy().withColor(Theme.ACCENT) : name, () -> {
+                Button b = widgets.button(in.x(), y, in.w(), id.equals(here) ? name.copy().withColor(Theme.ACCENT) : name, () -> {
                     list.scrollTo(groupTops.get(id));
                     close();
                 });
+                if (id.equals(here)) widgets.setFocused(b);
                 y += Widgets.H + GAP;
             }
+        }
+
+        @Override
+        boolean keyPressed(KeyEvent e) {
+            boolean back = e.key() == InputConstants.KEY_UP || e.key() == InputConstants.KEY_TAB && e.hasShiftDown();
+            if (!back && e.key() != InputConstants.KEY_DOWN && e.key() != InputConstants.KEY_TAB) return super.keyPressed(e);
+            List<AbstractWidget> choices = widgets.children();
+            int at = choices.indexOf(widgets.getFocused());
+            widgets.setFocused(choices.get(Math.floorMod(at + (back ? -1 : 1) + (at < 0 && back ? 1 : 0), choices.size())));
+            return true;
         }
     }
 
@@ -259,10 +272,18 @@ public final class SettingsScreen extends Screen {
         private final Component changed;
 
         Confirm() {
-            Component names = Component.translatable("settings.chromastudio.reset_all.changed",
-                    ComponentUtils.formatList(changedFromDefault("").map(SettingsScreen::tr).toList(), Component.literal(", ")));
+            List<Component> all = changedFromDefault("").map(SettingsScreen::tr).toList();
+            int listed = all.size();
+            Component names = changedText(all, listed);
+            while (listed > 1 && lines(names) > 4) names = changedText(all, --listed);
             changed = names;
             super(tr("reset_all.title"), W, TITLE_H + 7 + (lines(QUESTION) + Math.min(4, lines(names))) * 9 + 8 + Widgets.H, () -> popup = null);
+        }
+
+        private static Component changedText(List<Component> all, int listed) {
+            List<Component> names = new ArrayList<>(all.subList(0, listed));
+            if (listed < all.size()) names.add(Component.translatable("settings.chromastudio.reset_all.more", all.size() - listed));
+            return Component.translatable("settings.chromastudio.reset_all.changed", ComponentUtils.formatList(names, Component.literal(", ")));
         }
 
         private static int lines(Component text) { return Minecraft.getInstance().font.split(text, W - 10).size(); }
@@ -319,10 +340,14 @@ public final class SettingsScreen extends Screen {
             else if (stripe) g.fill(x, y, x + width, y + height, Theme.veil(0x08));
             boolean changed = !setting.equals(MOD_KEYS) && !ModSettings.isDefault(setting);
             if (changed) g.fill(x, y + 2, x + 2, y + height - 2, Theme.HIGHLIGHT);
-            Component tag = changed ? tr("changed") : note;
-            if (tag == null) return;
-            int tx = controlX - 6 - Widgets.tw(tag);
-            if (tx > labelRight + 6) g.text(Minecraft.getInstance().font, tag, tx, y + 5, changed ? Theme.HIGHLIGHT : Theme.SOFT, false);
+            List<Component> tags = !changed ? note == null ? List.of() : List.of(note)
+                    : note == null ? List.of(tr("changed")) : List.of(tr("changed").copy().append("  ").append(note), note);
+            for (Component tag : tags) {
+                int tx = controlX - 6 - Widgets.tw(tag);
+                if (tx <= labelRight + 6) continue;
+                g.text(Minecraft.getInstance().font, tag, tx, y + 5, changed ? Theme.HIGHLIGHT : Theme.SOFT, false);
+                return;
+            }
         }
 
         @Override
@@ -478,6 +503,7 @@ public final class SettingsScreen extends Screen {
             if (t.getValue()) g.fill(lx + 1, ly + 1, lx + 5, ly + 5, Theme.GOOD);
         }
         for (CycleButton<?> c : cyclers) {
+            if (Widgets.tw(c.getMessage()) > c.getWidth() - 24) continue;
             int cy = c.getY() + c.getHeight() / 2, l = c.getX() + 6, r = c.getRight() - 7;
             for (int i = 0; i < 3; i++) {
                 g.fill(l + i, cy - i, l + i + 1, cy + i + 1, Theme.SOFT);
@@ -495,8 +521,8 @@ public final class SettingsScreen extends Screen {
         Component hint = tr("hover_hint");
         int hintL = resets.get("").getRight() + 8, hintR = width - left - 8 - Widgets.buttonWidth(Component.translatable("gui.done")) - 14;
         if (!noRows && Widgets.tw(hint) <= hintR - hintL) Widgets.centred(g, hint, (hintL + hintR) / 2, height - 17, Theme.SOFT);
-        int countY = TOP + contentH - list.scrolled();
-        if (!search.isEmpty() && !noRows && countY < bottom - 9)
+        int countY = TOP + contentH - COUNT_H - list.scrolled();
+        if (!search.isEmpty() && !noRows && countY >= TOP && countY + 9 <= bottom)
             Widgets.centred(g, Component.translatable("settings.chromastudio.search.count", shownRows), left + columnWidth() / 2, countY, Theme.SOFT);
         if (noRows) {
             Widgets.centred(g, tr("search.none"), width / 2, TOP + 16, Theme.TEXT);
@@ -551,7 +577,19 @@ public final class SettingsScreen extends Screen {
             else searchField.setValue("");
             return true;
         }
-        return list.keyPressed(event) || super.keyPressed(event);
+        boolean handled = list.keyPressed(event) || super.keyPressed(event);
+        if (getFocused() == list && list.getFocused() instanceof AbstractWidget w) {
+            if (w.getY() < TOP) list.scrollTo(list.scrolled() - (TOP - w.getY()) - 4);
+            else if (w.getBottom() > listBottom()) list.scrollTo(list.scrolled() + w.getBottom() - listBottom() + 4);
+        }
+        return handled;
+    }
+
+    @Override
+    public List<? extends GuiEventListener> children() {
+        List<GuiEventListener> all = new ArrayList<>(super.children());
+        all.add(list);
+        return all;
     }
 
     @Override

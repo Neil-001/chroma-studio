@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "Auf Standard zurücksetzen",
   "settings.chromastudio.reset_all.confirm": "Jede Einstellung auf ihren Standardwert zurücksetzen? Die Tastenbelegung bleibt.",
   "settings.chromastudio.reset_all.changed": "Vom Standard abweichend: %s",
+  "settings.chromastudio.reset_all.more": "%s weitere",
   "settings.chromastudio.undo_all": "Alle rückgängig",
   "settings.chromastudio.undo_all.tip": "Macht jede Änderung seit dem Öffnen der Einstellungen rückgängig.",
   "settings.chromastudio.undo_all.none": "Es hat sich nichts geändert.",

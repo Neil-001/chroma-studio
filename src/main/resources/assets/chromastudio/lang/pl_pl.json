@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "Przywróć domyślne",
   "settings.chromastudio.reset_all.confirm": "Przywrócić domyślne wartości wszystkich ustawień? Klawisze zostają.",
   "settings.chromastudio.reset_all.changed": "Różne od domyślnych: %s",
+  "settings.chromastudio.reset_all.more": "i %s więcej",
   "settings.chromastudio.undo_all": "Cofnij wszystko",
   "settings.chromastudio.undo_all.tip": "Cofa wszystkie zmiany od otwarcia ustawień.",
   "settings.chromastudio.undo_all.none": "Nic się nie zmieniło.",

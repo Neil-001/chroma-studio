@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "Valeurs par défaut",
   "settings.chromastudio.reset_all.confirm": "Remettre tous les paramètres à leur valeur par défaut ? Les commandes restent.",
   "settings.chromastudio.reset_all.changed": "Modifiés par rapport au défaut : %s",
+  "settings.chromastudio.reset_all.more": "%s de plus",
   "settings.chromastudio.undo_all": "Tout annuler",
   "settings.chromastudio.undo_all.tip": "Annule tous les changements depuis l'ouverture des paramètres.",
   "settings.chromastudio.undo_all.none": "Rien n'a changé.",

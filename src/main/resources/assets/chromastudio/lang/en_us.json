@@ -66,6 +66,7 @@
   "settings.chromastudio.reset_all.title": "Reset to defaults",
   "settings.chromastudio.reset_all.confirm": "Reset every setting to its default? Key binds stay.",
   "settings.chromastudio.reset_all.changed": "Changed from default: %s",
+  "settings.chromastudio.reset_all.more": "%s more",
   "settings.chromastudio.undo_all": "Undo all",
   "settings.chromastudio.undo_all.tip": "Undoes every change since you opened settings.",
   "settings.chromastudio.undo_all.none": "Nothing has changed.",

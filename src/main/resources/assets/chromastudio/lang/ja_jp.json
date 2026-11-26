@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "初期値に戻す",
   "settings.chromastudio.reset_all.confirm": "すべての設定を初期値に戻しますか？キー設定はそのままです。",
   "settings.chromastudio.reset_all.changed": "初期値から変更: %s",
+  "settings.chromastudio.reset_all.more": "ほか %s 件",
   "settings.chromastudio.undo_all": "すべて元に戻す",
   "settings.chromastudio.undo_all.tip": "設定を開いてからの変更をすべて取り消します。",
   "settings.chromastudio.undo_all.none": "変更はありません。",

@@ -67,6 +67,7 @@
   "settings.chromastudio.reset_all.title": "Restablecer valores",
   "settings.chromastudio.reset_all.confirm": "¿Devolver todos los ajustes a sus valores predeterminados? Los controles se quedan.",
   "settings.chromastudio.reset_all.changed": "Distintos del predeterminado: %s",
+  "settings.chromastudio.reset_all.more": "%s más",
   "settings.chromastudio.undo_all": "Deshacer todo",
   "settings.chromastudio.undo_all.tip": "Deshace todos los cambios desde que abriste los ajustes.",
   "settings.chromastudio.undo_all.none": "No ha cambiado nada.",
