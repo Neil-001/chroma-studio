@@ -24,6 +24,7 @@
 - Build the `PaletteDialogs.WorldEdit` buttons before setting the From field, whose responder updates them. In `PaletteDialogs.Hotbar`, wait for the rebuilt dialog to draw before accepting Fill, so queued clicks can't confirm it unseen.
 - `PanelTab.mouseClicked` gives both widget groups the click when there's no dialog so clicking one group ends typing in the other.
 - `MatchTab.panel` and `GradientTab.drawOver` draw a rule under the filter panel title so the first scrolled row reads as part of the body.
+- `PaletteDialogs.Import` draws its status under its buttons instead of through `Dialog.status`, which pins text to the bottom edge. It returns focus to the field on the next tick because a click focuses the button after the button's action runs.
 - `DioramaPanel` shares arrangement defaults, filtered entries and seed with the exporter so the default export matches the wall shown.
 - `DioramaPip.renderToTexture` creates a resolver because Fabric's is private. It flips the wall about z because GUI y runs down. `lookThroughALens` swaps near and far for the game's reversed depth. `FIT` leaves room for perspective to enlarge the near end.
 - `AnalysePanel` draws its Find blocks buttons itself because they scroll with the findings. Park them off screen each frame so a scrolled-out button can't take a click. Anchor its tooltips below the finding, or above it at the screen edge, so they don't cover its text.

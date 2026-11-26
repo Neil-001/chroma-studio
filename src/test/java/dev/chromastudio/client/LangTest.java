@@ -90,6 +90,8 @@ class LangTest {
             if (r != QueuedChanges.Refusal.NONE && r != QueuedChanges.Refusal.EMPTY) keys.add("axiom.chromastudio.refused." + r.name().toLowerCase(Locale.ROOT));
         }
         for (UnreadablePalette.Reason r : UnreadablePalette.Reason.values()) keys.add("palettes.chromastudio.unreadable." + r.name().toLowerCase(Locale.ROOT));
+        keys.add("palettes.chromastudio.import.ready");
+        keys.add("palettes.chromastudio.import.ready.one");
         for (String counted : List.of("count", "masked", "gradient_tool.skipped", "gradient_tool.left_alone")) {
             keys.add("axiom.chromastudio." + counted);
             keys.add("axiom.chromastudio." + counted + ".one");
