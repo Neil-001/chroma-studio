@@ -285,6 +285,7 @@
   "palettes.chromastudio.no_dialog": "ファイルダイアログが開きませんでした。代わりにファイルのパスを入力してください。",
   "palettes.chromastudio.name_hint": "名前",
   "palettes.chromastudio.name_needed": "先に名前を付けてください。",
+  "palettes.chromastudio.name_taken": "その名前は使用済みです。",
   "palettes.chromastudio.need_palette": "先にパレットを選んでください。",
   "palettes.chromastudio.no_world": "これはワールド内でのみ使えます。",
   "palettes.chromastudio.need_entries": "このパレットにはまだブロックがありません。",

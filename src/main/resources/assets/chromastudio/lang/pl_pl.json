@@ -285,6 +285,7 @@
   "palettes.chromastudio.no_dialog": "Okno wyboru pliku się nie pojawiło. Wpisz ścieżkę pliku.",
   "palettes.chromastudio.name_hint": "Nazwa",
   "palettes.chromastudio.name_needed": "Najpierw nadaj nazwę.",
+  "palettes.chromastudio.name_taken": "Ta nazwa jest już zajęta.",
   "palettes.chromastudio.need_palette": "Najpierw wybierz paletę.",
   "palettes.chromastudio.no_world": "To działa tylko w świecie.",
   "palettes.chromastudio.need_entries": "Ta paleta nie ma jeszcze bloków.",

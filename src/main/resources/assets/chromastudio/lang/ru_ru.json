@@ -285,6 +285,7 @@
   "palettes.chromastudio.no_dialog": "Диалог выбора файла не открылся. Введите путь к файлу вручную.",
   "palettes.chromastudio.name_hint": "Название",
   "palettes.chromastudio.name_needed": "Сначала укажите название.",
+  "palettes.chromastudio.name_taken": "Это название уже занято.",
   "palettes.chromastudio.need_palette": "Сначала выберите палитру.",
   "palettes.chromastudio.no_world": "Это работает только в мире.",
   "palettes.chromastudio.need_entries": "В этой палитре пока нет блоков.",
