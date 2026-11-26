@@ -425,7 +425,7 @@ public final class MatchTab extends Tab {
             case DYE -> HEAD + hinted + dyes.size() * ROW + 2;
             default -> most;
         };
-        int least = panel == Panel.BIOMES ? HEAD + LINE + 1 + 3 * 11 : HEAD + 2 * ROW + 1;
+        int least = panel == Panel.BIOMES ? HEAD + LINE + 1 + 3 * 11 : HEAD + ROW + 2;
         int height = most < least ? results.h() : Math.max(HEAD + ROW, Math.min(content, most));
         panelArea = new Bounds(results.x(), results.y(), results.w(), panel == Panel.NONE ? 0 : height);
         Bounds body = panelBody(), belowHint = belowHint();
