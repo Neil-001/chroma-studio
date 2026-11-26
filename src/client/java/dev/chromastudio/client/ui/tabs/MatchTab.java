@@ -320,10 +320,14 @@ public final class MatchTab extends Tab {
         statusLine = new Bounds(flow.left, b.bottom() - PAD - STATUS_H, flow.right - flow.left, STATUS_H);
         results = new Bounds(flow.left, top, flow.right - flow.left, Math.max(ROW, statusLine.y() - 1 - top));
         buildPanel();
-        int shownTop = panel == Panel.NONE ? results.y() : panelArea.bottom() + 2;
+        int shownTop = panel == Panel.NONE ? results.y() : Math.min(results.bottom(), panelArea.bottom() + 2);
         shownArea = new Bounds(results.x(), shownTop, results.w(), results.bottom() - shownTop);
-        list = grid ? new Widgets.ScrollList(shownArea, CELL_H, () -> shown == null ? 0 : (shown.matches.size() + columns() - 1) / columns())
-                : new Widgets.ScrollList(shownArea, ROW, () -> rows.size());
+        list = resultList(shownArea);
+    }
+
+    private Widgets.ScrollList resultList(Bounds where) {
+        return grid ? new Widgets.ScrollList(where, CELL_H, () -> shown == null ? 0 : (shown.matches.size() + columns() - 1) / columns())
+                : new Widgets.ScrollList(where, ROW, () -> rows.size());
     }
 
     private void gridChip(Flow flow, Component label) {
@@ -401,7 +405,15 @@ public final class MatchTab extends Tab {
     }
 
     private void refreshPanel() {
-        if (panel == Panel.FIND_BIOME || panel == Panel.DYE) panelData();
+        if (panel != Panel.FIND_BIOME && panel != Panel.DYE) return;
+        panelData();
+        panelList.area = belowHint();
+    }
+
+    private Bounds belowHint() {
+        Bounds body = panelBody();
+        int hinted = hint.isEmpty() ? 0 : hint.size() * 10 + 4;
+        return new Bounds(body.x(), body.y() + hinted, body.w(), body.h() - hinted);
     }
 
     private void buildPanel() {
@@ -413,8 +425,9 @@ public final class MatchTab extends Tab {
             case DYE -> HEAD + hinted + dyes.size() * ROW + 2;
             default -> most;
         };
-        panelArea = new Bounds(results.x(), results.y(), results.w(), panel == Panel.NONE ? 0 : Math.max(HEAD + ROW, Math.min(content, most)));
-        Bounds body = panelBody(), belowHint = new Bounds(body.x(), body.y() + hinted, body.w(), body.h() - hinted);
+        int height = most < HEAD + LINE + 2 * ROW ? results.h() : Math.max(HEAD + ROW, Math.min(content, most));
+        panelArea = new Bounds(results.x(), results.y(), results.w(), panel == Panel.NONE ? 0 : height);
+        Bounds body = panelBody(), belowHint = belowHint();
         panelList = new Widgets.ScrollList(body, ROW, () -> 0);
         switch (panel) {
             case FILTERS -> FilterControls.build(panelWidgets, body, false, this::build);
@@ -658,26 +671,33 @@ public final class MatchTab extends Tab {
             backLink = new Bounds(x - 2, statusLine.y(), font.width(back) + 4, statusLine.h());
             g.text(font, back, x, y, backLink.contains(mouseX, mouseY) ? Theme.STRONG : Theme.HIGHLIGHT, false);
             x = backLink.right() + 6;
-        } else if (ModSettings.biomeMode == BiomeMode.ALL && panel == Panel.NONE && !grid) {
-            String hint = ellipsis(font, tr("biome.all.hint").getString(), right - x);
-            g.text(font, hint, x, y, Theme.SOFT, false);
-            x += font.width(hint) + 6;
         }
         Palette target = PaletteStore.get().selected();
-        if (target == null) return;
-        String adds = (target.preset ? tr("add.new") : tr("add.target", PaletteStore.get().shownName(target))).getString();
-        if (right - x >= font.width(adds)) g.text(font, adds, right - font.width(adds), y, Theme.SOFT, false);
+        String adds = target == null ? "" : (target.preset ? tr("add.new") : tr("add.target", PaletteStore.get().shownName(target))).getString();
+        int addsW = adds.isEmpty() ? 0 : font.width(adds) + 6;
+        if (cameFrom == null && ModSettings.biomeMode == BiomeMode.ALL && panel == Panel.NONE && !grid) {
+            g.text(font, ellipsis(font, tr("biome.all.hint").getString(), right - x - addsW), x, y, Theme.SOFT, false);
+            x = right - addsW + 6;
+        }
+        if (!adds.isEmpty() && right - x >= font.width(adds)) g.text(font, adds, right - font.width(adds), y, Theme.SOFT, false);
     }
 
     @Override
     public void renderPinned(GuiGraphicsExtractor g, Bounds b, float opacity) {
-        if (panel != Panel.NONE) toggle(panel);
         sync();
         Font font = Minecraft.getInstance().font;
         List<Component> none = new ArrayList<>();
         target(g, font, opacity, -1, -1, none);
         g.text(font, picker.model.hex(), swatch.right() + 4, swatch.y() + 4, ARGB.multiplyAlpha(TEXT, opacity), false);
+        Bounds keptArea = shownArea;
+        Widgets.ScrollList keptList = list;
+        if (panel != Panel.NONE) {
+            shownArea = results;
+            list = resultList(results);
+        }
         results(g, font, opacity, -1, -1, none);
+        shownArea = keptArea;
+        list = keptList;
     }
 
     private void target(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {

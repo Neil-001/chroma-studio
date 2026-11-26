@@ -17,7 +17,7 @@
 - `GradientTab.openSwap` keeps the closest block of each material set so shapes of one material don't fill the list. The kind filter chooses the shape.
 - `GradientTab.layout` labels the easing and hue cyclers only when the row fits them, and moves the kind and filter buttons to the stops row to make room.
 - `MatchTab.build` drops the labels from the face, metric and biome cyclers when their row would otherwise wrap, as it does in longer languages. A wrapped row costs result rows at the minimum window size.
-- `MatchTab.buildPanel` sizes a panel to its content and keeps at least two result rows below it, so the list still shows what a filter or biome change does.
+- `MatchTab.buildPanel` sizes a panel to its content and keeps at least two result rows below it, so the list still shows what a filter or biome change does. When that would leave the panel too short, as in longer languages or Grid, the panel covers the results instead. `MatchTab.renderPinned` draws the full list without closing the panel because pinned drawing stops while F1 hides the HUD.
 - `MatchTab` samples the biome list swatches on the top face because `Entry.layers` rejects `Face.ANY`. An exception there would empty the panel without a visible error.
 - `MatchTab.cameFrom` remembers the selected palette only when a filter arrives through `Handoff`. That is how Analyse opens Match, and the back link returns there.
 - `TargetModel` keeps the values of the last picker moved so its handle stays put through gamut clipping and greys. `HUE_MAX` stops below 360 because `Oklch` wraps 360 to 0.
