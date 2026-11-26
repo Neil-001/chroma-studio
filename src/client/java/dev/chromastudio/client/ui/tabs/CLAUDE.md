@@ -22,6 +22,7 @@
 
 - `PaletteDialogs.Export` shows the Axiom hint for `.litematic` because Axiom's Import Schematic doesn't read `.nbt`. `PaletteDialogs.WorldEdit` strips one slash because chat omits the command slash and WorldEdit's commands start with two.
 - `SavedGradients` renames the loaded gradient only after the store writes it, so a cancelled replace or a failed write keeps the old name. The replace confirmation builds the gradient when it opens and stores that one, so a change made in another tab can't be saved unseen. A cut-off name shows in the footer because a tooltip there covers the next rows.
+- `PaletteDialogs.Axiom` takes its height from the taller of Recolour and Scatter so Copy stays put when the mode changes. Its details fit whatever room the window leaves, and hovering them shows any cut text.
 - Build the `PaletteDialogs.WorldEdit` buttons before setting the From field, whose responder updates them. In `PaletteDialogs.Hotbar`, wait for the rebuilt dialog to draw before accepting Fill, so queued clicks can't confirm it unseen.
 - `PaletteDialogs.Confirm` focuses Cancel first so Enter can't delete or overwrite by accident. Its close button, Escape and an outside click go through `Dialog.cancel`, which lets the saved gradient confirmations return to `SavedGradients` and keep the typed name.
 - `PanelTab.mouseClicked` gives both widget groups the click when there's no dialog so clicking one group ends typing in the other.
