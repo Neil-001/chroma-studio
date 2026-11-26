@@ -16,10 +16,10 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
 
 final class SavedGradients extends Dialog {
     private static final int ROW_H = 16, SWATCH_W = 48, NAME_X = SWATCH_W + 9, CROSS = 11;
+    private static final Component NEEDED = Component.translatable("palettes.chromastudio.name_needed");
 
     private final Function<String, StoredGradient> current;
     private final Supplier<Component> unsaveable;
@@ -80,12 +80,12 @@ final class SavedGradients extends Dialog {
         if (button == null || unsaveable.get() != null) return;
         boolean blank = name.isBlank();
         button.active = !blank;
-        button.setTooltip(blank ? Tooltip.create(tr("palettes.chromastudio.name_needed")) : null);
+        button.setTooltip(blank ? Tooltip.create(NEEDED) : null);
         StoredGradient same = blank ? null : GradientStore.get().get(name);
         target = same == null ? null : same.name();
         button.setMessage(tr(target != null ? "gradient.chromastudio.store.overwrite" : "gradient.chromastudio.store.save"));
-        if (blank) status(tr("palettes.chromastudio.name_needed"), Theme.FAIR);
-        else if (status != null && status.getContents() instanceof TranslatableContents t && t.getKey().equals("palettes.chromastudio.name_needed")) status = null;
+        if (blank) status(NEEDED, Theme.FAIR);
+        else if (NEEDED.equals(status)) status = null;
     }
 
     @Override
@@ -95,7 +95,7 @@ final class SavedGradients extends Dialog {
             return true;
         }
         if (name.isBlank()) {
-            status(tr("palettes.chromastudio.name_needed"), Theme.FAIR);
+            status(NEEDED, Theme.FAIR);
             return true;
         }
         String n = name.strip();
