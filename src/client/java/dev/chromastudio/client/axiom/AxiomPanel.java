@@ -69,10 +69,30 @@ final class AxiomPanel {
             try {
                 parts(options, bottom);
             } finally {
-                List<Runnable> run = List.copyOf(later);
-                later.clear();
-                run.forEach(Runnable::run);
+                runLater();
             }
+        }
+
+        void flow(Runnable body) {
+            try {
+                Optional<Component> off = AxiomBridge.whyNot();
+                if (off.isPresent()) {
+                    wrapped(off.get());
+                    return;
+                }
+                child("##options", 0, () -> {
+                    body.run();
+                    optionsEnd = ImGui.getCursorPosY();
+                });
+            } finally {
+                runLater();
+            }
+        }
+
+        private void runLater() {
+            List<Runnable> run = List.copyOf(later);
+            later.clear();
+            run.forEach(Runnable::run);
         }
 
         private void parts(Runnable options, Runnable bottom) {

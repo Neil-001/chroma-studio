@@ -87,6 +87,49 @@ class PanelTest {
     }
 
     @Test
+    void undoAfterClearBringsBackTheSampleToSave() {
+        for (int x = 0; x <= 2; x++) axiom.level.put(x, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
+        axiom.tools.hit = new BlockPos(1, 0, 0);
+        GuardedTool tool = new GuardedTool(new SamplerTool());
+        frame(tool);
+        frame(tool, "axiom.chromastudio.whole_build");
+        assertTrue(tool.callUseTool());
+        frame(tool, "axiom.chromastudio.sampler.clear");
+        Palette before = PaletteStore.get().selected();
+        frame(tool, "axiom.chromastudio.sampler.save");
+        assertSame(before, PaletteStore.get().selected(), "a cleared sample can't be saved");
+        frame(tool, "axiom.chromastudio.sampler.undo");
+        frame(tool, "axiom.chromastudio.sampler.save");
+        Palette saved = PaletteStore.get().selected();
+        assertNotSame(before, saved, "drawn " + ImGui.drawn + ", greyed " + ImGui.disabledButtons);
+        try {
+            assertEquals(List.of(new PaletteEntry("minecraft:stone_bricks", "", 3)), saved.entries);
+        } finally {
+            PaletteStore.get().delete(saved);
+        }
+    }
+
+    @Test
+    void undoAfterSavingKeepsTheSampleSaved() {
+        for (int x = 0; x <= 2; x++) axiom.level.put(x, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
+        axiom.tools.hit = new BlockPos(1, 0, 0);
+        GuardedTool tool = new GuardedTool(new SamplerTool());
+        frame(tool);
+        frame(tool, "axiom.chromastudio.whole_build");
+        assertTrue(tool.callUseTool());
+        frame(tool, "axiom.chromastudio.sampler.save");
+        Palette saved = PaletteStore.get().selected();
+        try {
+            frame(tool, "axiom.chromastudio.sampler.clear");
+            frame(tool, "axiom.chromastudio.sampler.undo");
+            frame(tool, "axiom.chromastudio.sampler.save");
+            assertSame(saved, PaletteStore.get().selected(), "undo keeps the sample saved, so Save makes no second palette");
+        } finally {
+            PaletteStore.get().delete(saved);
+        }
+    }
+
+    @Test
     void theFromPaletteFollowsARenameAndNeverBecomesAnother() throws Exception {
         PaletteStore store = PaletteStore.get();
         Palette bricks = store.create("Panel test from", List.of(new PaletteEntry("minecraft:stone_bricks", "")));
