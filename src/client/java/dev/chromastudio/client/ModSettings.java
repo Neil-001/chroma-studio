@@ -37,6 +37,7 @@ public final class ModSettings {
     public static String startTab = "match";
     public static double pinOpacity = 0.8;
     public static TitleButtons titleButtons = TitleButtons.DEFAULT;
+    public static GearPlace gearPlace = GearPlace.CORNER;
     public static ThemeChoice theme = ThemeChoice.DEFAULT;
     public static String customColour = "#243447";
     public static ColourFormat colourFormat = ColourFormat.OKLCH;
@@ -95,7 +96,7 @@ public final class ModSettings {
 
     static {
         GROUPS.put("window", List.of("windowX", "windowY", "windowW", "windowH", "fullscreen", "rememberWindow", "startTab", "pinOpacity",
-                "titleButtons", "theme", "customColour", "colourFormat"));
+                "titleButtons", "gearPlace", "theme", "customColour", "colourFormat"));
         GROUPS.put("matching", List.of("defaultFace", "shading", "metric", "resultCount", "viewingDistance",
                 "filterFullCube", "filterSolid", "filterOpaque", "filterSurvival", "showDeltaE"));
         GROUPS.put("index", List.of("technicalBlocks", "statesSeparately", "statesCap", "animatedAveraging", "cacheFolder", "rebuildOnReload"));

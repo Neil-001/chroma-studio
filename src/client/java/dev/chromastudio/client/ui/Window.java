@@ -77,6 +77,8 @@ public final class Window {
 
     public boolean dragging() { return grip != Grip.NONE; }
 
+    public Grip grip() { return grip; }
+
     public boolean dragTo(double mx, double my, int screenW, int screenH) {
         if (grip == Grip.NONE) return false;
         int dx = (int) Math.round(mx - grabX), dy = (int) Math.round(my - grabY);

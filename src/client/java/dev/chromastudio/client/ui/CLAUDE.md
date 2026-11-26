@@ -3,12 +3,14 @@
 - The game doesn't count key-bind presses while a screen is open. `ChromaScreen.mouseClicked` and `MatchTab.mouseClicked` check mouse bindings against the event.
 - A `CycleButton` rebuilds its tooltip from the builder on each value change. Set it through `Widgets.cycler` and leave disabled tooltips to `Widgets.disable`.
 - The game's text fields copy their selection without checking clipboard size. `Widgets.field` routes copy and cut through `Clipboard`. `Widgets.disable` clears `active` when it makes a field uneditable so cut can use that flag.
-- `ChromaScreen.extractRenderState` puts title bar tooltips lower because the game can draw them past the top edge. `renderPinned` supplies the size because the game updates it only for open screens.
+- `ChromaScreen.extractRenderState` anchors title bar tooltips below the bar so they stay on screen and leave the neighbouring buttons visible. `renderPinned` supplies the size because the game updates it only for open screens.
 - The game's button height of 20 is too tall at the minimum window size. `Widgets.H` is 16.
 
 ## Window and widgets
 
+- `ChromaScreen.gearInBar` ignores `gearPlace` in fullscreen, where the corner gear would sit on the title bar beside close. `cogReserve` moves the title buttons left when a windowed frame reaches under the corner gear.
 - `ChromaScreen.open` leaves Axiom's editor first because Axiom constrains the window to its 3D view. Skip the background blur while `ScreenPicker` is armed because it reads the frame.
+- `ChromaScreen.grip` only marks the corner. Its dots sit over tab content, such as the Palettes notes field, so `Window.gripAt` leaves them to the tab and resizes from the 3 px corner band. In a narrow forced fullscreen, `ChromaScreen.tabRects` narrows tab padding, then `buttonW` narrows the buttons, and past that the tabs share the space left of the buttons with shortened labels, so a tab never sits under a button.
 - `Window.within` handles a screen shrinking mid-drag. Crossed limits are possible then and `Math.clamp` would throw.
 - `ChromaScreen` routes drags and releases for a click the tab took even outside the tab. `Tab.closed` also runs on the way to settings.
 - Clear `Handoff` fields after consuming them. Explore keeps its highlight until the player clears it or another list arrives.
