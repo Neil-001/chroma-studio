@@ -17,6 +17,7 @@ import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
 import dev.chromastudio.client.index.Query;
 import dev.chromastudio.client.index.Target;
+import dev.chromastudio.client.index.TintContext;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
@@ -95,21 +96,29 @@ final class PaletteDialogs {
 
     static List<Object> poolKey() {
         MatchState.follow();
-        return List.of(MatchState.filters().state(), BlockIndex.get().version(), MatchState.revision());
+        Minecraft mc = Minecraft.getInstance();
+        Optional<BlockPos> tintPosition = PaletteBlocks.tint() == TintContext.HERE && mc.player != null
+                ? Optional.of(mc.player.blockPosition())
+                : Optional.empty();
+        return List.of(MatchState.filters().state(), BlockIndex.get().version(), MatchState.revision(),
+                PaletteBlocks.scale(), tintPosition);
     }
 
     static List<PaletteEntry> closest(List<Oklch> targets) {
         BlockIndex index = BlockIndex.get();
-        Set<String> pool = new HashSet<>();
-        for (Entry e : MatchState.filters().candidates(index, PaletteBlocks.face(), PaletteBlocks.scale(), PaletteBlocks.tint())) pool.add(e.id());
+        MatchFilters filters = MatchState.filters();
+        Set<Entry> pool = new HashSet<>(filters.candidates(index, PaletteBlocks.face(), PaletteBlocks.scale(), PaletteBlocks.tint()));
         Query q = PaletteBlocks.query().limit(Integer.MAX_VALUE);
-        MatchState.filters().apply(q);
+        filters.apply(q);
+        q.statesSeparately = true;
         List<PaletteEntry> out = new ArrayList<>();
         Set<String> used = new HashSet<>();
         for (Oklch target : targets) {
+            if (used.size() == pool.size()) break;
             for (BlockIndex.Match m : index.closest(Target.of(Color.ofOklch(target)), q)) {
-                if (!pool.contains(m.entry().id()) || !used.add(m.entry().id())) continue;
-                out.add(PaletteBlocks.of(m.entry()));
+                Entry entry = m.entry();
+                if (!pool.contains(entry) || !used.add(entry.id())) continue;
+                out.add(PaletteBlocks.of(entry));
                 break;
             }
         }
@@ -488,6 +497,7 @@ final class PaletteDialogs {
         private List<PaletteEntry> shown = List.of();
         private Button go;
         private @Nullable Component goRefused;
+        private @Nullable Key drawn;
 
         Generate(Color seed, Consumer<Palette> done) {
             super(tr("palettes.chromastudio.generate.title"), WIDTH, HEIGHT);
@@ -576,6 +586,7 @@ final class PaletteDialogs {
             Bounds well = new Bounds(in.x(), in.y() + 3 * PanelTab.ROW, in.w(), in.h() - 4 * PanelTab.ROW - 2);
             g.fill(well.x(), well.y(), well.right(), well.bottom(), Theme.WELL);
             List<PaletteEntry> entries = preview();
+            drawn = shownFor;
             Component problem = seed == null ? tr("palettes.chromastudio.generate.bad_hex") : entries.isEmpty() ? tr("palettes.chromastudio.generate.none") : null;
             Component footer = entries.size() < count ? tr("palettes.chromastudio.count", entries.size()) : Component.empty();
             int footerColour = Theme.DIM;
@@ -621,7 +632,10 @@ final class PaletteDialogs {
                 g.pose().pushMatrix();
                 g.pose().translate(tx + pad, ty + pad);
                 g.pose().scale(icon / 16f);
-                Widgets.blockIcon(g, PaletteBlocks.icon(e), 0, 0);
+                ItemStack stack = PaletteBlocks.icon(e);
+                Entry entry = stack.isEmpty() ? PaletteBlocks.entry(e) : null;
+                if (entry != null) Thumbnails.draw(g, entry, PaletteBlocks.face(), PaletteBlocks.scale(), PaletteBlocks.tint(), 0, 0, 16, 1f);
+                else Widgets.blockIcon(g, stack, 0, 0);
                 g.pose().popMatrix();
             }
             g.outline(go.getX() - 1, go.getY() - 1, go.getWidth() + 2, go.getHeight() + 2, Theme.ACCENT);
@@ -638,7 +652,7 @@ final class PaletteDialogs {
         protected boolean confirm() {
             Color seed = seed();
             List<PaletteEntry> entries = preview();
-            if (seed == null || entries.isEmpty()) return true;
+            if (seed == null || entries.isEmpty() || !shownFor.equals(drawn)) return true;
             close();
             done.accept(PaletteStore.get().create(tr("palettes.chromastudio.generate.name", option(harmony), seed.hex()).getString(), entries));
             return true;
