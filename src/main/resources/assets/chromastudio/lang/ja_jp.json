@@ -473,7 +473,7 @@
   "palettes.chromastudio.hotbar.to.boxes.one": "シュルカーボックス：1 個",
   "palettes.chromastudio.hotbar.to.ground": "落ちるかも：%s 個",
   "palettes.chromastudio.hotbar.to.ground.one": "落ちるかも：1 個",
-  "palettes.chromastudio.hotbar.boxes.tip": "使わない：空きスロットへ入れ、残りは落とす。満杯のとき：必要な分だけシュルカーボックスを足す。常に：すべて箱に入れる。",
+  "palettes.chromastudio.hotbar.boxes.tip": "使わない：空きスロットへ入れ、残りは落とす。満杯のとき：必要な分だけシュルカーボックスを足す。常に：10 個目からすべて箱に入れる。",
   "gradient.chromastudio.stop.tip": "ドラッグで並べ替え、右クリックで削除",
   "gradient.chromastudio.stop.drag": "ドラッグで並べ替え",
   "gradient.chromastudio.stop.remove": "ストップを削除",

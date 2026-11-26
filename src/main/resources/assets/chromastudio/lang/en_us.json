@@ -472,7 +472,7 @@
   "palettes.chromastudio.hotbar.to.boxes.one": "Shulker box: 1 block",
   "palettes.chromastudio.hotbar.to.ground": "May drop: %s blocks",
   "palettes.chromastudio.hotbar.to.ground.one": "May drop: 1 block",
-  "palettes.chromastudio.hotbar.boxes.tip": "Never: free slots, then drop the rest. When full: add shulker boxes as needed. Always: box every block.",
+  "palettes.chromastudio.hotbar.boxes.tip": "Never: free slots, then drop the rest. When full: add shulker boxes as needed. Always: box every block past the ninth.",
   "gradient.chromastudio.stop.tip": "Drag to reorder, right-click to remove",
   "gradient.chromastudio.stop.drag": "Drag to reorder",
   "gradient.chromastudio.stop.remove": "Remove stop",

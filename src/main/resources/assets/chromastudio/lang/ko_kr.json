@@ -473,7 +473,7 @@
   "palettes.chromastudio.hotbar.to.boxes.one": "셜커 상자: 블록 1개",
   "palettes.chromastudio.hotbar.to.ground": "떨어질 수 있음: 블록 %s개",
   "palettes.chromastudio.hotbar.to.ground.one": "떨어질 수 있음: 블록 1개",
-  "palettes.chromastudio.hotbar.boxes.tip": "사용 안 함: 빈 슬롯에 넣고 나머지는 떨어뜨림. 가득 찼을 때: 필요한 만큼 셜커 상자 추가. 항상: 모두 상자에 담음.",
+  "palettes.chromastudio.hotbar.boxes.tip": "사용 안 함: 빈 슬롯에 넣고 나머지는 떨어뜨림. 가득 찼을 때: 필요한 만큼 셜커 상자 추가. 항상: 아홉 번째 이후는 모두 상자에 담음.",
   "gradient.chromastudio.stop.tip": "끌어서 순서 변경, 우클릭으로 제거",
   "gradient.chromastudio.stop.drag": "끌어서 순서 변경",
   "gradient.chromastudio.stop.remove": "정지점 제거",

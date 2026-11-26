@@ -473,7 +473,7 @@
   "palettes.chromastudio.hotbar.to.boxes.one": "Shulker-Kiste: 1 Block",
   "palettes.chromastudio.hotbar.to.ground": "Fallen evtl.: %s Blöcke",
   "palettes.chromastudio.hotbar.to.ground.one": "Fällt evtl.: 1 Block",
-  "palettes.chromastudio.hotbar.boxes.tip": "Nie: freie Plätze, der Rest fällt. Wenn voll: Shulker-Kisten nach Bedarf. Immer: alles in Kisten.",
+  "palettes.chromastudio.hotbar.boxes.tip": "Nie: freie Plätze, der Rest fällt. Wenn voll: Shulker-Kisten nach Bedarf. Immer: alles nach dem neunten in Kisten.",
   "gradient.chromastudio.stop.tip": "Ziehen zum Umordnen, Rechtsklick zum Entfernen",
   "gradient.chromastudio.stop.drag": "Ziehen zum Umordnen",
   "gradient.chromastudio.stop.remove": "Stopp entfernen",

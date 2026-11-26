@@ -473,7 +473,7 @@
   "palettes.chromastudio.hotbar.to.boxes.one": "Caixa de shulker: 1 bloco",
   "palettes.chromastudio.hotbar.to.ground": "Podem cair: %s blocos",
   "palettes.chromastudio.hotbar.to.ground.one": "Pode cair: 1 bloco",
-  "palettes.chromastudio.hotbar.boxes.tip": "Nunca: espaços livres, o resto cai. Quando cheio: caixas de shulker se precisar. Sempre: tudo em caixas.",
+  "palettes.chromastudio.hotbar.boxes.tip": "Nunca: espaços livres, o resto cai. Quando cheio: caixas de shulker se precisar. Sempre: tudo depois do nono em caixas.",
   "gradient.chromastudio.stop.tip": "Arraste para reordenar, clique com o botão direito para remover",
   "gradient.chromastudio.stop.drag": "Arraste para reordenar",
   "gradient.chromastudio.stop.remove": "Remover ponto",

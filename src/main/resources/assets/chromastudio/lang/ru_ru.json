@@ -473,7 +473,7 @@
   "palettes.chromastudio.hotbar.to.boxes.one": "Шалкеровый ящик: 1 блок",
   "palettes.chromastudio.hotbar.to.ground": "Могут выпасть, блоков: %s",
   "palettes.chromastudio.hotbar.to.ground.one": "Может выпасть: 1 блок",
-  "palettes.chromastudio.hotbar.boxes.tip": "Никогда: свободные ячейки, остальное выпадает. Если полон: шалкеровые ящики по необходимости. Всегда: всё в ящики.",
+  "palettes.chromastudio.hotbar.boxes.tip": "Никогда: свободные ячейки, остальное выпадает. Если полон: шалкеровые ящики по необходимости. Всегда: всё после девятого в ящики.",
   "gradient.chromastudio.stop.tip": "Перетащите, чтобы изменить порядок, щёлкните правой кнопкой, чтобы убрать",
   "gradient.chromastudio.stop.drag": "Перетащите, чтобы изменить порядок",
   "gradient.chromastudio.stop.remove": "Убрать точку",

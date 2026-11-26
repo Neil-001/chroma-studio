@@ -1706,6 +1706,13 @@ final class PaletteDialogs {
 
         private int inner() { return Math.min(WIDTH, tab.bounds.w() - 8) - 10; }
 
+        private int rowCount(Optional<HotbarFill.AxiomPreview> preview) {
+            HotbarPlan plan = plan();
+            int n = rows(blocks, preview, plan).size();
+            if (AxiomBridge.isPresent() && blocks > HotbarFill.HOTBAR) n = Math.max(n, rows(blocks, Optional.empty(), plan).size());
+            return n;
+        }
+
         private int cautionH(StringSplitter splitter, int w, Optional<HotbarFill.AxiomPreview> preview) {
             int h = fit(splitter, warning(preview, dropped(blocks, plan())), w, WARNING_LINES).height();
             if (AxiomBridge.isPresent() && blocks > HotbarFill.HOTBAR) h = Math.max(h, fit(splitter, tr("palettes.chromastudio.hotbar.axiom.note"), w, WARNING_LINES).height());
@@ -1718,7 +1725,7 @@ final class PaletteDialogs {
             StringSplitter splitter = PanelTab.font().getSplitter();
             int w = inner(), warned = cautionH(splitter, w, preview);
             int said = fit(splitter, result, resultRoom(w, buttonsW()), RESULT_LINES).height();
-            return TITLE_H + 7 + PanelTab.ROW + PanelTab.GAP + rows(blocks, preview, plan()).size() * SLOT + PanelTab.GAP
+            return TITLE_H + 7 + PanelTab.ROW + PanelTab.GAP + rowCount(preview) * SLOT + PanelTab.GAP
                     + (warned > 0 ? warned + PanelTab.GAP : 0) + RESULT_GAP + Math.max(2 * 9, said);
         }
 
@@ -1765,7 +1772,7 @@ final class PaletteDialogs {
         }
 
         private List<Object> shape(Optional<HotbarFill.AxiomPreview> preview) {
-            return List.of(rows(blocks, preview, plan()).size(), cautionH(PanelTab.font().getSplitter(), inner(), preview));
+            return List.of(rowCount(preview), cautionH(PanelTab.font().getSplitter(), inner(), preview));
         }
 
         private static List<Object> state() {

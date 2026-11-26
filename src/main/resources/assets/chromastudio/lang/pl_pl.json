@@ -473,7 +473,7 @@
   "palettes.chromastudio.hotbar.to.boxes.one": "Shulkerowa skrzynia: 1 blok",
   "palettes.chromastudio.hotbar.to.ground": "Mogą wypaść, bloki: %s",
   "palettes.chromastudio.hotbar.to.ground.one": "Może wypaść: 1 blok",
-  "palettes.chromastudio.hotbar.boxes.tip": "Nigdy: wolne miejsca, reszta wypada. Gdy pełny: shulkerowe skrzynie w razie potrzeby. Zawsze: wszystko do skrzyń.",
+  "palettes.chromastudio.hotbar.boxes.tip": "Nigdy: wolne miejsca, reszta wypada. Gdy pełny: shulkerowe skrzynie w razie potrzeby. Zawsze: wszystko po dziewiątym do skrzyń.",
   "gradient.chromastudio.stop.tip": "Przeciągnij, aby zmienić kolejność, kliknij prawym przyciskiem, aby usunąć",
   "gradient.chromastudio.stop.drag": "Przeciągnij, aby zmienić kolejność",
   "gradient.chromastudio.stop.remove": "Usuń punkt",

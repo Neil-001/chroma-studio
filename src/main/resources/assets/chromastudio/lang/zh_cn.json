@@ -473,7 +473,7 @@
   "palettes.chromastudio.hotbar.to.boxes.one": "潜影盒：1 个方块",
   "palettes.chromastudio.hotbar.to.ground": "可能掉落：%s 个方块",
   "palettes.chromastudio.hotbar.to.ground.one": "可能掉落：1 个方块",
-  "palettes.chromastudio.hotbar.boxes.tip": "从不：放入空格，其余掉落。满了才用：按需加潜影盒。始终：全部装进潜影盒。",
+  "palettes.chromastudio.hotbar.boxes.tip": "从不：放入空格，其余掉落。满了才用：按需加潜影盒。始终：第九个之后的全部装进潜影盒。",
   "gradient.chromastudio.stop.tip": "拖动调整顺序，右键移除",
   "gradient.chromastudio.stop.drag": "拖动调整顺序",
   "gradient.chromastudio.stop.remove": "移除色标",
