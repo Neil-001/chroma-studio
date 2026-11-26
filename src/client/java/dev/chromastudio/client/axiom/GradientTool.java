@@ -92,6 +92,8 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
     public void putAway() {
         preview.clear();
         previewFor = null;
+        line = null;
+        covered = leftAlone = masked = 0;
     }
 
     private void clearPreview() {
