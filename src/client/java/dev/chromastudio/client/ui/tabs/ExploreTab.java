@@ -222,7 +222,7 @@ public final class ExploreTab extends Tab {
         int screenW = window.getGuiScaledWidth(), screenH = window.getGuiScaledHeight();
         int x = mouseX + TIP_OFFSET + ICON_BOX + 2 * TIP_MARGIN, ix = mouseX + TIP_OFFSET;
         if (x + w + TIP_MARGIN > screenW || ix + ICON_BOX > area.right()) {
-            x = Math.max(ICON_BOX + 3 * TIP_MARGIN, mouseX - TIP_OFFSET - TIP_MARGIN - w);
+            x = Math.max(area.x() + ICON_BOX + 2 * TIP_MARGIN, mouseX - TIP_OFFSET - TIP_MARGIN - w);
             ix = x - 2 * TIP_MARGIN - ICON_BOX;
         }
         int y = Math.clamp(mouseY - TIP_OFFSET, TIP_MARGIN, Math.max(TIP_MARGIN, screenH - h - TIP_MARGIN));
@@ -385,12 +385,15 @@ public final class ExploreTab extends Tab {
 
     private boolean miniShown() { return zoom > 1 && !dots.isEmpty(); }
 
-    private Dot at(double mx, double my) {
+    private Dot at(double mouseX, double mouseY) {
+        int mx = (int) Math.floor(mouseX), my = (int) Math.floor(mouseY);
         if (!plot.contains(mx, my) || miniShown() && mini().contains(mx, my)) return null;
         Dot nearest = null;
-        double best = REACH * REACH + 1;
+        int best = REACH * REACH + 1;
         for (Dot d : dots) {
-            double dx = screenX(d.hue) - mx, dy = screenY(d.lightness) - my, far = dx * dx + dy * dy;
+            int x = screenX(d.hue), y = screenY(d.lightness), s = d.size + grow(), x0 = x - s / 2, y0 = y - s / 2;
+            if (x0 + s <= plot.x() || x0 >= plot.right() || y0 + s <= plot.y() || y0 >= plot.bottom()) continue;
+            int dx = x - mx, dy = y - my, far = dx * dx + dy * dy;
             if (far < best) {
                 best = far;
                 nearest = d;
