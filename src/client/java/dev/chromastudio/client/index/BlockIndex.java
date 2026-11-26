@@ -291,6 +291,8 @@ public final class BlockIndex {
 
     public String family(Entry e) { return MaterialSets.family(e.id()); }
 
+    public String material(Entry e) { return MaterialSets.base(e.id()); }
+
     public String materialName(Entry e) {
         String name = MaterialSets.name(e.id());
         return name.isEmpty() ? e.name().getString() : name;
