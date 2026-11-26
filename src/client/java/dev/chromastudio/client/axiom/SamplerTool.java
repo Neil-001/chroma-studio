@@ -18,10 +18,14 @@ import dev.chromastudio.core.palette.BuildSearch;
 import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import imgui.moulberry92.ImGui;
+import imgui.moulberry92.flag.ImGuiCol;
+import imgui.moulberry92.flag.ImGuiStyleVar;
 import imgui.moulberry92.flag.ImGuiTableColumnFlags;
 import imgui.moulberry92.flag.ImGuiTableFlags;
 import imgui.moulberry92.type.ImString;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
@@ -38,12 +42,20 @@ final class SamplerTool implements CustomTool {
 
     private enum Mode { BRUSH, BUILD }
 
-    private final BuildSample sample = new BuildSample();
+    private record Kind(String id, int count, boolean in) {}
+
+    private BuildSample sample = new BuildSample();
+    private @Nullable BuildSample cleared;
     private final BooleanRegion sampled = AxiomTools.regions.createBoolean();
     private boolean sampledStale;
     private final BooleanRegion ball = AxiomTools.regions.createBoolean();
     private int ballRadius = -1;
     private final BooleanRegion one = AxiomTools.regions.createBoolean();
+    private final BooleanRegion focus = AxiomTools.regions.createBoolean();
+    private final BooleanRegion excluded = AxiomTools.regions.createBoolean();
+    private boolean excludedStale;
+    private @Nullable String hovered;
+    private @Nullable String focused;
 
     private Mode mode = Mode.BRUSH;
     private final int[] radius = {3};
@@ -55,9 +67,11 @@ final class SamplerTool implements CustomTool {
     private @Nullable Component said;
     private @Nullable String askedName;
     private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
+    private List<String> shownOrder = List.of();
 
     private ToolPatherUnique pather;
     private ClientLevel strokeIn;
+    private int strokeStart;
 
     SamplerTool() {
         one.add(0, 0, 0);
@@ -85,6 +99,7 @@ final class SamplerTool implements CustomTool {
         said = null;
         if (mode == Mode.BRUSH) {
             strokeIn = level;
+            strokeStart = sampledIn.get() == level ? sample.total() : 0;
             pather = AxiomTools.pathers.createUnique(AxiomPanel.radius(radius), BallShape.SPHERE);
             return true;
         }
@@ -96,12 +111,17 @@ final class SamplerTool implements CustomTool {
         int before = sampledIn.get() == level ? sample.total() : 0;
         for (long p : found.blocks()) add(level, pos, BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
         int added = sampledIn.get() == level ? sample.total() - before : 0;
-        Component result = found.blocks().length == 0 ? Component.translatable("axiom.chromastudio.not_build")
+        report(found.blocks().length == 0 ? Component.translatable("axiom.chromastudio.not_build")
                 : found.capped() ? Component.translatable("axiom.chromastudio.capped", FoundBuild.CAP).append(" ").append(Component.translatable("axiom.chromastudio.sampler.capped"))
-                : Component.translatable(added == 1 ? "axiom.chromastudio.sampler.added.one" : "axiom.chromastudio.sampler.added", added);
-        said = said == null ? result : said.copy().append(" ").append(result);
+                : added(added));
         return true;
     }
+
+    private static Component added(int added) {
+        return Component.translatable(added == 1 ? "axiom.chromastudio.sampler.added.one" : "axiom.chromastudio.sampler.added", added);
+    }
+
+    private void report(Component result) { said = said == null ? result : said.copy().append(" ").append(result); }
 
     @Override
     public void render(IAxiomWorldRenderContext rc) {
@@ -112,6 +132,7 @@ final class SamplerTool implements CustomTool {
                 BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
                 pather.update((x, y, z) -> add(level, pos, x, y, z));
             } else {
+                if (level == strokeIn) report(added(level == sampledIn.get() ? Math.max(0, sample.total() - strokeStart) : 0));
                 reset();
             }
         }
@@ -120,13 +141,31 @@ final class SamplerTool implements CustomTool {
             sample.forEach(sampled::add);
             sampledStale = false;
         }
-        if (level != null && level == sampledIn.get()) sampled.render(rc, Vec3.ZERO, Effects.OUTLINE);
+        if (excludedStale) {
+            excluded.clear();
+            for (String id : sample.removed()) sample.forEachOf(id, excluded::add);
+            excludedStale = false;
+        }
+        if (level != null && level == sampledIn.get()) {
+            sampled.render(rc, Vec3.ZERO, Effects.OUTLINE);
+            excluded.render(rc, Vec3.ZERO, Effects.RED);
+        }
+        String showing = hovered;
+        hovered = null;
+        if (showing != null && level != null && level == sampledIn.get()) {
+            if (!showing.equals(focused)) {
+                focus.clear();
+                sample.forEachOf(showing, focus::add);
+                focused = showing;
+            }
+            focus.render(rc, Vec3.ZERO, Effects.BLUE);
+        }
         if (pather != null) return;
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
         Vec3 corner = Vec3.atLowerCornerOf(hit.getBlockPos());
         if (mode == Mode.BUILD) {
-            one.render(rc, corner, Effects.BLUE | Effects.OUTLINE);
+            one.render(rc, corner, Effects.BLUE);
             return;
         }
         if (ballRadius != AxiomPanel.radius(radius)) {
@@ -134,11 +173,12 @@ final class SamplerTool implements CustomTool {
             ball.clear();
             BallShape.SPHERE.fillRegion(ball, ballRadius);
         }
-        ball.render(rc, corner, Effects.BLUE | Effects.OUTLINE);
+        ball.render(rc, corner, Effects.BLUE);
     }
 
     private void enter(ClientLevel level) {
         if (sampledIn.get() == level) return;
+        cleared = null;
         if (!sample.isEmpty()) {
             sample.clear();
             changed();
@@ -153,14 +193,24 @@ final class SamplerTool implements CustomTool {
             if (kind == null) return;
             enter(level);
         }
-        if (!sample.add(x, y, z, kind)) return;
+        if (kind != null) cleared = null;
+        boolean seen = sample.add(x, y, z, kind);
+        if (!sample.counts(x, y, z)) excludedStale = true;
+        if (!seen) return;
         savedAs = null;
+        focused = null;
         if (sample.counts(x, y, z)) sampled.add(x, y, z);
         else sampledStale = true;
     }
 
     @Override
-    public void displayImguiOptions() { layout.draw(this::options, this::bottom); }
+    public void displayImguiOptions() {
+        layout.flow(() -> {
+            options();
+            ImGui.separator();
+            bottom();
+        });
+    }
 
     private void options() {
         boolean brush = mode == Mode.BRUSH;
@@ -170,26 +220,52 @@ final class SamplerTool implements CustomTool {
         AxiomPanel.radius(radius, brush, brush ? "" : tr("axiom.chromastudio.radius.whole"));
         if (AxiomPanel.checkbox(tr("axiom.chromastudio.sampler.ground"), ground && brush, brush,
                 tr(brush ? "axiom.chromastudio.sampler.ground.tip" : "axiom.chromastudio.sampler.ground.build"))) layout.later(() -> ground = !ground);
-        List<BuildSample.Row> rows = sample.rows();
+        AxiomPanel.note(tr(brush ? "axiom.chromastudio.sampler.how.brush" : "axiom.chromastudio.sampler.how.build"));
+        AxiomPanel.tip(tr("axiom.chromastudio.sampler.how.tip"));
         if (sample.isEmpty()) {
-            AxiomPanel.note(tr(brush ? "axiom.chromastudio.sampler.how.brush" : "axiom.chromastudio.sampler.how.build"));
-            AxiomPanel.tip(tr("axiom.chromastudio.sampler.how.tip"));
+            empty();
             return;
         }
-        int total = sample.total(), kinds = rows.size();
+        int total = sample.total(), kinds = sample.rows().size();
         ImGui.alignTextToFramePadding();
         AxiomPanel.text(total == 1 ? tr("axiom.chromastudio.sampler.total.one")
                 : kinds == 1 ? tr("axiom.chromastudio.sampler.total.one_kind", total) : tr("axiom.chromastudio.sampler.total", total, kinds));
         AxiomPanel.besideButton(tr("axiom.chromastudio.sampler.clear"));
         if (AxiomPanel.button(tr("axiom.chromastudio.sampler.clear"), true, tr("axiom.chromastudio.sampler.clear.tip"))) {
             layout.later(() -> {
-                sample.clear();
+                cleared = sample;
+                sample = new BuildSample();
                 changed();
-                said = null;
             });
         }
-        if (!rows.isEmpty()) table(rows, total);
-        removed();
+        table(ordered(kinds()), total);
+        if (!sample.removed().isEmpty()) AxiomPanel.note(tr("axiom.chromastudio.sampler.out.note"));
+    }
+
+    private void empty() {
+        if (cleared == null) {
+            AxiomPanel.note(tr("axiom.chromastudio.sampler.none"));
+            return;
+        }
+        ImGui.alignTextToFramePadding();
+        AxiomPanel.text(tr("axiom.chromastudio.sampler.cleared"));
+        AxiomPanel.besideButton(tr("axiom.chromastudio.sampler.undo"));
+        if (AxiomPanel.button(tr("axiom.chromastudio.sampler.undo"), true, tr("axiom.chromastudio.sampler.undo.tip"))) {
+            layout.later(() -> {
+                if (cleared == null) return;
+                sample = cleared;
+                cleared = null;
+                changed();
+            });
+        }
+    }
+
+    private List<Kind> kinds() {
+        List<Kind> out = new ArrayList<>();
+        for (BuildSample.Row r : sample.rows()) out.add(new Kind(r.id(), r.count(), true));
+        for (String id : sample.removed()) out.add(new Kind(id, sample.count(id), false));
+        out.sort(Comparator.comparingInt(Kind::count).reversed().thenComparing(Kind::id));
+        return out;
     }
 
     private void bottom() {
@@ -200,8 +276,10 @@ final class SamplerTool implements CustomTool {
         boolean empty = sample.rows().isEmpty();
         Palette saved = savedAs != null && PaletteStore.get().own().contains(savedAs) ? savedAs : null;
         AxiomPanel.status(status(saved));
-        ImGui.inputText(tr("axiom.chromastudio.sampler.name"), name);
-        if (AxiomPanel.button(tr("axiom.chromastudio.sampler.save"), !empty && saved == null, tr(empty ? "axiom.chromastudio.sampler.save.empty"
+        String label = tr("axiom.chromastudio.sampler.name");
+        ImGui.setNextItemWidth(Math.max(ImGui.getFontSize() * 6, ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX(label) - ImGui.getStyle().getItemInnerSpacingX()));
+        ImGui.inputText(label, name);
+        if (AxiomPanel.button(tr(saved == null ? "axiom.chromastudio.sampler.save" : "axiom.chromastudio.sampler.saved.button"), !empty && saved == null, tr(empty ? "axiom.chromastudio.sampler.save.empty"
                 : saved != null ? "axiom.chromastudio.sampler.save.done" : "axiom.chromastudio.sampler.save.tip"))) {
             layout.later(this::save);
         }
@@ -225,20 +303,32 @@ final class SamplerTool implements CustomTool {
         return askedName == null ? receipt : receipt.withTip(tr("axiom.chromastudio.sampler.saved.renamed", askedName));
     }
 
-    private void table(List<BuildSample.Row> rows, int total) {
+    private List<Kind> ordered(List<Kind> rows) {
+        if (pather == null) {
+            shownOrder = rows.stream().map(Kind::id).toList();
+            return rows;
+        }
+        List<Kind> out = new ArrayList<>(rows);
+        out.sort(Comparator.comparingInt(r -> {
+            int i = shownOrder.indexOf(r.id());
+            return i < 0 ? Integer.MAX_VALUE : i;
+        }));
+        return out;
+    }
+
+    private void table(List<Kind> rows, int total) {
         float row = ImGui.getFrameHeightWithSpacing(), pad = ImGui.getStyle().getWindowPaddingY() * 2;
         float height = layout.grow(rows.size() * row + pad, Math.min(rows.size(), LEAST_ROWS) * row + pad);
-        String remove = tr("axiom.chromastudio.sampler.remove");
-        float countWidth = ImGui.calcTextSizeX(Integer.toString(rows.getFirst().count()));
+        float countWidth = ImGui.calcTextSizeX(Integer.toString(rows.stream().mapToInt(Kind::count).max().orElse(0)));
         float shareWidth = ImGui.calcTextSizeX(tr("axiom.chromastudio.sampler.share", "100"));
         if (ImGui.beginTable("##sample", 5, ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.BordersOuter, 0, height)) {
             try {
-                ImGui.tableSetupColumn("##remove", ImGuiTableColumnFlags.WidthFixed, ImGui.calcTextSizeX(remove) + ImGui.getStyle().getFramePaddingX() * 2);
-                ImGui.tableSetupColumn("##swatch", ImGuiTableColumnFlags.WidthFixed, ImGui.getFrameHeight());
+                ImGui.tableSetupColumn("##in", ImGuiTableColumnFlags.WidthFixed, (float) ImGui.getFontSize());
+                ImGui.tableSetupColumn("##swatch", ImGuiTableColumnFlags.WidthFixed, (float) ImGui.getFontSize());
                 ImGui.tableSetupColumn("##name", ImGuiTableColumnFlags.WidthStretch, 1f);
                 ImGui.tableSetupColumn("##count", ImGuiTableColumnFlags.WidthFixed, countWidth);
                 ImGui.tableSetupColumn("##share", ImGuiTableColumnFlags.WidthFixed, shareWidth);
-                for (int i = 0; i < rows.size(); i++) row(rows.get(i), i, total, remove);
+                for (int i = 0; i < rows.size(); i++) row(rows.get(i), i, total);
             } finally {
                 ImGui.endTable();
             }
@@ -246,27 +336,52 @@ final class SamplerTool implements CustomTool {
         layout.grown();
     }
 
-    private void row(BuildSample.Row r, int i, int total, String remove) {
+    private void row(Kind r, int i, int total) {
         String shown = shown(r.id());
         ImGui.tableNextRow();
-        ImGui.tableNextColumn();
-        if (ImGui.smallButton(remove + "##remove" + i)) layout.later(() -> {
-            sample.remove(r.id());
-            changed();
-        });
-        AxiomPanel.tip(tr("axiom.chromastudio.sampler.remove.tip"));
-        ImGui.tableNextColumn();
-        Color c = PaletteBlocks.colour(new PaletteEntry(r.id(), ""));
-        if (c != null) AxiomPanel.swatch("swatch" + i, new AxiomPanel.Swatch(c, shown));
+        float padY = ImGui.getStyle().getFramePaddingY();
+        ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImGui.getStyle().getFramePaddingX(), 0);
+        boolean over = false;
+        try {
+            ImGui.tableNextColumn();
+            ImGui.setCursorPosY(ImGui.getCursorPosY() + padY);
+            if (AxiomPanel.checkbox("##in" + i, r.in(), true, tr(r.in() ? "axiom.chromastudio.sampler.in.tip" : "axiom.chromastudio.sampler.out.tip"))) toggle(r);
+            over = ImGui.isItemHovered();
+            ImGui.tableNextColumn();
+            Color c = PaletteBlocks.colour(new PaletteEntry(r.id(), ""));
+            if (c != null) {
+                ImGui.setCursorPosY(ImGui.getCursorPosY() + padY);
+                ImGui.beginDisabled(!r.in());
+                AxiomPanel.swatch("swatch" + i, new AxiomPanel.Swatch(c, shown));
+                ImGui.endDisabled();
+                over |= ImGui.isItemHovered();
+            }
+        } finally {
+            ImGui.popStyleVar();
+        }
         ImGui.tableNextColumn();
         ImGui.alignTextToFramePadding();
         String fitted = AxiomPanel.fit(shown, ImGui.getContentRegionAvailX());
-        AxiomPanel.text(fitted);
-        if (!fitted.equals(shown)) AxiomPanel.tip(shown);
+        if (!r.in()) ImGui.pushStyleColor(ImGuiCol.Text, ImGui.getColorU32(ImGuiCol.TextDisabled));
+        if (ImGui.selectable(fitted + "##name" + i, false)) toggle(r);
+        if (!r.in()) ImGui.popStyleColor();
+        over |= ImGui.isItemHovered();
+        AxiomPanel.tip(fitted.equals(shown) ? tr(r.in() ? "axiom.chromastudio.sampler.in.tip" : "axiom.chromastudio.sampler.out.tip") : shown);
+        if (over) hovered = r.id();
+        ImGui.beginDisabled(!r.in());
         ImGui.tableNextColumn();
         right(Integer.toString(r.count()));
         ImGui.tableNextColumn();
-        right(tr("axiom.chromastudio.sampler.share", share(r.count(), total)));
+        if (r.in()) right(tr("axiom.chromastudio.sampler.share", share(r.count(), total)));
+        ImGui.endDisabled();
+    }
+
+    private void toggle(Kind r) {
+        layout.later(() -> {
+            if (r.in()) sample.remove(r.id());
+            else sample.putBack(r.id());
+            changed();
+        });
     }
 
     private static void right(String text) {
@@ -275,28 +390,6 @@ final class SamplerTool implements CustomTool {
         ImGui.beginDisabled();
         AxiomPanel.text(text);
         ImGui.endDisabled();
-    }
-
-    private void removed() {
-        List<String> removed = sample.removed();
-        if (removed.isEmpty()) return;
-        AxiomPanel.note(tr("axiom.chromastudio.sampler.removed"));
-        float line = ImGui.getContentRegionAvailX(), left = line, gap = ImGui.getStyle().getItemSpacingX();
-        for (int i = 0; i < removed.size(); i++) {
-            String id = removed.get(i), shown = shown(id);
-            float width = ImGui.calcTextSizeX(shown) + ImGui.getStyle().getFramePaddingX() * 2;
-            if (i > 0 && width + gap <= left) {
-                ImGui.sameLine();
-                left -= width + gap;
-            } else {
-                left = line - width;
-            }
-            if (ImGui.smallButton(shown + "##back" + i)) layout.later(() -> {
-                sample.putBack(id);
-                changed();
-            });
-            AxiomPanel.tip(tr("axiom.chromastudio.sampler.put_back.tip"));
-        }
     }
 
     private static String share(int count, int total) {
@@ -308,6 +401,9 @@ final class SamplerTool implements CustomTool {
 
     private void changed() {
         sampledStale = true;
+        excludedStale = true;
+        focused = null;
+        said = null;
         savedAs = null;
     }
 

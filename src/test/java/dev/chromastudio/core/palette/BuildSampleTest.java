@@ -112,6 +112,28 @@ class BuildSampleTest {
     }
 
     @Test
+    void aLeftOutKindKeepsItsCount() {
+        BuildSample s = new BuildSample();
+        fill(s, GLASS, 3, 0);
+        s.remove(GLASS);
+        assertEquals(3, s.count(GLASS));
+        assertEquals(0, s.count(PLANKS));
+    }
+
+    @Test
+    void forEachOfVisitsOneKindEvenWhenLeftOut() {
+        BuildSample s = new BuildSample();
+        s.add(1, 2, 3, BRICKS);
+        s.add(4, 5, 6, GLASS);
+        s.add(7, 8, 9, GLASS);
+        s.remove(GLASS);
+        StringBuilder seen = new StringBuilder();
+        s.forEachOf(GLASS, (x, y, z) -> seen.append(x).append(',').append(y).append(',').append(z).append(' '));
+        assertEquals(2, seen.toString().split(" ").length);
+        assertTrue(seen.indexOf("4,5,6") >= 0 && seen.indexOf("7,8,9") >= 0, seen.toString());
+    }
+
+    @Test
     void weightsAreTheCountsWhenTheyFit() {
         BuildSample s = new BuildSample();
         fill(s, BRICKS, 412, 0);
