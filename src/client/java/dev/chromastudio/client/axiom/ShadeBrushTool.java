@@ -143,6 +143,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         ClientLevel level = Minecraft.getInstance().level;
         if (stroke.active()) {
             dropped = false;
+            pointedFrame = AxiomTools.frame();
             stroke.render(rc);
             return;
         }
@@ -245,14 +246,18 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             ImGui.setCursorPosY(top + least - ImGui.getStyle().getItemSpacingY());
             ImGui.dummy(0, 0);
         }
-        if (stroke.sent() == 0 || stroke.refused() != null || dropped) return;
+        if (stroke.sent() == 0 || held()) return;
         AxiomPanel.heading(tr("axiom.chromastudio.shade.last"));
         AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.changed", stroke.sent(), stroke.sent()));
     }
 
+    private boolean held() {
+        return stroke.refused() != null || dropped || !AxiomEditor.known() || AxiomMask.unavailable().isPresent();
+    }
+
     private void previewRows() {
         Plan p = plan();
-        if (p == null || stroke.refused() != null || dropped || !AxiomEditor.known() || AxiomMask.unavailable().isPresent()) return;
+        if (p == null || held()) return;
         BlockState here = overPanel ? pointed : hovered;
         if (here == null) {
             AxiomPanel.wrapped(AxiomNames.text("axiom.chromastudio.shade.point"));
