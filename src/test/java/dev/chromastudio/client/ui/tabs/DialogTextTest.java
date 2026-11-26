@@ -172,16 +172,16 @@ class DialogTextTest {
                 AxiomBridge.recolourScript(recolour, null, Recolour.Mode.SHADING));
         for (AxiomBridge.Script s : made) {
             PaletteDialogs.Axiom.Lines lines = PaletteDialogs.Axiom.lines(splitter, w, 1000, s, null);
-            if (lines.scope().cut() || lines.size().cut() || lines.next().cut() || lines.details().cut()) {
+            if (lines.scope().cut() || lines.size().cut() || lines.next().cut() || lines.cut()) {
                 failures.add(language + ": the script dialog cuts " + s.scope().getString() + " / " + s.size().getString() + " / " + (s.nextStep() == null ? "" : s.nextStep().getString()));
             }
         }
-        fits("the script's size", tr("axiom.chromastudio.size.over", 99999, 1000), w, PaletteDialogs.Axiom.SIZE_LINES);
+        fits("the script's size", tr("axiom.chromastudio.size.over", 99999, 1000), w - PaletteDialogs.Axiom.CALLOUT, PaletteDialogs.Axiom.SIZE_LINES);
         fits("a recolour's scope", tr("axiom.chromastudio.recolour.done", 999).copy().append(" ").append(tr("axiom.chromastudio.recolour.stay", 999)), w, PaletteDialogs.Axiom.SCOPE_LINES);
         fits("a scatter's scope", tr("axiom.chromastudio.scatter.done", 999).copy().append(" ").append(tr("axiom.chromastudio.script.left_out", 999)), w, PaletteDialogs.Axiom.SCOPE_LINES);
         fits("a gradient's scope", tr("axiom.chromastudio.gradient.done", 999, "Y").copy().append(" ").append(tr("axiom.chromastudio.script.left_out", 999)), w, PaletteDialogs.Axiom.SCOPE_LINES);
         for (String key : List.of("axiom.chromastudio.long", "axiom.chromastudio.long.from", "axiom.chromastudio.long.brush"))
-            fits("the next step", tr(key), w, PaletteDialogs.Axiom.NEXT_LINES);
+            fits("the next step", tr(key), w - PaletteDialogs.Axiom.CALLOUT, PaletteDialogs.Axiom.NEXT_LINES);
         List<Component> problems = List.of(tr("axiom.chromastudio.nothing_to_change").copy().append(" ").append(tr("axiom.chromastudio.recolour.kept", 999)),
                 tr("palettes.chromastudio.need_entries"), tr("axiom.chromastudio.no_blocks"), tr("axiom.chromastudio.gradient.too_short"),
                 tr("axiom.chromastudio.gradient_tool.missing"), tr("axiom.chromastudio.too_long", "99.9", "40.0"), tr("axiom.chromastudio.too_long.from", "99.9", "40.0"),

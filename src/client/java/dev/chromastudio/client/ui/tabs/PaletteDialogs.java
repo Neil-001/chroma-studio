@@ -870,7 +870,7 @@ final class PaletteDialogs {
     static final class Axiom extends Dialog {
         private enum Script { RECOLOUR, SCATTER }
 
-        static final int WIDTH = 300, SCOPE_LINES = 1, SIZE_LINES = 2, NEXT_LINES = 3, RECEIPT_LINES = 2, RULE = 5;
+        static final int WIDTH = 300, SCOPE_LINES = 1, SIZE_LINES = 2, NEXT_LINES = 3, RECEIPT_LINES = 2, RULE = 7, CALLOUT = 6, BULLET = 8;
 
         private static Script script = Script.RECOLOUR;
         private static AxiomScript.Axis axis = AxiomScript.Axis.Y;
@@ -905,7 +905,7 @@ final class PaletteDialogs {
 
         private static int bodyLines(Made m) {
             Lines l = lines(PanelTab.font().getSplitter(), WIDTH - 10, Integer.MAX_VALUE / 2, m.script(), m.problem());
-            return l.top() + l.details().height();
+            return l.top() + l.detailsHeight();
         }
 
         private record Made(AxiomBridge.@Nullable Script script, @Nullable Component problem) {}
@@ -927,30 +927,35 @@ final class PaletteDialogs {
             }
         }
 
-        record Lines(Fitted scope, Fitted size, Fitted next, Fitted details, Fitted problem) {
-            int top() { return problem.height() + scope.height() + size.height() + next.height() + (details.lines().isEmpty() ? 0 : RULE); }
+        record Lines(Fitted scope, Fitted size, Fitted next, List<Fitted> details, Fitted problem) {
+            int top() { return problem.height() + scope.height() + size.height() + next.height() + (details.isEmpty() ? 0 : RULE); }
+
+            int detailsHeight() { return details.stream().mapToInt(Fitted::height).sum(); }
+
+            boolean cut() { return details.stream().anyMatch(Fitted::cut); }
         }
 
         static Lines lines(StringSplitter splitter, int width, int room, AxiomBridge.@Nullable Script made, @Nullable Component problem) {
             Fitted none = new Fitted(List.of(), false);
-            if (made == null) return new Lines(none, none, none, none, fit(splitter, problem, width, Math.max(1, room / 9)));
-            Fitted scope = fit(splitter, made.scope(), width, SCOPE_LINES), size = fit(splitter, made.size(), width, SIZE_LINES);
-            Fitted next = fit(splitter, made.nextStep(), width, NEXT_LINES);
+            if (made == null) return new Lines(none, none, none, List.of(), fit(splitter, problem, width, Math.max(1, room / 9)));
+            Fitted scope = fit(splitter, made.scope(), width, SCOPE_LINES), size = fit(splitter, made.size(), width - CALLOUT, SIZE_LINES);
+            Fitted next = fit(splitter, made.nextStep(), width - CALLOUT, NEXT_LINES);
             int left = (room - scope.height() - size.height() - next.height() - RULE) / 9;
-            return new Lines(scope, size, next, fit(splitter, joined(details(made)), width, Math.max(1, left)), none);
+            List<Fitted> details = new ArrayList<>();
+            for (Component d : details(made)) {
+                if (left <= 0) {
+                    details.add(new Fitted(List.of(), true));
+                    break;
+                }
+                Fitted f = fit(splitter, d, width - BULLET, left);
+                details.add(f);
+                left -= f.lines().size();
+            }
+            return new Lines(scope, size, next, details, none);
         }
 
         private static List<Component> details(AxiomBridge.Script made) {
             return made.details().stream().filter(d -> d != made.nextStep()).toList();
-        }
-
-        private static Component joined(List<Component> parts) {
-            MutableComponent all = Component.empty();
-            for (Component part : parts) {
-                if (part != parts.getFirst()) all.append("\n");
-                all.append(part);
-            }
-            return all;
         }
 
         private void make() {
@@ -1048,12 +1053,21 @@ final class PaletteDialogs {
             }
             int y = drawLines(g, lines.scope(), in.x(), top, Theme.TEXT);
             cutTip(g, lines.scope(), List.of(made.scope()), in.x(), top, in.w(), y, mouseX, mouseY);
-            y = drawLines(g, lines.size(), in.x(), y, made.warning() == null ? Theme.DIM : Theme.FAIR);
-            y = drawLines(g, lines.next(), in.x(), y, Theme.TEXT);
-            if (lines.details().lines().isEmpty()) return;
-            g.horizontalLine(in.x(), in.right() - 1, y + 2, Theme.BORDER);
+            if (made.warning() == null) y = drawLines(g, lines.size(), in.x(), y, Theme.DIM);
+            else {
+                int calloutY = y;
+                y = drawLines(g, lines.size(), in.x() + CALLOUT, y, Theme.FAIR);
+                y = drawLines(g, lines.next(), in.x() + CALLOUT, y, Theme.TEXT);
+                g.fill(in.x(), calloutY, in.x() + 2, y - 1, Theme.FAIR);
+            }
+            if (lines.details().isEmpty()) return;
+            g.horizontalLine(in.x(), in.right() - 1, y + 3, Theme.BORDER);
             int detailsY = y + RULE;
-            cutTip(g, lines.details(), details(made), in.x(), detailsY, in.w(), drawLines(g, lines.details(), in.x(), detailsY, Theme.DIM), mouseX, mouseY);
+            for (Fitted d : lines.details()) {
+                if (!d.lines().isEmpty()) g.fill(in.x() + 2, detailsY + 3, in.x() + 4, detailsY + 5, Theme.DIM);
+                detailsY = drawLines(g, d, in.x() + BULLET, detailsY, Theme.DIM);
+            }
+            if (lines.cut() && over(mouseX, mouseY, in.x(), y + RULE, in.w(), detailsY - y - RULE)) tip(g, details(made), mouseX, mouseY);
         }
 
         private static void cutTip(GuiGraphicsExtractor g, Fitted shown, List<Component> full, int x, int top, int w, int bottom, int mouseX, int mouseY) {
