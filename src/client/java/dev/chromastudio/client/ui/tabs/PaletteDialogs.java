@@ -746,7 +746,8 @@ final class PaletteDialogs {
         private int[] colours = new int[0];
         private List<PaletteEntry> kept = List.of();
         private int actionsX;
-        private Bounds preview = new Bounds(0, 0, 0, 0);
+        private Bounds preview = new Bounds(0, 0, 0, 0), art = preview;
+        private boolean coloured;
         private static final int SPIN_W = 40, PREVIEW_H = 44, CELL_MAX = 16;
         private static final String NOT_USED = "\u2014";
         private static final String[] SIZES = {"palettes.chromastudio.export.height", "palettes.chromastudio.export.width", "palettes.chromastudio.export.patch"};
@@ -795,9 +796,9 @@ final class PaletteDialogs {
             y += PanelTab.ROW;
             widgets.cycler(x, y, Math.min(70, sizeX[1] - 3 * PanelTab.GAP - x), null, List.of(SchematicExporter.Format.values()), format,
                     f -> Component.literal("." + f.extension), f -> { format = f; refresh(); });
-            AbstractWidget gapToggle = widgets.cycler(sizeX[1] + secondW, y, SPIN_W, null, List.of(true, false), gap, v -> diorama() ? Component.literal(NOT_USED) : CommonComponents.optionStatus(v), v -> { gap = v; arrange(); });
+            AbstractWidget gapToggle = widgets.cycler(sizeX[1] + secondW, y, SPIN_W, null, List.of(true, false), gap, v -> diorama() ? Component.literal(NOT_USED) : CommonComponents.optionStatus(v), v -> { gap = v; arrange(); },
+                    diorama() ? null : tr("palettes.chromastudio.export.gap.tip"));
             if (diorama()) Widgets.disable(gapToggle, tr("palettes.chromastudio.export.gap.na"));
-            else gapToggle.setTooltip(Tooltip.create(tr("palettes.chromastudio.export.gap.tip")));
             y += PanelTab.ROW;
             boolean[] applies = sizesApply();
             spinner(sizeX[0] + labelW, y, height, 1, 256, applies[0], SIZES[0], v -> { height = (int) v; arrange(); });
@@ -807,10 +808,12 @@ final class PaletteDialogs {
             Component export = tr("palettes.chromastudio.export.go"), place = tr("palettes.chromastudio.export.place");
             int placeW = Widgets.buttonWidth(place), exportW = Widgets.buttonWidth(export);
             y += PanelTab.ROW;
-            preview = new Bounds(in.x(), y, in.w(), PREVIEW_H);
+            preview = art = new Bounds(in.x(), y, in.w(), PREVIEW_H);
             if (diorama()) {
                 Component reroll = tr("palettes.chromastudio.diorama.reroll");
-                widgets.button(preview.right() - Widgets.buttonWidth(reroll) - PanelTab.GAP, y + PanelTab.GAP, reroll, () -> {
+                int rerollW = Widgets.buttonWidth(reroll);
+                art = new Bounds(in.x(), y, in.w() - rerollW - 2 * PanelTab.GAP, PREVIEW_H);
+                widgets.button(art.right(), y + PanelTab.GAP, reroll, () -> {
                     seed = new Random().nextLong();
                     arrange();
                 });
@@ -830,6 +833,7 @@ final class PaletteDialogs {
         private void arrange() {
             kept = palette.entries.stream().filter(e -> SchematicExporter.stateFor(e) != null).toList();
             shape = kept.isEmpty() ? null : Arrangement.of(kept.stream().map(PaletteEntry::weight).toList(), new LayoutOptions(layout, height, patch, width, gap, seed));
+            coloured = BlockIndex.get().ready();
             colours = kept.stream().mapToInt(e -> {
                 Color c = PaletteBlocks.colour(e);
                 return c == null ? Theme.GREYED : 0xFF000000 | c.rgb();
@@ -841,12 +845,13 @@ final class PaletteDialogs {
         }
 
         private void drawPreview(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+            if (!coloured && BlockIndex.get().ready()) arrange();
             g.fill(preview.x(), preview.y(), preview.right(), preview.bottom(), Theme.WELL);
             if (shape == null) return;
-            double fit = Math.min(CELL_MAX, Math.min((preview.w() - 4.0) / shape.sizeX(), (preview.h() - 4.0) / shape.sizeY()));
+            double fit = Math.min(CELL_MAX, Math.min((art.w() - 4.0) / shape.sizeX(), (art.h() - 4.0) / shape.sizeY()));
             double scale = fit >= 1 ? Math.floor(fit) : fit;
             int w = Math.max(1, (int) Math.round(shape.sizeX() * scale)), h = Math.max(1, (int) Math.round(shape.sizeY() * scale));
-            int left = preview.x() + (preview.w() - w) / 2, top = preview.y() + (preview.h() - h) / 2;
+            int left = art.x() + (art.w() - w) / 2, top = art.y() + (art.h() - h) / 2;
             if (mouseX >= left && mouseX < left + w && mouseY >= top && mouseY < top + h) {
                 int cell = cell(mouseX - left, mouseY - top, scale);
                 if (cell != Arrangement.AIR) tip(g, List.of(PaletteBlocks.name(kept.get(cell))), mouseX, mouseY);
@@ -923,19 +928,19 @@ final class PaletteDialogs {
                 return;
             }
             MutableComponent done = tr("command.chromastudio.export.done", Component.literal(shortPath(result.file())).withColor(Theme.TEXT));
+            if (place) {
+                BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
+                String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
+                Optional<Component> problem = LitematicaBridge.place(result.file(), origin, name);
+                Component placed = problem.orElseGet(() -> tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()));
+                done.append("\n").append(placed.copy().withColor(problem.isPresent() ? Theme.BAD : Theme.GOOD));
+            } else if (placeWhy != null) done.append("\n").append(placeWhy.copy().withColor(Theme.FAIR));
+            if (!result.skippedIds().isEmpty()) {
+                String skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds())).getString();
+                done.append("\n").append(Component.literal(PanelTab.fit(skipped, box.w() - 10)).withColor(Theme.FAIR));
+            }
             if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty())
                 done.append("\n").append(AxiomBridge.named("palettes.chromastudio.export.axiom").withColor(Theme.DIM));
-            if (!result.skippedIds().isEmpty())
-                done.append("\n").append(tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds())).withColor(Theme.FAIR));
-            if (!place) {
-                status(done, Theme.GOOD);
-                return;
-            }
-            BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
-            String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
-            Optional<Component> problem = LitematicaBridge.place(result.file(), origin, name);
-            Component placed = problem.orElseGet(() -> tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()));
-            done.append("\n").append(placed.copy().withColor(problem.isPresent() ? Theme.BAD : Theme.GOOD));
             status(done, Theme.GOOD);
         }
     }
