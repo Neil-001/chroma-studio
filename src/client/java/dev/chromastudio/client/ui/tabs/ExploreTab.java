@@ -157,9 +157,10 @@ public final class ExploreTab extends Tab {
             Color c = m.entry().face(m.face(), query.tint).mean(query.scale);
             Oklch lch = c.oklch();
             int size = 2 + (int) Math.min(3, Math.round(lch.c() / 0.08));
-            out.add(new Dot(m.entry(), m.face(), c.rgb(), HueWindow.wrap(lch.h() / 360), lch.l(), lch.c(), size, ringed.contains(m.entry().id())));
+            boolean ring = ringed.contains(m.entry().id());
+            if (ring) ringCount++;
+            out.add(new Dot(m.entry(), m.face(), c.rgb(), HueWindow.wrap(lch.h() / 360), lch.l(), lch.c(), size, ring));
         }
-        for (Dot d : out) if (d.ringed) ringCount++;
         dots = out;
     }
 
@@ -172,7 +173,7 @@ public final class ExploreTab extends Tab {
     private int screenX(double hue) {
         HueWindow w = window();
         double margin = zoom > 1 ? (double) EDGE / spanX() * w.width() : 0;
-        return plot.x() + INSET + (int) Math.round((HueWindow.wrap(hue - w.start() + margin) - margin) / w.width() * spanX());
+        return plot.x() + INSET + (int) Math.round((w.offset(hue + margin) - margin) / w.width() * spanX());
     }
 
     private int screenY(double lightness) { return plot.y() + INSET + (int) Math.round((0.5 - (lightness - centreY) * zoom) * spanY()); }
@@ -216,17 +217,12 @@ public final class ExploreTab extends Tab {
         tip.add(e.properties().isEmpty() ? e.name() : Component.translatable("match.chromastudio.name_with_state", e.name(), e.properties()));
         tip.add(Component.literal(String.format("#%06X", over.rgb)).withColor(Theme.TIP_DIM));
         tip.add(tr("lch", Math.round(over.lightness * 100), String.format("%.3f", over.chroma), degrees(over.hue)).withColor(Theme.TIP_DIM));
-        int ox = screenX(over.hue), oy = screenY(over.lightness), stacked = -1;
-        for (Dot d : dots) if (Math.abs(screenX(d.hue) - ox) <= 1 && Math.abs(screenY(d.lightness) - oy) <= 1) stacked++;
-        if (stacked > 0) {
-            int named = 0;
-            for (Dot d : dots) {
-                if (d == over || Math.abs(screenX(d.hue) - ox) > 1 || Math.abs(screenY(d.lightness) - oy) > 1) continue;
-                if (named++ == STACK_NAMES) break;
-                tip.add(tr("stacked.name", MatchTab.ellipsis(font, d.entry.name().getString(), STACK_NAME_W)).withColor(Theme.TIP_DIM));
-            }
-            if (stacked > STACK_NAMES) tip.add(tr("stacked", stacked - STACK_NAMES).withColor(Theme.TIP_DIM));
-        }
+        int ox = screenX(over.hue), oy = screenY(over.lightness);
+        List<Dot> stacked = new ArrayList<>();
+        for (Dot d : dots) if (d != over && Math.abs(screenX(d.hue) - ox) <= 1 && Math.abs(screenY(d.lightness) - oy) <= 1) stacked.add(d);
+        for (Dot d : stacked.subList(0, Math.min(STACK_NAMES, stacked.size())))
+            tip.add(tr("stacked.name", MatchTab.ellipsis(font, d.entry.name().getString(), STACK_NAME_W)).withColor(Theme.TIP_DIM));
+        if (stacked.size() > STACK_NAMES) tip.add(tr("stacked", stacked.size() - STACK_NAMES).withColor(Theme.TIP_DIM));
         tip.add(tr("click_tip").withColor(Theme.TIP_DIM));
         int w = tip.stream().mapToInt(font::width).max().orElse(0), h = tip.size() * 10;
         var window = Minecraft.getInstance().getWindow();
@@ -463,9 +459,8 @@ public final class ExploreTab extends Tab {
         if (!plot.contains(x, y)) return false;
         double hue = hueAt(x), lightness = lightnessAt(y);
         zoom = Math.clamp(zoom * Math.pow(1.25, v), 1, MAX_ZOOM);
-        centreX = centreY = 0;
-        centreX = hue - hueAt(x);
-        centreY = lightness - lightnessAt(y);
+        centreX += hue - hueAt(x);
+        centreY += lightness - lightnessAt(y);
         confine();
         return true;
     }

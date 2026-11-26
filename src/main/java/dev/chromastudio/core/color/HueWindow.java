@@ -14,10 +14,4 @@ public record HueWindow(double start, double width) {
     }
 
     public double offset(double hue) { return wrap(hue - start); }
-
-    public boolean contains(double hue) { return offset(hue) <= width; }
-
-    public double position(double hue) { return offset(hue) / width; }
-
-    public double end() { return wrap(start + width); }
 }
