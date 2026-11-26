@@ -6,7 +6,11 @@ import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import com.mojang.renderpearl.api.textures.GpuTexture;
 import dev.chromastudio.client.ChromaStudioClient;
+import dev.chromastudio.client.ui.Hud;
+import dev.chromastudio.client.ui.Widgets;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.IntConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -16,13 +20,16 @@ import net.minecraft.network.chat.Component;
 public final class ScreenPicker {
     private ScreenPicker() {}
 
-    private static final int SIDE = 3, CELL = 8;
+    static final int SIDE = 3, LOUPE = 11;
+    private static final int CELL = 5, SWATCH = 10, RETICLE = 5, OFFSET = 16;
     private static final int SETTLE = 2;
 
     private static IntConsumer onPick;
     private static int frames;
     private static double clickX = -1, clickY = -1;
     private static int[] seen;
+    private static int seenAt;
+    private static List<int[]> drawn = List.of();
     private static int session;
 
     public static void arm(IntConsumer onPick) {
@@ -41,9 +48,10 @@ public final class ScreenPicker {
     }
 
     public static void click(double x, double y) {
-        if (frames < SETTLE) return;
+        if (frames < SETTLE || clickX >= 0) return;
         clickX = x;
         clickY = y;
+        frames = 0;
     }
 
     public static void render(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -51,33 +59,89 @@ public final class ScreenPicker {
         Font font = mc.font;
         frames++;
         boolean picking = clickX >= 0;
-        if (frames >= SETTLE) {
+        RenderTarget target = mc.gameRenderer.mainRenderTarget();
+        double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
+        int guiScale = mc.getWindow().getGuiScale();
+        boolean fits = target.width >= LOUPE && target.height >= LOUPE;
+        if (frames >= SETTLE && (picking || fits && !touches(drawn, mouseX, mouseY, scale, target.width, target.height))) {
             int run = session;
-            read(picking ? clickX : mouseX, picking ? clickY : mouseY, pixels -> {
+            read(picking ? clickX : mouseX, picking ? clickY : mouseY, (pixels, at) -> {
                 if (run != session) return;
                 seen = pixels;
-                if (picking) finish(mean(pixels));
+                seenAt = at;
+                if (picking) finish(mean(centre(pixels, at)));
             });
         }
 
-        Component hint = Component.translatable("picker.chromastudio.hint");
-        int w = font.width(hint) + 8;
-        g.fill((g.guiWidth() - w) / 2, 4, (g.guiWidth() + w) / 2, 8 + font.lineHeight, 0xC0000000);
-        g.centeredText(font, hint, g.guiWidth() / 2, 6, 0xFFFFFFFF);
+        drawn = List.of();
+        if (picking) return;
+        Hud.banner(g, Component.translatable("picker.chromastudio.title"), Component.translatable("picker.chromastudio.hint"));
 
+        List<int[]> overlays = new ArrayList<>();
+        for (int[] bar : fits ? reticle(mouseX, mouseY, scale, guiScale, target.width, target.height) : List.<int[]>of()) {
+            g.fill(bar[0] - 1, bar[1] - 1, bar[2] + 1, bar[3] + 1, 0xFF000000);
+            g.fill(bar[0], bar[1], bar[2], bar[3], 0xFFFFFFFF);
+            overlays.add(physical(shadow(bar), guiScale));
+        }
+        drawn = overlays;
         if (seen == null) return;
-        int size = SIDE * CELL + 2, x = mouseX + 14, y = mouseY + 14;
-        int textW = font.width("#000000") + 4;
-        if (x + Math.max(size, textW) > g.guiWidth()) x = mouseX - 14 - Math.max(size, textW);
-        if (y + size + font.lineHeight + 3 > g.guiHeight()) y = mouseY - 14 - size - font.lineHeight - 3;
-        g.fill(x, y, x + size, y + size, 0xFF000000);
+        int rgb = mean(centre(seen, seenAt));
+        String hex = String.format("#%06X", rgb);
+        int grid = LOUPE * CELL, w = Math.max(grid, SWATCH + 3 + font.width(hex)) + 4, h = grid + 4 + SWATCH + 3;
+        int x = mouseX + OFFSET, y = mouseY + OFFSET;
+        if (x + w > g.guiWidth()) x = mouseX - OFFSET - w;
+        if (y + h > g.guiHeight()) y = mouseY - OFFSET - h;
+        g.fill(x - 1, y - 1, x + w + 1, y + h + 1, 0xFFFFFFFF);
+        g.fill(x, y, x + w, y + h, 0xFF000000);
+        overlays.add(physical(new int[] {x - 1, y - 1, x + w + 1, y + h + 1}, guiScale));
+        int gx = x + (w - grid) / 2, gy = y + 2;
         for (int i = 0; i < seen.length; i++) {
-            int cx = x + 1 + i % SIDE * CELL, cy = y + 1 + i / SIDE * CELL;
+            int cx = gx + i % LOUPE * CELL, cy = gy + i / LOUPE * CELL;
             g.fill(cx, cy, cx + CELL, cy + CELL, 0xFF000000 | seen[i]);
         }
-        g.outline(x + CELL, y + CELL, CELL + 2, CELL + 2, 0xFFFFFFFF);
-        g.fill(x, y + size, x + textW, y + size + font.lineHeight + 2, 0xC0000000);
-        g.text(font, String.format("#%06X", mean(seen)), x + 2, y + size + 2, 0xFFFFFFFF, false);
+        int ox = gx + seenAt % LOUPE * CELL, oy = gy + seenAt / LOUPE * CELL, o = SIDE * CELL;
+        g.outline(ox - 2, oy - 2, o + 4, o + 4, 0xFF000000);
+        g.outline(ox - 1, oy - 1, o + 2, o + 2, 0xFFFFFFFF);
+        int sy = gy + grid + 2;
+        g.fill(x + 2, sy, x + 2 + SWATCH, sy + SWATCH, 0xFFFFFFFF);
+        Widgets.swatch(g, x + 3, sy + 1, SWATCH - 2, SWATCH - 2, rgb);
+        g.text(font, hex, x + 2 + SWATCH + 3, sy + 1, 0xFFFFFFFF, false);
+    }
+
+    static List<int[]> reticle(int x, int y, double scale, int guiScale, int width, int height) {
+        int near = (int) Math.ceil((LOUPE / 2 + guiScale - 1) / (double) guiScale) + 2, far = near + RETICLE;
+        int lx = loupeStart(pick(x, scale, width), width), ly = loupeStart(pick(y, scale, height), height);
+        List<int[]> bars = new ArrayList<>();
+        for (int[] bar : List.of(new int[] {x - far, y, x - near + 1, y + 2}, new int[] {x + near, y, x + far + 1, y + 2},
+                new int[] {x, y - far, x + 2, y - near + 1}, new int[] {x, y + near, x + 2, y + far + 1}))
+            if (!overlaps(shadow(bar), guiScale, lx, ly)) bars.add(bar);
+        return bars;
+    }
+
+    static boolean touches(List<int[]> physical, int x, int y, double scale, int width, int height) {
+        int lx = loupeStart(pick(x, scale, width), width), ly = loupeStart(pick(y, scale, height), height);
+        for (int[] overlay : physical) if (overlaps(overlay, 1, lx, ly)) return true;
+        return false;
+    }
+
+    static int[] physical(int[] gui, int guiScale) {
+        return new int[] {gui[0] * guiScale, gui[1] * guiScale, gui[2] * guiScale, gui[3] * guiScale};
+    }
+
+    static boolean overlaps(int[] gui, int guiScale, int lx, int ly) {
+        return gui[0] * guiScale < lx + LOUPE && gui[2] * guiScale > lx && gui[1] * guiScale < ly + LOUPE && gui[3] * guiScale > ly;
+    }
+
+    private static int[] shadow(int[] bar) { return new int[] {bar[0] - 1, bar[1] - 1, bar[2] + 1, bar[3] + 1}; }
+
+    static int pick(double gui, double scale, int size) { return Math.clamp((int) (gui * scale) - 1, 0, size - SIDE); }
+
+    static int loupeStart(int picked, int size) { return Math.clamp(picked - (LOUPE - SIDE) / 2, 0, size - LOUPE); }
+
+    static int[] centre(int[] loupe, int at) {
+        int[] out = new int[SIDE * SIDE];
+        for (int i = 0; i < out.length; i++) out[i] = loupe[at + i % SIDE + i / SIDE * LOUPE];
+        return out;
     }
 
     private static void finish(int rgb) {
@@ -98,7 +162,7 @@ public final class ScreenPicker {
     }
 
     private interface Pixels {
-        void accept(int[] rgb);
+        void accept(int[] rgb, int pickedAt);
     }
 
     private static void read(double guiX, double guiY, Pixels then) {
@@ -106,28 +170,29 @@ public final class ScreenPicker {
         RenderTarget target = mc.gameRenderer.mainRenderTarget();
         GpuTexture texture = target.getColorTexture();
         int bytes = texture == null ? 0 : texture.getFormat().blockSize();
-        if (bytes != 4 || target.width < SIDE || target.height < SIDE) return;
+        if (bytes != 4 || target.width < LOUPE || target.height < LOUPE) return;
         double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
-        int px = Math.clamp((int) (guiX * scale) - 1, 0, target.width - SIDE);
-        int fromTop = Math.clamp((int) (guiY * scale) - 1, 0, target.height - SIDE);
-        int py = target.height - SIDE - fromTop;
+        int pickX = pick(guiX, scale, target.width), pickTop = pick(guiY, scale, target.height);
+        int px = loupeStart(pickX, target.width), fromTop = loupeStart(pickTop, target.height);
+        int at = pickX - px + (pickTop - fromTop) * LOUPE;
+        int py = target.height - LOUPE - fromTop;
         try {
             GpuBuffer buffer = RenderSystem.getDevice().createBuffer(() -> "Chroma Studio screen picker",
-                    GpuBuffer.USAGE_COPY_DST | GpuBuffer.USAGE_MAP_READ, (long) SIDE * SIDE * bytes);
+                    GpuBuffer.USAGE_COPY_DST | GpuBuffer.USAGE_MAP_READ, (long) LOUPE * LOUPE * bytes);
             RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(texture, buffer, 0L, () -> {
-                int[] out = new int[SIDE * SIDE];
+                int[] out = new int[LOUPE * LOUPE];
                 try (GpuBufferSlice.MappedView view = buffer.map(true, false)) {
                     ByteBuffer data = view.data();
-                    for (int row = 0; row < SIDE; row++)
-                        for (int col = 0; col < SIDE; col++) {
-                            int abgr = data.getInt((col + row * SIDE) * bytes);
+                    for (int row = 0; row < LOUPE; row++)
+                        for (int col = 0; col < LOUPE; col++) {
+                            int abgr = data.getInt((col + row * LOUPE) * bytes);
                             int rgb = (abgr & 0xFF) << 16 | abgr & 0xFF00 | abgr >> 16 & 0xFF;
-                            out[col + (SIDE - 1 - row) * SIDE] = rgb;
+                            out[col + (LOUPE - 1 - row) * LOUPE] = rgb;
                         }
                 }
                 buffer.close();
-                then.accept(out);
-            }, 0, px, py, SIDE, SIDE);
+                then.accept(out, at);
+            }, 0, px, py, LOUPE, LOUPE);
         } catch (RuntimeException e) {
             ChromaStudioClient.LOGGER.warn("Couldn't read the screen for the screen picker", e);
             cancel();

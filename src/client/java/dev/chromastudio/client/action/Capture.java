@@ -10,7 +10,9 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
+import dev.chromastudio.client.ui.ChromaScreen;
 import dev.chromastudio.client.ui.Hud;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -37,7 +39,8 @@ public final class Capture {
     private Capture() {}
 
     public static final long MAX_VOLUME = 4_000_000;
-    private static final int OUTLINE = 0xFFFFFFFF;
+    private static final int OUTLINE = 0xFFFFFFFF, SHADOW = 0xFF000000, FIRST = 0xFF000000 | Theme.TIP_PROMPT;
+    private static final double HALO = 0.012, INSET = 0.016;
 
     private static boolean armed;
     private static BlockPos first;
@@ -67,7 +70,7 @@ public final class Capture {
         BlockPos a = new BlockPos(IntegerArgumentType.getInteger(ctx, "x1"), IntegerArgumentType.getInteger(ctx, "y1"), IntegerArgumentType.getInteger(ctx, "z1"));
         BlockPos b = new BlockPos(IntegerArgumentType.getInteger(ctx, "x2"), IntegerArgumentType.getInteger(ctx, "y2"), IntegerArgumentType.getInteger(ctx, "z2"));
         Result result = capture(a, b);
-        ChromaCommand.say(result.message);
+        ChromaCommand.say(result.detail == null ? result.message : result.message.copy().append(" ").append(result.detail));
         if (result.made) ChromaStudioClient.openWindowSoon("palettes");
         return result.made ? 1 : 0;
     }
@@ -87,7 +90,7 @@ public final class Capture {
     public static void cancel() {
         if (!armed) return;
         disarm();
-        Hud.readout(Component.translatable("capture.chromastudio.cancelled"), Component.empty(), 2);
+        Hud.readout(Hud.Kind.PROMPT, Component.translatable("capture.chromastudio.cancelled"), null, 2);
     }
 
     private static void disarm() {
@@ -99,12 +102,30 @@ public final class Capture {
     }
 
     private static void prompt() {
-        Component keys = Component.translatable("capture.chromastudio.keys", Keys.EYEDROPPER.getTranslatedKeyMessage());
-        Hud.readout(Component.translatable(first == null ? "capture.chromastudio.first" : "capture.chromastudio.second"), keys, 2);
+        Minecraft mc = Minecraft.getInstance();
+        Component key = Hud.key(Keys.EYEDROPPER);
+        String hint = first == null ? "capture.chromastudio.keys" : "capture.chromastudio.keys.second";
+        Component keys = Component.translatable(aimsAtBlock(mc) ? hint : hint + ".feet", key);
+        Component step;
+        if (first == null) step = Component.translatable("capture.chromastudio.first");
+        else {
+            int[] size = size(mc.level, first, aimed(mc));
+            step = Component.translatable("capture.chromastudio.second.size", size[0], size[1], size[2]);
+        }
+        Hud.readout(step, keys, 2);
+    }
+
+    private static int[] size(ClientLevel level, BlockPos a, BlockPos b) {
+        int y0 = Math.max(level.getMinY(), Math.min(a.getY(), b.getY())), y1 = Math.min(level.getMaxY(), Math.max(a.getY(), b.getY()));
+        return new int[] {Math.abs(a.getX() - b.getX()) + 1, Math.max(0, y1 - y0 + 1), Math.abs(a.getZ() - b.getZ()) + 1};
+    }
+
+    private static boolean aimsAtBlock(Minecraft mc) {
+        return mc.hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK;
     }
 
     private static BlockPos aimed(Minecraft mc) {
-        if (mc.hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK) return hit.getBlockPos();
+        if (aimsAtBlock(mc)) return ((BlockHitResult) mc.hitResult).getBlockPos();
         return mc.player.blockPosition();
     }
 
@@ -120,8 +141,8 @@ public final class Capture {
         BlockPos from = first;
         disarm();
         Result result = capture(from, at);
-        Hud.readout(result.message, Component.empty(), 4);
-        if (result.made) ChromaStudioClient.openWindow();
+        Hud.readout(result.made ? Hud.Kind.DONE : Hud.Kind.PROBLEM, result.message, result.detail, 4);
+        if (result.made) ChromaScreen.open("palettes");
     }
 
     public static void tick(Minecraft mc) {
@@ -139,24 +160,35 @@ public final class Capture {
         int sx = Math.abs(a.getX() - b.getX()) + 1, sy = Math.abs(a.getY() - b.getY()) + 1, sz = Math.abs(a.getZ() - b.getZ()) + 1;
         pose.pushPose();
         pose.translate(x - cam.x, y - cam.y, z - cam.z);
-        out.submitShapeOutline(pose, Shapes.create(0, 0, 0, sx, sy, sz), RenderTypes.lines(), OUTLINE,
-                mc.gameRenderer.gameRenderState().windowRenderState.appropriateLineWidth, true);
+        float width = mc.gameRenderer.gameRenderState().windowRenderState.appropriateLineWidth;
+        outline(out, pose, sx, sy, sz, OUTLINE, width, width * 1.5f);
+        if (first != null) {
+            pose.translate(first.getX() - x, first.getY() - y, first.getZ() - z);
+            outline(out, pose, 1, 1, 1, FIRST, width, width * 2);
+        }
         pose.popPose();
     }
 
-    public record Result(Component message, boolean made) {}
+    private static void outline(SubmitNodeCollector out, PoseStack pose, int sx, int sy, int sz, int colour, float width, float lineWidth) {
+        out.submitShapeOutline(pose, Shapes.create(-HALO, -HALO, -HALO, sx + HALO, sy + HALO, sz + HALO), RenderTypes.lines(), SHADOW, width * 3, true);
+        out.submitShapeOutline(pose, Shapes.create(-INSET, -INSET, -INSET, sx + INSET, sy + INSET, sz + INSET), RenderTypes.lines(), colour, lineWidth, true);
+    }
+
+    public record Result(Component message, Component detail, boolean made) {
+        Result(Component message) { this(message, null, false); }
+    }
 
     public static Result capture(BlockPos a, BlockPos b) {
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
         PaletteSink sink = PaletteSink.current();
-        if (level == null || sink == null) return new Result(Component.translatable("palettes.chromastudio.no_world"), false);
+        if (level == null || sink == null) return new Result(Component.translatable("palettes.chromastudio.no_world"));
         int x0 = Math.min(a.getX(), b.getX()), y0 = Math.max(level.getMinY(), Math.min(a.getY(), b.getY())), z0 = Math.min(a.getZ(), b.getZ());
         int x1 = Math.max(a.getX(), b.getX()), y1 = Math.min(level.getMaxY(), Math.max(a.getY(), b.getY())), z1 = Math.max(a.getZ(), b.getZ());
-        if (y1 < y0) return new Result(Component.translatable("capture.chromastudio.empty"), false);
+        if (y1 < y0) return new Result(Component.translatable("capture.chromastudio.empty"));
         long sx = (long) x1 - x0 + 1, sy = (long) y1 - y0 + 1, sz = (long) z1 - z0 + 1;
         if (sx > MAX_VOLUME || sz > MAX_VOLUME || sx * sz > MAX_VOLUME || sx * sz * sy > MAX_VOLUME) {
-            return new Result(Component.translatable("capture.chromastudio.too_big", MAX_VOLUME), false);
+            return new Result(Component.translatable("capture.chromastudio.too_big", MAX_VOLUME));
         }
 
         Map<BlockState, PaletteEntry> entries = new IdentityHashMap<>();
@@ -172,7 +204,7 @@ public final class Capture {
                     counts.merge(entries.computeIfAbsent(state, PaletteBlocks::of), 1, Integer::sum);
                 }
             }
-        if (counts.isEmpty()) return new Result(Component.translatable("capture.chromastudio.empty"), false);
+        if (counts.isEmpty()) return new Result(Component.translatable("capture.chromastudio.empty"));
 
         List<Map.Entry<PaletteEntry, Integer>> ranked = new ArrayList<>(counts.entrySet());
         ranked.sort(Map.Entry.<PaletteEntry, Integer>comparingByValue(Comparator.reverseOrder()).thenComparing(e -> e.getKey().idWithProperties()));
@@ -182,8 +214,11 @@ public final class Capture {
         for (var e : ranked) kept.add(e.getKey().withWeight(Math.max(1, Math.round(e.getValue() / (float) rarest))));
 
         String name = Component.translatable("capture.chromastudio.name", x0, y0, z0, x1, y1, z1).getString();
-        if (!sink.createPalette(name, kept)) return new Result(Component.translatable("capture.chromastudio.failed"), false);
-        return new Result(Component.translatable("capture.chromastudio.done", kept.size(), counts.size()), true);
+        if (!sink.createPalette(name, kept)) return new Result(Component.translatable("capture.chromastudio.failed"));
+        Component done = kept.size() == counts.size() ? Component.translatable("capture.chromastudio.done.all", kept.size())
+                : Component.translatable("capture.chromastudio.done", kept.size(), counts.size());
+        return new Result(done,
+                Component.translatable("capture.chromastudio.saved", sx, sy, sz, Hud.key(Keys.OPEN)), true);
     }
 
     public static Optional<Component> unavailable() {

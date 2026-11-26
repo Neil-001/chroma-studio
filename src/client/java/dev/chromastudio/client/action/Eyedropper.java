@@ -15,6 +15,7 @@ import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -28,7 +29,7 @@ public final class Eyedropper {
     public static void arm() {
         armed = true;
         Hud.readout(Component.translatable("eyedropper.chromastudio.armed"),
-                Component.translatable("eyedropper.chromastudio.armed.how", Keys.EYEDROPPER.getTranslatedKeyMessage()), ModSettings.readoutSeconds);
+                Component.translatable("eyedropper.chromastudio.armed.how", Hud.key(Keys.EYEDROPPER)), ModSettings.readoutSeconds);
     }
 
     public static void press() {
@@ -37,7 +38,8 @@ public final class Eyedropper {
         boolean open = armed || mc.hasShiftDown();
         BlockHitResult hit = AxiomBridge.editorOpen() ? AxiomBridge.blockUnderMouse() : hit(mc);
         if (hit == null) {
-            say("eyedropper.chromastudio.no_block", "eyedropper.chromastudio.no_block.how");
+            Hud.readout(Hud.Kind.PROBLEM, Component.translatable("eyedropper.chromastudio.no_block"),
+                    Component.translatable("eyedropper.chromastudio.no_block.how", Hud.key(Keys.EYEDROPPER)), ModSettings.readoutSeconds);
             return;
         }
         read(hit, open);
@@ -50,7 +52,8 @@ public final class Eyedropper {
         BlockState state = mc.level.getBlockState(pos);
         BlockIndex index = BlockIndex.get();
         if (!index.ready()) {
-            say("eyedropper.chromastudio.not_ready", "eyedropper.chromastudio.not_ready.how");
+            Hud.readout(Hud.Kind.PROBLEM, Component.translatable("eyedropper.chromastudio.not_ready"),
+                    Component.translatable("eyedropper.chromastudio.not_ready.how"), ModSettings.readoutSeconds);
             return false;
         }
         Entry entry = index.entryOf(state);
@@ -60,7 +63,7 @@ public final class Eyedropper {
             entry = index.entryOf(state);
         }
         if (entry == null) {
-            Hud.readout(Component.translatable("eyedropper.chromastudio.not_indexed", state.getBlock().getName()),
+            Hud.readout(Hud.Kind.PROBLEM, Component.translatable("eyedropper.chromastudio.not_indexed", state.getBlock().getName()),
                     Component.translatable("eyedropper.chromastudio.not_indexed.how"), ModSettings.readoutSeconds);
             return false;
         }
@@ -70,21 +73,23 @@ public final class Eyedropper {
         Color colour = index.colourOf(state, face, tint).orElseThrow();
         MatchState.setEntry(entry, state, face, tint);
         MatchState.remember();
-        Clipboard.copy(colour.hex());
+        boolean copied = Clipboard.copy(colour.hex()).isEmpty() && colour.hex().equals(mc.keyboardHandler.getClipboard());
 
         String properties = Entry.properties(state);
         Component name = properties.isEmpty() ? entry.name() : Component.translatable("match.chromastudio.name_with_state", entry.name(), properties);
-        Hud.readout(name, Component.translatable("eyedropper.chromastudio.readout", faceName(face), colour.hex()), ModSettings.readoutSeconds);
+        Hud.readout(Hud.Kind.DONE, icon(state), colour.rgb(), name,
+                Component.translatable(copied ? "eyedropper.chromastudio.readout.copied" : "eyedropper.chromastudio.readout", faceName(face), colour.hex()), ModSettings.readoutSeconds);
         if (open) ChromaScreen.open("match");
         return true;
     }
 
-    public static Component faceName(Face face) {
-        return Component.translatable("face.chromastudio." + face.name().toLowerCase(Locale.ROOT));
+    private static ItemStack icon(BlockState state) {
+        ItemStack block = new ItemStack(state.getBlock());
+        return block.isEmpty() && !state.getFluidState().isEmpty() ? new ItemStack(state.getFluidState().getType().getBucket()) : block;
     }
 
-    private static void say(String line1, String line2) {
-        Hud.readout(Component.translatable(line1), Component.translatable(line2), ModSettings.readoutSeconds);
+    public static Component faceName(Face face) {
+        return Component.translatable("face.chromastudio." + face.name().toLowerCase(Locale.ROOT));
     }
 
     private static BlockHitResult hit(Minecraft mc) {
