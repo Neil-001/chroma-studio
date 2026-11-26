@@ -112,11 +112,20 @@ public final class Widgets extends AbstractContainerEventHandler {
     private record Spinner(EditBox field, Arrow up, Arrow down, double[] value, double min, double max) {}
 
     public EditBox spin(int x, int y, int w, double value, double step, double min, double max, boolean integer, DoubleConsumer onChange) {
+        return spin(x, y, w, value, step, min, max, integer, Double.NaN, onChange);
+    }
+
+    public EditBox spin(int x, int y, int w, double value, double step, double min, double max, boolean integer, double blank, DoubleConsumer onChange) {
         EditBox f = new EditBox(font(), x, y, w - ARROW_SLOT, H, Component.empty());
         f.setMaxLength(32);
         f.setValue(number(value, integer));
         double[] current = {value};
         f.setResponder(text -> {
+            if (!Double.isNaN(blank) && text.isBlank()) {
+                current[0] = blank;
+                onChange.accept(blank);
+                return;
+            }
             try {
                 double d = Double.parseDouble(text.trim());
                 if (!Double.isFinite(d)) return;
