@@ -172,7 +172,7 @@ class DialogTextTest {
                 AxiomBridge.recolourScript(recolour, null, Recolour.Mode.SHADING));
         for (AxiomBridge.Script s : made) {
             PaletteDialogs.Axiom.Lines lines = PaletteDialogs.Axiom.lines(splitter, w, 1000, s, null);
-            if (lines.scope().cut() || lines.size().cut() || lines.next().cut() || lines.cut()) {
+            if (lines.scope().cut() || lines.size().cut() || lines.next().cut()) {
                 failures.add(language + ": the script dialog cuts " + s.scope().getString() + " / " + s.size().getString() + " / " + (s.nextStep() == null ? "" : s.nextStep().getString()));
             }
         }

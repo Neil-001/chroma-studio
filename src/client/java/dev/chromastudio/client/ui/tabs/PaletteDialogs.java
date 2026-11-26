@@ -886,6 +886,7 @@ final class PaletteDialogs {
         private final int body;
         private boolean copied;
         private Lines lines;
+        private Widgets.ScrollList detailList;
 
         Axiom(Palette palette) { this(palette, null, null, body(palette, null, null)); }
 
@@ -910,7 +911,7 @@ final class PaletteDialogs {
 
         private static int bodyLines(Made m) {
             Lines l = lines(PanelTab.font().getSplitter(), WIDTH - 10, Integer.MAX_VALUE / 2, m.script(), m.problem());
-            return l.top() + l.detailsHeight();
+            return l.top() + l.details().size() * 9;
         }
 
         private record Made(AxiomBridge.@Nullable Script script, @Nullable Component problem) {}
@@ -932,17 +933,10 @@ final class PaletteDialogs {
             }
         }
 
-        record Lines(Fitted scope, Fitted size, Fitted next, List<Fitted> details, Fitted problem) {
+        record Detail(FormattedText text, boolean first) {}
+
+        record Lines(Fitted scope, Fitted size, Fitted next, List<Detail> details, Fitted problem) {
             int top() { return problem.height() + scope.height() + size.height() + next.height() + (details.isEmpty() ? 0 : RULE); }
-
-            int detailsHeight() { return details.stream().mapToInt(Fitted::height).sum(); }
-
-            boolean cut() { return details.stream().anyMatch(Fitted::cut); }
-
-            int firstCut() {
-                for (int i = 0; i < details.size(); i++) if (details.get(i).cut()) return i;
-                return details.size();
-            }
         }
 
         static Lines lines(StringSplitter splitter, int width, int room, AxiomBridge.@Nullable Script made, @Nullable Component problem) {
@@ -950,16 +944,10 @@ final class PaletteDialogs {
             if (made == null) return new Lines(none, none, none, List.of(), fit(splitter, problem, width, Math.max(1, room / 9)));
             Fitted scope = fit(splitter, made.scope(), width, SCOPE_LINES), size = fit(splitter, made.size(), width - CALLOUT, SIZE_LINES);
             Fitted next = fit(splitter, made.nextStep(), width - CALLOUT, NEXT_LINES);
-            int left = (room - scope.height() - size.height() - next.height() - RULE) / 9;
-            List<Fitted> details = new ArrayList<>();
+            List<Detail> details = new ArrayList<>();
             for (Component d : made.details()) {
-                if (left <= 0) {
-                    details.add(new Fitted(List.of(), true));
-                    break;
-                }
-                Fitted f = fit(splitter, d, width - BULLET, left);
-                details.add(f);
-                left -= f.lines().size();
+                List<FormattedText> split = splitter.splitLines(d, width - BULLET - Widgets.BAR_W - 2, Style.EMPTY);
+                for (FormattedText line : split) details.add(new Detail(line, line == split.getFirst()));
             }
             return new Lines(scope, size, next, details, none);
         }
@@ -1002,6 +990,8 @@ final class PaletteDialogs {
         protected void build(Bounds in) {
             make();
             lines = lines(PanelTab.font().getSplitter(), in.w(), footerY(in) - PanelTab.GAP - bodyTop(in), made, problem);
+            int detailsY = bodyTop(in) + lines.top();
+            detailList = new Widgets.ScrollList(new Bounds(in.x(), detailsY, in.w(), Math.max(0, footerY(in) - PanelTab.GAP - detailsY)), 9, () -> lines.details().size());
             controls(in);
             Component copyLabel = tr("palettes.chromastudio.copy");
             Button copy = widgets.button(in.right() - Widgets.buttonWidth(copyLabel), footerY(in), copyLabel, () -> {
@@ -1070,13 +1060,31 @@ final class PaletteDialogs {
             }
             if (lines.details().isEmpty()) return;
             g.horizontalLine(in.x(), in.right() - 1, y + 3, Theme.BORDER);
-            int detailsY = y + RULE;
-            for (Fitted d : lines.details()) {
-                if (!d.lines().isEmpty()) g.fill(in.x() + 2, detailsY + 3, in.x() + 4, detailsY + 5, Theme.DIM);
-                detailsY = drawLines(g, d, in.x() + BULLET, detailsY, Theme.DIM);
-            }
-            if (lines.cut() && over(mouseX, mouseY, in.x(), y, in.w(), footerY(in) - y))
-                tip(g, made.details().subList(lines.firstCut(), made.details().size()), mouseX, mouseY);
+            detailList.render(g, mouseX, mouseY, (gg, i, x, rowY, _, _, _) -> {
+                Detail d = lines.details().get(i);
+                if (d.first()) gg.fill(x + 2, rowY + 3, x + 4, rowY + 5, Theme.DIM);
+                gg.text(PanelTab.font(), Language.getInstance().getVisualOrder(d.text()), x + BULLET, rowY, Theme.DIM, false);
+            });
+        }
+
+        @Override
+        boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
+            return detailList != null && detailList.mouseClicked(e) || super.mouseClicked(e, doubled);
+        }
+
+        @Override
+        boolean mouseScrolled(double x, double y, double h, double v) {
+            return detailList != null && detailList.mouseScrolled(x, y, v) || super.mouseScrolled(x, y, h, v);
+        }
+
+        @Override
+        boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+            return detailList != null && detailList.mouseDragged(e) || super.mouseDragged(e, dx, dy);
+        }
+
+        @Override
+        boolean mouseReleased(MouseButtonEvent e) {
+            return detailList != null && detailList.mouseReleased() || super.mouseReleased(e);
         }
 
         private static void cutTip(GuiGraphicsExtractor g, Fitted shown, List<Component> full, int x, int top, int w, int bottom, int mouseX, int mouseY) {
