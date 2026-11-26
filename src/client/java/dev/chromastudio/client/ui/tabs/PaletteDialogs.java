@@ -38,6 +38,7 @@ import dev.chromastudio.core.text.Plural;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +50,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.Function;
@@ -73,6 +76,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.jspecify.annotations.Nullable;
 
 final class PaletteDialogs {
@@ -660,73 +664,308 @@ final class PaletteDialogs {
     }
 
     static final class Image extends Dialog {
-        private static final int DEFAULT_COUNT = 6;
+        private static final int DEFAULT_COUNT = 6, MIN_COUNT = 2, MAX_COUNT = 32, DEBOUNCE_TICKS = 8, THUMB_W = 80, THUMB_H = 60, LIST_ROW = 17,
+                PREVIEW_H = 134, STRIP_H = 8;
+        private static final ExecutorService READER = Executors.newSingleThreadExecutor(task -> {
+            Thread t = new Thread(task, "Chroma Studio image");
+            t.setDaemon(true);
+            return t;
+        });
+
+        private enum State { EMPTY, NO_DIALOG, READING, MISSING, UNREADABLE, TRANSPARENT, NO_BLOCKS, READY }
+
+        private record Outcome(ImageImport.@Nullable Sample sample, List<Color> colours, State failure) {}
 
         private final Consumer<Palette> done;
-        private String path = "";
+        private String path = "", name = "";
+        private boolean named;
         private int count = DEFAULT_COUNT;
-        private EditBox field;
+        private EditBox field, nameField, sizeField;
+        private Button create;
         private int labelW;
+        private int wait = -1, generation;
+        private boolean reading;
+        private State state = State.EMPTY;
+        private ImageImport.@Nullable Sample sample;
+        private String samplePath = "";
+        private List<Color> colours = List.of();
+        private List<PaletteEntry> entries = List.of();
+        private int matches, drawn;
+        private List<Object> matchedWith = List.of();
+        private final Widgets.ScrollList list = new Widgets.ScrollList(new Bounds(0, 0, 0, 0), LIST_ROW, () -> entries.size());
 
         Image(Consumer<Palette> done) {
-            super(tr("palettes.chromastudio.image.title"), 280, 90);
+            super(tr("palettes.chromastudio.image.title"), 340, TITLE_H + 7 + 3 * PanelTab.ROW + PREVIEW_H);
             this.done = done;
         }
 
         @Override
         protected void build(Bounds in) {
-            labelW = labelWidth("palettes.chromastudio.image.file", "palettes.chromastudio.image.count");
-            Component browse = tr("palettes.chromastudio.browse"), go = tr("palettes.chromastudio.import");
+            labelW = labelWidth("palettes.chromastudio.image.file", "palettes.chromastudio.image.count", "palettes.chromastudio.image.name");
+            Component browse = tr("palettes.chromastudio.browse"), go = tr("palettes.chromastudio.image.go");
             int browseW = Widgets.buttonWidth(browse), x = in.x() + labelW;
             boolean first = field == null;
-            field = widgets.search(x, in.y(), in.right() - x - browseW - PanelTab.GAP, tr("palettes.chromastudio.image.hint"), s -> path = s);
+            field = widgets.search(x, in.y(), in.right() - x - browseW - PanelTab.GAP, tr("palettes.chromastudio.image.hint"), this::edited);
             field.setMaxLength(1024);
             field.setValue(path);
             if (first) {
                 field.setFocused(true);
                 widgets.setFocused(field);
             }
-            widgets.button(in.right() - browseW, in.y(), browse, () -> ImageImport.choose(file -> field.setValue(file.toString()),
-                    () -> status(tr("palettes.chromastudio.no_dialog"), Theme.FAIR)));
-            int y = in.y() + PanelTab.ROW;
-            widgets.spin(x, y, 40, count, 1, 2, 32, true, v -> count = (int) v);
-            widgets.button(in.right() - Widgets.buttonWidth(go), y, go, this::confirm);
+            widgets.button(in.right() - browseW, in.y(), browse, () -> ImageImport.choose(file -> {
+                samplePath = "";
+                generation++;
+                field.setValue(file.toString());
+                widgets.setFocused(field);
+                wait = 0;
+            }, () -> {
+                if (path.isBlank()) state = State.NO_DIALOG;
+            }));
+            int y = in.y() + PanelTab.ROW, bottom = in.bottom() - Widgets.H;
+            sizeField = widgets.spin(x, y, 40, count, 1, MIN_COUNT, MAX_COUNT, true, v -> counted((int) v));
+            int goW = Widgets.buttonWidth(go), cancelW = Widgets.buttonWidth(CommonComponents.GUI_CANCEL);
+            create = widgets.button(in.right() - goW, bottom, go, this::confirm);
+            widgets.button(in.right() - goW - PanelTab.GAP - cancelW, bottom, CommonComponents.GUI_CANCEL, this::close);
+            nameField = widgets.search(x, bottom, in.right() - goW - cancelW - 2 * PanelTab.GAP - x - PanelTab.GAP, tr("palettes.chromastudio.name_hint"), s -> {
+                if (s.equals(name)) return;
+                name = s;
+                named = !s.isBlank();
+            });
+            nameField.setMaxLength(Integer.MAX_VALUE);
+            nameField.setValue(name);
+            showCreate();
+        }
+
+        private void edited(String s) {
+            if (s.equals(path)) return;
+            path = s;
+            generation++;
+            wait = s.isBlank() ? -1 : DEBOUNCE_TICKS;
+            if (s.isBlank()) state = State.EMPTY;
+            showCreate();
+        }
+
+        private void counted(int value) {
+            if (value == count) return;
+            count = value;
+            if (state != State.EMPTY && state != State.NO_DIALOG && wait < 0) read();
+        }
+
+        private void showPath() {
+            field.setTextColor(state == State.MISSING || state == State.UNREADABLE ? Theme.FIELD_BAD : EditBox.DEFAULT_TEXT_COLOR);
+        }
+
+        private void showCreate() {
+            if (field != null) showPath();
+            if (create == null) return;
+            boolean sized = sizeShown();
+            create.active = state == State.READY && wait < 0 && !reading && sized;
+            String why = state == State.NO_BLOCKS ? "palettes.chromastudio.image.no_blocks"
+                    : state == State.READY && !sized ? "palettes.chromastudio.image.size.need" : "palettes.chromastudio.image.go.need";
+            create.setTooltip(create.active ? null : Tooltip.create(tr(why, MIN_COUNT, MAX_COUNT)));
+        }
+
+        private boolean sizeShown() {
+            try {
+                return sizeField == null || Integer.parseInt(sizeField.getValue().strip()) == count;
+            } catch (NumberFormatException _) {
+                return false;
+            }
+        }
+
+        @Override
+        void tick() {
+            if (wait > 0) wait--;
+            else if (wait == 0) {
+                if (state != State.READY) state = State.READING;
+                wait = -1;
+                read();
+            } else if (sample != null && (state == State.READY || state == State.NO_BLOCKS) && !matchedWith.equals(poolKey())) match();
+            if (create != null && create.active != (state == State.READY && wait < 0 && !reading && sizeShown())) showCreate();
+        }
+
+        private void read() {
+            String s = path.strip();
+            int gen = ++generation, k = count;
+            ImageImport.Sample known = s.equals(samplePath) ? sample : null;
+            if (known == null) state = State.READING;
+            reading = true;
+            showCreate();
+            READER.execute(() -> {
+                Outcome out;
+                try {
+                    ImageImport.Sample got = known != null ? known : ImageImport.read(Path.of(s), THUMB_W, THUMB_H);
+                    List<Color> found = ImageImport.colours(got, k);
+                    out = new Outcome(got, found, found.isEmpty() ? State.TRANSPARENT : State.READY);
+                } catch (NoSuchFileException | InvalidPathException _) {
+                    out = new Outcome(null, List.of(), State.MISSING);
+                } catch (IOException | RuntimeException _) {
+                    out = new Outcome(null, List.of(), State.UNREADABLE);
+                }
+                Outcome result = out;
+                Minecraft.getInstance().execute(() -> finish(gen, s, result));
+            });
+        }
+
+        private void finish(int gen, String s, Outcome out) {
+            if (gen != generation) return;
+            reading = false;
+            sample = out.sample();
+            samplePath = sample == null ? "" : s;
+            colours = out.colours();
+            entries = List.of();
+            state = out.failure();
+            if (state == State.READY) match();
+            if (sample != null && !named && nameField != null) {
+                nameField.setValue(stem());
+                named = false;
+            }
+            showCreate();
+        }
+
+        private void match() {
+            matchedWith = poolKey();
+            List<Oklch> targets = new ArrayList<>();
+            for (Color c : colours) targets.add(c.oklch());
+            entries = closest(targets);
+            matches++;
+            state = entries.isEmpty() ? State.NO_BLOCKS : State.READY;
+            showCreate();
+        }
+
+        private String stem() {
+            String file = Path.of(samplePath).getFileName().toString();
+            int dot = file.lastIndexOf('.');
+            return dot > 0 ? file.substring(0, dot) : file;
         }
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
             label(g, "palettes.chromastudio.image.file", in.x(), in.y());
             label(g, "palettes.chromastudio.image.count", in.x(), in.y() + PanelTab.ROW);
+            label(g, "palettes.chromastudio.image.name", in.x(), in.bottom() - Widgets.H);
+            g.text(PanelTab.font(), tr("palettes.chromastudio.image.range", MIN_COUNT, MAX_COUNT), in.x() + labelW + 44, in.y() + PanelTab.ROW + 4, Theme.DIM, false);
+            MatchFilters filters = MatchState.filters();
+            Component active = tr("palettes.chromastudio.image.filters", filters.besidesKind() + (filters.kind == null ? 0 : 1));
+            int fx = in.right() - Widgets.tw(active), fy = in.y() + PanelTab.ROW + 4;
+            g.text(PanelTab.font(), active, fx, fy, Theme.DIM, false);
+            if (mouseX >= fx && mouseX < in.right() && mouseY >= fy - 4 && mouseY < fy + 12)
+                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), tr("palettes.chromastudio.image.filters.tip")), mouseX, mouseY);
+            int top = in.y() + 2 * PanelTab.ROW, x = in.x(), right = in.right(), bottom = in.bottom() - PanelTab.ROW;
+            g.fill(x, top, right, bottom, Theme.WELL);
+            g.outline(x, top, right - x, bottom - top, Theme.BORDER);
+            list.area = new Bounds(0, 0, 0, 0);
+            boolean ready = state == State.READY && sample != null;
+            if (!ready && (state != State.READING || sample == null)) {
+                Component text = tr(switch (state) {
+                    case EMPTY, READY -> "palettes.chromastudio.image.choose";
+                    case NO_DIALOG -> "palettes.chromastudio.no_dialog";
+                    case READING -> "palettes.chromastudio.image.reading";
+                    case MISSING -> "palettes.chromastudio.image.missing";
+                    case UNREADABLE -> "palettes.chromastudio.image.unreadable";
+                    case TRANSPARENT -> "palettes.chromastudio.image.transparent";
+                    case NO_BLOCKS -> "palettes.chromastudio.image.no_blocks";
+                });
+                int colour = switch (state) {
+                    case NO_DIALOG -> Theme.FAIR;
+                    case MISSING, UNREADABLE, TRANSPARENT, NO_BLOCKS -> Theme.BAD;
+                    default -> Theme.DIM;
+                };
+                List<FormattedCharSequence> split = PanelTab.font().split(text, Math.min(right - x - 24, 220));
+                int iconY = top + (bottom - top - 22 - split.size() * 9) / 2;
+                Widgets.blockIcon(g, new ItemStack(Items.PAINTING), (x + right) / 2 - 8, iconY);
+                for (int i = 0; i < split.size(); i++)
+                    g.text(PanelTab.font(), split.get(i), (x + right - PanelTab.font().width(split.get(i))) / 2, iconY + 22 + i * 9, colour, false);
+                return;
+            }
+            int tx = x + 4 + (THUMB_W - sample.thumbW()) / 2, ty = top + 4 + (THUMB_H - sample.thumbH()) / 2;
+            int[] thumb = sample.thumb();
+            for (int j = 0; j < sample.thumbH(); j++)
+                for (int i = 0; i < sample.thumbW(); i++) g.fill(tx + i, ty + j, tx + i + 1, ty + j + 1, thumb[j * sample.thumbW() + i]);
+            g.outline(tx - 1, ty - 1, sample.thumbW() + 2, sample.thumbH() + 2, Theme.BORDER);
+            int infoY = top + THUMB_H + 9;
+            g.text(PanelTab.font(), PanelTab.fit(Path.of(samplePath).getFileName().toString(), THUMB_W + 2), x + 4, infoY, Theme.TEXT, false);
+            Component size = state == State.READING ? tr("palettes.chromastudio.image.reading") : tr("palettes.chromastudio.image.details", sample.width(), sample.height());
+            g.text(PanelTab.font(), PanelTab.fit(size.getString(), THUMB_W + 2), x + 4, infoY + 11, Theme.DIM, false);
+            if (!ready) return;
+            drawn = matches;
+            int lx = x + 4 + THUMB_W + 6, lw = right - 3 - lx, n = entries.size();
+            boolean paired = n <= colours.size();
+            int stripHover = mouseY >= top + 3 && mouseY < top + 5 + STRIP_H && mouseX >= lx && mouseX < lx + lw ? (mouseX - lx) * n / lw : -1;
+            for (int i = 0; i < n; i++) {
+                Color c = paired ? colours.get(i) : PaletteBlocks.colour(entries.get(i));
+                int sx = lx + lw * i / n, ex = lx + lw * (i + 1) / n;
+                if (c != null) g.fill(sx, top + 4, ex, top + 4 + STRIP_H, 0xFF000000 | c.rgb());
+                if (i == stripHover) g.outline(sx, top + 4, ex - sx, STRIP_H, Theme.STRONG);
+            }
+            g.outline(lx - 1, top + 3, lw + 2, STRIP_H + 2, Theme.BORDER);
+            list.area = new Bounds(lx, top + STRIP_H + 7, lw, bottom - top - STRIP_H - 10);
+            if (stripHover >= 0) list.reveal(stripHover);
+            int[] hovered = {stripHover};
+            list.render(g, mouseX, mouseY, (g2, i, rx, ry, rw, _, over) -> {
+                PaletteEntry e = entries.get(i);
+                Color source = paired ? colours.get(i) : null, block = PaletteBlocks.colour(e);
+                double distance = source == null || block == null ? -1 : source.oklab().distance(block.oklab());
+                Component match = distance < 0 ? Component.empty() : tr("palettes.chromastudio.image.match." + match(distance));
+                int matchW = PanelTab.font().width(match), nameW = rw - 36 - matchW - 6;
+                if (over || i == stripHover) {
+                    g2.fill(rx, ry, rx + rw, ry + LIST_ROW, Theme.HOVER);
+                    if (over) hovered[0] = i;
+                }
+                g2.fill(rx + 1, ry, rx + 13, ry + 16, 0xFF000000);
+                if (source != null) g2.fill(rx + 2, ry + 1, rx + 7, ry + 15, 0xFF000000 | source.rgb());
+                if (block != null) g2.fill(rx + 7, ry + 1, rx + 12, ry + 15, 0xFF000000 | block.rgb());
+                Widgets.blockIcon(g2, PaletteBlocks.icon(e), rx + 15, ry);
+                String blockName = PaletteBlocks.name(e).getString(), shown = PanelTab.fit(blockName + (e.properties().isEmpty() ? "" : " " + e.properties()), nameW);
+                String plain = shown.length() > blockName.length() ? blockName : shown;
+                g2.text(PanelTab.font(), plain, rx + 34, ry + 4, Theme.TEXT, false);
+                if (shown.length() > plain.length()) g2.text(PanelTab.font(), shown.substring(plain.length()), rx + 34 + PanelTab.font().width(plain), ry + 4, Theme.DIM, false);
+                int quality = distance <= GradientTab.GOOD_UP_TO ? Theme.GOOD : distance <= GradientTab.FAIR_UP_TO ? Theme.FAIR : Theme.BAD;
+                g2.text(PanelTab.font(), match, rx + rw - matchW - 3, ry + 4, quality, false);
+            });
+            List<Component> notes = new ArrayList<>();
+            if (hovered[0] >= 0) {
+                PaletteEntry e = entries.get(hovered[0]);
+                Color source = paired ? colours.get(hovered[0]) : null, block = PaletteBlocks.colour(e);
+                if (source != null) notes.add(tr("palettes.chromastudio.image.source", source.hex()));
+                if (block != null) notes.add(tr("palettes.chromastudio.image.block", block.hex()));
+                if (source != null && block != null)
+                    notes.add(tr("palettes.chromastudio.image.delta", String.format(Locale.ROOT, "%.3f", source.oklab().distance(block.oklab()))));
+            } else {
+                notes.add(tr("palettes.chromastudio.count", entries.size()));
+                for (String key : List.of("image", "block", "hover")) notes.add(tr("palettes.chromastudio.image.legend." + key));
+            }
+            for (int i = 0; i < notes.size() && infoY + 31 + i * 10 <= bottom; i++)
+                g.text(PanelTab.font(), PanelTab.fit(notes.get(i).getString(), THUMB_W + 2), x + 4, infoY + 22 + i * 10, hovered[0] >= 0 ? Theme.TEXT : Theme.DIM, false);
         }
+
+        private static String match(double distance) { return distance <= GradientTab.GOOD_UP_TO ? "close" : distance <= GradientTab.FAIR_UP_TO ? "fair" : "loose"; }
+
+        @Override
+        boolean mouseScrolled(double x, double y, double h, double v) { return list.mouseScrolled(x, y, v) || super.mouseScrolled(x, y, h, v); }
+
+        @Override
+        boolean mouseClicked(MouseButtonEvent e, boolean doubled) { return list.mouseClicked(e) || super.mouseClicked(e, doubled); }
+
+        @Override
+        boolean mouseDragged(MouseButtonEvent e, double dx, double dy) { return list.mouseDragged(e) || super.mouseDragged(e, dx, dy); }
+
+        @Override
+        boolean mouseReleased(MouseButtonEvent e) { return list.mouseReleased() || super.mouseReleased(e); }
 
         @Override
         protected boolean confirm() {
-            String s = path.strip();
-            if (s.isEmpty()) {
-                status(tr("palettes.chromastudio.image.empty"), Theme.FAIR);
+            if (state == State.READY && !matchedWith.equals(poolKey())) {
+                match();
                 return true;
             }
-            try {
-                Path file = Path.of(s);
-                List<Color> colours = ImageImport.colours(file, count);
-                if (colours.isEmpty()) {
-                    status(tr("palettes.chromastudio.image.transparent"), Theme.BAD);
-                    return true;
-                }
-                List<Oklch> targets = new ArrayList<>();
-                for (Color c : colours) targets.add(c.oklch());
-                List<PaletteEntry> entries = PaletteBlocks.closest(targets);
-                if (entries.isEmpty()) {
-                    status(tr("palettes.chromastudio.no_matches"), Theme.BAD);
-                    return true;
-                }
-                String name = file.getFileName().toString();
-                int dot = name.lastIndexOf('.');
-                close();
-                done.accept(PaletteStore.get().create(dot > 0 ? name.substring(0, dot) : name, entries));
-            } catch (IOException | InvalidPathException _) {
-                status(tr("palettes.chromastudio.image.unreadable", s), Theme.BAD);
+            if (state != State.READY || wait >= 0 || reading || drawn != matches || !sizeShown()) {
+                if (wait > 0) wait = 0;
+                return true;
             }
+            String title = name.isBlank() ? stem() : name.strip();
+            close();
+            done.accept(PaletteStore.get().create(title, entries));
             return true;
         }
     }
