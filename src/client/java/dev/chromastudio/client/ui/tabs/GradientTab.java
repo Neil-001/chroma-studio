@@ -260,7 +260,7 @@ public final class GradientTab extends PanelTab {
         action("export", actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
         action("axiom", actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())),
                 AxiomBridge.whyNot().orElse(none));
-        action("saved", actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, () -> result.stream().map(s -> s.ideal.rgb()).toList(), savedName != null ? savedName : asPalette().name, this::load, g -> savedName = g.name())), null);
+        action("saved", actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, () -> result.stream().map(s -> s.ideal.rgb()).toList(), savedName, asPalette().name, this::load, g -> savedName = g.name())), null);
         action("save", actionsY, () -> {
             Palette p = asPalette();
             PaletteSink sink = PaletteSink.current();

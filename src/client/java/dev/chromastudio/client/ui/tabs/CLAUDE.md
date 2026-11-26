@@ -21,7 +21,7 @@
 ## Dialogs and drawing
 
 - `PaletteDialogs.Export` shows the Axiom hint for `.litematic` because Axiom's Import Schematic doesn't read `.nbt`. `PaletteDialogs.WorldEdit` strips one slash because chat omits the command slash and WorldEdit's commands start with two.
-- `SavedGradients` builds the gradient and renames the loaded one only after the store writes it, so a cancelled replace or a failed write keeps the old name. It shows a cut-off name in the footer because a tooltip there covers the next rows.
+- `SavedGradients` renames the loaded gradient only after the store writes it, so a cancelled replace or a failed write keeps the old name. The replace confirmation builds the gradient when it opens and stores that one, so a change made in another tab can't be saved unseen. A cut-off name shows in the footer because a tooltip there covers the next rows.
 - Build the `PaletteDialogs.WorldEdit` buttons before setting the From field, whose responder updates them. In `PaletteDialogs.Hotbar`, wait for the rebuilt dialog to draw before accepting Fill, so queued clicks can't confirm it unseen.
 - `PanelTab.mouseClicked` gives both widget groups the click when there's no dialog so clicking one group ends typing in the other.
 - `MatchTab.panel` and `GradientTab.drawOver` draw a rule under the filter panel title so the first scrolled row reads as part of the body.

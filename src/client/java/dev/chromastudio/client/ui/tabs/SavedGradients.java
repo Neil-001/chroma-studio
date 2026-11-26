@@ -25,7 +25,7 @@ final class SavedGradients extends Dialog {
     private final Supplier<Component> unsaveable;
     private final Supplier<List<Integer>> preview;
     private final Consumer<StoredGradient> load, stored;
-    private final String opened;
+    private final String loaded;
     private String name;
     private EditBox field;
     private Button button;
@@ -33,14 +33,14 @@ final class SavedGradients extends Dialog {
     private Widgets.ScrollList rows;
     private String hovered, target;
 
-    SavedGradients(Function<String, StoredGradient> current, Supplier<Component> unsaveable, Supplier<List<Integer>> preview, String name,
-            Consumer<StoredGradient> load, Consumer<StoredGradient> stored) {
+    SavedGradients(Function<String, StoredGradient> current, Supplier<Component> unsaveable, Supplier<List<Integer>> preview, String loaded,
+            String suggested, Consumer<StoredGradient> load, Consumer<StoredGradient> stored) {
         super(tr("gradient.chromastudio.store.title"), 340, 206);
         this.current = current;
         this.unsaveable = unsaveable;
         this.preview = preview;
-        this.name = name;
-        this.opened = name;
+        this.loaded = loaded;
+        this.name = loaded != null ? loaded : suggested;
         this.load = load;
         this.stored = stored;
     }
@@ -55,6 +55,7 @@ final class SavedGradients extends Dialog {
         int saveW = Math.max(Widgets.buttonWidth(save), Widgets.buttonWidth(tr("gradient.chromastudio.store.overwrite")));
         int fieldX = in.x() + NAME_X;
         field = widgets.search(fieldX, in.y(), in.right() - saveW - PanelTab.GAP - fieldX, tr("palettes.chromastudio.name_hint"), s -> {
+            if (!s.equals(name)) status = null;
             name = s;
             nameChanged();
         });
@@ -104,8 +105,9 @@ final class SavedGradients extends Dialog {
             store(current.apply(n));
             return true;
         }
+        StoredGradient now = current.apply(n);
         tab.open(new PaletteDialogs.Confirm(tr("gradient.chromastudio.store.replace.title"), tr("gradient.chromastudio.store.replace.question", old.name()),
-                tr("gradient.chromastudio.store.replace"), () -> store(current.apply(n))));
+                tr("gradient.chromastudio.store.replace"), () -> store(now)));
         return true;
     }
 
@@ -160,13 +162,18 @@ final class SavedGradients extends Dialog {
             if (onCross) g2.setTooltipForNextFrame(PanelTab.font(), tr("gradient.chromastudio.store.delete"), mouseX, mouseY);
             else if (over && !shown.equals(s.name())) hovered = s.name();
         });
-        if (status != null || saved.isEmpty()) return;
+        boolean footer = status == null && !saved.isEmpty();
+        if (hovered != null && (!footer || PanelTab.font().width(hovered) > in.w())) {
+            g.setTooltipForNextFrame(PanelTab.font(), Component.literal(hovered), mouseX, mouseY);
+            hovered = null;
+        }
+        if (!footer) return;
         g.text(PanelTab.font(), PanelTab.fit(tr("gradient.chromastudio.store.hint").getString(), in.w()), in.x(), in.bottom() - 9, Theme.DIM, false);
-        if (hovered != null) g.text(PanelTab.font(), PanelTab.fit(hovered, in.w()), in.x(), in.bottom() - 18, Theme.TEXT, false);
+        if (hovered != null) g.text(PanelTab.font(), hovered, in.x(), in.bottom() - 18, Theme.TEXT, false);
         else if (target != null) {
-            boolean loaded = name.strip().equalsIgnoreCase(opened.strip());
-            Component note = tr(loaded ? "gradient.chromastudio.store.editing" : "gradient.chromastudio.store.replaces", target);
-            g.text(PanelTab.font(), PanelTab.fit(note.getString(), in.w()), in.x(), in.bottom() - 18, loaded ? Theme.TEXT : Theme.FAIR, false);
+            boolean editing = loaded != null && target.equalsIgnoreCase(loaded.strip());
+            Component note = tr(editing ? "gradient.chromastudio.store.editing" : "gradient.chromastudio.store.replaces", target);
+            g.text(PanelTab.font(), PanelTab.fit(note.getString(), in.w()), in.x(), in.bottom() - 18, editing ? Theme.TEXT : Theme.FAIR, false);
         }
     }
 
@@ -193,7 +200,8 @@ final class SavedGradients extends Dialog {
                 tab.open(new PaletteDialogs.Confirm(tr("gradient.chromastudio.store.delete.title"), tr("gradient.chromastudio.store.delete.question", s.name()),
                         tr("gradient.chromastudio.store.delete"), () -> {
                             boolean deleted = GradientStore.get().delete(s.name());
-                            SavedGradients again = new SavedGradients(current, unsaveable, preview, name, load, stored);
+                            SavedGradients again = new SavedGradients(current, unsaveable, preview, loaded, name, load, stored);
+                            again.name = name;
                             tab.open(again);
                             if (deleted) again.status(tr("gradient.chromastudio.store.deleted", s.name()), Theme.TEXT);
                             else again.status(tr("gradient.chromastudio.store.failed"), Theme.BAD);
