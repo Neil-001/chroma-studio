@@ -7,11 +7,12 @@ import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.color.Tone;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public final class Analyzer {
     public enum Severity { INFO, WARNING }
 
-    public record Finding(String key, Severity severity, Oklch suggestedTarget, String suggestedFilter) {}
+    public record Finding(String key, Severity severity, Oklch suggestedTarget, String suggestedFilter, List<Integer> blocks) {}
 
     private static final String PREFIX = "chromastudio.analysis.";
     public static final String NARROW_RANGE = PREFIX + "narrow_range", LIGHTNESS_GAP = PREFIX + "lightness_gap",
@@ -39,64 +40,71 @@ public final class Analyzer {
         if (colours.size() != badges.size()) throw new IllegalArgumentException("Each colour needs one badge");
         List<Finding> out = new ArrayList<>();
         int n = colours.size();
-        if (n == 0) return List.of(new Finding(TOO_SMALL, Severity.INFO, null, NO_FILTER));
+        if (n == 0) return List.of(new Finding(TOO_SMALL, Severity.INFO, null, NO_FILTER, List.of()));
 
-        double[] lightness = colours.stream().mapToDouble(Oklch::l).sorted().toArray();
+        List<Integer> byLightness = new ArrayList<>();
+        for (int i = 0; i < n; i++) byLightness.add(i);
+        byLightness.sort((a, b) -> Double.compare(colours.get(a).l(), colours.get(b).l()));
+        double[] lightness = byLightness.stream().mapToDouble(i -> colours.get(i).l()).toArray();
         double darkest = lightness[0], lightest = lightness[n - 1];
         Oklch cast = cast(colours);
 
         if (lightest - darkest < NARROW) {
             boolean lighter = cast.l() < (MIN_L + MAX_L) / 2;
             double l = Math.clamp(cast.l() + (lighter ? WIDEN_BY : -WIDEN_BY), MIN_L, MAX_L);
-            out.add(new Finding(NARROW_RANGE, Severity.WARNING, cast.withL(l), lighter ? LIGHTER : DARKER));
+            out.add(new Finding(NARROW_RANGE, Severity.WARNING, cast.withL(l), lighter ? LIGHTER : DARKER, List.of()));
         }
 
         int widest = 1;
         for (int i = 2; i < n; i++) if (lightness[i] - lightness[i - 1] > lightness[widest] - lightness[widest - 1]) widest = i;
         if (n > 1 && lightness[widest] - lightness[widest - 1] > GAP) {
-            out.add(new Finding(LIGHTNESS_GAP, Severity.INFO, cast.withL((lightness[widest] + lightness[widest - 1]) / 2), NO_FILTER));
+            out.add(new Finding(LIGHTNESS_GAP, Severity.INFO, cast.withL((lightness[widest] + lightness[widest - 1]) / 2), NO_FILTER,
+                    List.of(byLightness.get(widest - 1), byLightness.get(widest))));
         }
 
-        if (darkest > DARK_BELOW) out.add(new Finding(NO_DARKS, Severity.INFO, cast.withL(DARK), DARKER));
-        if (lightest < HIGHLIGHT_ABOVE) out.add(new Finding(NO_HIGHLIGHTS, Severity.INFO, cast.withL(HIGHLIGHT), LIGHTER));
+        if (darkest > DARK_BELOW) out.add(new Finding(NO_DARKS, Severity.INFO, cast.withL(DARK), DARKER, List.of(byLightness.getFirst())));
+        if (lightest < HIGHLIGHT_ABOVE) out.add(new Finding(NO_HIGHLIGHTS, Severity.INFO, cast.withL(HIGHLIGHT), LIGHTER, List.of(byLightness.getLast())));
 
-        List<Oklch> chromatic = colours.stream().filter(c -> c.c() >= Tone.MIN_CHROMA).toList();
+        List<Integer> chromaticAt = IntStream.range(0, n).filter(i -> colours.get(i).c() >= Tone.MIN_CHROMA).boxed().toList();
+        List<Oklch> chromatic = chromaticAt.stream().map(colours::get).toList();
         if (!chromatic.isEmpty()) {
             Fit fit = nearestHarmony(chromatic);
             if (fit.worst > HUE_TOLERANCE) {
-                out.add(new Finding(HUES_STRAY, Severity.INFO, cast.withHue(fit.missingHue), NO_FILTER));
+                out.add(new Finding(HUES_STRAY, Severity.INFO, cast.withHue(fit.missingHue), NO_FILTER, chromaticAt));
             }
         }
 
-        Oklch accent = colours.getFirst();
-        int saturated = 0;
-        for (Oklch c : colours) {
-            if (c.c() > accent.c()) accent = c;
-            if (c.c() > SATURATED_FROM) saturated++;
+        int accentAt = 0;
+        List<Integer> saturated = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            if (colours.get(i).c() > colours.get(accentAt).c()) accentAt = i;
+            if (colours.get(i).c() > SATURATED_FROM) saturated.add(i);
         }
+        Oklch accent = colours.get(accentAt);
         boolean hasAccent = accent.c() >= ACCENT_FROM;
-        if (!hasAccent) out.add(new Finding(NO_ACCENT, Severity.INFO, cast.withC(ACCENT_CHROMA), ACCENT));
-        if (saturated * 2 > n) out.add(new Finding(TOO_SATURATED, Severity.INFO, cast.withC(MUTED_CHROMA), NO_FILTER));
+        if (!hasAccent) out.add(new Finding(NO_ACCENT, Severity.INFO, cast.withC(ACCENT_CHROMA), ACCENT, List.of()));
+        if (saturated.size() * 2 > n) out.add(new Finding(TOO_SATURATED, Severity.INFO, cast.withC(MUTED_CHROMA), NO_FILTER, List.copyOf(saturated)));
         if (hasAccent && n > 1 && Math.abs(accent.l() - cast.l()) < ACCENT_NEAR) {
             boolean lighter = accent.l() >= cast.l();
             if (lighter ? accent.l() + ACCENT_MOVE > MAX_L : accent.l() - ACCENT_MOVE < MIN_L) lighter = !lighter;
             double l = Math.clamp(accent.l() + (lighter ? ACCENT_MOVE : -ACCENT_MOVE), MIN_L, MAX_L);
-            out.add(new Finding(ACCENT_CONTRAST, Severity.INFO, accent.withL(l), ACCENT));
+            out.add(new Finding(ACCENT_CONTRAST, Severity.INFO, accent.withL(l), ACCENT, List.of(accentAt)));
         }
 
-        int flat = 0, grainy = 0, busy = 0;
-        for (Badge b : badges) {
-            switch (b) {
+        int flat = 0, grainy = 0;
+        List<Integer> busy = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            switch (badges.get(i)) {
                 case FLAT -> flat++;
                 case GRAINY -> grainy++;
-                case BUSY -> busy++;
+                case BUSY -> busy.add(i);
             }
         }
-        if (busy * 2 > n) out.add(new Finding(TOO_BUSY, Severity.INFO, cast, GRAINY));
-        if (flat > 0 && busy > 0 && grainy == 0) out.add(new Finding(TEXTURE_JUMP, Severity.INFO, cast, GRAINY));
+        if (busy.size() * 2 > n) out.add(new Finding(TOO_BUSY, Severity.INFO, cast, GRAINY, List.copyOf(busy)));
+        if (flat > 0 && !busy.isEmpty() && grainy == 0) out.add(new Finding(TEXTURE_JUMP, Severity.INFO, cast, GRAINY, IntStream.range(0, n).boxed().toList()));
 
-        if (n < SMALL) out.add(new Finding(TOO_SMALL, Severity.INFO, null, NO_FILTER));
-        if (n > LARGE) out.add(new Finding(TOO_LARGE, Severity.INFO, null, NO_FILTER));
+        if (n < SMALL) out.add(new Finding(TOO_SMALL, Severity.INFO, null, NO_FILTER, List.of()));
+        if (n > LARGE) out.add(new Finding(TOO_LARGE, Severity.INFO, null, NO_FILTER, List.of()));
         return List.copyOf(out);
     }
 

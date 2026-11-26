@@ -23,5 +23,6 @@
 - `MatchTab.panel` and `GradientTab.drawOver` draw a rule under the filter panel title so the first scrolled row reads as part of the body.
 - `DioramaPanel` shares arrangement defaults, filtered entries and seed with the exporter so the default export matches the wall shown.
 - `DioramaPip.renderToTexture` creates a resolver because Fabric's is private. It flips the wall about z because GUI y runs down. `lookThroughALens` swaps near and far for the game's reversed depth. `FIT` leaves room for perspective to enlarge the near end.
+- `AnalysePanel` draws its Find blocks buttons itself because they scroll with the findings. Park them off screen each frame so a scrolled-out button can't take a click. Anchor its tooltips below the finding, or above it at the screen edge, so they don't cover its text.
 - `ExploreTab.render` moves the icon to the right 4 pixels before the game moves the tooltip to the left. That margin keeps the icon clear of the tooltip near the screen edge.
 - `Thumbnails.draw` treats pixels at or above the alpha cutoff as opaque so glass on the dark list still matches the colour it was ranked by.

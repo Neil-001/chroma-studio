@@ -87,9 +87,11 @@ class AnalyzerTest {
         assertEquals(Severity.INFO, gap.severity());
         assertEquals(0.5, gap.suggestedTarget().l(), 1e-9);
         assertEquals("", gap.suggestedFilter());
+        assertEquals(List.of(1, 2), gap.blocks());
 
         gap = only(analyse(withLightness(0.95, 0.2, 0.55, 0.21)), Analyzer.LIGHTNESS_GAP);
         assertEquals(0.75, gap.suggestedTarget().l(), 1e-9);
+        assertEquals(List.of(2, 0), gap.blocks());
     }
 
     @Test
@@ -97,10 +99,12 @@ class AnalyzerTest {
         Finding dark = only(analyse(withLightness(0.45, 0.6, 0.75, 0.9)), Analyzer.NO_DARKS);
         assertEquals(0.25, dark.suggestedTarget().l(), 1e-9);
         assertEquals(Analyzer.DARKER, dark.suggestedFilter());
+        assertEquals(List.of(0), dark.blocks());
 
         Finding light = only(analyse(withLightness(0.65, 0.5, 0.35, 0.2)), Analyzer.NO_HIGHLIGHTS);
         assertEquals(0.85, light.suggestedTarget().l(), 1e-9);
         assertEquals(Analyzer.LIGHTER, light.suggestedFilter());
+        assertEquals(List.of(0), light.blocks());
     }
 
     @Test
@@ -137,12 +141,14 @@ class AnalyzerTest {
         assertEquals(202.5, stray.suggestedTarget().h(), 1e-9);
         assertEquals(0.58, stray.suggestedTarget().l(), 1e-9);
         assertEquals(0.07, stray.suggestedTarget().c(), 1e-9);
+        assertEquals(List.of(0, 1, 2, 3, 4), stray.blocks());
 
         List<Oklch> withGrey = new ArrayList<>(colours);
         withGrey.add(new Oklch(0.20, 0, 0));
         stray = only(analyse(withGrey), Analyzer.HUES_STRAY);
         assertEquals(202.5, stray.suggestedTarget().h(), 1e-9);
         assertEquals(3.1 / 6, stray.suggestedTarget().l(), 1e-9);
+        assertEquals(List.of(0, 1, 2, 3, 4), stray.blocks());
         assertEquals(0.35 / 6, stray.suggestedTarget().c(), 1e-9);
 
         assertEquals(List.of(), analyse(List.of(new Oklch(0.30, 0.05, 2.5), new Oklch(0.45, 0.06, 42.5),
@@ -161,6 +167,7 @@ class AnalyzerTest {
     void mostlySaturatedColoursAreTooMuch() {
         Finding saturated = only(analyse(withChroma(0.15, 0.13, 0.14, 0.05)), Analyzer.TOO_SATURATED);
         assertEquals(0.04, saturated.suggestedTarget().c(), 1e-9);
+        assertEquals(List.of(0, 1, 2), saturated.blocks());
         assertEquals(List.of(), analyse(withChroma(0.15, 0.05, 0.05, 0.14)));
     }
 
@@ -171,11 +178,13 @@ class AnalyzerTest {
         Finding contrast = only(analyse(colours), Analyzer.ACCENT_CONTRAST);
         assertEquals(new Oklch(0.9, 0.14, 215), contrast.suggestedTarget());
         assertEquals(Analyzer.ACCENT, contrast.suggestedFilter());
+        assertEquals(List.of(3), contrast.blocks());
 
         colours = List.of(
                 new Oklch(0.30, 0.05, 30), new Oklch(0.50, 0.14, 215), new Oklch(0.60, 0.05, 35), new Oklch(0.85, 0.05, 35));
         contrast = only(analyse(colours), Analyzer.ACCENT_CONTRAST);
         assertEquals(0.25, contrast.suggestedTarget().l(), 1e-9);
+        assertEquals(List.of(1), contrast.blocks());
 
         colours = List.of(
                 new Oklch(0.40, 0.05, 30), new Oklch(0.70, 0.06, 40), new Oklch(0.95, 0.05, 35), new Oklch(0.75, 0.14, 215));
@@ -188,9 +197,11 @@ class AnalyzerTest {
         Finding busy = only(Analyzer.analyse(GOOD, List.of(Badge.BUSY, Badge.BUSY, Badge.BUSY, Badge.GRAINY)), Analyzer.TOO_BUSY);
         assertEquals(Analyzer.GRAINY, busy.suggestedFilter());
         assertEquals(0.575, busy.suggestedTarget().l(), 1e-9);
+        assertEquals(List.of(0, 1, 2), busy.blocks());
 
         Finding jump = only(Analyzer.analyse(GOOD, List.of(Badge.FLAT, Badge.FLAT, Badge.BUSY, Badge.FLAT)), Analyzer.TEXTURE_JUMP);
         assertEquals(Analyzer.GRAINY, jump.suggestedFilter());
+        assertEquals(List.of(0, 1, 2, 3), jump.blocks());
 
         assertEquals(List.of(Analyzer.TOO_BUSY, Analyzer.TEXTURE_JUMP),
                 keys(Analyzer.analyse(GOOD, List.of(Badge.BUSY, Badge.BUSY, Badge.BUSY, Badge.FLAT))));

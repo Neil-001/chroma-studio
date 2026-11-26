@@ -73,6 +73,7 @@ class LangTest {
     @Test
     void everyBuiltKeyHasItsText() throws IOException {
         List<String> keys = new ArrayList<>(Analyzer.KEYS);
+        for (String finding : Analyzer.KEYS) keys.add(finding + ".title");
         for (String preset : PaletteStore.PRESETS) keys.add("preset.chromastudio." + preset);
         for (Harmony h : Harmony.values()) keys.add("option.chromastudio.harmony." + h.name().toLowerCase(Locale.ROOT));
         for (Layout l : Layout.values()) keys.add("option.chromastudio.layoutchoice." + l.name().toLowerCase(Locale.ROOT));
