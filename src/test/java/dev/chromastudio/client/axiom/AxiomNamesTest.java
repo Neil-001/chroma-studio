@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 
 class AxiomNamesTest {
     private static final List<String> LANGUAGES = List.of("en_us", "de_de", "es_es", "fr_fr", "ja_jp", "ko_kr", "pl_pl", "pt_br", "ru_ru", "zh_cn");
-    private static final List<String> NAMES = List.of("Tool Masks", "Script Brush", "Import Schematic", "Tool Options");
+    private static final List<String> NAMES = List.of("Tool Masks", "Script Brush", "Import Schematic", "Tool Options", "Use Tool");
     private static Language before;
 
     @BeforeAll
@@ -69,7 +69,8 @@ class AxiomNamesTest {
                 "palettes.chromastudio.export.axiom", "To use it in Axiom's editor: File > Import Schematic.",
                 "axiom.chromastudio.masks.tip", "The tool changes only blocks the mask under Tool Masks allows, and only inside the selection if there is one.",
                 "axiom.chromastudio.masks.off.tip", "Axiom applies tool masks only while its Tool Masks window is open, docked or minimised.",
-                "axiom.chromastudio.mask.lua", "The mask's script has an error. Fix it, or close the error under Tool Masks.");
+                "axiom.chromastudio.mask.lua", "The mask's script has an error. Fix it, or close the error under Tool Masks.",
+                "axiom.chromastudio.shade.point", "Point at a block to preview it. Hold Use Tool to shade.");
         assertEquals(was.keySet(), AxiomNames.keys());
         for (var e : was.entrySet()) assertEquals(e.getValue(), AxiomNames.text(e.getKey()).getString());
     }

@@ -204,7 +204,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
                 });
             }
         }
-        ImGui.separator();
+        AxiomPanel.heading(tr("axiom.chromastudio.shade.preview"));
         preview();
     }
 
@@ -226,39 +226,33 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         if (plan() == null) {
             AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.no_shades")).withTip(tr("axiom.chromastudio.shade.no_shades.tip")));
-            return;
         }
-        int sent = stroke.sent();
-        if (sent > 0) AxiomPanel.status(AxiomPanel.Status.receipt(AxiomTools.count("axiom.chromastudio.changed", sent, sent)));
     }
 
     private void preview() {
-        float top = ImGui.getCursorPosY(), least = ImGui.getFrameHeightWithSpacing() * 2;
-        previewRows();
+        float top = ImGui.getCursorPosY(), least = ImGui.getFrameHeightWithSpacing() * 3;
+        if (previewRows() && stroke.sent() > 0) AxiomPanel.note(AxiomTools.count("axiom.chromastudio.changed", stroke.sent(), stroke.sent()));
         float used = ImGui.getCursorPosY() - top;
         if (used < least) ImGui.dummy(0, least - used);
     }
 
-    private void previewRows() {
+    private boolean previewRows() {
         Plan p = plan();
-        if (p == null || stroke.refused() != null || dropped || !AxiomEditor.known() || AxiomMask.unavailable().isPresent()) return;
+        if (p == null || stroke.refused() != null || dropped || !AxiomEditor.known() || AxiomMask.unavailable().isPresent()) return false;
         BlockState here = overPanel ? pointed : hovered;
         if (here == null) {
-            AxiomPanel.wrapped(tr("axiom.chromastudio.shade.point"));
-            return;
+            AxiomPanel.wrapped(AxiomNames.text("axiom.chromastudio.shade.point"));
+            return true;
         }
         named("here", here, here.getBlock().getName().getString());
-        if (masked && !AxiomMask.scripted()) {
-            AxiomPanel.wrapped(tr("axiom.chromastudio.shade.left.masked"));
-            return;
-        }
-        BlockState next = p.apply(here, direction, kinds);
+        BlockState next = masked && !AxiomMask.scripted() ? null : p.apply(here, direction, kinds);
         if (next == null) {
-            AxiomPanel.wrapped(tr(p.whyLeft(here, direction, kinds)));
-            return;
+            AxiomPanel.wrapped(tr(masked && !AxiomMask.scripted() ? "axiom.chromastudio.shade.left.masked" : p.whyLeft(here, direction, kinds)));
+            return true;
         }
         boolean scripted = AxiomMask.scripted() && !AxiomMask.windowClosed().orElse(false);
         named("next", next, tr(scripted ? "axiom.chromastudio.shade.becomes.scripted" : "axiom.chromastudio.shade.becomes", next.getBlock().getName()));
+        return true;
     }
 
     private static void named(String id, BlockState state, String label) {
