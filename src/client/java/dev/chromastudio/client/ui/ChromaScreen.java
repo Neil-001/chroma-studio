@@ -188,10 +188,11 @@ public final class ChromaScreen extends Screen {
 
     private static final int CLOSE = 0, PIN = 1, FULLSCREEN = 2, SETTINGS = 3;
 
-    private static List<Bounds> tabRects(Bounds frame, int screenW, boolean fullscreen, Font font) {
+    private static List<Bounds> tabRects(Bounds frame, int screenW, boolean fullscreen, boolean buttons, Font font) {
         List<Bounds> rects = new ArrayList<>();
         int x = frame.x() + 1;
-        int space = buttonsLeft(frame, screenW, fullscreen, buttonW(frame, screenW, fullscreen)) - x, room = space - tabText();
+        int end = buttons ? buttonsLeft(frame, screenW, fullscreen, buttonW(frame, screenW, fullscreen)) : frame.right() - 1;
+        int space = end - x, room = space - tabText();
         int pad = Math.clamp(room / REGISTRY.size(), TAB_PAD_MIN, TAB_PAD);
         boolean squeezed = room < REGISTRY.size() * TAB_PAD_MIN;
         for (Registered r : REGISTRY) {
@@ -274,7 +275,7 @@ public final class ChromaScreen extends Screen {
         g.fill(f.x() + (fullscreen ? 0 : 1), f.y() + Window.TITLE_H - 1, f.right() - (fullscreen ? 0 : 1), f.y() + Window.TITLE_H,
                 ARGB.multiplyAlpha(Theme.BORDER, opacity));
 
-        List<Bounds> rects = tabRects(f, screenW, fullscreen, font);
+        List<Bounds> rects = tabRects(f, screenW, fullscreen, buttons, font);
         for (int i = 0; i < rects.size(); i++) {
             Bounds r = rects.get(i);
             String id = REGISTRY.get(i).id;
@@ -371,7 +372,7 @@ public final class ChromaScreen extends Screen {
     }
 
     private boolean overTab(Bounds frame, int mx, int my) {
-        for (Bounds r : tabRects(frame, width, fullscreen(), font)) if (r.contains(mx, my)) return true;
+        for (Bounds r : tabRects(frame, width, fullscreen(), true, font)) if (r.contains(mx, my)) return true;
         return false;
     }
 
@@ -427,7 +428,7 @@ public final class ChromaScreen extends Screen {
                 toggleFullscreen();
                 return true;
             }
-            List<Bounds> rects = tabRects(frame, width, fullscreen, font);
+            List<Bounds> rects = tabRects(frame, width, fullscreen, true, font);
             for (int i = 0; i < rects.size(); i++)
                 if (rects.get(i).contains(mx, my)) {
                     select(REGISTRY.get(i).id);
