@@ -15,6 +15,8 @@ import dev.chromastudio.client.export.LitematicaBridge;
 import dev.chromastudio.client.export.SchematicExporter;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Entry;
+import dev.chromastudio.client.index.Query;
+import dev.chromastudio.client.index.Target;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
@@ -38,11 +40,14 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.Function;
@@ -86,6 +91,29 @@ final class PaletteDialogs {
         int w = 0;
         for (String key : keys) w = Math.max(w, Widgets.tw(tr(key)));
         return w + 6;
+    }
+
+    static List<Object> poolKey() {
+        MatchState.follow();
+        return List.of(MatchState.filters().state(), BlockIndex.get().version(), MatchState.revision());
+    }
+
+    static List<PaletteEntry> closest(List<Oklch> targets) {
+        BlockIndex index = BlockIndex.get();
+        Set<String> pool = new HashSet<>();
+        for (Entry e : MatchState.filters().candidates(index, PaletteBlocks.face(), PaletteBlocks.scale(), PaletteBlocks.tint())) pool.add(e.id());
+        Query q = PaletteBlocks.query().limit(Integer.MAX_VALUE);
+        MatchState.filters().apply(q);
+        List<PaletteEntry> out = new ArrayList<>();
+        Set<String> used = new HashSet<>();
+        for (Oklch target : targets) {
+            for (BlockIndex.Match m : index.closest(Target.of(Color.ofOklch(target)), q)) {
+                if (!pool.contains(m.entry().id()) || !used.add(m.entry().id())) continue;
+                out.add(PaletteBlocks.of(m.entry()));
+                break;
+            }
+        }
+        return out;
     }
 
     static final class Name extends Dialog {
@@ -444,15 +472,24 @@ final class PaletteDialogs {
     }
 
     static final class Generate extends Dialog {
+        static final int WIDTH = 250, HEIGHT = TITLE_H + 3 + 3 * PanelTab.ROW + 84 + PanelTab.ROW + 6;
+        private static final int CHIP = 4;
+        private static final double GREY_CHROMA = 0.03;
         private static Harmony harmony = Harmony.ANALOGOUS;
+
+        private record Key(String hex, Harmony harmony, int count, long salt, List<Object> pool) {}
 
         private final Consumer<Palette> done;
         private String hex;
         private int count = ModSettings.generateCount;
+        private long salt = new Random().nextLong();
         private int labelW;
+        private Key shownFor;
+        private List<PaletteEntry> shown = List.of();
+        private Button go;
 
         Generate(Color seed, Consumer<Palette> done) {
-            super(tr("palettes.chromastudio.generate.title"), 250, 106);
+            super(tr("palettes.chromastudio.generate.title"), WIDTH, HEIGHT);
             this.done = done;
             hex = seed.hex();
         }
@@ -474,15 +511,40 @@ final class PaletteDialogs {
             }
         }
 
+        private List<PaletteEntry> preview() {
+            Color seed = seed();
+            Key key = new Key(hex, harmony, count, salt, poolKey());
+            if (!key.equals(shownFor)) {
+                shownFor = key;
+                shown = new ArrayList<>(seed == null ? List.of() : closest(Generator.targets(seed.oklch(), harmony, count, new Random(salt))));
+                shown.sort(Comparator.comparingDouble(Generate::hue));
+            }
+            return shown;
+        }
+
+        private static double hue(PaletteEntry e) {
+            Color c = PaletteBlocks.colour(e);
+            if (c == null) return -2;
+            Oklch o = c.oklch();
+            return o.c() < GREY_CHROMA ? o.l() - 1 : o.h();
+        }
+
         @Override
         protected void build(Bounds in) {
             labelW = labelWidth("palettes.chromastudio.generate.seed", "palettes.chromastudio.generate.harmony", "palettes.chromastudio.generate.count");
             int x = in.x() + labelW, y = in.y();
-            Component hand = tr("palettes.chromastudio.generate.in_hand");
-            int handW = Widgets.buttonWidth(hand);
-            EditBox field = widgets.field(x + Widgets.H + 2, y, Math.max(40, in.right() - x - Widgets.H - 4 - handW), hex, s -> hex = s);
+            Component hand = tr("palettes.chromastudio.generate.in_hand"), random = tr("palettes.chromastudio.generate.random");
+            int handW = Widgets.buttonWidth(hand), randomW = Widgets.buttonWidth(random);
+            EditBox field = widgets.field(x + Widgets.H + 2, y, Math.max(40, in.right() - x - Widgets.H - 2 * PanelTab.GAP - 2 - handW - randomW), hex, s -> hex = s);
             field.setMaxLength(7);
-            Button handButton = widgets.button(in.right() - handW, y, hand, () -> {
+            widgets.button(in.right() - randomW, y, random, () -> {
+                Random r = new Random();
+                harmony = Harmony.values()[r.nextInt(Harmony.values().length)];
+                hex = Color.ofOklch(new Oklch(0.35 + r.nextDouble() * 0.45, 0.04 + r.nextDouble() * 0.14, r.nextDouble() * 360)).hex();
+                salt = r.nextLong();
+                refresh();
+            });
+            Button handButton = widgets.button(in.right() - randomW - PanelTab.GAP - handW, y, hand, () -> {
                 Color c = inHand();
                 if (c != null) field.setValue(c.hex());
             });
@@ -491,15 +553,11 @@ final class PaletteDialogs {
             widgets.cycler(x, y, in.right() - x, null, List.of(Harmony.values()), harmony, PaletteDialogs::option, h -> harmony = h);
             y += PanelTab.ROW;
             widgets.spin(x, y, 40, count, 1, ModSettings.min("generateCount"), ModSettings.max("generateCount"), true, v -> count = (int) v);
-            Component roll = tr("palettes.chromastudio.generate.roll"), go = tr("palettes.chromastudio.generate.go");
-            int goW = Widgets.buttonWidth(go), rollW = Widgets.buttonWidth(roll);
-            widgets.button(in.right() - goW, y, go, this::confirm);
-            widgets.button(in.right() - goW - PanelTab.GAP - rollW, y, roll, () -> {
-                Random random = new Random();
-                harmony = Harmony.values()[random.nextInt(Harmony.values().length)];
-                hex = Color.ofOklch(new Oklch(0.35 + random.nextDouble() * 0.45, 0.04 + random.nextDouble() * 0.14, random.nextDouble() * 360)).hex();
-                confirm();
-            }).setTooltip(Tooltip.create(tr("palettes.chromastudio.generate.roll.tip")));
+            Component go = tr("palettes.chromastudio.generate.go");
+            int goW = Widgets.buttonWidth(go);
+            this.go = widgets.button(in.right() - goW, in.bottom() - Widgets.H, goW, go, this::confirm);
+            int cancelW = Widgets.buttonWidth(CommonComponents.GUI_CANCEL);
+            widgets.button(in.right() - goW - PanelTab.GAP - 2 - cancelW, in.bottom() - Widgets.H, cancelW, CommonComponents.GUI_CANCEL, this::close);
         }
 
         @Override
@@ -511,20 +569,70 @@ final class PaletteDialogs {
             int x = in.x() + labelW;
             if (seed != null) Widgets.swatch(g, x, in.y(), Widgets.H, Widgets.H, seed.rgb());
             else g.outline(x, in.y(), Widgets.H, Widgets.H, Theme.BAD);
+            g.text(PanelTab.font(), tr("widget.chromastudio.range", Widgets.number(ModSettings.min("generateCount"), true), Widgets.number(ModSettings.max("generateCount"), true)),
+                    x + 44, in.y() + 2 * PanelTab.ROW + 4, Theme.DIM, false);
+            Bounds well = new Bounds(in.x(), in.y() + 3 * PanelTab.ROW, in.w(), in.h() - 4 * PanelTab.ROW - 2);
+            g.fill(well.x(), well.y(), well.right(), well.bottom(), Theme.WELL);
+            List<PaletteEntry> entries = preview();
+            Component problem = seed == null ? tr("palettes.chromastudio.generate.bad_hex") : entries.isEmpty() ? tr("palettes.chromastudio.generate.none") : null;
+            Component footer = entries.size() < count ? tr("palettes.chromastudio.count", entries.size()) : Component.empty();
+            int footerColour = Theme.DIM;
+            if (problem != null) {
+                if (go.active) Widgets.disable(go, problem);
+                List<FormattedCharSequence> lines = PanelTab.font().split(problem, well.w() - 8);
+                int top = well.y() + (well.h() - lines.size() * 9) / 2;
+                for (int i = 0; i < lines.size(); i++)
+                    g.text(PanelTab.font(), lines.get(i), well.x() + (well.w() - PanelTab.font().width(lines.get(i))) / 2, top + i * 9, Theme.BAD, false);
+                return;
+            }
+            if (!go.active) {
+                go.active = true;
+                go.setTooltip(null);
+            }
+            int n = entries.size(), icon = 32, pad = 2, gap = 2;
+            if (fits(n, icon, pad, gap, well) == 0) {
+                icon = 16;
+                if (fits(n, icon, pad, gap, well) == 0) {
+                    pad = 1;
+                    gap = 1;
+                }
+            }
+            int tileW = icon + 2 * pad, tileH = tileW + CHIP, pitchX = tileW + gap, pitchY = tileH + gap;
+            int rows = Math.max(fits(n, icon, pad, gap, well), icon == 32 && n >= 4 ? 2 : 1), cols = (n + rows - 1) / rows;
+            int left = well.x() + (well.w() - cols * pitchX + gap) / 2, top = well.y() + (well.h() - rows * pitchY + gap) / 2;
+            for (int i = 0; i < n; i++) {
+                int tx = left + (i % cols) * pitchX, ty = top + (i / cols) * pitchY;
+                PaletteEntry e = entries.get(i);
+                boolean over = mouseX >= tx && mouseX < tx + tileW && mouseY >= ty && mouseY < ty + tileH;
+                g.fill(tx, ty, tx + tileW, ty + tileH, over ? Theme.HOVER : Theme.BAR);
+                Color colour = PaletteBlocks.colour(e);
+                if (colour != null) g.fill(tx, ty + tileW, tx + tileW, ty + tileH, 0xFF000000 | colour.rgb());
+                if (over) {
+                    g.outline(tx, ty, tileW, tileH, Theme.TEXT);
+                    footer = PaletteBlocks.name(e);
+                    footerColour = Theme.TEXT;
+                }
+                g.pose().pushMatrix();
+                g.pose().translate(tx + pad, ty + pad);
+                g.pose().scale(icon / 16f);
+                Widgets.blockIcon(g, PaletteBlocks.icon(e), 0, 0);
+                g.pose().popMatrix();
+            }
+            g.outline(go.getX() - 1, go.getY() - 1, go.getWidth() + 2, go.getHeight() + 2, Theme.ACCENT);
+            int cancelW = Widgets.buttonWidth(CommonComponents.GUI_CANCEL);
+            g.text(PanelTab.font(), PanelTab.fit(footer.getString(), in.w() - go.getWidth() - cancelW - 8), in.x(), in.bottom() - Widgets.H + 4, footerColour, false);
+        }
+
+        private static int fits(int n, int icon, int pad, int gap, Bounds well) {
+            int tileW = icon + 2 * pad, cols = (well.w() + gap) / (tileW + gap), rows = (n + cols - 1) / cols;
+            return rows * (tileW + CHIP + gap) - gap <= well.h() ? rows : 0;
         }
 
         @Override
         protected boolean confirm() {
             Color seed = seed();
-            if (seed == null) {
-                status(tr("palettes.chromastudio.generate.bad_hex"), Theme.BAD);
-                return true;
-            }
-            List<PaletteEntry> entries = PaletteBlocks.closest(Generator.targets(seed.oklch(), harmony, count, new Random()));
-            if (entries.isEmpty()) {
-                status(tr("palettes.chromastudio.no_matches"), Theme.BAD);
-                return true;
-            }
+            List<PaletteEntry> entries = preview();
+            if (seed == null || entries.isEmpty()) return true;
             close();
             done.accept(PaletteStore.get().create(tr("palettes.chromastudio.generate.name", option(harmony), seed.hex()).getString(), entries));
             return true;
