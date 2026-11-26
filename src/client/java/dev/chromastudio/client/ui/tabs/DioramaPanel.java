@@ -46,6 +46,7 @@ final class DioramaPanel implements AutoCloseable {
     private static final int INSET = 4, CAPTION = 10, PADDING = 8, SEPARATION = 6;
     private static final int MARK = 0xFFFFFFFF, SHADOW = 0xFF000000;
     private static final long DOUBLE_CLICK_MS = 250;
+    private static final double CLICK_SLOP = 3;
     private static final int SWATCH = 10, LEGEND_ROW = 12;
     private static final float YAW = -25, PITCH = 15, MARGIN = 1.08f;
     private static int nextId;
@@ -71,6 +72,7 @@ final class DioramaPanel implements AutoCloseable {
     private final List<Integer> order = new ArrayList<>();
     private boolean orbiting;
     private long stageClick;
+    private double moved;
 
     DioramaPanel(Palette palette) {
         for (PaletteEntry e : palette.entries) {
@@ -300,6 +302,7 @@ final class DioramaPanel implements AutoCloseable {
     boolean clicked(MouseButtonEvent e) {
         orbiting = threeD && e.button() == InputConstants.MOUSE_BUTTON_LEFT && stage.contains(e.x(), e.y());
         long now = Util.getMillis();
+        moved = 0;
         if (orbiting && now - stageClick < DOUBLE_CLICK_MS) {
             yaw = YAW;
             pitch = PITCH;
@@ -310,6 +313,8 @@ final class DioramaPanel implements AutoCloseable {
 
     boolean dragged(double dx, double dy) {
         if (!orbiting) return false;
+        moved += Math.abs(dx) + Math.abs(dy);
+        if (moved > CLICK_SLOP) stageClick = 0;
         yaw += (float) dx;
         pitch = Math.clamp(pitch + (float) dy, -80, 80);
         return true;
