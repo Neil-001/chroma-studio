@@ -33,6 +33,7 @@ public final class ColourPicker implements AutoCloseable {
     private String paintedFor;
     private final List<List<Double>> edges = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
     private int dragging = NONE;
+    private boolean insetMarker;
 
     public ColourPicker(Color start, Consumer<Boolean> onChange) {
         model = new TargetModel(start);
@@ -46,9 +47,14 @@ public final class ColourPicker implements AutoCloseable {
         }
     }
 
-    public void layout(Bounds top) {
-        hueBar = new Bounds(top.right() - 8, top.y(), 8, top.h());
-        square = new Bounds(top.x(), top.y(), top.w() - 10, top.h());
+    public void layout(Bounds top) { layout(top, 8, false); }
+
+    public void layout(Bounds top, int hueW) { layout(top, hueW, true); }
+
+    private void layout(Bounds top, int hueW, boolean insetMarker) {
+        this.insetMarker = insetMarker;
+        hueBar = new Bounds(top.right() - hueW, top.y(), hueW, top.h());
+        square = new Bounds(top.x(), top.y(), top.w() - hueW - 2, top.h());
         for (int i = 0; i < 3; i++) sliders[i] = new Bounds(0, 0, 0, 0);
     }
 
@@ -63,6 +69,7 @@ public final class ColourPicker implements AutoCloseable {
         g.outline(hx - 3, hy - 3, 7, 7, 0xFF000000);
         g.outline(hx - 2, hy - 2, 5, 5, 0xFFFFFFFF);
         int by = hueBar.y() + Math.round(hsv[0] / 360f * (hueBar.h() - 1));
+        if (insetMarker) by = Math.clamp(by, hueBar.y() + 1, hueBar.bottom() - 2);
         g.fill(hueBar.x() - 1, by - 1, hueBar.right() + 1, by + 2, 0xFF000000);
         g.fill(hueBar.x() - 1, by, hueBar.right() + 1, by + 1, 0xFFFFFFFF);
 

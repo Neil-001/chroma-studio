@@ -15,5 +15,6 @@
 - The game rebuilds item tooltips every frame. `Tooltips.add` isolates failures and logs once per block.
 - A `Widgets` click or wheel callback may rebuild its group. Return once the callback runs. `SettingsScreen` defers rebuilding rows to keep the widget alive through the click.
 - `SettingsScreen` hides `hotbarAxiom` without Axiom and retains the saved choice while the integration is unavailable. Only the fill dialog disables it for passing reasons such as survival mode. Also keep a saved `startTab` from a removed mod in the cycler.
+- `ColourDialog` draws its frame in `Theme.FIXED_*` because it previews the custom colour live, and a very light or dark pick would otherwise make the editor itself hard to read. Escape and Cancel restore the starting colour, and a click outside does nothing, so only Done keeps a change. Its third field is HSV so the numbers match the square.
 - `ColourDialog` and `MatchTab.typed` ignore text they wrote themselves. Rounding then reading it back would shift the colour.
 - Read `Theme` colours while drawing and call `Theme.sync` at the start of a frame. `Theme.LIGHT_FROM` is the OKLab lightness where black and white have equal contrast.

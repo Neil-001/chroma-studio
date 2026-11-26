@@ -34,16 +34,19 @@ abstract class Popup {
 
     protected abstract void build(Bounds in);
 
+    protected boolean fixedColours() { return false; }
+
     protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {}
 
     void close() { onClose.run(); }
 
     final void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         g.fill(0, 0, g.guiWidth(), g.guiHeight(), Theme.SCRIM);
-        g.fill(box.x(), box.y(), box.right(), box.bottom(), Theme.PANEL);
-        g.fill(box.x(), box.y(), box.right(), box.y() + TITLE_H, Theme.BAR);
-        g.outline(box.x(), box.y(), box.w(), box.h(), Theme.BORDER);
-        g.text(Minecraft.getInstance().font, title, box.x() + 5, box.y() + 3, Theme.TEXT, false);
+        boolean fixed = fixedColours();
+        g.fill(box.x(), box.y(), box.right(), box.bottom(), fixed ? Theme.FIXED_PANEL : Theme.PANEL);
+        g.fill(box.x(), box.y(), box.right(), box.y() + TITLE_H, fixed ? Theme.FIXED_BAR : Theme.BAR);
+        g.outline(box.x(), box.y(), box.w(), box.h(), fixed ? Theme.FIXED_BORDER : Theme.BORDER);
+        g.text(Minecraft.getInstance().font, title, box.x() + 5, box.y() + 3, fixed ? Theme.FIXED_TEXT : Theme.TEXT, false);
         draw(g, inside(), mouseX, mouseY);
         widgets.render(g, mouseX, mouseY, delta);
     }
