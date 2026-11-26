@@ -1714,9 +1714,8 @@ final class PaletteDialogs {
         }
 
         private int cautionH(StringSplitter splitter, int w, Optional<HotbarFill.AxiomPreview> preview) {
-            int h = fit(splitter, warning(preview, dropped(blocks, plan())), w, WARNING_LINES).height();
-            if (AxiomBridge.isPresent() && blocks > HotbarFill.HOTBAR) h = Math.max(h, fit(splitter, tr("palettes.chromastudio.hotbar.axiom.note"), w, WARNING_LINES).height());
-            return h;
+            if (AxiomBridge.isPresent() && blocks > HotbarFill.HOTBAR) return WARNING_LINES * 9;
+            return fit(splitter, warning(preview, dropped(blocks, plan())), w, WARNING_LINES).height();
         }
 
         @Override
