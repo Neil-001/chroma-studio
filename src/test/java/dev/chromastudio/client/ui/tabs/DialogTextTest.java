@@ -199,25 +199,25 @@ class DialogTextTest {
     private static void hotbarDialog() {
         int w = inner(PaletteDialogs.Hotbar.WIDTH);
         int control = (w - PanelTab.GAP) / 2;
-        within("the overflow heading", width(tr("palettes.chromastudio.hotbar.overflow")), w);
         for (String state : List.of("ON", "OFF")) within("the Axiom hotbars toggle", button(Component.literal(tr("palettes.chromastudio.hotbar.axiom").getString() + ": " + state)), control);
         for (OverflowMode m : OverflowMode.values()) {
             String value = tr("option.chromastudio.overflowmode." + m.name().toLowerCase(Locale.ROOT)).getString();
             within("the shulker box cycler", button(Component.literal(tr("palettes.chromastudio.hotbar.boxes").getString() + ": " + value)), control);
             for (int free : List.of(0, 5, 27)) {
                 HotbarPlan plan = HotbarPlan.of(m, 90, free);
-                for (Component row : PaletteDialogs.Hotbar.destinations(99, Optional.empty(), plan)) fits("a destination", row, w, 1);
+                for (PaletteDialogs.Hotbar.Row row : PaletteDialogs.Hotbar.rows(99, Optional.empty(), plan)) within("a destination", width(row.label()), PaletteDialogs.Hotbar.labelRoom(w));
                 Component warning = PaletteDialogs.Hotbar.warning(Optional.empty(), PaletteDialogs.Hotbar.dropped(99, plan));
                 if (warning != null) fits("the drop warning", warning, w, PaletteDialogs.Hotbar.WARNING_LINES);
             }
         }
         Component hotbars = tr("hotbar.chromastudio.axiom.hotbars", 8, 9);
-        Optional<HotbarFill.AxiomPreview> preview = Optional.of(new HotbarFill.AxiomPreview(hotbars, 99));
-        for (Component row : PaletteDialogs.Hotbar.destinations(99, preview, HotbarPlan.of(OverflowMode.NEVER, 90, 0))) fits("a destination", row, w, 1);
+        Optional<HotbarFill.AxiomPreview> preview = Optional.of(new HotbarFill.AxiomPreview(hotbars, 8, 9, 99));
+        for (PaletteDialogs.Hotbar.Row row : PaletteDialogs.Hotbar.rows(99, preview, HotbarPlan.of(OverflowMode.NEVER, 90, 0))) within("a destination", width(row.label()), PaletteDialogs.Hotbar.labelRoom(w));
         fits("the replacement warning", PaletteDialogs.Hotbar.warning(preview, 0), w, PaletteDialogs.Hotbar.WARNING_LINES);
+        fits("the Axiom note", tr("palettes.chromastudio.hotbar.axiom.note"), w, PaletteDialogs.Hotbar.WARNING_LINES);
         for (Component receipt : List.of(tr("hotbar.chromastudio.filled.axiom", hotbars, "Left Alt"), tr("hotbar.chromastudio.undone_axiom"),
-                tr("hotbar.chromastudio.filled", 9).copy().append(" ").append(tr("hotbar.chromastudio.rest.boxes", 99, 3)), tr("hotbar.chromastudio.undone_dropped")))
-            fits("a fill's receipt", receipt, w, PaletteDialogs.Hotbar.RESULT_LINES);
+                tr("hotbar.chromastudio.filled", 9).copy().append(" ").append(tr("hotbar.chromastudio.rest.boxes", 99, 3)), tr("hotbar.chromastudio.undone_dropped"), tr("hotbar.chromastudio.undone_inventory")))
+            fits("a fill's receipt", receipt, PaletteDialogs.Hotbar.resultRoom(w, button(tr("palettes.chromastudio.hotbar.fill")) + PanelTab.GAP + button(tr("palettes.chromastudio.hotbar.undo"))), PaletteDialogs.Hotbar.RESULT_LINES);
         within("Fill and Undo", button(tr("palettes.chromastudio.hotbar.fill")) + PanelTab.GAP + button(tr("palettes.chromastudio.hotbar.undo")), w);
     }
 

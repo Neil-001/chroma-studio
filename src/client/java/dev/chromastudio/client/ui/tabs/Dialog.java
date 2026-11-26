@@ -36,7 +36,7 @@ abstract class Dialog {
     }
 
     final void layout(Bounds content) {
-        int w = Math.min(wantW, content.w() - 8), h = Math.min(wantH, content.h() - 8);
+        int w = Math.min(wantW, content.w() - 8), h = Math.min(height(), content.h() - 8);
         box = new Bounds(content.x() + (content.w() - w) / 2, content.y() + (content.h() - h) / 2, w, h);
         widgets.clear();
         widgets.add(new IconButton(box.right() - 13, box.y() + 2, 10, 10, IconButton.Glyph.CLOSE, Component.translatable("window.chromastudio.close"), this::cancel));
@@ -44,6 +44,8 @@ abstract class Dialog {
     }
 
     protected final void refresh() { layout(tab.bounds); }
+
+    protected int height() { return wantH; }
 
     protected abstract void build(Bounds in);
 

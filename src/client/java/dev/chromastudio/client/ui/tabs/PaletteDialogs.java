@@ -1562,19 +1562,22 @@ final class PaletteDialogs {
     }
 
     static final class Hotbar extends Dialog {
-        static final int WIDTH = 300, HEADING = 11, DESTINATION_LINES = 3, WARNING_LINES = 2, RESULT_LINES = 3;
+        static final int WIDTH = 360, SLOT = 17, WARNING_LINES = 2, RESULT_LINES = 3, RESULT_GAP = 3;
+
+        record Row(Component label, int from, int count, boolean risky) {}
 
         private final List<PaletteEntry> entries;
+        private final List<ItemStack> stacks;
         private final int blocks;
         private Component result;
-        private List<Object> built = List.of();
+        private List<Object> built = List.of(), shape = List.of();
         private boolean shown;
 
         Hotbar(List<PaletteEntry> entries) {
-            super(tr("palettes.chromastudio.hotbar.title"), WIDTH, TITLE_H + 7 + HEADING + PanelTab.ROW + PanelTab.GAP + (DESTINATION_LINES + WARNING_LINES + RESULT_LINES) * 9
-                    + 3 * PanelTab.GAP + Widgets.H);
+            super(tr("palettes.chromastudio.hotbar.title"), WIDTH, 0);
             this.entries = List.copyOf(entries);
-            this.blocks = HotbarFill.holdable(entries);
+            this.stacks = HotbarFill.holdable(entries);
+            this.blocks = stacks.size();
         }
 
         private static MutableComponent counted(String key, int n, Object... before) {
@@ -1583,17 +1586,33 @@ final class PaletteDialogs {
             return tr(Plural.key(key, n), args);
         }
 
-        static List<Component> destinations(int blocks, Optional<HotbarFill.AxiomPreview> preview, HotbarPlan plan) {
-            List<Component> out = new ArrayList<>();
-            out.add(counted("palettes.chromastudio.hotbar.to.hotbar", Math.min(HotbarFill.HOTBAR, blocks)));
-            if (blocks <= HotbarFill.HOTBAR) return out;
+        static List<Row> rows(int blocks, Optional<HotbarFill.AxiomPreview> preview, HotbarPlan plan) {
+            List<Row> out = new ArrayList<>();
+            int held = Math.min(HotbarFill.HOTBAR, blocks), rest = blocks - held;
+            out.add(new Row(counted("palettes.chromastudio.hotbar.to.hotbar", held), 0, held, false));
+            if (rest <= 0) return out;
             if (preview.isPresent()) {
-                out.add(counted("palettes.chromastudio.hotbar.to.axiom", blocks - HotbarFill.HOTBAR, preview.get().hotbars()));
+                HotbarFill.AxiomPreview p = preview.get();
+                Component label = p.first() == p.last() ? counted("palettes.chromastudio.hotbar.to.axiom", rest, p.first())
+                        : counted("palettes.chromastudio.hotbar.to.axiom_range", rest, p.first(), p.last());
+                out.add(new Row(label, held, rest, false));
                 return out;
             }
-            if (plan.slotted() > 0) out.add(counted("palettes.chromastudio.hotbar.to.slots", plan.slotted()));
-            if (plan.boxed() > 0) out.add(counted("palettes.chromastudio.hotbar.to.boxes", plan.boxed()));
+            int at = held, loose = rest - plan.slotted() - plan.boxed();
+            if (plan.slotted() > 0) out.add(new Row(counted("palettes.chromastudio.hotbar.to.slots", plan.slotted()), at, plan.slotted(), false));
+            at += plan.slotted();
+            if (plan.boxed() > 0) out.add(new Row(counted("palettes.chromastudio.hotbar.to.boxes", plan.boxed()), at, plan.boxed(), false));
+            at += plan.boxed();
+            if (loose > 0) out.add(new Row(counted("palettes.chromastudio.hotbar.to.ground", loose), at, loose, true));
             return out;
+        }
+
+        static int labelRoom(int inner) { return inner - HotbarFill.HOTBAR * SLOT - 2 * PanelTab.GAP; }
+
+        static int resultRoom(int inner, int buttonsW) { return inner - buttonsW - 4 * PanelTab.GAP; }
+
+        private static int buttonsW() {
+            return Widgets.buttonWidth(tr("palettes.chromastudio.hotbar.fill")) + PanelTab.GAP + Widgets.buttonWidth(tr("palettes.chromastudio.hotbar.undo"));
         }
 
         static int dropped(int blocks, HotbarPlan plan) {
@@ -1614,15 +1633,14 @@ final class PaletteDialogs {
             return HotbarPlan.of(ModSettings.hotbarOverflowMode, blocks - HotbarFill.HOTBAR, HotbarFill.freeSlots());
         }
 
-        private int fillY(Bounds in) { return in.bottom() - RESULT_LINES * 9 - PanelTab.GAP - Widgets.H; }
-
         @Override
         protected void build(Bounds in) {
-            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(stacks);
             built = state();
+            shape = shape(preview);
             shown = false;
             Component fits = blocks <= HotbarFill.HOTBAR ? tr("palettes.chromastudio.hotbar.fits") : null;
-            int x = in.x(), y = in.y() + HEADING, w = in.w();
+            int x = in.x(), y = in.y(), w = in.w();
             if (AxiomBridge.isPresent()) {
                 w = (in.w() - PanelTab.GAP) / 2;
                 CycleButton<Boolean> axiomButton = widgets.toggle(x, y, w, tr("palettes.chromastudio.hotbar.axiom"), HotbarFill.usesAxiom(), v -> {
@@ -1644,13 +1662,13 @@ final class PaletteDialogs {
                         ModSettings.save();
                         result = null;
                         refresh();
-                    }, tr("settings.chromastudio.hotbarOverflowMode.tip"));
+                    }, tr("palettes.chromastudio.hotbar.boxes.tip"));
             if (preview.isPresent()) Widgets.disable(modeButton, tr("hotbar.chromastudio.axiom.instead"));
             else if (fits != null) Widgets.disable(modeButton, fits);
 
             Component fill = tr("palettes.chromastudio.hotbar.fill"), undo = tr("palettes.chromastudio.hotbar.undo");
             int undoW = Widgets.buttonWidth(undo), fillW = Widgets.buttonWidth(fill);
-            y = fillY(in);
+            y = in.bottom() - Widgets.H;
             Button fillButton = widgets.button(in.right() - undoW - PanelTab.GAP - fillW, y, fill, () -> {
                 if (!shown) return;
                 result = HotbarFill.fill(entries, (Boolean) built.getFirst());
@@ -1664,38 +1682,90 @@ final class PaletteDialogs {
             HotbarFill.whyNoUndo().ifPresent(why -> Widgets.disable(undoButton, why));
         }
 
+        private static @Nullable ItemStack slot(GuiGraphicsExtractor g, ItemStack stack, int x, int y, int mouseX, int mouseY, @Nullable ItemStack hovered) {
+            boolean here = !stack.isEmpty() && over(mouseX, mouseY, x, y, SLOT - 1, SLOT - 1);
+            g.fill(x, y, x + SLOT - 1, y + SLOT - 1, here ? Theme.CONTROL_HOVER : Theme.CHIP);
+            Widgets.blockIcon(g, stack, x, y);
+            return here ? stack : hovered;
+        }
+
+        private int labelW(List<Row> rows) {
+            int rest = blocks - HotbarFill.HOTBAR, w = 0;
+            List<Component> labels = new ArrayList<>();
+            for (Row row : rows) labels.add(row.label());
+            if (rest > 0) {
+                for (String to : List.of("slots", "boxes", "ground")) labels.add(counted("palettes.chromastudio.hotbar.to." + to, rest));
+                if (AxiomBridge.isPresent()) {
+                    int last = 1 + HotbarPlan.axiomHotbars(rest);
+                    labels.add(last == 2 ? counted("palettes.chromastudio.hotbar.to.axiom", rest, 2) : counted("palettes.chromastudio.hotbar.to.axiom_range", rest, 2, last));
+                }
+            }
+            for (Component label : labels) w = Math.max(w, Widgets.tw(label));
+            return w;
+        }
+
+        private int inner() { return Math.min(WIDTH, tab.bounds.w() - 8) - 10; }
+
+        private int cautionH(StringSplitter splitter, int w, Optional<HotbarFill.AxiomPreview> preview) {
+            int h = fit(splitter, warning(preview, dropped(blocks, plan())), w, WARNING_LINES).height();
+            if (AxiomBridge.isPresent() && blocks > HotbarFill.HOTBAR) h = Math.max(h, fit(splitter, tr("palettes.chromastudio.hotbar.axiom.note"), w, WARNING_LINES).height());
+            return h;
+        }
+
+        @Override
+        protected int height() {
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(stacks);
+            StringSplitter splitter = PanelTab.font().getSplitter();
+            int w = inner(), warned = cautionH(splitter, w, preview);
+            int said = fit(splitter, result, resultRoom(w, buttonsW()), RESULT_LINES).height();
+            return TITLE_H + 7 + PanelTab.ROW + PanelTab.GAP + rows(blocks, preview, plan()).size() * SLOT + PanelTab.GAP
+                    + (warned > 0 ? warned + PanelTab.GAP : 0) + RESULT_GAP + Math.max(2 * 9, said);
+        }
+
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
             shown = true;
-            g.text(PanelTab.font(), tr("palettes.chromastudio.hotbar.overflow"), in.x(), in.y(), Theme.DIM, false);
-            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(blocks);
+            Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(stacks);
             StringSplitter splitter = PanelTab.font().getSplitter();
-            int y = in.y() + HEADING + PanelTab.ROW + PanelTab.GAP;
             HotbarPlan plan = plan();
-            List<Component> rows = destinations(blocks, preview, plan);
-            for (Component row : rows) {
-                Fitted line = fit(splitter, row, in.w(), 1);
-                drawLines(g, line, in.x(), y, Theme.TEXT);
-                if (line.cut() && over(mouseX, mouseY, in.x(), y, in.w(), 9)) tip(g, List.of(row), mouseX, mouseY);
-                y += 9;
+            List<Row> rows = rows(blocks, preview, plan);
+            int labelW = Math.min(labelW(rows), labelRoom(in.w()));
+            int iconsX = in.x() + labelW + 2 * PanelTab.GAP, y = in.y() + PanelTab.ROW + PanelTab.GAP;
+            ItemStack hovered = null;
+            for (Row row : rows) {
+                Fitted line = fit(splitter, row.label(), labelW, 1);
+                drawLines(g, line, in.x(), y + 4, row.risky() ? Theme.FAIR : Theme.TEXT);
+                if (line.cut() && over(mouseX, mouseY, in.x(), y, labelW, SLOT)) tip(g, List.of(row.label()), mouseX, mouseY);
+                int slots = row.from() == 0 ? HotbarFill.HOTBAR : row.count(), room = (in.right() - iconsX) / SLOT;
+                int drawn = slots <= room ? slots : room - 1, x = iconsX;
+                for (int i = 0; i < drawn; i++, x += SLOT) hovered = slot(g, i < row.count() ? stacks.get(row.from() + i) : ItemStack.EMPTY, x, y, mouseX, mouseY, hovered);
+                if (drawn < slots) Widgets.centred(g, tr("palettes.chromastudio.hotbar.more", row.count() - drawn), x + SLOT / 2, y + 4, Theme.DIM);
+                y += SLOT;
             }
-            int fillY = fillY(in);
+            y += PanelTab.GAP;
             Component warning = warning(preview, dropped(blocks, plan));
-            Fitted warned = fit(splitter, warning, in.w(), WARNING_LINES);
-            int warningY = fillY - PanelTab.GAP - warned.height();
-            drawLines(g, warned, in.x(), warningY, Theme.FAIR);
-            if (warned.cut() && over(mouseX, mouseY, in.x(), warningY, in.w(), warned.height())) tip(g, List.of(warning), mouseX, mouseY);
-            Fitted said = fit(splitter, result, in.w(), RESULT_LINES);
-            int saidY = fillY + Widgets.H + PanelTab.GAP;
+            Component caution = warning == null && preview.isPresent() ? tr("palettes.chromastudio.hotbar.axiom.note") : warning;
+            Fitted warned = fit(splitter, caution, in.w(), WARNING_LINES);
+            drawLines(g, warned, in.x(), y, warning == null ? Theme.DIM : Theme.FAIR);
+            if (warned.cut() && over(mouseX, mouseY, in.x(), y, in.w(), warned.height())) tip(g, List.of(caution), mouseX, mouseY);
+            int room = resultRoom(in.w(), buttonsW());
+            Fitted said = fit(splitter, result, room, RESULT_LINES);
+            int saidY = said.lines().size() == 1 ? in.bottom() - Widgets.H + 4 : in.bottom() - said.height();
             drawLines(g, said, in.x(), saidY, Theme.TEXT);
-            if (said.cut() && over(mouseX, mouseY, in.x(), saidY, in.w(), said.height())) tip(g, List.of(result), mouseX, mouseY);
+            if (said.cut() && over(mouseX, mouseY, in.x(), saidY, room, said.height())) tip(g, List.of(result), mouseX, mouseY);
+            if (hovered != null) tip(g, List.of(hovered.getHoverName()), mouseX, mouseY);
         }
 
         @Override
         void tick() {
-            if (state().equals(built)) return;
-            result = null;
-            refresh();
+            if (!state().equals(built)) {
+                result = null;
+                refresh();
+            } else if (!shape(HotbarFill.axiomPreview(stacks)).equals(shape)) refresh();
+        }
+
+        private List<Object> shape(Optional<HotbarFill.AxiomPreview> preview) {
+            return List.of(rows(blocks, preview, plan()).size(), cautionH(PanelTab.font().getSplitter(), inner(), preview));
         }
 
         private static List<Object> state() {
