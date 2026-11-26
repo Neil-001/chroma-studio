@@ -99,6 +99,8 @@ class PaletteStoreTest {
         Palette other = store.create("Tower", STONES);
         assertTrue(store.rename(other, "wall"));
         assertTrue(store.taken("WALL", wall));
+        other.name = " wall ";
+        assertTrue(store.taken("WALL", wall));
         assertFalse(store.taken("Gate", null));
     }
 

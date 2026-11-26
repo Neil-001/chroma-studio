@@ -144,7 +144,7 @@ final class PaletteDialogs {
         @Override
         boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
             boolean handled = super.mouseClicked(e, doubled);
-            if (problem() != null) widgets.setFocused(field);
+            if (tab.dialogOpen() && problem() != null) widgets.setFocused(field);
             return handled;
         }
 
@@ -156,6 +156,8 @@ final class PaletteDialogs {
             g.outline(field.getX() - 1, field.getY() - 1, field.getWidth() + 2, field.getHeight() + 2, Theme.BAD);
             int y = messageBelow ? field.getBottom() + 4 : in.bottom() - Widgets.H + 4;
             g.text(PanelTab.font(), PanelTab.fit(problem.getString(), messageW), in.x(), y, Theme.BAD, false);
+            if (Widgets.tw(problem) > messageW && mouseX >= in.x() && mouseX < in.x() + messageW && mouseY >= y && mouseY < y + 9)
+                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), problem), mouseX, mouseY);
         }
 
         private @Nullable Component problem() {

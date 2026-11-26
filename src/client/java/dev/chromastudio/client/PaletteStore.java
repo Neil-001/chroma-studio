@@ -141,7 +141,7 @@ public final class PaletteStore implements PaletteSink {
 
     public boolean taken(String name, @Nullable Palette except) {
         load();
-        for (Palette p : own) if (p != except && p.name.equalsIgnoreCase(name.strip())) return true;
+        for (Palette p : own) if (p != except && p.name.strip().equalsIgnoreCase(name.strip())) return true;
         return false;
     }
 
