@@ -741,7 +741,7 @@ final class PaletteDialogs {
         private long seed;
         private int labelW;
         private final int[] sizeX = new int[3];
-        private @Nullable Component placeWhy, size;
+        private @Nullable Component placeWhy;
         private @Nullable Arrangement shape;
         private int[] colours = new int[0];
         private List<PaletteEntry> kept = List.of();
@@ -795,14 +795,14 @@ final class PaletteDialogs {
             y += PanelTab.ROW;
             widgets.cycler(x, y, Math.min(70, sizeX[1] - 3 * PanelTab.GAP - x), null, List.of(SchematicExporter.Format.values()), format,
                     f -> Component.literal("." + f.extension), f -> { format = f; refresh(); });
-            AbstractWidget gapToggle = widgets.cycler(sizeX[1] + secondW, y, SPIN_W, null, List.of(true, false), gap, v -> diorama() ? Component.literal(NOT_USED) : CommonComponents.optionStatus(v), v -> { gap = v; size = size(); });
+            AbstractWidget gapToggle = widgets.cycler(sizeX[1] + secondW, y, SPIN_W, null, List.of(true, false), gap, v -> diorama() ? Component.literal(NOT_USED) : CommonComponents.optionStatus(v), v -> { gap = v; arrange(); });
             if (diorama()) Widgets.disable(gapToggle, tr("palettes.chromastudio.export.gap.na"));
             else gapToggle.setTooltip(Tooltip.create(tr("palettes.chromastudio.export.gap.tip")));
             y += PanelTab.ROW;
             boolean[] applies = sizesApply();
-            spinner(sizeX[0] + labelW, y, height, 1, 256, applies[0], SIZES[0], v -> { height = (int) v; size = size(); });
-            spinner(sizeX[1] + secondW, y, width, 1, 256, applies[1], SIZES[1], v -> { width = (int) v; size = size(); });
-            spinner(sizeX[2] + thirdW, y, patch, ModSettings.min("patchSize"), ModSettings.max("patchSize"), applies[2], SIZES[2], v -> { patch = (int) v; size = size(); });
+            spinner(sizeX[0] + labelW, y, height, 1, 256, applies[0], SIZES[0], v -> { height = (int) v; arrange(); });
+            spinner(sizeX[1] + secondW, y, width, 1, 256, applies[1], SIZES[1], v -> { width = (int) v; arrange(); });
+            spinner(sizeX[2] + thirdW, y, patch, ModSettings.min("patchSize"), ModSettings.max("patchSize"), applies[2], SIZES[2], v -> { patch = (int) v; arrange(); });
 
             Component export = tr("palettes.chromastudio.export.go"), place = tr("palettes.chromastudio.export.place");
             int placeW = Widgets.buttonWidth(place), exportW = Widgets.buttonWidth(export);
@@ -812,7 +812,7 @@ final class PaletteDialogs {
                 Component reroll = tr("palettes.chromastudio.diorama.reroll");
                 widgets.button(preview.right() - Widgets.buttonWidth(reroll) - PanelTab.GAP, y + PanelTab.GAP, reroll, () -> {
                     seed = new Random().nextLong();
-                    size = size();
+                    arrange();
                 });
             }
             y += PREVIEW_H + PanelTab.GAP;
@@ -824,19 +824,20 @@ final class PaletteDialogs {
             if (placeWhy != null) Widgets.disable(placeButton, placeWhy).setTooltip(null);
             actionsX = in.right() - placeW - PanelTab.GAP - exportW;
             widgets.button(actionsX, y, export, () -> run(false));
-            size = size();
+            arrange();
         }
 
-        private @Nullable Component size() {
+        private void arrange() {
             kept = palette.entries.stream().filter(e -> SchematicExporter.stateFor(e) != null).toList();
-            shape = null;
-            if (kept.isEmpty()) return null;
-            shape = Arrangement.of(kept.stream().map(PaletteEntry::weight).toList(), new LayoutOptions(layout, height, patch, width, gap, seed));
+            shape = kept.isEmpty() ? null : Arrangement.of(kept.stream().map(PaletteEntry::weight).toList(), new LayoutOptions(layout, height, patch, width, gap, seed));
             colours = kept.stream().mapToInt(e -> {
                 Color c = PaletteBlocks.colour(e);
                 return c == null ? Theme.GREYED : 0xFF000000 | c.rgb();
             }).toArray();
-            return tr("palettes.chromastudio.export.size", shape.sizeX(), shape.sizeY());
+        }
+
+        private int cell(int px, int py, double scale) {
+            return shape.at(Math.min(shape.sizeX() - 1, (int) (px / scale)), shape.sizeY() - 1 - Math.min(shape.sizeY() - 1, (int) (py / scale)), 0);
         }
 
         private void drawPreview(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -847,16 +848,15 @@ final class PaletteDialogs {
             int w = Math.max(1, (int) Math.round(shape.sizeX() * scale)), h = Math.max(1, (int) Math.round(shape.sizeY() * scale));
             int left = preview.x() + (preview.w() - w) / 2, top = preview.y() + (preview.h() - h) / 2;
             if (mouseX >= left && mouseX < left + w && mouseY >= top && mouseY < top + h) {
-                int cell = shape.at(Math.min(shape.sizeX() - 1, (int) ((mouseX - left) / scale)), shape.sizeY() - 1 - Math.min(shape.sizeY() - 1, (int) ((mouseY - top) / scale)), 0);
+                int cell = cell(mouseX - left, mouseY - top, scale);
                 if (cell != Arrangement.AIR) tip(g, List.of(PaletteBlocks.name(kept.get(cell))), mouseX, mouseY);
             }
             for (int py = 0; py < h; py++) {
-                int row = shape.sizeY() - 1 - Math.min(shape.sizeY() - 1, (int) (py / scale));
                 int runStart = 0, runColour = 0;
                 for (int px = 0; px <= w; px++) {
                     int colour = 0;
                     if (px < w) {
-                        int cell = shape.at(Math.min(shape.sizeX() - 1, (int) (px / scale)), row, 0);
+                        int cell = cell(px, py, scale);
                         colour = cell == Arrangement.AIR ? 0 : colours[cell];
                     }
                     if (px == w || colour != runColour) {
@@ -879,7 +879,7 @@ final class PaletteDialogs {
             boolean[] applies = sizesApply();
             for (int i = 0; i < SIZES.length; i++) fieldLabel(g, SIZES[i], sizeX[i], y, applies[i]);
             drawPreview(g, mouseX, mouseY);
-            if (size != null) g.text(PanelTab.font(), PanelTab.fit(size.getString(), actionsX - in.x() - PanelTab.GAP), in.x(), preview.bottom() + PanelTab.GAP + 4, Theme.SOFT, false);
+            if (shape != null) g.text(PanelTab.font(), PanelTab.fit(tr("palettes.chromastudio.export.size", shape.sizeX(), shape.sizeY()).getString(), actionsX - in.x() - PanelTab.GAP), in.x(), preview.bottom() + PanelTab.GAP + 4, Theme.SOFT, false);
             if (status == null && placeWhy != null) {
                 List<FormattedCharSequence> lines = PanelTab.font().split(placeWhy, in.w());
                 int top = in.bottom() - statusLines() * 9;
