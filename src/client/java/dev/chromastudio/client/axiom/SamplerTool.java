@@ -40,6 +40,7 @@ import org.jspecify.annotations.Nullable;
 
 final class SamplerTool implements CustomTool {
     private static final int LEAST_ROWS = 3;
+    private static final float OUT_ALPHA = 0.5f;
 
     private enum Mode { BRUSH, BUILD }
 
@@ -74,6 +75,7 @@ final class SamplerTool implements CustomTool {
     private ToolPatherUnique pather;
     private ClientLevel strokeIn;
     private int counted;
+    private boolean quiet;
 
     SamplerTool() {
         one.add(0, 0, 0);
@@ -102,6 +104,7 @@ final class SamplerTool implements CustomTool {
         if (mode == Mode.BRUSH) {
             strokeIn = level;
             counted = 0;
+            quiet = false;
             pather = AxiomTools.pathers.createUnique(AxiomPanel.radius(radius), BallShape.SPHERE);
             return true;
         }
@@ -133,7 +136,7 @@ final class SamplerTool implements CustomTool {
                 BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
                 pather.update((x, y, z) -> add(level, pos, x, y, z));
             } else {
-                if (level == strokeIn) report(added(counted));
+                if (level == strokeIn && !quiet) report(added(counted));
                 reset();
             }
         }
@@ -180,6 +183,7 @@ final class SamplerTool implements CustomTool {
     private void enter(ClientLevel level) {
         if (sampledIn.get() == level) return;
         cleared = null;
+        shownOrder.clear();
         if (!sample.isEmpty()) {
             sample.clear();
             changed();
@@ -243,6 +247,7 @@ final class SamplerTool implements CustomTool {
                 cleared = sample;
                 clearedSavedAs = savedAs;
                 sample = new BuildSample();
+                shownOrder.clear();
                 changed();
             });
         }
@@ -263,6 +268,7 @@ final class SamplerTool implements CustomTool {
                 if (cleared == null) return;
                 sample = cleared;
                 cleared = null;
+                shownOrder.clear();
                 changed();
                 savedAs = clearedSavedAs;
             });
@@ -361,9 +367,9 @@ final class SamplerTool implements CustomTool {
             Color c = PaletteBlocks.colour(new PaletteEntry(r.id(), ""));
             if (c != null) {
                 ImGui.setCursorPosY(ImGui.getCursorPosY() + padY);
-                ImGui.beginDisabled(!r.in());
+                if (!r.in()) ImGui.pushStyleVar(ImGuiStyleVar.Alpha, OUT_ALPHA);
                 AxiomPanel.swatch("swatch" + i, new AxiomPanel.Swatch(c, shown));
-                ImGui.endDisabled();
+                if (!r.in()) ImGui.popStyleVar();
                 over |= ImGui.isItemHovered();
             }
         } finally {
@@ -409,6 +415,7 @@ final class SamplerTool implements CustomTool {
     private static String shown(String id) { return PaletteBlocks.name(new PaletteEntry(id, "")).getString(); }
 
     private void changed() {
+        quiet = true;
         sampledStale = true;
         excludedStale = true;
         focused = null;
@@ -424,6 +431,7 @@ final class SamplerTool implements CustomTool {
             return false;
         }
         savedAs = made.get();
+        quiet = true;
         askedName = asked.isEmpty() || savedAs.name.equalsIgnoreCase(asked) ? null : asked;
         said = null;
         return true;

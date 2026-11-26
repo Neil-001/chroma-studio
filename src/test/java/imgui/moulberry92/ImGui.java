@@ -89,6 +89,8 @@ public final class ImGui {
 
     public static void pushStyleVar(int what, float x, float y) {}
 
+    public static void pushStyleVar(int what, float value) {}
+
     public static void popStyleVar() {}
 
     public static void separator() {}
