@@ -67,6 +67,14 @@ public final class ImGui {
 
     public static void popStyleColor(int count) {}
 
+    public static void pushStyleVar(int what, float value) {}
+
+    public static void pushStyleVar(int what, float x, float y) {}
+
+    public static void popStyleVar() {}
+
+    public static void popStyleVar(int count) {}
+
     public static void setNextItemWidth(float width) {}
 
     public static float calcItemWidth() { return 180; }
@@ -78,6 +86,8 @@ public final class ImGui {
     public static int getFontSize() { return 16; }
 
     public static int getColorU32(int what) { return 0; }
+
+    public static int getColorU32(int what, float alpha) { return 0; }
 
     public static float getCursorPosX() { return 8; }
 

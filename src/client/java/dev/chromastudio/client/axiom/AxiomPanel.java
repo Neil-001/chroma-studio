@@ -11,6 +11,7 @@ import imgui.moulberry92.ImGui;
 import imgui.moulberry92.flag.ImGuiCol;
 import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import imgui.moulberry92.flag.ImGuiSliderFlags;
+import imgui.moulberry92.flag.ImGuiStyleVar;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,6 +52,12 @@ final class AxiomPanel {
     private static final float TIP_WIDTH = 30f;
     private static final String REFUSED = "axiom.chromastudio.refused.";
     private static final String ELLIPSIS = "...";
+    private static final String DETAIL = "(?)";
+    private static final float DIM_DISABLED = 0.6f;
+    private static final float FAINT = 0.45f;
+    private static final String STEP_GAP = "  >  ";
+    private static final float SOFT = 0.72f;
+    private static final float ROOMY = 1.5f;
 
     static final class Layout {
         private float bottom = -1, packedBottom = -1, packedWidth = -1, packedRoom = -1;
@@ -166,6 +173,18 @@ final class AxiomPanel {
 
     static void wrapped(Component text) { wrapped(text.getString()); }
 
+    static void soft(String text) {
+        ImGui.pushStyleColor(ImGuiCol.Text, ImGui.getColorU32(ImGuiCol.Text, SOFT));
+        wrapped(text);
+        ImGui.popStyleColor();
+    }
+
+    static void warning(String text) {
+        ImGui.pushStyleColor(ImGuiCol.Text, ImGui.getColorU32(ImGuiCol.PlotHistogram));
+        wrapped(text);
+        ImGui.popStyleColor();
+    }
+
     static void note(String text) {
         ImGui.pushStyleColor(ImGuiCol.Text, ImGui.getColorU32(ImGuiCol.TextDisabled));
         wrapped(text);
@@ -192,6 +211,14 @@ final class AxiomPanel {
     static void status(@Nullable Status s) {
         if (s == null) return;
         wrapped(s.text());
+        tip(s.tip());
+    }
+
+    static void markedStatus(@Nullable Status s, boolean warn) {
+        if (s == null) return;
+        String text = s.tip().isEmpty() ? s.text() : s.text() + " " + DETAIL;
+        if (warn) warning(text);
+        else wrapped(text);
         tip(s.tip());
     }
 
@@ -266,6 +293,31 @@ final class AxiomPanel {
         return done;
     }
 
+    static boolean sliderAbove(String label, int[] value, int min, int max, String format, String tip) {
+        soft(label);
+        tip(tip);
+        ImGui.setNextItemWidth(-1);
+        return slider("##" + label, value, min, max, format, true, tip);
+    }
+
+    static void steps(List<String> labels, int current) {
+        for (int i = 0; i < labels.size(); i++) {
+            if (i > 0) {
+                ImGui.sameLine(0, 0);
+                faint(STEP_GAP);
+                ImGui.sameLine(0, 0);
+            }
+            if (i == current) text(labels.get(i));
+            else faint(labels.get(i));
+        }
+    }
+
+    private static void faint(String text) {
+        ImGui.pushStyleColor(ImGuiCol.Text, ImGui.getColorU32(ImGuiCol.Text, FAINT));
+        text(text);
+        ImGui.popStyleColor();
+    }
+
     static boolean radius(int[] radius, boolean enabled, String tip) {
         return slider(tr("axiom.chromastudio.radius"), radius, 0, ModSettings.BRUSH_MAX_RADIUS, "%d", enabled, tip);
     }
@@ -301,6 +353,35 @@ final class AxiomPanel {
         }
     }
 
+    static void stripe(String id, List<Swatch> shown, String first, String last) {
+        float avail = ImGui.getContentRegionAvailX(), x = ImGui.getCursorPosX(), height = ImGui.getFrameHeight();
+        if (!shown.isEmpty() && avail / shown.size() >= height * 0.6f) {
+            float at = 0;
+            for (int i = 0; i < shown.size(); i++) {
+                float to = Math.round(avail * (i + 1) / shown.size());
+                if (i > 0) ImGui.sameLine(x + at, 0);
+                Color c = shown.get(i).colour();
+                ImGui.colorButton("##" + id + i, c.red() / 255f, c.green() / 255f, c.blue() / 255f, 1f, ImGuiColorEditFlags.NoTooltip, to - at, height);
+                tip(shown.get(i).tip());
+                at = to;
+            }
+        } else {
+            swatches(id, shown);
+        }
+        soft(first);
+        ImGui.sameLine(x + Math.max(ImGui.calcTextSizeX(first) + ImGui.getStyle().getItemSpacingX(), avail - ImGui.calcTextSizeX(last)));
+        soft(last);
+    }
+
+    static float lineTop() { return ImGui.getCursorPosY(); }
+
+    static void holdLines(float top, int lines) {
+        float want = top + lines * ImGui.getTextLineHeightWithSpacing();
+        if (ImGui.getCursorPosY() >= want) return;
+        ImGui.setCursorPosY(want - ImGui.getStyle().getItemSpacingY());
+        ImGui.dummy(0, 0);
+    }
+
     static void swatch(String id, Swatch s) {
         Color c = s.colour();
         ImGui.colorButton("##" + id, c.red() / 255f, c.green() / 255f, c.blue() / 255f, 1f, ImGuiColorEditFlags.NoTooltip);
@@ -308,14 +389,31 @@ final class AxiomPanel {
     }
 
     static void applyCancel(boolean canApply, String applyWhyNot, boolean canCancel, Runnable apply, Runnable cancel, @Nullable Runnable between) {
+        applyCancel(canApply, applyWhyNot, canCancel, apply, cancel, between, false);
+    }
+
+    static void applyCancel(boolean canApply, String applyWhyNot, boolean canCancel, Runnable apply, Runnable cancel, @Nullable Runnable between,
+                            boolean primary) {
         String cancelLabel = tr("axiom.chromastudio.cancel");
-        if (button(tr("axiom.chromastudio.apply"), canApply, canApply ? tr("axiom.chromastudio.apply.tip") : applyWhyNot)) {
-            apply.run();
-            ImGui.setWindowFocus(null);
+        if (primary) {
+            ImGui.pushStyleVar(ImGuiStyleVar.DisabledAlpha, DIM_DISABLED);
+            ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImGui.getStyle().getFramePaddingX() * ROOMY, ImGui.getStyle().getFramePaddingY() * ROOMY);
         }
-        if (between != null) between.run();
-        besideButton(cancelLabel);
-        if (button(cancelLabel, canCancel, canCancel ? "" : tr("axiom.chromastudio.cancel.none"))) cancel.run();
+        try {
+            boolean accent = primary && canApply;
+            if (accent) ImGui.pushStyleColor(ImGuiCol.Button, ImGui.getColorU32(ImGuiCol.CheckMark));
+            boolean pressed = button(tr("axiom.chromastudio.apply"), canApply, canApply ? tr("axiom.chromastudio.apply.tip") : applyWhyNot);
+            if (accent) ImGui.popStyleColor();
+            if (pressed) {
+                apply.run();
+                ImGui.setWindowFocus(null);
+            }
+            if (between != null) between.run();
+            besideButton(cancelLabel);
+            if (button(cancelLabel, canCancel, canCancel ? "" : tr("axiom.chromastudio.cancel.none"))) cancel.run();
+        } finally {
+            if (primary) ImGui.popStyleVar(2);
+        }
     }
 
     static void sameLine() { ImGui.sameLine(); }
