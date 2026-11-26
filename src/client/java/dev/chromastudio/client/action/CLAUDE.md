@@ -8,7 +8,7 @@
 
 - `Eyedropper.press` uses the pointer in Axiom's editor because Axiom hides the crosshair.
 - `ScreenPicker` reads the last frame, including its GUI. Hide the window and wait `SETTLE` frames before accepting a click. The main frame's `RGBA8_UNORM` rows run from bottom to top.
-- `ScreenPicker` reads a 9 by 9 loupe and picks the mean of the 3 by 3 under the pointer. The loupe shifts at the screen's edges, so `centre` takes the pointer's cell from the read's offset.
+- `ScreenPicker` reads an 11 by 11 loupe and picks the mean of the 3 by 3 under the pointer. The loupe shifts at the screen's edges, so `centre` takes the pointer's cell from the read's offset.
 - `ScreenPicker.reticle` keeps clear of the pixels the loupe reads, at any GUI scale, because the next frame's read would include it.
 - `PaletteBlocks.tint` uses the player's location for a range of biomes because the range has no single tint.
 

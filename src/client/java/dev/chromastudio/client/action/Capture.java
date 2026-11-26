@@ -114,7 +114,7 @@ public final class Capture {
         Hud.readout(step, keys, 2);
     }
 
-    static int[] size(ClientLevel level, BlockPos a, BlockPos b) {
+    private static int[] size(ClientLevel level, BlockPos a, BlockPos b) {
         int y0 = Math.max(level.getMinY(), Math.min(a.getY(), b.getY())), y1 = Math.min(level.getMaxY(), Math.max(a.getY(), b.getY()));
         return new int[] {Math.abs(a.getX() - b.getX()) + 1, Math.max(0, y1 - y0 + 1), Math.abs(a.getZ() - b.getZ()) + 1};
     }
@@ -160,14 +160,17 @@ public final class Capture {
         pose.pushPose();
         pose.translate(x - cam.x, y - cam.y, z - cam.z);
         float width = mc.gameRenderer.gameRenderState().windowRenderState.appropriateLineWidth;
-        out.submitShapeOutline(pose, Shapes.create(-HALO, -HALO, -HALO, sx + HALO, sy + HALO, sz + HALO), RenderTypes.lines(), SHADOW, width * 3, true);
-        out.submitShapeOutline(pose, Shapes.create(-INSET, -INSET, -INSET, sx + INSET, sy + INSET, sz + INSET), RenderTypes.lines(), OUTLINE, width * 1.5f, true);
+        outline(out, pose, sx, sy, sz, OUTLINE, width, width * 1.5f);
         if (first != null) {
             pose.translate(first.getX() - x, first.getY() - y, first.getZ() - z);
-            out.submitShapeOutline(pose, Shapes.create(-HALO, -HALO, -HALO, 1 + HALO, 1 + HALO, 1 + HALO), RenderTypes.lines(), SHADOW, width * 3, true);
-            out.submitShapeOutline(pose, Shapes.create(-INSET, -INSET, -INSET, 1 + INSET, 1 + INSET, 1 + INSET), RenderTypes.lines(), FIRST, width * 2, true);
+            outline(out, pose, 1, 1, 1, FIRST, width, width * 2);
         }
         pose.popPose();
+    }
+
+    private static void outline(SubmitNodeCollector out, PoseStack pose, int sx, int sy, int sz, int colour, float width, float lineWidth) {
+        out.submitShapeOutline(pose, Shapes.create(-HALO, -HALO, -HALO, sx + HALO, sy + HALO, sz + HALO), RenderTypes.lines(), SHADOW, width * 3, true);
+        out.submitShapeOutline(pose, Shapes.create(-INSET, -INSET, -INSET, sx + INSET, sy + INSET, sz + INSET), RenderTypes.lines(), colour, lineWidth, true);
     }
 
     public record Result(Component message, Component detail, boolean made) {

@@ -7,6 +7,7 @@ import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import com.mojang.renderpearl.api.textures.GpuTexture;
 import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.client.ui.Hud;
+import dev.chromastudio.client.ui.Widgets;
 import java.nio.ByteBuffer;
 import java.util.function.IntConsumer;
 import net.minecraft.client.Minecraft;
@@ -86,21 +87,21 @@ public final class ScreenPicker {
         g.outline(ox - 1, oy - 1, o + 2, o + 2, 0xFFFFFFFF);
         int sy = gy + grid + 2;
         g.fill(x + 2, sy, x + 2 + SWATCH, sy + SWATCH, 0xFFFFFFFF);
-        g.fill(x + 3, sy + 1, x + 1 + SWATCH, sy + SWATCH - 1, 0xFF000000);
-        g.fill(x + 4, sy + 2, x + SWATCH, sy + SWATCH - 2, 0xFF000000 | rgb);
+        Widgets.swatch(g, x + 3, sy + 1, SWATCH - 2, SWATCH - 2, rgb);
         g.text(font, hex, x + 2 + SWATCH + 3, sy + 1, 0xFFFFFFFF, false);
     }
 
     private static void reticle(GuiGraphicsExtractor g, int x, int y, double scale) {
         int near = (int) Math.ceil((LOUPE / 2 + 2) / scale) + 1, far = near + RETICLE;
-        g.fill(x - far - 1, y - 1, x - near + 2, y + 3, 0xFF000000);
-        g.fill(x + near - 1, y - 1, x + far + 2, y + 3, 0xFF000000);
-        g.fill(x - 1, y - far - 1, x + 3, y - near + 2, 0xFF000000);
-        g.fill(x - 1, y + near - 1, x + 3, y + far + 2, 0xFF000000);
-        g.fill(x - far, y, x - near + 1, y + 2, 0xFFFFFFFF);
-        g.fill(x + near, y, x + far + 1, y + 2, 0xFFFFFFFF);
-        g.fill(x, y - far, x + 2, y - near + 1, 0xFFFFFFFF);
-        g.fill(x, y + near, x + 2, y + far + 1, 0xFFFFFFFF);
+        bar(g, x - far, y, x - near + 1, y + 2);
+        bar(g, x + near, y, x + far + 1, y + 2);
+        bar(g, x, y - far, x + 2, y - near + 1);
+        bar(g, x, y + near, x + 2, y + far + 1);
+    }
+
+    private static void bar(GuiGraphicsExtractor g, int x0, int y0, int x1, int y1) {
+        g.fill(x0 - 1, y0 - 1, x1 + 1, y1 + 1, 0xFF000000);
+        g.fill(x0, y0, x1, y1, 0xFFFFFFFF);
     }
 
     static int loupeStart(int picked, int size) { return Math.clamp(picked - (LOUPE - SIDE) / 2, 0, size - LOUPE); }

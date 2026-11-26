@@ -36,7 +36,7 @@ public final class Hud {
     private static final long STRIP_MS = 5000, FADE_MS = 600, MISSED_MS = 250;
     private static final int ABOVE_HOTBAR = 70;
     private static final int MARGIN = 6, PAD = 4, ACCENT = 3, ICON = 16, MIN_WIDTH = 210;
-    private static final int BACK = 0xB0000000, SUBTLE = 0xFFC8CED6;
+    private static final int BACK = 0xB0000000;
 
     private static final String OVERFLOW_MODE = "hotbar.chromastudio.mode";
 
@@ -96,7 +96,7 @@ public final class Hud {
         Font font = mc.font;
 
         boolean low = AxiomBridge.editorOpen();
-        int y = low ? g.guiHeight() - ABOVE_HOTBAR : ScreenPicker.armed() ? MARGIN + banner(font) + 3 : MARGIN;
+        int y = low ? g.guiHeight() - ABOVE_HOTBAR : ScreenPicker.armed() ? MARGIN + bannerHeight(font) + 3 : MARGIN;
         float readout = fade(readoutUntil, now);
         if (readout > 0.05f && line1 != null) y = panel(g, font, y, low, kind, icon, swatch, line1, line2, readout);
 
@@ -112,7 +112,7 @@ public final class Hud {
         panel(g, Minecraft.getInstance().font, MARGIN, false, Kind.PROMPT, ItemStack.EMPTY, -1, line1, line2, 1);
     }
 
-    private static int banner(Font font) { return 2 * font.lineHeight + 1 + 2 * PAD; }
+    private static int bannerHeight(Font font) { return 2 * font.lineHeight + 1 + 2 * PAD; }
 
     private static int panel(GuiGraphicsExtractor g, Font font, int y, boolean upward, Kind kind, ItemStack icon, int swatch,
             Component line1, Component line2, float alpha) {
@@ -130,7 +130,8 @@ public final class Hud {
         int w = Math.min(Math.max(lead + textW, MIN_WIDTH), g.guiWidth() - 2 * MARGIN - 2 * PAD - ACCENT);
         int outerH = h + 2 * PAD;
         int x = (g.guiWidth() - (w + ACCENT + 2 * PAD)) / 2, top = upward ? y - outerH : y;
-        panel(g, x, top, w, h, kind, alpha);
+        g.fill(x, top, x + ACCENT + 2 * PAD + w, top + outerH, ARGB.multiplyAlpha(BACK, alpha));
+        g.fill(x, top, x + ACCENT, top + outerH, ARGB.multiplyAlpha(kind.accent, alpha));
         int cx = x + ACCENT + PAD, cy = top + PAD;
         if (hasIcon) {
             if (alpha > 0.5f) Widgets.blockIcon(g, icon, cx, cy + (h - ICON) / 2);
@@ -151,15 +152,9 @@ public final class Hud {
         }
         ty += 1;
         for (FormattedCharSequence line : second) {
-            g.text(font, line, cx, ty, ARGB.multiplyAlpha(SUBTLE, alpha), true);
+            g.text(font, line, cx, ty, ARGB.multiplyAlpha(Theme.FIXED_SOFT, alpha), true);
             ty += lh;
         }
         return upward ? top - 3 : top + outerH + 3;
-    }
-
-    private static void panel(GuiGraphicsExtractor g, int x, int y, int contentW, int contentH, Kind kind, float alpha) {
-        int right = x + ACCENT + 2 * PAD + contentW, bottom = y + 2 * PAD + contentH;
-        g.fill(x, y, right, bottom, ARGB.multiplyAlpha(BACK, alpha));
-        g.fill(x, y, x + ACCENT, bottom, ARGB.multiplyAlpha(kind.accent, alpha));
     }
 }
