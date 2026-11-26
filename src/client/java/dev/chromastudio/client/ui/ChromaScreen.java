@@ -176,6 +176,11 @@ public final class ChromaScreen extends Screen {
         return REGISTRY.stream().mapToInt(r -> font.width(Component.translatable("tab.chromastudio." + r.id))).sum();
     }
 
+    private static String fit(Font font, String text, int width) {
+        if (font.width(text) <= width) return text;
+        return font.plainSubstrByWidth(text, Math.max(0, width - font.width("..."))) + "...";
+    }
+
     private static int buttonW(Bounds frame, int screenW, boolean fullscreen) {
         int tabs = frame.x() + 1 + tabText() + REGISTRY.size() * TAB_PAD_MIN;
         return tabs <= buttonsLeft(frame, screenW, fullscreen, BUTTON_W) ? BUTTON_W : BUTTON_W_MIN;
@@ -186,10 +191,11 @@ public final class ChromaScreen extends Screen {
     private static List<Bounds> tabRects(Bounds frame, int screenW, boolean fullscreen, Font font) {
         List<Bounds> rects = new ArrayList<>();
         int x = frame.x() + 1;
-        int room = buttonsLeft(frame, screenW, fullscreen, buttonW(frame, screenW, fullscreen)) - x - tabText();
+        int space = buttonsLeft(frame, screenW, fullscreen, buttonW(frame, screenW, fullscreen)) - x, room = space - tabText();
         int pad = Math.clamp(room / REGISTRY.size(), TAB_PAD_MIN, TAB_PAD);
+        boolean squeezed = room < REGISTRY.size() * TAB_PAD_MIN;
         for (Registered r : REGISTRY) {
-            int w = font.width(Component.translatable("tab.chromastudio." + r.id)) + pad;
+            int w = squeezed ? Math.max(0, space / REGISTRY.size()) : font.width(Component.translatable("tab.chromastudio." + r.id)) + pad;
             rects.add(new Bounds(x, frame.y(), w, Window.TITLE_H));
             x += w;
         }
@@ -277,14 +283,12 @@ public final class ChromaScreen extends Screen {
                 g.fill(r.x(), r.y() + 1, r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.SELECTED, opacity));
                 g.fill(r.x(), r.bottom() - 2, r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.ACCENT, opacity));
             } else if (over) g.fill(r.x(), r.y() + 1, r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.CONTROL_HOVER, opacity));
-            Component label = Component.translatable("tab.chromastudio." + id);
+            String label = fit(font, Component.translatable("tab.chromastudio." + id).getString(), r.w() - 4);
             g.text(font, label, r.x() + (r.w() - font.width(label)) / 2, r.y() + 4, ARGB.multiplyAlpha(on || over ? Theme.TEXT : Theme.SOFT, opacity), false);
         }
 
         if (!buttons) return null;
         if (!fullscreen) grip(g, f, Theme.DIM);
-        int edge = fullscreen ? 0 : 1;
-        g.fill(buttonsLeft(f, screenW, fullscreen, buttonW(f, screenW, fullscreen)), f.y() + edge, f.right() - edge, f.y() + Window.TITLE_H - 1, Theme.BAR);
         boolean inBar = gearInBar(fullscreen);
         if (inBar) {
             Bounds settings = button(f, screenW, fullscreen, SETTINGS);
