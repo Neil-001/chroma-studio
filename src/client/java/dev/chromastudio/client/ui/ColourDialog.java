@@ -126,10 +126,7 @@ final class ColourDialog extends Popup {
             g.text(font, tr(NAMES[i]), labelX, f.getY() + 4, Theme.FIXED_SOFT, false);
             if (bad[i]) g.outline(f.getX() - 1, f.getY() - 1, f.getWidth() + 2, f.getHeight() + 2, Theme.FIELD_BAD);
         }
-        int now = -1;
-        for (int i = 0; i < fields.length; i++) if (fields[i].isFocused()) now = i;
-        if (now >= 0 && now != focus) hint = now;
-        focus = now;
+        trackFocus();
         for (int i = 0; i < fields.length; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
         int wrong = firstBad();
         Component text = wrong >= 0 ? tr(NAMES[wrong] + ".bad") : tr(hint == KEYS ? "keys.tip" : NAMES[hint] + ".tip");
@@ -140,6 +137,13 @@ final class ColourDialog extends Popup {
         if (old.contains(mouseX, mouseY)) g.outline(old.x(), old.y(), old.w(), old.h(), 0xFFFFFFFF);
     }
 
+    private void trackFocus() {
+        int now = -1;
+        for (int i = 0; i < fields.length; i++) if (fields[i].isFocused()) now = i;
+        if (now >= 0 && now != focus) hint = now;
+        focus = now;
+    }
+
     private void swatch(GuiGraphicsExtractor g, int x, int w, int rgb, Component label) {
         Widgets.swatch(g, x, compare.y(), w, compare.h(), rgb);
         int ink = Color.ofRgb(rgb).oklab().l() < Theme.LIGHT_FROM ? 0xFFFFFFFF : 0xFF000000;
@@ -148,6 +152,12 @@ final class ColourDialog extends Popup {
 
     @Override
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
+        boolean took = clicked(e, doubled);
+        trackFocus();
+        return took;
+    }
+
+    private boolean clicked(MouseButtonEvent e, boolean doubled) {
         if (!box.contains(e.x(), e.y())) return true;
         boolean left = left(e);
         if (left && picker.mouseClicked(e.x(), e.y())) {
@@ -178,7 +188,9 @@ final class ColourDialog extends Popup {
             return true;
         }
         if (widgets.getFocused() == null && nudge(e)) return true;
-        return super.keyPressed(e);
+        boolean took = super.keyPressed(e);
+        trackFocus();
+        return took;
     }
 
     private boolean nudge(KeyEvent e) {
