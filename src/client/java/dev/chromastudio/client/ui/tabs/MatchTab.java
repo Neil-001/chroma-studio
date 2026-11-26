@@ -141,6 +141,7 @@ public final class MatchTab extends Tab {
     private Component status;
     private long statusUntil;
     private String cameFrom;
+    private Palette cameFromPalette;
     private Bounds backLink = new Bounds(0, 0, 0, 0);
 
     public MatchTab() { super("match"); }
@@ -378,13 +379,13 @@ public final class MatchTab extends Tab {
 
     private void toggle(Panel which) {
         panel = panel == which ? Panel.NONE : which;
+        if (panel == Panel.BIOMES) biomeSearch = "";
         build();
     }
 
     private Bounds panelBody() { return new Bounds(panelArea.x() + 1, panelArea.y() + HEAD, panelArea.w() - 2, panelArea.h() - HEAD - 1); }
 
-    private void buildPanel() {
-        panelWidgets = new Widgets();
+    private void panelData() {
         hint = List.of();
         switch (panel) {
             case FIND_BIOME -> {
@@ -397,8 +398,13 @@ public final class MatchTab extends Tab {
             }
             default -> { }
         }
+    }
+
+    private void buildPanel() {
+        panelWidgets = new Widgets();
+        panelData();
         int hinted = hint.isEmpty() ? 0 : hint.size() * 10 + 4;
-        int most = results.h() - 2 * ROW - 2, content = switch (panel) {
+        int most = results.h() - 2 * (grid ? CELL_H : ROW) - 2, content = switch (panel) {
             case FIND_BIOME -> HEAD + (fits.isEmpty() ? 24 : hinted + fits.size() * ROW) + 2;
             case DYE -> HEAD + hinted + dyes.size() * ROW + 2;
             default -> most;
@@ -527,7 +533,8 @@ public final class MatchTab extends Tab {
             Handoff.matchFilter = null;
             Oklch around = target instanceof Color c ? c.oklch() : target instanceof Oklch o ? o : null;
             Palette from = PaletteStore.get().selected();
-            cameFrom = filter != null && from != null ? PaletteStore.get().shownName(from) : null;
+            cameFromPalette = filter != null ? from : null;
+            cameFrom = cameFromPalette != null ? PaletteStore.get().shownName(from) : null;
             if (filter != null && !filter.isEmpty()) {
                 MatchState.resetFilters();
                 MatchState.filters().preset(filter, around);
@@ -560,6 +567,7 @@ public final class MatchTab extends Tab {
             }
             ranges.clear();
             findState();
+            if (panel == Panel.FIND_BIOME || panel == Panel.DYE) panelData();
             search.request();
         }
         if (index.version() != seenVersion) {
@@ -997,6 +1005,7 @@ public final class MatchTab extends Tab {
         }
         panelWidgets.setFocused(null);
         if (left && backLink.contains(mx, my)) {
+            if (PaletteStore.get().all().contains(cameFromPalette)) PaletteStore.get().select(cameFromPalette);
             ChromaScreen screen = ChromaScreen.current();
             if (screen != null) screen.select("palettes");
             return true;
@@ -1219,6 +1228,7 @@ public final class MatchTab extends Tab {
     @Override
     public void closed() {
         cameFrom = null;
+        cameFromPalette = null;
         picker.close();
         Thumbnails.clear();
     }
