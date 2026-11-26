@@ -320,6 +320,10 @@ public final class MatchTab extends Tab {
         statusLine = new Bounds(flow.left, b.bottom() - PAD - STATUS_H, flow.right - flow.left, STATUS_H);
         results = new Bounds(flow.left, top, flow.right - flow.left, Math.max(ROW, statusLine.y() - 1 - top));
         buildPanel();
+        placeResults();
+    }
+
+    private void placeResults() {
         int shownTop = panel == Panel.NONE ? results.y() : Math.min(results.bottom(), panelArea.bottom() + 2);
         shownArea = new Bounds(results.x(), shownTop, results.w(), results.bottom() - shownTop);
         list = resultList(shownArea);
@@ -406,8 +410,13 @@ public final class MatchTab extends Tab {
 
     private void refreshPanel() {
         if (panel != Panel.FIND_BIOME && panel != Panel.DYE) return;
+        int lines = hint.size();
         panelData();
-        panelList.area = belowHint();
+        if (hint.size() == lines) panelList.area = belowHint();
+        else {
+            buildPanel();
+            placeResults();
+        }
     }
 
     private Bounds belowHint() {
