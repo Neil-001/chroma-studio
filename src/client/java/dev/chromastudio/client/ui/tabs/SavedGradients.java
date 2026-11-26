@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -164,7 +165,7 @@ final class SavedGradients extends Dialog {
         });
         boolean footer = status == null && !saved.isEmpty();
         if (hovered != null && (!footer || PanelTab.font().width(hovered) > in.w())) {
-            g.setTooltipForNextFrame(PanelTab.font(), Component.literal(hovered), mouseX, mouseY);
+            g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), Component.literal(hovered)), mouseX, mouseY);
             hovered = null;
         }
         if (!footer) return;
