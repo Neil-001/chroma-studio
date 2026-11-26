@@ -7,6 +7,7 @@ import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.color.Tone;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public final class Analyzer {
     public enum Severity { INFO, WARNING }
@@ -89,22 +90,17 @@ public final class Analyzer {
             out.add(new Finding(ACCENT_CONTRAST, Severity.INFO, accent.withL(l), ACCENT, List.of(accentAt)));
         }
 
-        List<Integer> flat = new ArrayList<>(), busy = new ArrayList<>();
-        int grainy = 0;
+        int flat = 0, grainy = 0;
+        List<Integer> busy = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             switch (badges.get(i)) {
-                case FLAT -> flat.add(i);
+                case FLAT -> flat++;
                 case GRAINY -> grainy++;
                 case BUSY -> busy.add(i);
             }
         }
         if (busy.size() * 2 > n) out.add(new Finding(TOO_BUSY, Severity.INFO, cast, GRAINY, List.copyOf(busy)));
-        if (!flat.isEmpty() && !busy.isEmpty() && grainy == 0) {
-            List<Integer> both = new ArrayList<>(flat);
-            both.addAll(busy);
-            both.sort(null);
-            out.add(new Finding(TEXTURE_JUMP, Severity.INFO, cast, GRAINY, List.copyOf(both)));
-        }
+        if (flat > 0 && !busy.isEmpty() && grainy == 0) out.add(new Finding(TEXTURE_JUMP, Severity.INFO, cast, GRAINY, IntStream.range(0, n).boxed().toList()));
 
         if (n < SMALL) out.add(new Finding(TOO_SMALL, Severity.INFO, null, NO_FILTER, List.of()));
         if (n > LARGE) out.add(new Finding(TOO_LARGE, Severity.INFO, null, NO_FILTER, List.of()));

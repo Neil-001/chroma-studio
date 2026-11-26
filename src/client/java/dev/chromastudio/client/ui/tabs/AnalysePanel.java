@@ -165,20 +165,20 @@ final class AnalysePanel {
     }
 
     private void drawStrip(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        int stripY = area.y() + PanelTab.ROW;
+        int stripY = area.y() + PanelTab.ROW, barY = stripY + stripH - (icons ? ICON_BAR_H : BAR_H);
         for (int i = 0; i < blocks.size(); i++) {
+            Block b = blocks.get(i);
             int x0 = area.x() + area.w() * i / blocks.size(), x1 = area.x() + area.w() * (i + 1) / blocks.size();
             int gap = x1 - x0 > 3 && i < blocks.size() - 1 ? 1 : 0;
-            int barY = stripY + stripH - (icons ? ICON_BAR_H : BAR_H);
-            if (icons) Widgets.blockIcon(g, PaletteBlocks.icon(blocks.get(i).entry), (x0 + x1 - ToolButton.ICON) / 2, stripY);
-            g.fill(x0, barY, x1 - gap, stripY + stripH, 0xFF000000 | blocks.get(i).colour.rgb());
+            if (icons) Widgets.blockIcon(g, PaletteBlocks.icon(b.entry), (x0 + x1 - ToolButton.ICON) / 2, stripY);
+            g.fill(x0, barY, x1 - gap, stripY + stripH, 0xFF000000 | b.colour.rgb());
             if (marked != null && !marked.blocks().isEmpty()) {
-                if (marked.blocks().contains(blocks.get(i).analysed)) g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 2, Theme.STRONG);
+                if (marked.blocks().contains(b.analysed)) g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 2, Theme.STRONG);
                 else g.fill(x0, stripY, x1, stripY + stripH, Theme.sink(0x80));
             }
             if (mouseX >= x0 && mouseX < x1 && mouseY >= stripY && mouseY < stripY + stripH) {
                 g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 1, Theme.STRONG);
-                g.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(blocks.get(i).entry), mouseX, mouseY);
+                g.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(b.entry), mouseX, mouseY);
             }
         }
     }
