@@ -1572,6 +1572,7 @@ final class PaletteDialogs {
         private Component result;
         private List<Object> built = List.of(), shape = List.of();
         private boolean shown;
+        private int footer = 2 * 9;
 
         Hotbar(List<PaletteEntry> entries) {
             super(tr("palettes.chromastudio.hotbar.title"), WIDTH, 0);
@@ -1723,9 +1724,9 @@ final class PaletteDialogs {
             Optional<HotbarFill.AxiomPreview> preview = HotbarFill.axiomPreview(stacks);
             StringSplitter splitter = PanelTab.font().getSplitter();
             int w = inner(), warned = cautionH(splitter, w, preview);
-            int said = fit(splitter, result, resultRoom(w, buttonsW()), RESULT_LINES).height();
+            footer = Math.max(footer, fit(splitter, result, resultRoom(w, buttonsW()), RESULT_LINES).height());
             return TITLE_H + 7 + PanelTab.ROW + PanelTab.GAP + rowCount(preview) * SLOT + PanelTab.GAP
-                    + (warned > 0 ? warned + PanelTab.GAP : 0) + RESULT_GAP + Math.max(2 * 9, said);
+                    + (warned > 0 ? warned + PanelTab.GAP : 0) + RESULT_GAP + footer;
         }
 
         @Override
