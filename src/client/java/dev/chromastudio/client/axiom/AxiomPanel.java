@@ -56,6 +56,7 @@ final class AxiomPanel {
     private static final float DIM_DISABLED = 0.6f;
     private static final float FAINT = 0.45f;
     private static final String STEP_GAP = "  >  ";
+    private static final float THINNEST_STEP = 3f;
     private static final float SOFT = 0.72f;
     private static final float ROOMY = 1.5f;
 
@@ -355,7 +356,7 @@ final class AxiomPanel {
 
     static void stripe(String id, List<Swatch> shown, String first, String last) {
         float avail = ImGui.getContentRegionAvailX(), x = ImGui.getCursorPosX(), height = ImGui.getFrameHeight();
-        if (!shown.isEmpty() && avail / shown.size() >= height * 0.6f) {
+        if (!shown.isEmpty() && avail / shown.size() >= THINNEST_STEP) {
             float at = 0;
             for (int i = 0; i < shown.size(); i++) {
                 float to = Math.round(avail * (i + 1) / shown.size());

@@ -366,7 +366,7 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
                 : second != null && !ready ? "axiom.chromastudio.not_ready" : "axiom.chromastudio.gradient_tool.apply.none");
         AxiomPanel.applyCancel(!preview.isEmpty(), applyWhy, first != null, this::apply, () -> layout.later(this::cancel), () -> {
             AxiomPanel.besideButton(tr("axiom.chromastudio.gradient_tool.swap"));
-            boolean canSwap = second != null && !preview.isEmpty();
+            boolean canSwap = laid();
             String swapWhy = second == null ? tr("axiom.chromastudio.gradient_tool.swap.none") : canSwap || status == null ? "" : status.text();
             if (AxiomPanel.button(tr("axiom.chromastudio.gradient_tool.swap"), canSwap, swapWhy)) layout.later(() -> reversed = !reversed);
         }, true);
@@ -399,8 +399,10 @@ final class GradientTool implements CustomTool, GuardedTool.PutAway {
         return s;
     }
 
+    private boolean laid() { return second != null && line != null && refused == null; }
+
     private String next() {
-        if (line == null || first == null || second == null || preview.isEmpty()) return "";
+        if (!laid() || first == null) return "";
         Choice shown = current(choices());
         int steps = shown == null ? 0 : states(shown).size();
         if (steps < 2) return "";
