@@ -230,10 +230,13 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     }
 
     private void preview() {
-        float top = ImGui.getCursorPosY(), least = ImGui.getFrameHeightWithSpacing() * 3;
-        if (previewRows() && stroke.sent() > 0) AxiomPanel.note(AxiomTools.count("axiom.chromastudio.changed", stroke.sent(), stroke.sent()));
+        float top = ImGui.getCursorPosY(), least = ImGui.getFrameHeightWithSpacing() * 2;
+        boolean shown = previewRows();
         float used = ImGui.getCursorPosY() - top;
         if (used < least) ImGui.dummy(0, least - used);
+        if (!shown || stroke.sent() == 0) return;
+        AxiomPanel.heading(tr("axiom.chromastudio.shade.last"));
+        AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.changed", stroke.sent(), stroke.sent()));
     }
 
     private boolean previewRows() {

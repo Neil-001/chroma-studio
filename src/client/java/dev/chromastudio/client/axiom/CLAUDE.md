@@ -65,7 +65,7 @@
 ## Shade and sampling
 
 - `ShadeBrushTool` shades shapes by their full block. It avoids trapdoors because their textures are see-through and excludes rotatable full blocks because a colour from one face can't predict the lightness of another orientation.
-- Axiom's raycast loses the block when the pointer enters the panel. `ShadeBrushTool` keeps the last pointed block there and through a stroke, so its preview stays readable. The preview sits under the controls in a slot at least three rows tall so it doesn't jump. The stroke's receipt stays beneath it until the next stroke.
+- Axiom's raycast loses the block when the pointer enters the panel. `ShadeBrushTool` keeps the last pointed block there and through a stroke, so its preview stays readable. The preview sits under the controls in a slot at least two rows tall so it doesn't jump. The stroke's receipt follows it under its own heading until the next stroke.
 - Take unrestricted shades from the Building Blocks and Colored Blocks tabs, which are empty before joining a world. Skip coal, lapis and raw ore blocks and carved accents so they don't become shades of plain stone.
 - Scatter uses full blocks because a ball of randomly placed stairs or slabs would face one way, and non-full blocks such as flowers can break in midair. Use persistent leaves so they don't decay.
 - `SampleKind` checks plants and ground from the block itself so blocks the index omits can't join separate builds. `SamplerTool` starts over on the first valid sample in a new world or dimension so a missed click loses nothing.
