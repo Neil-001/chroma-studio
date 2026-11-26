@@ -69,7 +69,7 @@ import net.minecraft.world.item.ItemStack;
 
 public final class GradientTab extends PanelTab {
     private static final int MAX_STOPS = 8, CHIP = 17, CELL_MIN = 18, CELL_MAX = 56, IDEAL_H = 10, BLOCK_H = 7, BAR_MAX = 34, CELL_GAP = 4, LEGEND = 11;
-    private static final double GOOD_UP_TO = 0.02, FAIR_UP_TO = 0.06;
+    static final double GOOD_UP_TO = 0.02, FAIR_UP_TO = 0.06;
     private static final String ALL_KINDS = "all";
     private static final int SWAP_OPTIONS = 20, SWAP_LINES_MIN = 2, SWAP_ROW = 18, SWAP_HEAD = 24, SWAP_W = 230, SWAP_GAP = 4;
     private static final int BACK = 9;
