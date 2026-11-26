@@ -6,7 +6,7 @@ public final class Window {
     public static final int MIN_W = ModSettings.WINDOW_MIN_W, MIN_H = ModSettings.WINDOW_MIN_H;
     public static final int FORCE_W = 427, FORCE_H = 240;
     public static final int TITLE_H = 16;
-    private static final int EDGE = 3, CORNER = 8;
+    private static final int EDGE = 3, CORNER = 8, GRIP = 14;
 
     public enum Grip {
         NONE, MOVE, N, S, E, W, NE, NW, SE, SW;
@@ -57,6 +57,7 @@ public final class Window {
         if (!f.contains(mx, my)) return Grip.NONE;
         double left = mx - f.x(), right = f.right() - mx, top = my - f.y(), bottom = f.bottom() - my;
         boolean n = top < EDGE, s = bottom <= EDGE, w = left < EDGE, e = right <= EDGE;
+        if (right + bottom <= GRIP) return Grip.SE;
         if ((n || w) && top < CORNER && left < CORNER) return Grip.NW;
         if ((n || e) && top < CORNER && right <= CORNER) return Grip.NE;
         if ((s || w) && bottom <= CORNER && left < CORNER) return Grip.SW;

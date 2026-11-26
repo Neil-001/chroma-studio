@@ -34,7 +34,7 @@ import org.lwjgl.sdl.SDLMouse;
 public final class ChromaScreen extends Screen {
     public static Object pendingTarget;
 
-    private static final int BUTTON_W = 20, SETTINGS_GAP = 5, COG = 16, COG_MARGIN = 2;
+    private static final int BUTTON_W = 20, BUTTON_W_MIN = 16, TAB_PAD = 12, TAB_PAD_MIN = 6, SETTINGS_GAP = 5, COG = 16, COG_MARGIN = 2;
 
     private record Registered(String id, Supplier<Tab> factory, int order) {}
     private static final List<Registered> REGISTRY = new ArrayList<>();
@@ -163,17 +163,33 @@ public final class ChromaScreen extends Screen {
             case FULLSCREEN -> PIN;
             default -> which;
         };
-        int gap = which == SETTINGS ? SETTINGS_GAP : 0;
-        return new Bounds(frame.right() - cogReserve(frame, screenW, fullscreen) - (fromRight + 1) * BUTTON_W - gap, frame.y(), BUTTON_W, Window.TITLE_H);
+        int gap = which == SETTINGS ? SETTINGS_GAP : 0, w = buttonW(frame, screenW, fullscreen);
+        return new Bounds(frame.right() - cogReserve(frame, screenW, fullscreen) - (fromRight + 1) * w - gap, frame.y(), w, Window.TITLE_H);
+    }
+
+    private static int buttonsLeft(Bounds frame, int screenW, boolean fullscreen, int w) {
+        return frame.right() - cogReserve(frame, screenW, fullscreen) - (gearInBar(fullscreen) ? 4 * w + SETTINGS_GAP : 3 * w);
+    }
+
+    private static int tabText() {
+        Font font = Minecraft.getInstance().font;
+        return REGISTRY.stream().mapToInt(r -> font.width(Component.translatable("tab.chromastudio." + r.id))).sum();
+    }
+
+    private static int buttonW(Bounds frame, int screenW, boolean fullscreen) {
+        int tabs = frame.x() + 1 + tabText() + REGISTRY.size() * TAB_PAD_MIN;
+        return tabs <= buttonsLeft(frame, screenW, fullscreen, BUTTON_W) ? BUTTON_W : BUTTON_W_MIN;
     }
 
     private static final int CLOSE = 0, PIN = 1, FULLSCREEN = 2, SETTINGS = 3;
 
-    private static List<Bounds> tabRects(Bounds frame, Font font) {
+    private static List<Bounds> tabRects(Bounds frame, int screenW, boolean fullscreen, Font font) {
         List<Bounds> rects = new ArrayList<>();
         int x = frame.x() + 1;
+        int room = buttonsLeft(frame, screenW, fullscreen, buttonW(frame, screenW, fullscreen)) - x - tabText();
+        int pad = Math.clamp(room / REGISTRY.size(), TAB_PAD_MIN, TAB_PAD);
         for (Registered r : REGISTRY) {
-            int w = font.width(Component.translatable("tab.chromastudio." + r.id)) + 12;
+            int w = font.width(Component.translatable("tab.chromastudio." + r.id)) + pad;
             rects.add(new Bounds(x, frame.y(), w, Window.TITLE_H));
             x += w;
         }
@@ -191,7 +207,8 @@ public final class ChromaScreen extends Screen {
         Bounds frame = frame(), content = content();
         boolean free = !window.dragging() && !tabHasMouse;
         Window.Grip grip = window.dragging() ? window.grip() : free ? window.gripAt(mouseX, mouseY, width, height) : Window.Grip.NONE;
-        Component tip = chrome(g, frame, fullscreen(), 1, selected, true, free ? mouseX : -1, free ? mouseY : -1);
+        boolean pointing = free && (grip == Window.Grip.NONE || grip == Window.Grip.MOVE);
+        Component tip = chrome(g, frame, fullscreen(), 1, selected, true, pointing ? mouseX : -1, pointing ? mouseY : -1);
         int tipY = frame.y() + Window.TITLE_H + 14;
 
         g.enableScissor(content.x(), content.y(), content.right(), content.bottom());
@@ -214,7 +231,7 @@ public final class ChromaScreen extends Screen {
             g.setTooltipForNextFrame(font, lines, mouseX, tipY);
         }
         CursorType cursor = cursor(grip);
-        if (cursor != null && !overCog && (grip != Window.Grip.MOVE || tip == null && !overTab(frame, mouseX, mouseY))) g.requestCursor(cursor);
+        if (cursor != null && !overCog && (window.dragging() || grip != Window.Grip.MOVE || tip == null && !overTab(frame, mouseX, mouseY))) g.requestCursor(cursor);
     }
 
     private static final class Diagonal {
@@ -251,7 +268,7 @@ public final class ChromaScreen extends Screen {
         g.fill(f.x() + (fullscreen ? 0 : 1), f.y() + Window.TITLE_H - 1, f.right() - (fullscreen ? 0 : 1), f.y() + Window.TITLE_H,
                 ARGB.multiplyAlpha(Theme.BORDER, opacity));
 
-        List<Bounds> rects = tabRects(f, font);
+        List<Bounds> rects = tabRects(f, screenW, fullscreen, font);
         for (int i = 0; i < rects.size(); i++) {
             Bounds r = rects.get(i);
             String id = REGISTRY.get(i).id;
@@ -260,7 +277,8 @@ public final class ChromaScreen extends Screen {
                 g.fill(r.x(), r.y() + 1, r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.SELECTED, opacity));
                 g.fill(r.x(), r.bottom() - 2, r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.ACCENT, opacity));
             } else if (over) g.fill(r.x(), r.y() + 1, r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.CONTROL_HOVER, opacity));
-            g.text(font, Component.translatable("tab.chromastudio." + id), r.x() + 6, r.y() + 4, ARGB.multiplyAlpha(on || over ? Theme.TEXT : Theme.SOFT, opacity), false);
+            Component label = Component.translatable("tab.chromastudio." + id);
+            g.text(font, label, r.x() + (r.w() - font.width(label)) / 2, r.y() + 4, ARGB.multiplyAlpha(on || over ? Theme.TEXT : Theme.SOFT, opacity), false);
         }
 
         if (!buttons) return null;
@@ -347,7 +365,7 @@ public final class ChromaScreen extends Screen {
     }
 
     private boolean overTab(Bounds frame, int mx, int my) {
-        for (Bounds r : tabRects(frame, font)) if (r.contains(mx, my)) return true;
+        for (Bounds r : tabRects(frame, width, fullscreen(), font)) if (r.contains(mx, my)) return true;
         return false;
     }
 
@@ -403,7 +421,7 @@ public final class ChromaScreen extends Screen {
                 toggleFullscreen();
                 return true;
             }
-            List<Bounds> rects = tabRects(frame, font);
+            List<Bounds> rects = tabRects(frame, width, fullscreen, font);
             for (int i = 0; i < rects.size(); i++)
                 if (rects.get(i).contains(mx, my)) {
                     select(REGISTRY.get(i).id);
