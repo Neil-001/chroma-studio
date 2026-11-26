@@ -222,13 +222,21 @@ public final class ExploreTab extends Tab {
         int screenW = window.getGuiScaledWidth(), screenH = window.getGuiScaledHeight();
         int x = mouseX + TIP_OFFSET + ICON_BOX + 2 * TIP_MARGIN, ix = mouseX + TIP_OFFSET;
         if (x + w + TIP_MARGIN > screenW || ix + ICON_BOX > area.right()) {
-            x = Math.max(TIP_MARGIN, Math.min(screenW - TIP_MARGIN - w, Math.max(area.x() + ICON_BOX + 2 * TIP_MARGIN, mouseX - TIP_OFFSET - TIP_MARGIN - w)));
-            ix = x - 2 * TIP_MARGIN - ICON_BOX;
-            if (ix < area.x()) ix = x + w + 2 * TIP_MARGIN;
+            int left = mouseX - TIP_OFFSET - TIP_MARGIN - w, lo = area.x() + ICON_BOX + 2 * TIP_MARGIN, hi = screenW - TIP_MARGIN - w;
+            if (lo <= hi) {
+                x = Math.max(lo, Math.min(hi, left));
+                ix = x - 2 * TIP_MARGIN - ICON_BOX;
+            } else if (TIP_MARGIN <= area.right() - ICON_BOX - 2 * TIP_MARGIN - w) {
+                x = Math.max(TIP_MARGIN, Math.min(area.right() - ICON_BOX - 2 * TIP_MARGIN - w, left));
+                ix = x + w + 2 * TIP_MARGIN;
+            } else {
+                x = Math.max(TIP_MARGIN, Math.min(hi, left));
+                ix = Integer.MIN_VALUE;
+            }
         }
         int y = Math.clamp(mouseY - TIP_OFFSET, TIP_MARGIN, Math.max(TIP_MARGIN, screenH - h - TIP_MARGIN));
         int iy = Math.clamp(y - 3, area.y(), Math.max(area.y(), area.bottom() - ICON_BOX));
-        if (ix >= area.x() && ix + ICON_BOX <= area.right()) {
+        if (ix >= area.x() && ix + ICON_BOX <= area.right() && (ix + ICON_BOX <= x - 3 || ix >= x + w + 3)) {
             g.fill(ix, iy, ix + ICON_BOX, iy + ICON_BOX, Theme.sink(0xE0));
             g.outline(ix, iy, ICON_BOX, ICON_BOX, BORDER);
             Widgets.blockIcon(g, e.block(), ix + 1, iy + 1);
@@ -399,8 +407,9 @@ public final class ExploreTab extends Tab {
         for (Dot d : dots) {
             int x = screenX(d.hue), y = screenY(d.lightness), s = d.size + grow(), x0 = x - s / 2, y0 = y - s / 2;
             if (!shown(d, x0, y0, s)) continue;
-            int reach = Math.max(REACH, s / 2 + (d.ringed ? 4 : 1)), dx = x - mx, dy = y - my, far = dx * dx + dy * dy;
-            if (far <= reach * reach && far < best) {
+            int ring = d.ringed ? 3 : 0, ex = Math.max(0, Math.max(x0 - ring - mx, mx - (x0 + s - 1 + ring))), ey = Math.max(0, Math.max(y0 - ring - my, my - (y0 + s - 1 + ring)));
+            int dx = x - mx, dy = y - my, far = dx * dx + dy * dy;
+            if (ex * ex + ey * ey <= REACH * REACH && far < best) {
                 best = far;
                 nearest = d;
             }
