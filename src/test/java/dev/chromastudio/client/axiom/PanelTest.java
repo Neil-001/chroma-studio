@@ -214,8 +214,11 @@ class PanelTest {
             GradientTool gradient = new GradientTool();
             FakeAxiom.set(GradientTool.class, gradient, "picked", slabs.name());
             frame(new GuardedTool(gradient));
-            assertTrue(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.gradient_tool.unusable")), ImGui.drawn.toString());
+            String unusable = AxiomTools.tr("axiom.chromastudio.gradient_tool.unusable");
+            assertTrue(ImGui.drawn.stream().anyMatch(s -> s.startsWith(unusable)), ImGui.drawn.toString());
             assertFalse(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.gradient_tool.start")), ImGui.drawn.toString());
+            assertTrue(AxiomBridge.whyNot().isEmpty(), ImGui.drawn.toString());
+            assertTrue(ImGui.disabledButtons.contains(AxiomTools.tr("axiom.chromastudio.apply")), ImGui.disabledButtons.toString());
         } finally {
             GradientStore.get().delete(slabs.name());
         }
