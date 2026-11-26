@@ -216,6 +216,37 @@ class PanelTest {
     }
 
     @Test
+    void theShadeBrushForgetsTheBlockOncePointingAway() {
+        axiom.level.put(0, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
+        axiom.tools.hit = new BlockPos(0, 0, 0);
+        ShadeBrushTool shade = new ShadeBrushTool();
+        GuardedTool tool = new GuardedTool(shade);
+        tool.render(axiom.rc);
+        assertSame(Blocks.STONE_BRICKS.defaultBlockState(), FakeAxiom.get(ShadeBrushTool.class, shade, "pointed"));
+        axiom.tools.hit = null;
+        axiom.frame += 2;
+        tool.render(axiom.rc);
+        assertNull(FakeAxiom.get(ShadeBrushTool.class, shade, "pointed"));
+    }
+
+    @Test
+    void theLastStrokeStaysWhenThePaletteHasNoShades() {
+        Palette logs = PaletteStore.get().create("Panel test logs", List.of(new PaletteEntry("minecraft:oak_log", "")));
+        try {
+            ShadeBrushTool shade = new ShadeBrushTool();
+            FakeAxiom.set(ShadeBrushTool.class, shade, "from", logs);
+            FakeAxiom.set(BrushStroke.class, FakeAxiom.get(ShadeBrushTool.class, shade, "stroke"), "sent", 40);
+            GuardedTool tool = new GuardedTool(shade);
+            frame(tool);
+            frame(tool);
+            assertTrue(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.shade.no_shades")), ImGui.drawn.toString());
+            assertTrue(ImGui.drawn.contains(AxiomTools.count("axiom.chromastudio.changed", 40, 40)), ImGui.drawn.toString());
+        } finally {
+            PaletteStore.get().delete(logs);
+        }
+    }
+
+    @Test
     void underALuaMaskTheShadeBrushLeavesTheReplacementToTheScript() {
         axiom.level.put(0, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
         axiom.tools.hit = new BlockPos(0, 0, 0);

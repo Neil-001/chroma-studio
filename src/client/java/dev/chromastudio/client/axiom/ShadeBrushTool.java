@@ -85,6 +85,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private @Nullable BlockState hovered;
     private @Nullable BlockState pointed;
     private Face pointedFace = Face.ANY;
+    private int pointedFrame;
     private boolean overPanel;
     private @Nullable BlockPos maskedAsked;
     private int maskedFrame;
@@ -148,11 +149,15 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
         boolean onBlock = hit != null && hit.getType() == HitResult.Type.BLOCK && level != null;
         hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : null;
-        if (!onBlock) return;
+        int frame = AxiomTools.frame();
+        if (!onBlock) {
+            if (!overPanel && frame - pointedFrame > 1) pointed = null;
+            return;
+        }
         pointed = hovered;
         pointedFace = Face.valueOf(hit.getDirection().name());
+        pointedFrame = frame;
         BlockPos at = hit.getBlockPos();
-        int frame = AxiomTools.frame();
         if (!at.equals(maskedAsked) || frame - maskedFrame >= MASK_FRAMES || frame < maskedFrame) {
             maskedAsked = at.immutable();
             maskedFrame = frame;
@@ -235,35 +240,36 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
 
     private void preview() {
         float top = ImGui.getCursorPosY(), least = (ImGui.getFrameHeight() * SWATCH_SCALE + ImGui.getStyle().getItemSpacingY()) * 2;
-        boolean shown = previewRows();
-        float used = ImGui.getCursorPosY() - top;
-        if (used < least) ImGui.dummy(0, least - used);
-        if (!shown || stroke.sent() == 0) return;
+        previewRows();
+        if (ImGui.getCursorPosY() - top < least) {
+            ImGui.setCursorPosY(top + least - ImGui.getStyle().getItemSpacingY());
+            ImGui.dummy(0, 0);
+        }
+        if (stroke.sent() == 0 || stroke.refused() != null || dropped) return;
         AxiomPanel.heading(tr("axiom.chromastudio.shade.last"));
         AxiomPanel.wrapped(AxiomTools.count("axiom.chromastudio.changed", stroke.sent(), stroke.sent()));
     }
 
-    private boolean previewRows() {
+    private void previewRows() {
         Plan p = plan();
-        if (p == null || stroke.refused() != null || dropped || !AxiomEditor.known() || AxiomMask.unavailable().isPresent()) return false;
+        if (p == null || stroke.refused() != null || dropped || !AxiomEditor.known() || AxiomMask.unavailable().isPresent()) return;
         BlockState here = overPanel ? pointed : hovered;
         if (here == null) {
             AxiomPanel.wrapped(AxiomNames.text("axiom.chromastudio.shade.point"));
-            return true;
+            return;
         }
         named("here", here, pointedFace, here.getBlock().getName().getString());
         if (masked && !AxiomMask.scripted()) {
             AxiomPanel.wrapped(tr("axiom.chromastudio.shade.left.masked"));
-            return true;
+            return;
         }
         BlockState next = p.apply(here, direction, kinds);
         if (next == null) {
             AxiomPanel.wrapped(tr(p.whyLeft(here, direction, kinds)));
-            return true;
+            return;
         }
         boolean scripted = AxiomMask.scripted() && !AxiomMask.windowClosed().orElse(false);
         named("next", next, pointedFace, tr(scripted ? "axiom.chromastudio.shade.becomes.scripted" : "axiom.chromastudio.shade.becomes", next.getBlock().getName()));
-        return true;
     }
 
     private static void named(String id, BlockState state, Face face, String label) {
