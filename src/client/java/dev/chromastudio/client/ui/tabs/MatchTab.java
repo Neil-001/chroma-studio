@@ -674,9 +674,11 @@ public final class MatchTab extends Tab {
             x = backLink.right() + 6;
         }
         Palette target = PaletteStore.get().selected();
-        String adds = target == null ? "" : (target.preset ? tr("add.new") : tr("add.target", PaletteStore.get().shownName(target))).getString();
+        boolean strip = cameFrom == null && ModSettings.biomeMode == BiomeMode.ALL && panel == Panel.NONE && !grid;
+        String adds = target == null ? "" : ellipsis(font, (target.preset ? tr("add.new") : tr("add.target", PaletteStore.get().shownName(target))).getString(),
+                strip ? (right - x) / 2 : right - x);
         int addsW = adds.isEmpty() ? 0 : font.width(adds) + 6;
-        if (cameFrom == null && ModSettings.biomeMode == BiomeMode.ALL && panel == Panel.NONE && !grid) {
+        if (strip) {
             g.text(font, ellipsis(font, tr("biome.all.hint").getString(), right - x - addsW), x, y, Theme.SOFT, false);
             x = right - addsW + 6;
         }
