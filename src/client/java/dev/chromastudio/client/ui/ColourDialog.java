@@ -32,7 +32,7 @@ final class ColourDialog extends Popup {
     private Bounds compare, old;
     private Button done;
     private boolean filling;
-    private int hint;
+    private int hint, focus;
 
     ColourDialog(Component title, Color start, Consumer<Color> onChange, Runnable onClose) {
         super(title, 260, 152, onClose);
@@ -54,11 +54,9 @@ final class ColourDialog extends Popup {
         int cx = in.x() + side + 2 + HUE_W + GAP, fx = cx + LABEL_W, fw = in.right() - fx;
         String[] values = values();
         List<Predicate<String>> takes = List.of(model::typeHex, model::typeRgb, model::typeHsv);
-        int focus = fields[0] == null ? 0 : -1;
         for (int i = 0; i < fields.length; i++) {
             int at = i;
             String text = fields[i] == null ? values[i] : fields[i].getValue();
-            if (fields[i] != null && fields[i].isFocused()) focus = i;
             fields[i] = widgets.field(fx, in.y() + i * ROW, fw, "", t -> typed(at, t, takes.get(at)));
             fields[i].setMaxLength(LENGTHS[i]);
             filling = true;
@@ -128,7 +126,10 @@ final class ColourDialog extends Popup {
             g.text(font, tr(NAMES[i]), labelX, f.getY() + 4, Theme.FIXED_SOFT, false);
             if (bad[i]) g.outline(f.getX() - 1, f.getY() - 1, f.getWidth() + 2, f.getHeight() + 2, Theme.FIELD_BAD);
         }
-        for (int i = 0; i < fields.length; i++) if (fields[i].isFocused()) hint = i;
+        int now = -1;
+        for (int i = 0; i < fields.length; i++) if (fields[i].isFocused()) now = i;
+        if (now >= 0 && now != focus) hint = now;
+        focus = now;
         for (int i = 0; i < fields.length; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
         int wrong = firstBad();
         Component text = wrong >= 0 ? tr(NAMES[wrong] + ".bad") : tr(hint == KEYS ? "keys.tip" : NAMES[hint] + ".tip");
@@ -148,7 +149,7 @@ final class ColourDialog extends Popup {
     @Override
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         if (!box.contains(e.x(), e.y())) return true;
-        boolean left = e.button() == InputConstants.MOUSE_BUTTON_LEFT;
+        boolean left = left(e);
         if (left && picker.mouseClicked(e.x(), e.y())) {
             widgets.setFocused(null);
             hint = KEYS;
@@ -163,10 +164,12 @@ final class ColourDialog extends Popup {
     }
 
     @Override
-    boolean mouseDragged(MouseButtonEvent e, double dx, double dy) { return picker.mouseDragged(e.x(), e.y()) || super.mouseDragged(e, dx, dy); }
+    boolean mouseDragged(MouseButtonEvent e, double dx, double dy) { return left(e) && picker.mouseDragged(e.x(), e.y()) || super.mouseDragged(e, dx, dy); }
 
     @Override
-    boolean mouseReleased(MouseButtonEvent e) { return picker.mouseReleased() || super.mouseReleased(e); }
+    boolean mouseReleased(MouseButtonEvent e) { return left(e) && picker.mouseReleased() || super.mouseReleased(e); }
+
+    private static boolean left(MouseButtonEvent e) { return e.button() == InputConstants.MOUSE_BUTTON_LEFT; }
 
     @Override
     boolean keyPressed(KeyEvent e) {
