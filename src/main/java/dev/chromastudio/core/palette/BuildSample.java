@@ -72,6 +72,11 @@ public final class BuildSample {
         return n;
     }
 
+    public boolean leftOut(int x, int y, int z) {
+        String id = at.get(BuildSearch.pack(x, y, z));
+        return id != null && removed.contains(id);
+    }
+
     public boolean counts(int x, int y, int z) {
         return counted(at.get(BuildSearch.pack(x, y, z)));
     }

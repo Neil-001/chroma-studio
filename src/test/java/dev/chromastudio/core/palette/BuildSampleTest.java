@@ -112,6 +112,19 @@ class BuildSampleTest {
     }
 
     @Test
+    void onlyAPositionHoldingALeftOutKindIsLeftOut() {
+        BuildSample s = new BuildSample();
+        s.add(0, 0, 0, GLASS);
+        s.add(1, 0, 0, BRICKS);
+        s.remove(GLASS);
+        assertTrue(s.leftOut(0, 0, 0));
+        assertFalse(s.leftOut(1, 0, 0));
+        assertFalse(s.leftOut(2, 0, 0));
+        s.add(0, 0, 0, null);
+        assertFalse(s.leftOut(0, 0, 0));
+    }
+
+    @Test
     void aLeftOutKindKeepsItsCount() {
         BuildSample s = new BuildSample();
         fill(s, GLASS, 3, 0);

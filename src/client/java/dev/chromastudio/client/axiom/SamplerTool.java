@@ -194,8 +194,9 @@ final class SamplerTool implements CustomTool {
             enter(level);
         }
         if (kind != null) cleared = null;
+        boolean wasOut = sample.leftOut(x, y, z);
         boolean seen = sample.add(x, y, z, kind);
-        if (!sample.counts(x, y, z)) excludedStale = true;
+        if (wasOut || sample.leftOut(x, y, z)) excludedStale = true;
         if (!seen) return;
         savedAs = null;
         focused = null;
