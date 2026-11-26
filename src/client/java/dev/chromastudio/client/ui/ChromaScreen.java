@@ -283,6 +283,8 @@ public final class ChromaScreen extends Screen {
 
         if (!buttons) return null;
         if (!fullscreen) grip(g, f, Theme.DIM);
+        int edge = fullscreen ? 0 : 1;
+        g.fill(buttonsLeft(f, screenW, fullscreen, buttonW(f, screenW, fullscreen)), f.y() + edge, f.right() - edge, f.y() + Window.TITLE_H - 1, Theme.BAR);
         boolean inBar = gearInBar(fullscreen);
         if (inBar) {
             Bounds settings = button(f, screenW, fullscreen, SETTINGS);

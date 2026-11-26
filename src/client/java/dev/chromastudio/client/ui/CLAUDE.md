@@ -10,7 +10,7 @@
 
 - `ChromaScreen.gearInBar` ignores `gearPlace` in fullscreen, where the corner gear would sit on the title bar beside close. `cogReserve` moves the title buttons left when a windowed frame reaches under the corner gear.
 - `ChromaScreen.open` leaves Axiom's editor first because Axiom constrains the window to its 3D view. Skip the background blur while `ScreenPicker` is armed because it reads the frame.
-- `Window.gripAt` treats the triangle under `ChromaScreen.grip`'s dots as the bottom-right corner, since the dots sit beyond the 3 px edge. `ChromaScreen.tabRects` narrows tab padding, then `buttonW` narrows the buttons, so translated tabs clear the buttons in a narrow forced fullscreen.
+- `ChromaScreen.grip` only marks the corner. Its dots sit over tab content, such as the Palettes notes field, so `Window.gripAt` leaves them to the tab and resizes from the 3 px corner band. `ChromaScreen.tabRects` narrows tab padding, then `buttonW` narrows the buttons, so translated tabs clear the buttons in a narrow forced fullscreen. Below that, `chrome` paints the bar behind the buttons so covered tab text can't look clickable.
 - `Window.within` handles a screen shrinking mid-drag. Crossed limits are possible then and `Math.clamp` would throw.
 - `ChromaScreen` routes drags and releases for a click the tab took even outside the tab. `Tab.closed` also runs on the way to settings.
 - Clear `Handoff` fields after consuming them. Explore keeps its highlight until the player clears it or another list arrives.
