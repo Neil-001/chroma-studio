@@ -1319,6 +1319,7 @@ final class PaletteDialogs {
             int fit = Math.max(1, (bottom - top - 4) / LINE);
             List<WorldEditPattern.Piece> pieces = pieces();
             if (pieces == null) {
+                scrolled = List.of();
                 List<FormattedCharSequence> lines = PanelTab.font().split(tr("palettes.chromastudio.worldedit.from.needed"), in.w() - 6);
                 for (int i = 0; i < Math.min(fit, lines.size()); i++) g.text(PanelTab.font(), lines.get(i), in.x() + 3, top + 3 + i * LINE, Theme.FAIR, false);
                 if (replace) g.outline(fieldX - 1, fieldY - 1, fieldW + 2, Widgets.H + 2, Theme.FIELD_BAD);
