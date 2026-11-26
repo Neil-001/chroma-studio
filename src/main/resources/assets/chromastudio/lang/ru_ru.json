@@ -816,7 +816,6 @@
   "axiom.chromastudio.brush.scatter": "Разбросать",
   "axiom.chromastudio.brush.scatter.tip": "Рисует блоками палитры случайно, с учётом веса, и пропускает двери и блоки с содержимым.",
   "axiom.chromastudio.brush.scatter_none": "«Разбросать» не может поставить ни один блок этой палитры. Выберите другую палитру.",
-  "axiom.chromastudio.brush.scatter_left_out": "Пропущено: %s",
   "axiom.chromastudio.brush.recolour": "Перекрасить",
   "axiom.chromastudio.brush.recolour.tip": "Даёт каждому блоку блок палитры с тем же оттенком и формой. Блоки, которые уже есть в палитре, остаются.",
   "axiom.chromastudio.brush.empty": "Ни одного блока этой палитры нет в этой игре. Выберите другую палитру.",

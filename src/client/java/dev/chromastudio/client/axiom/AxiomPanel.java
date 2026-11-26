@@ -56,6 +56,12 @@ final class AxiomPanel {
         private float bottom = -1;
         private float optionsEnd = -1, grownEnd = -1;
         private final List<Runnable> later = new ArrayList<>();
+        private final boolean packed;
+        private boolean together;
+
+        Layout() { this(false); }
+
+        Layout(boolean packed) { this.packed = packed; }
 
         void later(Runnable action) { later.add(action); }
 
@@ -81,7 +87,8 @@ final class AxiomPanel {
             };
             float room = ImGui.getContentRegionAvailY();
             float above = this.bottom < 0 ? 0 : room - this.bottom - ImGui.getStyle().getItemSpacingY();
-            if (this.bottom >= 0 && above < ImGui.getFrameHeightWithSpacing() * 2) {
+            together = packed && optionsEnd >= 0 && this.bottom >= 0 && optionsEnd + this.bottom <= room;
+            if (together || this.bottom >= 0 && above < ImGui.getFrameHeightWithSpacing() * 2) {
                 child("##options", 0, () -> {
                     measured.run();
                     float top = ImGui.getCursorPosY();
@@ -102,6 +109,7 @@ final class AxiomPanel {
         float grow(float wanted, float least) {
             float below = optionsEnd < 0 || grownEnd < 0 ? 0 : Math.max(0, optionsEnd - grownEnd);
             float room = ImGui.getContentRegionAvailY() - below - ImGui.getStyle().getItemSpacingY();
+            if (together) room -= bottom + ImGui.getStyle().getItemSpacingY();
             return Math.max(Math.min(wanted, room), Math.min(wanted, least));
         }
 

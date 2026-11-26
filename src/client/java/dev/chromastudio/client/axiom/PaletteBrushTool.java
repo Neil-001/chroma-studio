@@ -79,7 +79,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     private @Nullable Component said;
     private boolean dropped;
-    private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
+    private final AxiomPanel.Layout layout = new AxiomPanel.Layout(true);
     private @Nullable Component refused;
     private @Nullable FoundBuild found;
     private List<AxiomPanel.Swatch> foundSwatches = List.of();
@@ -409,9 +409,9 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             readSwatches(shown);
             AxiomPanel.swatches("swatch", swatches);
         }
-        if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
+        if (anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
             String names = scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "));
-            String line = tr("axiom.chromastudio.brush.scatter_left_out", names), fitted = AxiomPanel.fit(line, ImGui.getContentRegionAvailX());
+            String line = tr("axiom.chromastudio.brush.left_out", names), fitted = AxiomPanel.fit(line, ImGui.getContentRegionAvailX());
             AxiomPanel.note(fitted);
             AxiomPanel.tip(fitted.equals(line) ? tr("axiom.chromastudio.brush.left_out.tip") : line + "\n" + tr("axiom.chromastudio.brush.left_out.tip"));
         }
@@ -422,19 +422,20 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         AxiomPanel.besideChoice(tr("axiom.chromastudio.brush.recolour"));
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.recolour"), recolour, ready,
                 tr(ready ? "axiom.chromastudio.brush.recolour.tip" : "axiom.chromastudio.not_ready"))) layout.later(() -> setMode(Mode.RECOLOUR));
+        if (AxiomPanel.radius(radius, !wholeBuild(), wholeBuild() ? tr("axiom.chromastudio.radius.whole") : "")) remember();
+
+        AxiomPanel.heading(tr("axiom.chromastudio.brush.recolour"));
         if (AxiomPanel.checkbox(tr("axiom.chromastudio.whole_build"), wholeBuild, recolour,
                 tr(recolour ? "axiom.chromastudio.brush.whole.tip" : "axiom.chromastudio.from.na"))) {
             layout.later(() -> {
                 wholeBuild = !wholeBuild;
                 said = null;
                 receipt = 0;
+                stroke.forget();
                 reset();
                 remember();
             });
         }
-        if (AxiomPanel.radius(radius, !wholeBuild(), wholeBuild() ? tr("axiom.chromastudio.radius.whole") : "")) remember();
-
-        AxiomPanel.heading(tr("axiom.chromastudio.brush.recolour"));
         recolourOptions(all, recolour);
         if (recolour && fromKey.equals(FROM_BUILD) && found != null) {
             String label = wholeBuild() && picked != null && said == null && refused == null
@@ -473,7 +474,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (found == null) return null;
         int total = found.blocks().length;
         String count = AxiomTools.count("axiom.chromastudio.count", total, preview.count(), total);
-        AxiomPanel.Status s = AxiomPanel.Status.of(kept > 0 ? count + " " + AxiomTools.count("axiom.chromastudio.brush.kept", kept, kept) : count);
+        AxiomPanel.Status s = AxiomPanel.Status.of(count);
+        if (kept > 0) s = s.withTip(AxiomTools.count("axiom.chromastudio.brush.kept", kept, kept));
         s = s.withTip(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
         if (masked > 0) s = s.withTip(AxiomTools.count("axiom.chromastudio.masked", masked, masked));
         if (found.capped()) s = s.withTip(tr("axiom.chromastudio.capped", FoundBuild.CAP));
@@ -490,6 +492,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         mode = m;
         said = null;
         receipt = 0;
+        stroke.forget();
         reset();
         remember();
     }
