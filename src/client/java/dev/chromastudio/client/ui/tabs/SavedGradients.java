@@ -24,7 +24,7 @@ final class SavedGradients extends Dialog {
     private final Function<String, StoredGradient> current;
     private final Supplier<Component> unsaveable;
     private final Supplier<List<Integer>> preview;
-    private final Consumer<StoredGradient> load;
+    private final Consumer<StoredGradient> load, stored;
     private final String opened;
     private String name;
     private EditBox field;
@@ -34,7 +34,7 @@ final class SavedGradients extends Dialog {
     private String hovered, target;
 
     SavedGradients(Function<String, StoredGradient> current, Supplier<Component> unsaveable, Supplier<List<Integer>> preview, String name,
-            Consumer<StoredGradient> load) {
+            Consumer<StoredGradient> load, Consumer<StoredGradient> stored) {
         super(tr("gradient.chromastudio.store.title"), 340, 206);
         this.current = current;
         this.unsaveable = unsaveable;
@@ -42,6 +42,7 @@ final class SavedGradients extends Dialog {
         this.name = name;
         this.opened = name;
         this.load = load;
+        this.stored = stored;
     }
 
     private static Component tr(String key, Object... args) { return Component.translatable(key, args); }
@@ -111,8 +112,10 @@ final class SavedGradients extends Dialog {
     private void store(StoredGradient g) {
         boolean written = GradientStore.get().put(g);
         tab.closeDialog();
-        if (written) tab.say(tr("gradient.chromastudio.store.done", g.name()), Theme.GOOD);
-        else tab.say(tr("gradient.chromastudio.store.failed"), Theme.BAD);
+        if (written) {
+            stored.accept(g);
+            tab.say(tr("gradient.chromastudio.store.done", g.name()), Theme.GOOD);
+        } else tab.say(tr("gradient.chromastudio.store.failed"), Theme.BAD);
     }
 
     @Override
@@ -190,7 +193,7 @@ final class SavedGradients extends Dialog {
                 tab.open(new PaletteDialogs.Confirm(tr("gradient.chromastudio.store.delete.title"), tr("gradient.chromastudio.store.delete.question", s.name()),
                         tr("gradient.chromastudio.store.delete"), () -> {
                             boolean deleted = GradientStore.get().delete(s.name());
-                            SavedGradients again = new SavedGradients(current, unsaveable, preview, name, load);
+                            SavedGradients again = new SavedGradients(current, unsaveable, preview, name, load, stored);
                             tab.open(again);
                             if (deleted) again.status(tr("gradient.chromastudio.store.deleted", s.name()), Theme.TEXT);
                             else again.status(tr("gradient.chromastudio.store.failed"), Theme.BAD);

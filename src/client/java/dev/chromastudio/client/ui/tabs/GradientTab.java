@@ -260,7 +260,7 @@ public final class GradientTab extends PanelTab {
         action("export", actionsY, () -> open(new PaletteDialogs.Export(asPalette(), Layout.STRIP, System.nanoTime())), none);
         action("axiom", actionsY, () -> open(new PaletteDialogs.Axiom(savedName != null ? savedName : asPalette().name, entries())),
                 AxiomBridge.whyNot().orElse(none));
-        action("saved", actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, () -> result.stream().map(s -> s.ideal.rgb()).toList(), savedName != null ? savedName : asPalette().name, this::load)), null);
+        action("saved", actionsY, () -> open(new SavedGradients(this::toSave, this::unsaveable, () -> result.stream().map(s -> s.ideal.rgb()).toList(), savedName != null ? savedName : asPalette().name, this::load, g -> savedName = g.name())), null);
         action("save", actionsY, () -> {
             Palette p = asPalette();
             PaletteSink sink = PaletteSink.current();
@@ -370,7 +370,6 @@ public final class GradientTab extends PanelTab {
         List<StoredGradient.Step> blocks = new ArrayList<>();
         for (Step s : result) blocks.add(new StoredGradient.Step(s.ideal.rgb(), PaletteBlocks.of(s.entry), s.pinned));
         Kind kind = MatchState.filters().kind;
-        savedName = name;
         return new StoredGradient(name, stops, steps, easing.name(), arc.name(), spread, kind == null ? "" : kind.name(), blocks);
     }
 
