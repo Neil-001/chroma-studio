@@ -85,6 +85,8 @@ public final class ImGui {
 
     public static void setCursorPosX(float x) {}
 
+    public static void setCursorPosY(float y) { cursorY = y; }
+
     public static void separator() {}
 
     public static void separatorText(String label) { drawn.add(label); }
@@ -149,6 +151,8 @@ public final class ImGui {
     }
 
     public static boolean colorButton(String id, float r, float g, float b, float a, int flags) { return pressed(id); }
+
+    public static boolean colorButton(String id, float r, float g, float b, float a, int flags, float width, float height) { return pressed(id); }
 
     public static boolean collapsingHeader(String label, int flags) {
         line();

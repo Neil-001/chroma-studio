@@ -15,7 +15,8 @@ final class AxiomNames {
         TOOL_MASKS("axiom.editorui.window.tool_masks", "Tool Masks"),
         SCRIPT_BRUSH("axiom.tool.script_brush", "Script Brush"),
         FILE_MENU("axiom.editorui.mainmenu.file", "File"),
-        IMPORT_SCHEMATIC("axiom.editorui.mainmenu.file.import_schematic", "Import Schematic");
+        IMPORT_SCHEMATIC("axiom.editorui.mainmenu.file.import_schematic", "Import Schematic"),
+        USE_TOOL("axiom.keybinds.use_tool", "Use Tool");
 
         private final String key;
         private final String english;
@@ -39,7 +40,8 @@ final class AxiomNames {
             "palettes.chromastudio.export.axiom", List.of(Name.FILE_MENU, Name.IMPORT_SCHEMATIC),
             "axiom.chromastudio.masks.tip", List.of(Name.TOOL_MASKS),
             "axiom.chromastudio.masks.off.tip", List.of(Name.TOOL_MASKS),
-            "axiom.chromastudio.mask.lua", List.of(Name.TOOL_MASKS));
+            "axiom.chromastudio.mask.lua", List.of(Name.TOOL_MASKS),
+            "axiom.chromastudio.shade.point", List.of(Name.USE_TOOL));
 
     static Set<String> keys() { return TEXTS.keySet(); }
 
