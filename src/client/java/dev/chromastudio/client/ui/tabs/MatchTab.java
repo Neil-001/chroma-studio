@@ -86,7 +86,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 public final class MatchTab extends Tab {
-    private static final int PAD = 3, ROW = 18, CELL = 34, CELL_H = CELL + 10, HEAD = 13, HEADER = 10, GAP = 2, LINE = Widgets.H + 1, STATUS_H = 10;
+    private static final int PAD = 3, ROW = 18, CELL = 34, CELL_H = CELL + 10, HEAD = 13, GAP = 2, LINE = Widgets.H + 1, STATUS_H = 10;
     private static final long STATUS_MS = 2500;
     private static final int RESULT = 0, MEMBER = 1, MAKE = 2;
     private static final int BODY = 0, EXPAND = 1, ADD = 2;
@@ -112,7 +112,6 @@ public final class MatchTab extends Tab {
     private EditBox hexField;
     private final EditBox[] formatFields = new EditBox[2];
     private final ColourFormat[] fieldFormats = new ColourFormat[2];
-    private final Bounds[] fieldLabels = new Bounds[2];
     private AbstractWidget findButton;
     private boolean filling;
     private final ColourPicker picker = new ColourPicker(MatchState.colour(), this::picked);
@@ -145,8 +144,6 @@ public final class MatchTab extends Tab {
     public MatchTab() { super("match"); }
 
     private static MutableComponent tr(String key, Object... args) { return Component.translatable("match.chromastudio." + key, args); }
-
-    private static Component formatName(ColourFormat format) { return tr(format.name().toLowerCase(Locale.ROOT) + ".tip"); }
 
     private static Component lower(String prefix, Enum<?> value) {
         return Component.translatable(prefix + value.name().toLowerCase(Locale.ROOT));
@@ -213,18 +210,19 @@ public final class MatchTab extends Tab {
         y += ROW;
         fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;
         fieldFormats[1] = ModSettings.colourFormat == ColourFormat.HSL ? ColourFormat.OKLCH : ColourFormat.HSL;
-        int labelW = 0;
-        for (ColourFormat format : fieldFormats) labelW = Math.max(labelW, font.width(formatName(format)) + 4);
+        int half = (w - GAP) / 2, oklchW = font.width("0.00,.000,000") + 8;
+        int firstW = fieldFormats[0] == ColourFormat.OKLCH ? Math.max(half, oklchW)
+                : fieldFormats[1] == ColourFormat.OKLCH ? Math.min(half, w - GAP - oklchW) : half;
         for (int i = 0; i < 2; i++) {
             int at = i;
             ColourFormat format = fieldFormats[i];
-            fieldLabels[i] = new Bounds(x, y, labelW, Widgets.H);
-            EditBox field = controls.field(x + labelW, y, w - labelW, model.text(format),
+            EditBox field = controls.field(i == 0 ? x : x + firstW + GAP, y, i == 0 ? firstW : w - firstW - GAP, model.text(format),
                     text -> typed(formatFields[at], text, t -> model.type(format, t)));
             field.setMaxLength(16);
+            field.setTooltip(Tooltip.create(tr(format.name().toLowerCase(Locale.ROOT) + ".tip")));
             formatFields[i] = field;
-            y += ROW;
         }
+        y += ROW;
 
         int by = b.bottom() - PAD - Widgets.H, bx = x;
         Component block = tr("pick_block"), screen = tr("pick_screen"), dye = tr("dye");
@@ -321,9 +319,8 @@ public final class MatchTab extends Tab {
         buildPanel();
         int shownTop = panel == Panel.NONE ? results.y() : panelArea.bottom() + 2;
         shownArea = new Bounds(results.x(), shownTop, results.w(), results.bottom() - shownTop);
-        Bounds rowsArea = new Bounds(shownArea.x(), shownArea.y() + HEADER, shownArea.w(), shownArea.h() - HEADER);
         list = grid ? new Widgets.ScrollList(shownArea, CELL_H, () -> shown == null ? 0 : (shown.matches.size() + columns() - 1) / columns())
-                : new Widgets.ScrollList(rowsArea, ROW, () -> rows.size());
+                : new Widgets.ScrollList(shownArea, ROW, () -> rows.size());
     }
 
     private void gridChip(Flow flow, Component label) {
@@ -384,7 +381,7 @@ public final class MatchTab extends Tab {
             default -> { }
         }
         Bounds wide = new Bounds(results.x() + 1, results.y() + HEAD, results.w() - 2, results.h());
-        int most = results.h() - HEADER - 2 * ROW - 2, content = switch (panel) {
+        int most = results.h() - 2 * ROW - 2, content = switch (panel) {
             case FIND_BIOME -> HEAD + (fits.isEmpty() ? 24 : hintHeight(findHint(), wide) + fits.size() * ROW) + 2;
             case DYE -> HEAD + hintHeight(dyeHint(), wide) + dyes.size() * ROW + 2;
             default -> most;
@@ -615,7 +612,6 @@ public final class MatchTab extends Tab {
         hovered = null;
         List<Component> tip = new ArrayList<>();
         target(g, font, 1, mouseX, mouseY, tip);
-        for (int i = 0; i < 2; i++) g.text(font, formatName(fieldFormats[i]), fieldLabels[i].x(), fieldLabels[i].y() + 4, Theme.SOFT, false);
         controls.render(g, mouseX, mouseY, delta);
         distance(g, font, mouseX, mouseY, tip);
         results(g, font, 1, mouseX, mouseY, tip);
@@ -721,10 +717,10 @@ public final class MatchTab extends Tab {
             g.fill(mx, d.bottom() - 4, mx + 1, d.bottom() - 1, DIM);
         }
         int kx = x0 + (int) Math.round(distanceAt(ModSettings.viewingDistance) * track);
-        g.fill(kx - 2, d.bottom() - 4, kx + 3, d.bottom() - 1, over ? Theme.STRONG : Theme.HIGHLIGHT);
+        g.fill(kx - 1, d.y() + 1, kx + 2, d.bottom() - 1, over ? Theme.STRONG : Theme.HIGHLIGHT);
         boolean far = ModSettings.viewingDistance >= ModSettings.VIEW_FAR;
         Component label = far ? tr("distance.far") : ModSettings.viewingDistance == 1 ? tr("distance.block") : tr("distance.blocks", ModSettings.viewingDistance);
-        Widgets.centred(g, Component.literal(ellipsis(font, label.getString(), d.w() - 6)), d.x() + d.w() / 2, d.y() + 3, TEXT);
+        Widgets.centred(g, Component.literal(ellipsis(font, label.getString(), d.w() - 6)), d.x() + d.w() / 2, d.y() + 4, TEXT);
         if (d.contains(mouseX, mouseY)) {
             tip.add(tr("distance.tip"));
             tip.add(tr("distance.scale", MatchState.scale().texels).withColor(Theme.TIP_DIM));
@@ -774,27 +770,9 @@ public final class MatchTab extends Tab {
                 }
             });
         } else {
-            header(g, font, opacity);
             list.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> row(g2, font, rows.get(i), x, y, w, h, over, opacity, mouseX, tip));
         }
         if (index.building()) bar(g, r.x(), r.y(), r.w(), index.progress(), opacity);
-    }
-
-    private void header(GuiGraphicsExtractor g, Font font, float opacity) {
-        int x = shownArea.x(), y = shownArea.y() + 1, dim = ARGB.multiplyAlpha(Theme.SOFT, opacity);
-        int right = results.right() - 1 - (rows.size() * ROW > list.area.h() ? Widgets.BAR_W + 2 : 0);
-        g.text(font, tr("column.block"), x + 28, y, dim, false);
-        right -= 13;
-        Widgets.centred(g, tr("column.colour"), right - 9, y, dim);
-        right -= 22;
-        right -= kindWidth;
-        g.text(font, tr("column.kind"), right - 10, y, dim, false);
-        right -= 14;
-        if (ModSettings.showDeltaE) {
-            Component de = tr("column.delta_e");
-            g.text(font, de, right - font.width(de), y, dim, false);
-        }
-        g.fill(x, shownArea.y() + HEADER - 1, shownArea.right(), shownArea.y() + HEADER, ARGB.multiplyAlpha(BORDER, opacity));
     }
 
     private static void bar(GuiGraphicsExtractor g, int x, int y, int w, float progress, float opacity) {
@@ -843,10 +821,11 @@ public final class MatchTab extends Tab {
         g.fill(right - 6, y + 5, right - 5, y + 12, ARGB.multiplyAlpha(can ? TEXT : GREYED, opacity));
         right -= 13;
         var stats = e.face(row.face, shown.tint);
-        g.fill(right - 18, y, right, y + 18, ARGB.multiplyAlpha(0xFF000000, opacity));
-        g.fill(right - 17, y + 1, right - 1, y + 17, ARGB.multiplyAlpha(0xFF000000 | stats.mean(shown.scale).rgb(), opacity));
-        Thumbnails.draw(g, e, row.face, shown.scale, shown.tint, right - 17, y + 1, 16, opacity);
-        right -= 22;
+        Thumbnails.draw(g, e, row.face, shown.scale, shown.tint, right - 16, y + 1, 16, opacity);
+        right -= 18;
+        g.fill(right - 12, y + 3, right, y + 15, ARGB.multiplyAlpha(0xFF000000, opacity));
+        g.fill(right - 11, y + 4, right - 1, y + 14, ARGB.multiplyAlpha(0xFF000000 | stats.mean(shown.scale).rgb(), opacity));
+        right -= 15;
         right -= kindWidth;
         g.text(font, kindName(e.kind().name()), right, y + 5, dim, false);
         right -= 10;
