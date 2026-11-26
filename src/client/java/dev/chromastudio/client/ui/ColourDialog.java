@@ -20,7 +20,7 @@ import net.minecraft.network.chat.Component;
 final class ColourDialog extends Popup {
     private static final int LABEL_W = 26, ROW = Widgets.H + 2, HUE_W = 12, GAP = 8;
     private static final String[] NAMES = {"hex", "rgb", "hsv"};
-    private static final int[] LENGTHS = {7, 13, 15};
+    private static final int[] LENGTHS = {7, 32, 32};
     private static final int KEYS = 3;
     private static final int STALE = 0xFF000000 | Theme.TIP_GREYED;
 
@@ -54,11 +54,16 @@ final class ColourDialog extends Popup {
         int cx = in.x() + side + 2 + HUE_W + GAP, fx = cx + LABEL_W, fw = in.right() - fx;
         String[] values = values();
         List<Predicate<String>> takes = List.of(model::typeHex, model::typeRgb, model::typeHsv);
+        int focus = fields[0] == null ? 0 : -1;
         for (int i = 0; i < fields.length; i++) {
             int at = i;
-            fields[i] = widgets.field(fx, in.y() + i * ROW, fw, values[i], text -> typed(at, text, takes.get(at)));
+            String text = fields[i] == null ? values[i] : fields[i].getValue();
+            if (fields[i] != null && fields[i].isFocused()) focus = i;
+            fields[i] = widgets.field(fx, in.y() + i * ROW, fw, "", t -> typed(at, t, takes.get(at)));
             fields[i].setMaxLength(LENGTHS[i]);
-            bad[i] = false;
+            filling = true;
+            fields[i].setValue(text);
+            filling = false;
         }
         compare = new Bounds(cx, in.y() + 3 * ROW + 2, in.right() - cx, Widgets.H);
         old = new Bounds(compare.x(), compare.y(), compare.w() / 2, compare.h());
@@ -66,7 +71,7 @@ final class ColourDialog extends Popup {
         int y = in.bottom() - Widgets.H, doneW = Widgets.buttonWidth(done) + 14, cancelW = Widgets.buttonWidth(cancel) + 6;
         this.done = widgets.button(in.right() - doneW, y, doneW, done, this::close);
         widgets.button(in.right() - doneW - 2 - cancelW, y, cancelW, cancel, this::cancel);
-        widgets.setFocused(fields[0]);
+        if (focus >= 0) widgets.setFocused(fields[focus]);
         showBad();
     }
 
@@ -123,32 +128,33 @@ final class ColourDialog extends Popup {
             g.text(font, tr(NAMES[i]), labelX, f.getY() + 4, Theme.FIXED_SOFT, false);
             if (bad[i]) g.outline(f.getX() - 1, f.getY() - 1, f.getWidth() + 2, f.getHeight() + 2, Theme.FIELD_BAD);
         }
-        for (int i = 0; i < fields.length; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
         for (int i = 0; i < fields.length; i++) if (fields[i].isFocused()) hint = i;
+        for (int i = 0; i < fields.length; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
         int wrong = firstBad();
         Component text = wrong >= 0 ? tr(NAMES[wrong] + ".bad") : tr(hint == KEYS ? "keys.tip" : NAMES[hint] + ".tip");
         g.textWithWordWrap(font, text, labelX, compare.bottom() + 4, in.right() - labelX, wrong >= 0 ? Theme.FIELD_BAD : Theme.FIXED_SOFT, false);
-        swatch(g, font, old.x(), old.w(), start.rgb(), tr("old"));
-        swatch(g, font, old.right(), compare.w() - old.w(), picker.model.colour().rgb(), tr("new"));
+        swatch(g, old.x(), old.w(), start.rgb(), tr("old"));
+        swatch(g, old.right(), compare.w() - old.w(), picker.model.colour().rgb(), tr("new"));
         if (wrong >= 0) g.fill(old.right(), compare.y(), compare.right(), compare.bottom(), 0xB0000000 | Theme.FIXED_PANEL & 0xFFFFFF);
         if (old.contains(mouseX, mouseY)) g.outline(old.x(), old.y(), old.w(), old.h(), 0xFFFFFFFF);
     }
 
-    private void swatch(GuiGraphicsExtractor g, Font font, int x, int w, int rgb, Component label) {
+    private void swatch(GuiGraphicsExtractor g, int x, int w, int rgb, Component label) {
         Widgets.swatch(g, x, compare.y(), w, compare.h(), rgb);
         int ink = Color.ofRgb(rgb).oklab().l() < Theme.LIGHT_FROM ? 0xFFFFFFFF : 0xFF000000;
-        g.text(font, label, x + (w - font.width(label)) / 2, compare.y() + 4, ink, false);
+        Widgets.centred(g, label, x + w / 2, compare.y() + 4, ink);
     }
 
     @Override
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         if (!box.contains(e.x(), e.y())) return true;
-        if (picker.mouseClicked(e.x(), e.y())) {
+        boolean left = e.button() == InputConstants.MOUSE_BUTTON_LEFT;
+        if (left && picker.mouseClicked(e.x(), e.y())) {
             widgets.setFocused(null);
             hint = KEYS;
             return true;
         }
-        if (old.contains(e.x(), e.y())) {
+        if (left && old.contains(e.x(), e.y())) {
             picker.model.setColour(start);
             picked(-1);
             return true;
