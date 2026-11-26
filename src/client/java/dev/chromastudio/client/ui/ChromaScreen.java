@@ -267,7 +267,7 @@ public final class ChromaScreen extends Screen {
         if (!fullscreen) grip(g, f, Theme.DIM);
         boolean inBar = gearInBar(fullscreen);
         if (inBar) {
-            Bounds settings = button(f, screenW, true, SETTINGS);
+            Bounds settings = button(f, screenW, fullscreen, SETTINGS);
             g.fill(settings.right() + SETTINGS_GAP / 2, f.y() + 4, settings.right() + SETTINGS_GAP / 2 + 1, f.y() + Window.TITLE_H - 4, Theme.BORDER);
         }
         Component tip = null;
@@ -377,8 +377,8 @@ public final class ChromaScreen extends Screen {
         Bounds frame = frame();
         tabHasMouse = false;
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
-            boolean fullscreen = fullscreen();
-            if (!gearInBar(fullscreen) && cog().contains(mx, my)) {
+            boolean fullscreen = fullscreen(), inBar = gearInBar(fullscreen);
+            if (!inBar && cog().contains(mx, my)) {
                 minecraft.gui.setScreen(new SettingsScreen(this));
                 return true;
             }
@@ -387,7 +387,7 @@ public final class ChromaScreen extends Screen {
                 window.grab(grip, mx, my, width, height);
                 return true;
             }
-            if (gearInBar(fullscreen) && button(frame, width, fullscreen, SETTINGS).contains(mx, my)) {
+            if (inBar && button(frame, width, fullscreen, SETTINGS).contains(mx, my)) {
                 minecraft.gui.setScreen(new SettingsScreen(this));
                 return true;
             }
