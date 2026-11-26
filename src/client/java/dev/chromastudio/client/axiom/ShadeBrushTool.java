@@ -81,12 +81,11 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private Palette from;
     private final Set<Kind> kinds = EnumSet.copyOf(CHANGEABLE);
     private @Nullable BlockState hovered;
+    private @Nullable BlockState pointed;
     private boolean overPanel;
     private @Nullable BlockPos maskedAsked;
     private int maskedFrame;
     private boolean masked;
-    private int receiptOf;
-    private @Nullable BlockPos receiptAt;
     private @Nullable Plan plan;
 
     @Override
@@ -140,22 +139,15 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         ClientLevel level = Minecraft.getInstance().level;
         if (stroke.active()) {
             dropped = false;
-            hovered = null;
-            receiptOf = 0;
             stroke.render(rc);
             return;
         }
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
         boolean onBlock = hit != null && hit.getType() == HitResult.Type.BLOCK && level != null;
-        hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : overPanel ? hovered : null;
+        hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : null;
         if (!onBlock) return;
+        pointed = hovered;
         BlockPos at = hit.getBlockPos();
-        if (stroke.sent() != receiptOf) {
-            receiptOf = stroke.sent();
-            receiptAt = at.immutable();
-        } else if (receiptAt != null && !receiptAt.equals(at)) {
-            receiptAt = null;
-        }
         int frame = AxiomTools.frame();
         if (!at.equals(maskedAsked) || frame - maskedFrame >= MASK_FRAMES || frame < maskedFrame) {
             maskedAsked = at.immutable();
@@ -183,7 +175,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             if (d == Direction.LIGHTER) AxiomPanel.besideChoice(tr(key));
             if (AxiomPanel.radio(tr(key), direction == d, true, tr(key + ".tip"))) layout.later(() -> direction = d);
         }
-        AxiomPanel.radius(radius, true, "");
+        AxiomPanel.radius(radius, true, tr("axiom.chromastudio.shade.radius.tip", ModSettings.BRUSH_MAX_RADIUS));
         AxiomPanel.slider(tr("axiom.chromastudio.shade.step"), stepSize, 1, STEPS.length, "%d", true, tr("axiom.chromastudio.shade.step.tip"));
         AxiomPanel.slider(tr("axiom.chromastudio.shade.strength"), strength, 10, 100, "%d%%", true, tr("axiom.chromastudio.shade.strength.tip"));
 
@@ -212,6 +204,8 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
                 });
             }
         }
+        ImGui.separator();
+        preview();
     }
 
     private void bottom() {
@@ -230,46 +224,51 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.not_ready")));
             return;
         }
-        Plan p = plan();
-        if (p == null) {
+        if (plan() == null) {
             AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.no_shades")).withTip(tr("axiom.chromastudio.shade.no_shades.tip")));
             return;
         }
         int sent = stroke.sent();
-        if (sent > 0 && (receiptAt != null || sent != receiptOf)) {
-            AxiomPanel.status(AxiomPanel.Status.receipt(AxiomTools.count("axiom.chromastudio.changed", sent, sent)));
-            return;
-        }
-        BlockState here = hovered;
+        if (sent > 0) AxiomPanel.status(AxiomPanel.Status.receipt(AxiomTools.count("axiom.chromastudio.changed", sent, sent)));
+    }
+
+    private void preview() {
+        float top = ImGui.getCursorPosY(), least = ImGui.getFrameHeightWithSpacing() * 2;
+        previewRows();
+        float used = ImGui.getCursorPosY() - top;
+        if (used < least) ImGui.dummy(0, least - used);
+    }
+
+    private void previewRows() {
+        Plan p = plan();
+        if (p == null || stroke.refused() != null || dropped || !AxiomEditor.known() || AxiomMask.unavailable().isPresent()) return;
+        BlockState here = overPanel ? pointed : hovered;
         if (here == null) {
-            AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.point")));
+            AxiomPanel.wrapped(tr("axiom.chromastudio.shade.point"));
             return;
         }
+        named("here", here, here.getBlock().getName().getString());
         if (masked && !AxiomMask.scripted()) {
-            AxiomPanel.status(AxiomPanel.Status.of(tr("axiom.chromastudio.shade.left.masked")).withTip(here.getBlock().getName().getString()));
+            AxiomPanel.wrapped(tr("axiom.chromastudio.shade.left.masked"));
             return;
         }
         BlockState next = p.apply(here, direction, kinds);
         if (next == null) {
-            String name = here.getBlock().getName().getString();
-            AxiomPanel.status(AxiomPanel.Status.of(tr(p.whyLeft(here, direction, kinds))).withTip(name));
+            AxiomPanel.wrapped(tr(p.whyLeft(here, direction, kinds)));
             return;
         }
-        swatch("here", here, here.getBlock().getName().getString());
-        AxiomPanel.sameLine();
         boolean scripted = AxiomMask.scripted() && !AxiomMask.windowClosed().orElse(false);
-        swatch("next", next, tr(scripted ? "axiom.chromastudio.shade.becomes.scripted" : "axiom.chromastudio.shade.becomes", next.getBlock().getName()));
+        named("next", next, tr(scripted ? "axiom.chromastudio.shade.becomes.scripted" : "axiom.chromastudio.shade.becomes", next.getBlock().getName()));
     }
 
-    private static void swatch(String id, BlockState state, String tip) {
+    private static void named(String id, BlockState state, String label) {
         Optional<Color> c = BlockIndex.get().colourOf(state, PaletteBlocks.queryFace(), PaletteBlocks.tint());
         if (c.isPresent()) {
-            AxiomPanel.swatch(id, new AxiomPanel.Swatch(c.get(), tip));
-        } else {
-            ImGui.alignTextToFramePadding();
-            AxiomPanel.text(state.getBlock().getName().getString());
-            AxiomPanel.tip(tip);
+            AxiomPanel.swatch(id, new AxiomPanel.Swatch(c.get(), ""));
+            AxiomPanel.sameLine();
         }
+        ImGui.alignTextToFramePadding();
+        AxiomPanel.wrapped(label);
     }
 
     private @Nullable Palette from() {

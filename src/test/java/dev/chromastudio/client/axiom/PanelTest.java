@@ -192,6 +192,29 @@ class PanelTest {
     }
 
     @Test
+    void theShadeBrushNamesThePointedBlockAndWhatItBecomes() {
+        axiom.level.put(0, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
+        axiom.tools.hit = new BlockPos(0, 0, 0);
+        MaskManager.mask = _ -> true;
+        Palette shades = PaletteStore.get().create("Panel test named shades",
+                List.of(new PaletteEntry("minecraft:stone_bricks", ""), new PaletteEntry("minecraft:tuff_bricks", "")));
+        try {
+            ShadeBrushTool shade = new ShadeBrushTool();
+            FakeAxiom.set(ShadeBrushTool.class, shade, "from", shades);
+            GuardedTool tool = new GuardedTool(shade);
+            tool.render(axiom.rc);
+            frame(tool);
+            frame(tool);
+            String tuff = AxiomTools.tr("axiom.chromastudio.shade.becomes", TestIndex.block("tuff_bricks").getName());
+            assertTrue(ImGui.drawn.contains(Blocks.STONE_BRICKS.getName().getString()), ImGui.drawn.toString());
+            assertTrue(ImGui.drawn.contains(tuff), ImGui.drawn.toString());
+            assertFalse(ImGui.tips.contains(tuff), ImGui.tips.toString());
+        } finally {
+            PaletteStore.get().delete(shades);
+        }
+    }
+
+    @Test
     void underALuaMaskTheShadeBrushLeavesTheReplacementToTheScript() {
         axiom.level.put(0, 0, 0, Blocks.STONE_BRICKS.defaultBlockState());
         axiom.tools.hit = new BlockPos(0, 0, 0);
@@ -204,6 +227,7 @@ class PanelTest {
             GuardedTool tool = new GuardedTool(shade);
             tool.render(axiom.rc);
             frame(tool);
+            frame(tool);
             assertTrue(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.shade.left.masked")), ImGui.drawn.toString());
 
             MaskManager.useLuaScript = true;
@@ -212,14 +236,14 @@ class PanelTest {
             frame(tool);
             Component tuff = TestIndex.block("tuff_bricks").getName();
             String scripted = AxiomTools.tr("axiom.chromastudio.shade.becomes.scripted", tuff);
-            assertTrue(ImGui.tips.contains(scripted), ImGui.tips.toString());
-            assertFalse(ImGui.tips.contains(AxiomTools.tr("axiom.chromastudio.shade.becomes", tuff)), ImGui.tips.toString());
+            assertTrue(ImGui.drawn.contains(scripted), ImGui.drawn.toString());
+            assertFalse(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.shade.becomes", tuff)), ImGui.drawn.toString());
             assertFalse(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.shade.left.masked")), ImGui.drawn.toString());
 
             EditorWindowType.TOOL_MASKS.open = false;
             ImGui.reset();
             frame(tool);
-            assertTrue(ImGui.tips.contains(AxiomTools.tr("axiom.chromastudio.shade.becomes", tuff)), ImGui.tips.toString());
+            assertTrue(ImGui.drawn.contains(AxiomTools.tr("axiom.chromastudio.shade.becomes", tuff)), ImGui.drawn.toString());
         } finally {
             PaletteStore.get().delete(shades);
         }

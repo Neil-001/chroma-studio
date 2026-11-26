@@ -887,6 +887,7 @@
   "axiom.chromastudio.shade.lighter.tip": "每个方块变成亮一档的方块，例如石砖变成磨制安山岩。",
   "axiom.chromastudio.shade.step": "步长",
   "axiom.chromastudio.shade.step.tip": "1 至 5：每笔让方块变亮或变暗的档数",
+  "axiom.chromastudio.shade.radius.tip": "0 到 %s 格：笔刷球的大小",
   "axiom.chromastudio.shade.strength": "强度",
   "axiom.chromastudio.shade.strength.tip": "10 至 100%%：每笔更改的方块比例，使笔画相互融合",
   "axiom.chromastudio.shade.from": "可用方块",
