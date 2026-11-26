@@ -70,6 +70,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private final BooleanRegion one = AxiomTools.regions.createBoolean();
     private final BooleanRegion hovered = AxiomTools.regions.createBoolean();
     private @Nullable ClientLevel hoveredIn;
+    private long hoveredVisit;
     private int outlineRadius = -1;
 
     private final int[] radius = {ModSettings.brushRadius};
@@ -277,13 +278,17 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         if (picked == null) {
             BlockHitResult hit = AxiomTools.tools.raycastBlock();
-            if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
+            if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
+                forgetHover();
+                return;
+            }
             BlockPos at = hit.getBlockPos();
             if (!FoundBuild.member(level, at, level.getBlockState(at))) {
+                forgetHover();
                 one.render(rc, Vec3.atLowerCornerOf(at), Effects.BLUE | Effects.OUTLINE);
                 return;
             }
-            if (hoveredIn != level || !hovered.contains(at.getX(), at.getY(), at.getZ())) hover(level, at);
+            if (hoveredIn != level || hoveredVisit != AxiomTools.visit() || !hovered.contains(at.getX(), at.getY(), at.getZ())) hover(level, at);
             hovered.render(rc, Vec3.ZERO, Effects.OUTLINE);
         } else {
             preview.render(rc);
@@ -293,8 +298,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private void hover(ClientLevel level, BlockPos at) {
         hovered.clear();
         hoveredIn = level;
-        FoundBuild build = FoundBuild.from(level, at);
-        if (build != null) for (long p : build.blocks()) hovered.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
+        hoveredVisit = AxiomTools.visit();
+        for (long p : FoundBuild.blocks(level, at).blocks()) hovered.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
     }
 
     void makePreview(ClientLevel level) {
