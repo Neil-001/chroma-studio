@@ -32,12 +32,14 @@ import java.util.List;
 import java.util.stream.Stream;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
@@ -48,17 +50,19 @@ import net.minecraft.world.item.Items;
 
 public final class PalettesTab extends PanelTab {
     private enum Panel { ENTRIES, ANALYSE, DIORAMA }
-    private static final int WEIGHT_W = 40;
+    private static final int WEIGHT_W = 40, MIN_NAME_W = 60;
 
     private static final int LIST_ROW = 12, ENTRY_ROW = 18, TITLE_H = 11, LEFT_MIN = 110;
     private static final long SAVE_AFTER_MS = 400;
 
     private final PaletteStore store = PaletteStore.get();
-    private final Widgets rows = new Widgets();
+    private Widgets rows = entryRows();
     private Widgets.ScrollList list;
     private List<Palette> listed = List.of();
     private String search = "";
-    private Bounds entriesArea, titleArea;
+    private Bounds entriesArea, entriesWell, listWell, titleArea;
+    private int weightX = -1, shareRight, labelX, tagsY, notesY;
+    private SmallButton copyToEdit;
     private Panel panel = Panel.ENTRIES;
     private AnalysePanel analyse;
     private DioramaPanel diorama;
@@ -72,7 +76,13 @@ public final class PalettesTab extends PanelTab {
 
     public PalettesTab() {
         super("palettes");
+    }
+
+    private static Widgets entryRows() {
+        Widgets rows = new Widgets();
         rows.wheelNeedsClick();
+        rows.scrollByRows(ENTRY_ROW);
+        return rows;
     }
 
     private static Component tr(String key, Object... args) { return Component.translatable(key, args); }
@@ -103,6 +113,7 @@ public final class PalettesTab extends PanelTab {
     @Override
     protected void layout(Bounds b) {
         Palette p = selected();
+        if (p != shown) rows = entryRows();
         shown = p;
         shownSize = p == null ? 0 : p.entries.size();
         shownReady = BlockIndex.get().ready();
@@ -110,10 +121,12 @@ public final class PalettesTab extends PanelTab {
 
         int leftW = layoutList(b, p);
         int rx = b.x() + PAD + leftW + PAD + 1, rw = b.right() - PAD - rx;
-        layoutToolbar(rx, b.y() + PAD, rw, p);
-        titleArea = new Bounds(rx, b.y() + PAD + ROW, rw, TITLE_H);
+        int toolRows = layoutToolbar(rx, b.y() + PAD, rw, p);
+        titleArea = new Bounds(rx, b.y() + PAD + toolRows * ROW, rw, TITLE_H);
         Bounds body = new Bounds(rx, titleArea.bottom() + GAP, rw, b.bottom() - PAD - titleArea.bottom() - GAP);
-        entriesArea = body;
+        entriesArea = entriesWell = body;
+        weightX = -1;
+        copyToEdit = null;
         switch (panel) {
             case ANALYSE -> analyse.layout(widgets, body, this::showEntries);
             case DIORAMA -> diorama.layout(widgets, body, this::showEntries, (layout, seed) -> open(new PaletteDialogs.Export(selected(), layout, seed)));
@@ -159,7 +172,8 @@ public final class PalettesTab extends PanelTab {
         }
 
         filter();
-        Bounds area = new Bounds(x0, b.y() + PAD + ROW, leftW, b.bottom() - PAD - 3 * ROW - b.y() - PAD);
+        listWell = new Bounds(x0, b.y() + PAD + ROW, leftW, b.bottom() - PAD - 3 * ROW - b.y() - PAD);
+        Bounds area = new Bounds(listWell.x(), listWell.y(), leftW, listWell.h() - listWell.h() % LIST_ROW);
         if (list == null) list = new Widgets.ScrollList(area, LIST_ROW, () -> listed.size());
         else list.area = area;
         if (listed.contains(p)) list.reveal(listed.indexOf(p));
@@ -189,7 +203,7 @@ public final class PalettesTab extends PanelTab {
 
     private record Tool(String key, ItemStack icon, Runnable run, Component unavailable, boolean lit) {}
 
-    private void layoutToolbar(int x0, int y, int width, Palette p) {
+    private int layoutToolbar(int x0, int y, int width, Palette p) {
         Component needsBlocks = p == null ? tr("palettes.chromastudio.need_palette") : p.entries.isEmpty() ? tr("palettes.chromastudio.need_entries") : null;
         Component needsIndex = PaletteDialogs.indexReady() ? null : tr("palettes.chromastudio.index_building");
         Component noAxiom = AxiomBridge.whyNot().orElse(null);
@@ -206,13 +220,25 @@ public final class PalettesTab extends PanelTab {
                 new Tool("hotbar", new ItemStack(Items.CHEST), () -> open(new PaletteDialogs.Hotbar(p.entries)),
                         needsBlocks != null ? needsBlocks : HotbarFill.unavailable().orElse(null), false))
                 .filter(t -> !t.key.equals("axiom") || AxiomBridge.isPresent()).toList();
-        int labelled = (tools.size() - 1) * GAP;
-        for (Tool t : tools) labelled += ToolButton.labelledWidth(tr("palettes.chromastudio.tool." + t.key));
-        boolean labels = labelled <= width;
+        int[] widths = tools.stream().mapToInt(t -> ToolButton.labelledWidth(tr("palettes.chromastudio.tool." + t.key))).toArray();
+        int n = tools.size(), cols = (n + 1) / 2, oneRow = (n - 1) * GAP, grid = (cols - 1) * GAP;
+        int[] columns = new int[cols];
+        for (int i = 0; i < n; i++) {
+            oneRow += widths[i];
+            columns[i % cols] = Math.max(columns[i % cols], widths[i]);
+        }
+        for (int c : columns) grid += c;
+        boolean inGrid = oneRow > width && grid <= width, labels = oneRow <= width || inGrid;
+        if (inGrid) for (int c = 0; c < cols; c++) columns[c] += (width - grid) / cols;
         int x = x0;
-        for (Tool t : tools) {
+        for (int i = 0; i < n; i++) {
+            Tool t = tools.get(i);
             Component label = tr("palettes.chromastudio.tool." + t.key);
-            int w = labels ? ToolButton.labelledWidth(label) : ToolButton.ICON;
+            if (inGrid && i % cols == 0 && i > 0) {
+                x = x0;
+                y += ROW;
+            }
+            int w = !labels ? ToolButton.ICON : inGrid ? columns[i % cols] : widths[i];
             ToolButton button = widgets.add(new ToolButton(x, y, w, t.icon, label, labels, t.lit, t.run));
             if (t.unavailable != null) Widgets.disable(button, labels ? t.unavailable : Component.empty().append(label).append("\n").append(t.unavailable));
             else if (t.key.equals("capture")) {
@@ -222,6 +248,7 @@ public final class PalettesTab extends PanelTab {
             else if (!labels) button.setTooltip(Tooltip.create(label));
             x += w + GAP;
         }
+        return inGrid ? 2 : 1;
     }
 
     private void capture() {
@@ -256,17 +283,21 @@ public final class PalettesTab extends PanelTab {
     }
 
     private void layoutEntries(Bounds body, Palette p) {
-        int fieldsY = body.bottom() - Widgets.H;
-        entriesArea = new Bounds(body.x(), body.y(), body.w(), fieldsY - GAP - body.y());
+        notesY = body.bottom() - Widgets.H;
+        tagsY = notesY - ROW;
+        entriesWell = new Bounds(body.x(), body.y(), body.w(), tagsY - GAP - body.y());
+        entriesArea = new Bounds(body.x(), body.y(), body.w(), entriesWell.h() - entriesWell.h() % ENTRY_ROW);
         Component fixed = p == null ? tr("palettes.chromastudio.need_palette") : p.preset ? tr("palettes.chromastudio.preset_fixed") : null;
 
-        int tagsW = body.w() * 2 / 5;
-        EditBox tags = widgets.search(body.x(), fieldsY, tagsW, tr("palettes.chromastudio.tags.hint"), s -> {
+        labelX = body.x();
+        int fieldX = labelX + Math.max(Widgets.tw(tr("palettes.chromastudio.tags.label")), Widgets.tw(tr("palettes.chromastudio.notes.label"))) + 5;
+        int fieldW = body.right() - fieldX;
+        EditBox tags = widgets.search(fieldX, tagsY, fieldW, hint("palettes.chromastudio.tags.hint", fieldW), s -> {
             if (loading || p == null || p.preset) return;
             p.tags = new ArrayList<>(Arrays.stream(s.split(",")).map(String::strip).filter(t -> !t.isEmpty()).toList());
             touch();
         });
-        EditBox notes = widgets.search(body.x() + tagsW + GAP, fieldsY, body.w() - tagsW - GAP, tr("palettes.chromastudio.notes.hint"), s -> {
+        EditBox notes = widgets.search(fieldX, notesY, fieldW, hint("palettes.chromastudio.notes.hint", fieldW), s -> {
             if (loading || p == null || p.preset) return;
             p.notes = s;
             touch();
@@ -285,38 +316,50 @@ public final class PalettesTab extends PanelTab {
             Widgets.disable(tags, whole(String.join(", ", p == null ? List.of() : p.tags), fixed));
             Widgets.disable(notes, whole(p == null ? "" : p.notes, fixed));
         } else {
-            tags.setTooltip(Tooltip.create(tr("palettes.chromastudio.tags.tip")));
-            notes.setTooltip(Tooltip.create(tr("palettes.chromastudio.notes.tip")));
+            tags.setTooltip(Tooltip.create(whole(String.join(", ", p.tags), tr("palettes.chromastudio.tags.tip"))));
+            notes.setTooltip(Tooltip.create(whole(p.notes, tr("palettes.chromastudio.notes.tip"))));
         }
         if (p == null) return;
 
         int n = p.entries.size();
-        boolean scrolls = n * ENTRY_ROW > entriesArea.h();
-        int right = entriesArea.right() - (scrolls ? 6 : 0), x = entriesArea.x();
-        int removeX = right - 12, downX = removeX - 13, upX = downX - 13, spinX = upX - 2 - WEIGHT_W;
+        int left = entriesArea.x(), right = entriesArea.right() - 6;
+        int removeX = right - 12, shareX = removeX - 3 - font().width("100%"), spinX = shareX - 3 - WEIGHT_W, cellX = left + 13;
+        if (n > 0) weightX = spinX + WEIGHT_W - 9;
+        shareRight = removeX - 3;
+        if (p.preset) {
+            Component label = tr("palettes.chromastudio.copy_to_edit");
+            int w = Widgets.tw(label) + 6;
+            int bx = (n > 0 ? weightX - Widgets.tw(tr("palettes.chromastudio.entry.weight")) - 4 : titleArea.right() - 3) - w;
+            if (bx - 4 - titleArea.x() - 3 >= Math.min(Widgets.tw(name(p)), MIN_NAME_W)) copyToEdit = widgets.add(new SmallButton(bx, titleArea.y() - 1, w, TITLE_H + 2, label, () -> { flush(); store.copy(p); showEntries(); }));
+            if (copyToEdit != null) copyToEdit.setTooltip(Tooltip.create(tr("palettes.chromastudio.copy.tip")));
+        }
         for (int i = 0; i < n; i++) {
             int index = i, y = entriesArea.y() + i * ENTRY_ROW;
             PaletteEntry e = p.entries.get(i);
-            rows.add(new EntryCell(x, y, spinX - 3 - x, ENTRY_ROW - 1, e));
-            EditBox weight = rows.spin(spinX, y + 1, WEIGHT_W, e.weight(), 1, 1, BuildSample.MAX_WEIGHT, true, v -> {
+            rows.add(new EntryCell(cellX, y, spinX - 3 - cellX, ENTRY_ROW - 1, p, index, i % 2 == 1 ? left : 0, right, shareX));
+            IconButton up = rows.add(new IconButton(left + 1, y + 1, 10, 8, IconButton.Glyph.UP, tr("palettes.chromastudio.entry.up"), () -> move(index, -1)));
+            IconButton down = rows.add(new IconButton(left + 1, y + 9, 10, 8, IconButton.Glyph.DOWN, tr("palettes.chromastudio.entry.down"), () -> move(index, 1)));
+            if (p.preset) rows.add(new EntryCell.Weight(spinX, y, WEIGHT_W, ENTRY_ROW - 1, e.weight(), fixed));
+            EditBox weight = p.preset ? null : rows.spin(spinX, y + 1, WEIGHT_W, e.weight(), 1, 1, BuildSample.MAX_WEIGHT, true, v -> {
                 p.entries.set(index, p.entries.get(index).withWeight((int) v));
                 touch();
             });
-            IconButton up = rows.add(new IconButton(upX, y + 1, 12, Widgets.H, IconButton.Glyph.UP, tr("palettes.chromastudio.entry.up"), () -> move(index, -1)));
-            IconButton down = rows.add(new IconButton(downX, y + 1, 12, Widgets.H, IconButton.Glyph.DOWN, tr("palettes.chromastudio.entry.down"), () -> move(index, 1)));
             IconButton remove = rows.add(new IconButton(removeX, y + 1, 12, Widgets.H, IconButton.Glyph.REMOVE, tr("palettes.chromastudio.entry.remove"), () -> {
                 p.entries.remove(index);
                 changed();
             }));
-            if (p.preset) for (AbstractWidget w : List.of(weight, up, down, remove)) Widgets.disable(w, fixed);
-            else {
-                weight.setTooltip(Tooltip.create(tr("palettes.chromastudio.entry.weight.tip", 1, BuildSample.MAX_WEIGHT)));
-                if (i == 0) Widgets.disable(up, tr("palettes.chromastudio.entry.first"));
-                if (i == n - 1) Widgets.disable(down, tr("palettes.chromastudio.entry.last"));
+            if (p.preset) {
+                for (AbstractWidget w : List.of(up, down, remove)) Widgets.disable(w, fixed);
+                continue;
             }
+            weight.setTooltip(Tooltip.create(tr("palettes.chromastudio.entry.weight.tip", 1, BuildSample.MAX_WEIGHT)));
+            if (i == 0) Widgets.disable(up, tr("palettes.chromastudio.entry.first"));
+            if (i == n - 1) Widgets.disable(down, tr("palettes.chromastudio.entry.last"));
         }
         rows.viewport(entriesArea, n * ENTRY_ROW);
     }
+
+    private static Component hint(String key, int fieldW) { return Component.literal(fit(tr(key).getString(), fieldW - 8)); }
 
     private void move(int index, int by) {
         Palette p = selected();
@@ -347,14 +390,21 @@ public final class PalettesTab extends PanelTab {
     }
 
     private static final class EntryCell extends AbstractWidget {
+        private final Palette palette;
+        private final int index, stripeFrom, stripeTo, shareX;
         private final PaletteEntry entry;
         private final ItemStack icon;
         private final Color colour;
         private final boolean known;
 
-        EntryCell(int x, int y, int w, int h, PaletteEntry entry) {
-            super(x, y, w, h, PaletteBlocks.name(entry));
-            this.entry = entry;
+        EntryCell(int x, int y, int w, int h, Palette palette, int index, int stripeFrom, int stripeTo, int shareX) {
+            super(x, y, w, h, PaletteBlocks.name(palette.entries.get(index)));
+            this.palette = palette;
+            this.index = index;
+            this.stripeFrom = stripeFrom;
+            this.stripeTo = stripeTo;
+            this.shareX = shareX;
+            entry = palette.entries.get(index);
             icon = PaletteBlocks.icon(entry);
             colour = PaletteBlocks.colour(entry);
             known = PaletteBlocks.state(entry) != null;
@@ -365,23 +415,84 @@ public final class PalettesTab extends PanelTab {
         @Override
         protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
             int x = getX(), y = getY();
+            if (stripeFrom > 0) g.fill(stripeFrom, y, stripeTo, y + ENTRY_ROW, Theme.PANEL);
+            if (index < palette.entries.size()) {
+                String share = shares(palette.entries)[index] + "%";
+                g.text(font(), share, shareX + font().width("100%") - font().width(share), y + 5, DIM, false);
+            }
             Widgets.blockIcon(g, icon, x, y + 1);
-            int swatch = 12, textX = x + 19, room = width - 19 - (colour != null ? swatch + 3 : 0);
+            int swatch = 12, textX = x + 19, room = width - 19 - (colour != null ? swatch + 5 : 0);
             String name = fit(getMessage().getString(), room);
             g.text(font(), name, textX, y + 5, known ? TEXT : BAD, false);
             int used = font().width(name) + 4;
             if (!entry.properties().isEmpty() && room - used > 20) g.text(font(), fit(entry.properties(), room - used), textX + used, y + 5, DIM, false);
-            if (colour != null) Widgets.swatch(g, x + width - swatch, y + 3, swatch, swatch, colour.rgb());
+            if (colour != null) {
+                int sx = x + width - swatch - 1, sy = y + 3;
+                g.fill(sx - 1, sy - 1, sx + swatch + 1, sy + swatch + 1, DIM);
+                Widgets.swatch(g, sx, sy, swatch, swatch, colour.rgb());
+            }
         }
 
         @Override
         protected void updateWidgetNarration(NarrationElementOutput builder) { }
+
+        private static final class Weight extends AbstractWidget {
+            Weight(int x, int y, int w, int h, int weight, Component why) {
+                super(x, y, w, h, Component.literal(String.valueOf(weight)));
+                active = false;
+                setTooltip(Tooltip.create(why));
+            }
+
+            @Override
+            protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+                g.text(font(), getMessage(), getX() + 4, getY() + 5, DIM, false);
+            }
+
+            @Override
+            protected void updateWidgetNarration(NarrationElementOutput builder) { defaultButtonNarrationText(builder); }
+        }
+    }
+
+    static int[] shares(List<PaletteEntry> entries) {
+        int total = Math.max(1, entries.stream().mapToInt(PaletteEntry::weight).sum()), left = 100;
+        int[] shares = new int[entries.size()];
+        Integer[] order = new Integer[shares.length];
+        for (int i = 0; i < shares.length; i++) {
+            shares[i] = 100 * entries.get(i).weight() / total;
+            left -= shares[i];
+            order[i] = i;
+        }
+        Arrays.sort(order, (a, b) -> Long.compare(100L * entries.get(b).weight() % total, 100L * entries.get(a).weight() % total));
+        for (int i = 0; i < left && i < order.length; i++) shares[order[i]]++;
+        return shares;
+    }
+
+    private static final class SmallButton extends AbstractButton {
+        private final Runnable action;
+
+        SmallButton(int x, int y, int w, int h, Component label, Runnable action) {
+            super(x, y, w, h, label);
+            this.action = action;
+        }
+
+        @Override
+        public void onPress(InputWithModifiers input) { action.run(); }
+
+        @Override
+        protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+            g.fill(getX(), getY(), getRight(), getBottom(), isHovered() ? Theme.LIT_HOVER : Theme.LIT);
+            Widgets.centred(g, getMessage(), getX() + width / 2, getY() + (height - 8) / 2, Theme.ON_LIT);
+        }
+
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput builder) { defaultButtonNarrationText(builder); }
     }
 
     @Override
     protected void draw(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
         Palette p = selected();
-        g.fill(list.area.x(), list.area.y(), list.area.right(), list.area.bottom(), WELL);
+        g.fill(listWell.x(), listWell.y(), listWell.right(), listWell.bottom(), WELL);
+        if (listed.size() * LIST_ROW > list.area.h()) track(g, list.area);
         list.render(g, mouseX, mouseY, (gg, i, x, y, w, h, hovered) -> {
             Palette row = listed.get(i);
             if (row == null) {
@@ -392,34 +503,84 @@ public final class PalettesTab extends PanelTab {
                 gg.text(font(), heading, x + (w - tw) / 2, y + 2, DIM, false);
                 return;
             }
-            if (row == p) gg.fill(x, y, x + w, y + h, SELECTED);
-            else if (hovered) gg.fill(x, y, x + w, y + h, HOVER);
-            gg.text(font(), fit(name(row).getString(), w - 6), x + 3, y + 2, row.preset ? DIM : TEXT, false);
+            if (row == p) {
+                gg.fill(x, y, x + w, y + h, SELECTED);
+                gg.fill(x, y, x + 2, y + h, Theme.ACCENT);
+            } else if (hovered) gg.fill(x, y, x + w, y + h, HOVER);
+            String count = String.valueOf(row.entries.size());
+            int countW = font().width(count);
+            gg.text(font(), count, x + w - 3 - countW, y + 2, DIM, false);
+            gg.text(font(), fit(name(row).getString(), w - 10 - countW), x + 4, y + 2, row.preset ? Theme.SOFT : TEXT, false);
         });
         if (listed.isEmpty()) g.textWithWordWrap(font(), tr("palettes.chromastudio.search.none"), list.area.x() + 4, list.area.y() + 4, list.area.w() - 8, DIM, false);
 
         Component note = note();
-        if (note != null) g.text(font(), fit(note.getString(), titleArea.w()), titleArea.x(), titleArea.y() + 1, noteColour(), false);
-        else if (p != null) {
-            String count = tr(p.preset ? "palettes.chromastudio.count_preset" : "palettes.chromastudio.count", p.entries.size()).getString();
-            g.text(font(), count, titleArea.right() - font().width(count), titleArea.y() + 1, DIM, false);
-            g.text(font(), fit(name(p).getString(), titleArea.w() - font().width(count) - 8), titleArea.x(), titleArea.y() + 1, TEXT, false);
-        }
+        g.fill(titleArea.x(), titleArea.y() - 1, titleArea.right(), titleArea.bottom(), Theme.PANEL);
+        if (note != null) g.text(font(), fit(note.getString(), titleArea.w() - 6), titleArea.x() + 3, titleArea.y() + 1, noteColour(), false);
+        else if (p != null) title(g, p);
+        else if (panel == Panel.ENTRIES) g.text(font(), tr("palettes.chromastudio.none_selected_short"), titleArea.x() + 3, titleArea.y() + 1, DIM, false);
+        if (copyToEdit != null) copyToEdit.visible = note == null;
 
         switch (panel) {
             case ANALYSE -> analyse.draw(g, mouseX, mouseY);
             case DIORAMA -> diorama.draw(g, mouseX, mouseY);
             default -> {
-                g.fill(entriesArea.x(), entriesArea.y(), entriesArea.right(), entriesArea.bottom(), WELL);
+                g.fill(entriesWell.x(), entriesWell.y(), entriesWell.right(), entriesWell.bottom(), WELL);
+                track(g, entriesArea);
+                g.text(font(), tr("palettes.chromastudio.tags.label"), labelX, tagsY + 4, DIM, false);
+                g.text(font(), tr("palettes.chromastudio.notes.label"), labelX, notesY + 4, DIM, false);
                 Component hint = p == null ? tr("palettes.chromastudio.none_selected") : p.entries.isEmpty() ? tr("palettes.chromastudio.empty") : null;
-                if (hint != null) g.textWithWordWrap(font(), hint, entriesArea.x() + 8, entriesArea.y() + 8, entriesArea.w() - 16, DIM, false);
+                if (hint != null) {
+                    Component tools = tr(p == null ? "palettes.chromastudio.tools_need_palette" : "palettes.chromastudio.tools_need_blocks");
+                    int w = entriesArea.w() - 16, y = entriesArea.y() + 8;
+                    g.textWithWordWrap(font(), hint, entriesArea.x() + 8, y, w, TEXT, false);
+                    y += font().wordWrapHeight(hint, w) + 6;
+                    g.textWithWordWrap(font(), tools, entriesArea.x() + 8, y, w, DIM, false);
+                }
             }
         }
     }
 
+    private void title(GuiGraphicsExtractor g, Palette p) {
+        int y = titleArea.y() + 1, x = titleArea.x() + 3, right = titleArea.right() - 3;
+        if (panel == Panel.ENTRIES && weightX >= 0) {
+            String weight = tr("palettes.chromastudio.entry.weight").getString(), share = tr("palettes.chromastudio.entry.share").getString();
+            int wx = weightX - font().width(weight), sx = shareRight - font().width(share);
+            g.text(font(), weight, wx, y, DIM, false);
+            if (wx + font().width(weight) + 4 <= sx) g.text(font(), share, sx, y, DIM, false);
+            right = wx - 8;
+        }
+        if (copyToEdit != null) right = copyToEdit.getX() - 4;
+        String count = tr("palettes.chromastudio.count", p.entries.size()).getString();
+        int countW = font().width(count), fullName = font().width(name(p).getString());
+        String badge = p.preset ? tr("palettes.chromastudio.read_only").getString() : "";
+        int badgeFull = badge.isEmpty() ? 0 : font().width(badge) + 11;
+        if (x + fullName + badgeFull + countW + 10 <= right) {
+            g.text(font(), count, right - countW, y, DIM, false);
+            right -= countW + 10;
+        }
+        int room = right - x, nameW = font().width(name(p).getString());
+        int badgeW = badge.isEmpty() || nameW + 4 + font().width(badge) + 6 > room ? 0 : font().width(badge) + 6;
+        String name = fit(name(p).getString(), right - x - (badgeW > 0 ? badgeW + 4 : 0));
+        g.text(font(), name, x, y, TEXT, false);
+        if (badgeW == 0) return;
+        int bx = x + font().width(name) + 4;
+        g.fill(bx, titleArea.y() - 1, bx + badgeW, titleArea.bottom(), Theme.CHIP);
+        g.text(font(), fit(badge, badgeW - 6), bx + 3, y, Theme.SOFT, false);
+    }
+
+    private static void track(GuiGraphicsExtractor g, Bounds area) {
+        g.fill(area.right() - Widgets.BAR_W, area.y(), area.right() - 1, area.bottom(), HOVER);
+    }
+
     @Override
     protected void drawOver(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
-        if (panel == Panel.ENTRIES) rows.render(g, mouseX, mouseY, delta);
+        if (panel != Panel.ENTRIES) return;
+        boolean inside = entriesArea.contains(mouseX, mouseY);
+        rows.render(g, inside ? mouseX : -1, inside ? mouseY : -1, delta);
+        Palette p = selected();
+        if (p != null && p.entries.size() * ENTRY_ROW - rows.scrolled() > entriesArea.h())
+            g.fillGradient(entriesArea.x(), entriesArea.bottom() - 6, entriesArea.right() - 6, entriesArea.bottom(), WELL & 0xFFFFFF, WELL);
     }
 
     @Override

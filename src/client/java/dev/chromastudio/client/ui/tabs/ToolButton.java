@@ -35,7 +35,7 @@ final class ToolButton extends AbstractButton {
         if (lit) g.fill(x, y + height - 1, x + width, y + height, Theme.ACCENT);
         g.fakeItem(icon, x, y);
         if (!active) g.fill(x, y, x + ICON, y + height, Theme.TOOL_OFF & 0xB0FFFFFF);
-        if (labelled) g.text(PanelTab.font(), getMessage(), x + ICON + 2, y + 4, active ? Theme.TEXT : Theme.GREYED, false);
+        if (labelled) g.text(PanelTab.font(), getMessage(), x + ICON + 2, y + 4, active ? Theme.TEXT : Theme.DIM, false);
     }
 
     @Override

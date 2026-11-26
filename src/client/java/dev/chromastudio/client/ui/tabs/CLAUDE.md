@@ -4,6 +4,7 @@
 - Settings can change without notifying a tab. Run `MatchState.follow` before building controls so they reflect those changes. It also resolves block targets again after index rebuilds, which replace the entries.
 - Rebuilding widgets loses typed values and cursor positions. `GradientTab` rebuilds filter controls only for layout or filter changes. `PalettesTab` filters its list without rebuilding the search field.
 - `PalettesTab.layoutEntries` guards `setValue` with `loading` because field responders would otherwise mark a palette changed while switching to it. Keep tags and notes unbounded so edits don't truncate imported text. Give presets their full text in a tooltip because disabled fields can't scroll.
+- `PalettesTab.layout` replaces `rows` when another palette is selected so its blocks start at the top. `PalettesTab.drawOver` gives `rows` the mouse only inside the entries viewport because rows scrolled out of view would otherwise show tooltips over the toolbar.
 - Call `MatchState.remember` after a colour is chosen so a slider drag doesn't fill recent colours.
 
 ## Gradient and Match

@@ -41,7 +41,7 @@ public final class Widgets extends AbstractContainerEventHandler {
     private final List<Spinner> spinners = new ArrayList<>();
     private final Map<AbstractWidget, Integer> baseY = new HashMap<>();
     private Bounds viewport;
-    private int contentHeight, scroll;
+    private int contentHeight, scroll, rowStep;
     private boolean draggingBar, wheelNeedsClick;
 
     private static Font font() { return Minecraft.getInstance().font; }
@@ -192,11 +192,14 @@ public final class Widgets extends AbstractContainerEventHandler {
 
     public void wheelNeedsClick() { wheelNeedsClick = true; }
 
+    public void scrollByRows(int height) { rowStep = height; }
+
     private int maxScroll() { return viewport == null ? 0 : Math.max(0, contentHeight - viewport.h()); }
 
     public int scrolled() { return scroll; }
 
     public void scrollTo(int to) {
+        if (rowStep > 0) to = Math.round((float) to / rowStep) * rowStep;
         scroll = Math.max(0, Math.min(maxScroll(), to));
         for (AbstractWidget w : children) w.setY(baseY.get(w) - scroll);
     }
@@ -279,7 +282,7 @@ public final class Widgets extends AbstractContainerEventHandler {
                 return true;
             }
         if (viewport == null) return super.mouseScrolled(mx, my, h, v);
-        scrollTo(scroll - (int) Math.round(v * 20));
+        scrollTo(scroll - (int) Math.round(v * (rowStep > 0 ? rowStep : 20)));
         return true;
     }
 
