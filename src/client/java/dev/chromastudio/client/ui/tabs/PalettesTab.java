@@ -127,9 +127,9 @@ public final class PalettesTab extends PanelTab {
         Component editable = p == null ? needsOne : p.preset ? presetFixed : null;
         List<Action> top = List.of(
                 new Action("new", () -> open(new PaletteDialogs.Name(tr("palettes.chromastudio.new.title"), tr("palettes.chromastudio.create"), "",
-                        name -> { store.create(name, List.of()); showEntries(); })), null),
+                        name -> store.taken(name, null), name -> { store.create(name, List.of()); showEntries(); })), null),
                 new Action("rename", () -> open(new PaletteDialogs.Name(tr("palettes.chromastudio.rename.title"), tr("palettes.chromastudio.rename"), p.name,
-                        name -> { flush(); store.rename(p, name); rebuild(); })), editable),
+                        name -> store.taken(name, p), name -> { flush(); store.rename(p, name); rebuild(); })), editable),
                 new Action("delete", () -> open(new PaletteDialogs.Confirm(tr("palettes.chromastudio.delete.title"), tr("palettes.chromastudio.delete.question", p.name),
                         tr("palettes.chromastudio.delete"), () -> { dirty = false; store.delete(p); say(tr("palettes.chromastudio.deleted", p.name)); showEntries(); })), editable));
         List<Action> bottom = List.of(

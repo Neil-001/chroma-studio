@@ -285,6 +285,7 @@
   "palettes.chromastudio.no_dialog": "没有弹出文件对话框。请改为输入文件路径。",
   "palettes.chromastudio.name_hint": "名称",
   "palettes.chromastudio.name_needed": "请先起个名字。",
+  "palettes.chromastudio.name_taken": "这个名字已被使用。",
   "palettes.chromastudio.need_palette": "请先选择一个调色板。",
   "palettes.chromastudio.no_world": "只能在世界中使用。",
   "palettes.chromastudio.need_entries": "此调色板还没有方块。",

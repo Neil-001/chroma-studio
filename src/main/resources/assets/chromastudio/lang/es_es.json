@@ -285,6 +285,7 @@
   "palettes.chromastudio.no_dialog": "No apareció ningún diálogo de archivos. Escribe la ruta del archivo.",
   "palettes.chromastudio.name_hint": "Nombre",
   "palettes.chromastudio.name_needed": "Ponle primero un nombre.",
+  "palettes.chromastudio.name_taken": "Ese nombre ya existe.",
   "palettes.chromastudio.need_palette": "Elige primero una paleta.",
   "palettes.chromastudio.no_world": "Esto solo funciona dentro de un mundo.",
   "palettes.chromastudio.need_entries": "Esta paleta aún no tiene bloques.",

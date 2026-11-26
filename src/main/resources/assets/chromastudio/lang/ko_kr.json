@@ -285,6 +285,7 @@
   "palettes.chromastudio.no_dialog": "파일 대화 상자가 열리지 않았습니다. 대신 파일 경로를 입력하세요.",
   "palettes.chromastudio.name_hint": "이름",
   "palettes.chromastudio.name_needed": "먼저 이름을 붙이세요.",
+  "palettes.chromastudio.name_taken": "이미 있는 이름입니다.",
   "palettes.chromastudio.need_palette": "먼저 팔레트를 고르세요.",
   "palettes.chromastudio.no_world": "월드 안에서만 사용할 수 있습니다.",
   "palettes.chromastudio.need_entries": "이 팔레트에는 아직 블록이 없습니다.",

@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 public final class PaletteStore implements PaletteSink {
     public static final List<String> PRESETS = List.of("medieval", "gothic", "rustic_wood", "modern_clean", "desert", "nether", "end",
@@ -134,12 +135,18 @@ public final class PaletteStore implements PaletteSink {
         load();
         String base = name == null || name.isBlank() ? "Palette" : name.strip();
         String candidate = base;
-        for (int n = 2; taken(candidate); n++) candidate = base + " (" + n + ")";
+        for (int n = 2; used(candidate); n++) candidate = base + " (" + n + ")";
         return candidate;
     }
 
-    private boolean taken(String name) {
+    private boolean used(String name) {
         for (Palette p : own) if (p.name.equalsIgnoreCase(name)) return true;
+        return false;
+    }
+
+    public boolean taken(String name, @Nullable Palette except) {
+        load();
+        for (Palette p : own) if (p != except && p.name.strip().equalsIgnoreCase(name.strip())) return true;
         return false;
     }
 

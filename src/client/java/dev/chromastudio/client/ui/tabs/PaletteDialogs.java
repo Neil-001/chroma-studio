@@ -45,6 +45,7 @@ import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.StringSplitter;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -53,6 +54,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.CommonComponents;
@@ -85,42 +87,91 @@ final class PaletteDialogs {
     }
 
     static final class Name extends Dialog {
+        private static final int FIELD_Y = 12, WIDTH = 280;
         private final String initial;
         private final Component action;
+        private final Predicate<String> taken;
         private final Consumer<String> done;
         private EditBox field;
         private String text;
+        private boolean warned;
+        private final boolean messageBelow;
+        private int messageW;
 
-        Name(Component title, Component action, String initial, Consumer<String> done) {
-            super(title, 200, 70);
+        Name(Component title, Component action, String initial, Predicate<String> taken, Consumer<String> done) {
+            this(title, action, initial, taken, done, messageBelow(action));
+        }
+
+        private Name(Component title, Component action, String initial, Predicate<String> taken, Consumer<String> done, boolean messageBelow) {
+            super(title, WIDTH, messageBelow ? 81 : 70);
+            this.messageBelow = messageBelow;
             this.initial = initial;
             this.action = action;
+            this.taken = taken;
             this.done = done;
             text = initial;
+        }
+
+        private static int buttonW(Component action) { return Math.max(Widgets.buttonWidth(action), Widgets.buttonWidth(CommonComponents.GUI_CANCEL)); }
+
+        private static boolean messageBelow(Component action) {
+            int beside = WIDTH - 10 - 2 * buttonW(action) - 8;
+            return Math.max(Widgets.tw(tr("palettes.chromastudio.name_needed")), Widgets.tw(tr("palettes.chromastudio.name_taken"))) > beside;
         }
 
         @Override
         protected void build(Bounds in) {
             boolean first = field == null;
-            field = widgets.search(in.x(), in.y(), in.w(), tr("palettes.chromastudio.name_hint"), s -> text = s);
+            field = widgets.field(in.x(), in.y() + FIELD_Y, in.w(), text, s -> {
+                text = s;
+                warned = false;
+            });
             field.setMaxLength(Integer.MAX_VALUE);
+            field.setInvertHighlightedTextColor(false);
             field.setValue(text);
             if (first) {
+                field.moveCursorToStart(true);
                 field.setFocused(true);
                 widgets.setFocused(field);
             }
-            int w = Widgets.buttonWidth(action);
-            widgets.button(in.right() - w, in.y() + PanelTab.ROW, action, this::confirm);
+            int y = in.bottom() - Widgets.H, w = buttonW(action);
+            int cancelX = in.right() - 2 * w - 4;
+            widgets.button(in.right() - w, y, w, action, this::confirm);
+            widgets.button(cancelX, y, w, CommonComponents.GUI_CANCEL, this::close);
+            messageW = messageBelow ? in.w() : cancelX - 4 - in.x();
+        }
+
+        @Override
+        boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
+            boolean handled = super.mouseClicked(e, doubled);
+            if (tab.dialogOpen() && problem() != null) widgets.setFocused(field);
+            return handled;
+        }
+
+        @Override
+        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+            g.text(PanelTab.font(), tr("palettes.chromastudio.name_hint"), in.x(), in.y() + 1, Theme.DIM, false);
+            Component problem = problem();
+            if (problem == null) return;
+            g.outline(field.getX() - 1, field.getY() - 1, field.getWidth() + 2, field.getHeight() + 2, Theme.BAD);
+            int y = messageBelow ? field.getBottom() + 4 : in.bottom() - Widgets.H + 4;
+            g.text(PanelTab.font(), PanelTab.fit(problem.getString(), messageW), in.x(), y, Theme.BAD, false);
+            if (Widgets.tw(problem) > messageW && mouseX >= in.x() && mouseX < in.x() + messageW && mouseY >= y && mouseY < y + 9)
+                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), problem), mouseX, mouseY);
+        }
+
+        private @Nullable Component problem() {
+            String name = text.strip();
+            if (name.isEmpty()) return warned ? tr("palettes.chromastudio.name_needed") : null;
+            return !text.equals(initial) && taken.test(name) ? tr("palettes.chromastudio.name_taken") : null;
         }
 
         @Override
         protected boolean confirm() {
-            if (text.isBlank()) {
-                status(tr("palettes.chromastudio.name_needed"), Theme.FAIR);
-                return true;
-            }
+            warned = true;
+            if (problem() != null) return true;
             close();
-            done.accept(text.strip());
+            if (!text.equals(initial)) done.accept(text.strip());
             return true;
         }
     }
