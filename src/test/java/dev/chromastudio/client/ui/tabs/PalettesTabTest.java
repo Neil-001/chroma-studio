@@ -18,5 +18,7 @@ class PalettesTabTest {
         assertArrayEquals(new int[] {34, 33, 33}, PalettesTab.shares(weights(1, 1, 1)));
         assertArrayEquals(new int[] {100}, PalettesTab.shares(weights(7)));
         assertArrayEquals(new int[] {}, PalettesTab.shares(List.of()));
+        assertArrayEquals(new int[] {100}, PalettesTab.shares(weights(Integer.MAX_VALUE)));
+        assertArrayEquals(new int[] {50, 50}, PalettesTab.shares(weights(Integer.MAX_VALUE, Integer.MAX_VALUE)));
     }
 }

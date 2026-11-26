@@ -29,6 +29,7 @@ import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -63,6 +64,8 @@ public final class PalettesTab extends PanelTab {
     private Bounds entriesArea, entriesWell, listWell, titleArea;
     private int weightX = -1, shareRight, labelX, tagsY, notesY;
     private SmallButton copyToEdit;
+    private EditBox tagsField, notesField;
+    private int[] shownShares = new int[0];
     private Panel panel = Panel.ENTRIES;
     private AnalysePanel analyse;
     private DioramaPanel diorama;
@@ -295,13 +298,17 @@ public final class PalettesTab extends PanelTab {
         EditBox tags = widgets.search(fieldX, tagsY, fieldW, hint("palettes.chromastudio.tags.hint", fieldW), s -> {
             if (loading || p == null || p.preset) return;
             p.tags = new ArrayList<>(Arrays.stream(s.split(",")).map(String::strip).filter(t -> !t.isEmpty()).toList());
+            tagsField.setTooltip(Tooltip.create(whole(s, tr("palettes.chromastudio.tags.tip"))));
             touch();
         });
         EditBox notes = widgets.search(fieldX, notesY, fieldW, hint("palettes.chromastudio.notes.hint", fieldW), s -> {
             if (loading || p == null || p.preset) return;
             p.notes = s;
+            notesField.setTooltip(Tooltip.create(whole(s, tr("palettes.chromastudio.notes.tip"))));
             touch();
         });
+        tagsField = tags;
+        notesField = notes;
         tags.setMaxLength(Integer.MAX_VALUE);
         notes.setMaxLength(Integer.MAX_VALUE);
         if (p != null) {
@@ -338,7 +345,7 @@ public final class PalettesTab extends PanelTab {
         for (int i = 0; i < n; i++) {
             int index = i, y = entriesArea.y() + i * ENTRY_ROW;
             PaletteEntry e = p.entries.get(i);
-            rows.add(new EntryCell(cellX, y, spinX - 3 - cellX, ENTRY_ROW - 1, p, index, i % 2 == 1 ? left : 0, right, shareRight));
+            rows.add(new EntryCell(cellX, y, spinX - 3 - cellX, ENTRY_ROW - 1, p, index, i % 2 == 1 ? left : 0, right, shareRight, () -> shownShares));
             IconButton up = rows.add(new IconButton(left + 1, y + 1, 10, 8, IconButton.Glyph.UP, tr("palettes.chromastudio.entry.up"), () -> move(index, -1)));
             IconButton down = rows.add(new IconButton(left + 1, y + 9, 10, 8, IconButton.Glyph.DOWN, tr("palettes.chromastudio.entry.down"), () -> move(index, 1)));
             if (p.preset) rows.add(new EntryCell.Weight(spinX, y, WEIGHT_W, ENTRY_ROW - 1, e.weight(), fixed));
@@ -394,18 +401,20 @@ public final class PalettesTab extends PanelTab {
     private static final class EntryCell extends AbstractWidget {
         private final Palette palette;
         private final int index, stripeFrom, stripeTo, shareRight;
+        private final Supplier<int[]> shares;
         private final PaletteEntry entry;
         private final ItemStack icon;
         private final Color colour;
         private final boolean known;
 
-        EntryCell(int x, int y, int w, int h, Palette palette, int index, int stripeFrom, int stripeTo, int shareRight) {
+        EntryCell(int x, int y, int w, int h, Palette palette, int index, int stripeFrom, int stripeTo, int shareRight, Supplier<int[]> shares) {
             super(x, y, w, h, PaletteBlocks.name(palette.entries.get(index)));
             this.palette = palette;
             this.index = index;
             this.stripeFrom = stripeFrom;
             this.stripeTo = stripeTo;
             this.shareRight = shareRight;
+            this.shares = shares;
             entry = palette.entries.get(index);
             icon = PaletteBlocks.icon(entry);
             colour = PaletteBlocks.colour(entry);
@@ -418,8 +427,9 @@ public final class PalettesTab extends PanelTab {
         protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
             int x = getX(), y = getY();
             if (stripeFrom > 0) g.fill(stripeFrom, y, stripeTo, y + ENTRY_ROW, Theme.PANEL);
-            if (index < palette.entries.size()) {
-                String share = shares(palette.entries)[index] + "%";
+            int[] all = shares.get();
+            if (index < all.length) {
+                String share = all[index] + "%";
                 g.text(font(), share, shareRight - font().width(share), y + 5, DIM, false);
             }
             Widgets.blockIcon(g, icon, x, y + 1);
@@ -456,11 +466,12 @@ public final class PalettesTab extends PanelTab {
     }
 
     static int[] shares(List<PaletteEntry> entries) {
-        int total = Math.max(1, entries.stream().mapToInt(PaletteEntry::weight).sum()), left = 100;
+        long total = Math.max(1, entries.stream().mapToLong(PaletteEntry::weight).sum());
+        int left = 100;
         int[] shares = new int[entries.size()];
         Integer[] order = new Integer[shares.length];
         for (int i = 0; i < shares.length; i++) {
-            shares[i] = 100 * entries.get(i).weight() / total;
+            shares[i] = (int) (100L * entries.get(i).weight() / total);
             left -= shares[i];
             order[i] = i;
         }
@@ -563,7 +574,7 @@ public final class PalettesTab extends PanelTab {
             right -= countW + 10;
         }
         int room = right - x;
-        int badgeW = badge.isEmpty() || nameW + 4 + font().width(badge) + 6 > room ? 0 : font().width(badge) + 6;
+        int badgeW = badge.isEmpty() || Math.min(nameW, MIN_NAME_W) + 4 + font().width(badge) + 6 > room ? 0 : font().width(badge) + 6;
         String name = fit(full, room - (badgeW > 0 ? badgeW + 4 : 0));
         g.text(font(), name, x, y, TEXT, false);
         if (badgeW == 0) return;
@@ -580,8 +591,9 @@ public final class PalettesTab extends PanelTab {
     protected void drawOver(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {
         if (panel != Panel.ENTRIES) return;
         boolean inside = entriesArea.contains(mouseX, mouseY);
-        rows.render(g, inside ? mouseX : -1, inside ? mouseY : -1, delta);
         Palette p = selected();
+        shownShares = p == null ? new int[0] : shares(p.entries);
+        rows.render(g, inside ? mouseX : -1, inside ? mouseY : -1, delta);
         if (p != null && p.entries.size() * ENTRY_ROW - rows.scrolled() > entriesArea.h())
             g.fillGradient(entriesArea.x(), entriesArea.bottom() - 6, entriesArea.right() - 6, entriesArea.bottom(), WELL & 0xFFFFFF, WELL);
     }
