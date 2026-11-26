@@ -27,9 +27,9 @@ final class ColourDialog extends Popup {
     private final ColourPicker picker;
     private final Color start;
     private final Consumer<Color> onChange;
-    private final EditBox[] fields = new EditBox[3];
-    private final boolean[] bad = new boolean[3];
-    private Bounds compare;
+    private final EditBox[] fields = new EditBox[NAMES.length];
+    private final boolean[] bad = new boolean[NAMES.length];
+    private Bounds compare, old;
     private Button done;
     private boolean filling;
     private int hint;
@@ -52,7 +52,7 @@ final class ColourDialog extends Popup {
         int side = Math.min(in.h(), in.w() / 2 - HUE_W - 2 - GAP);
         picker.layout(new Bounds(in.x(), in.y(), side + 2 + HUE_W, side), HUE_W);
         int cx = in.x() + side + 2 + HUE_W + GAP, fx = cx + LABEL_W, fw = in.right() - fx;
-        String[] values = {model.hex(), model.rgbText(), model.hsvText()};
+        String[] values = values();
         List<Predicate<String>> takes = List.of(model::typeHex, model::typeRgb, model::typeHsv);
         for (int i = 0; i < fields.length; i++) {
             int at = i;
@@ -61,12 +61,18 @@ final class ColourDialog extends Popup {
             bad[i] = false;
         }
         compare = new Bounds(cx, in.y() + 3 * ROW + 2, in.right() - cx, Widgets.H);
+        old = new Bounds(compare.x(), compare.y(), compare.w() / 2, compare.h());
         Component done = Component.translatable("gui.done"), cancel = Component.translatable("gui.cancel");
         int y = in.bottom() - Widgets.H, doneW = Widgets.buttonWidth(done) + 14, cancelW = Widgets.buttonWidth(cancel) + 6;
         this.done = widgets.button(in.right() - doneW, y, doneW, done, this::close);
         widgets.button(in.right() - doneW - 2 - cancelW, y, cancelW, cancel, this::cancel);
         widgets.setFocused(fields[0]);
         showBad();
+    }
+
+    private String[] values() {
+        TargetModel model = picker.model;
+        return new String[] {model.hex(), model.rgbText(), model.hsvText()};
     }
 
     private int firstBad() {
@@ -89,8 +95,7 @@ final class ColourDialog extends Popup {
     }
 
     private void picked(int except) {
-        TargetModel model = picker.model;
-        String[] values = {model.hex(), model.rgbText(), model.hsvText()};
+        String[] values = values();
         filling = true;
         for (int i = 0; i < fields.length; i++) {
             if (i == except) continue;
@@ -99,7 +104,7 @@ final class ColourDialog extends Popup {
         }
         filling = false;
         showBad();
-        onChange.accept(model.colour());
+        onChange.accept(picker.model.colour());
     }
 
     private void cancel() {
@@ -123,14 +128,11 @@ final class ColourDialog extends Popup {
         int wrong = firstBad();
         Component text = wrong >= 0 ? tr(NAMES[wrong] + ".bad") : tr(hint == KEYS ? "keys.tip" : NAMES[hint] + ".tip");
         g.textWithWordWrap(font, text, labelX, compare.bottom() + 4, in.right() - labelX, wrong >= 0 ? Theme.FIELD_BAD : Theme.FIXED_SOFT, false);
-        int half = compare.w() / 2;
-        swatch(g, font, compare.x(), half, start.rgb(), tr("old"));
-        swatch(g, font, compare.x() + half, compare.w() - half, picker.model.colour().rgb(), tr("new"));
-        if (wrong >= 0) g.fill(compare.x() + half, compare.y(), compare.right(), compare.bottom(), 0xB0000000 | Theme.FIXED_PANEL & 0xFFFFFF);
-        if (old().contains(mouseX, mouseY)) g.outline(compare.x(), compare.y(), half, compare.h(), 0xFFFFFFFF);
+        swatch(g, font, old.x(), old.w(), start.rgb(), tr("old"));
+        swatch(g, font, old.right(), compare.w() - old.w(), picker.model.colour().rgb(), tr("new"));
+        if (wrong >= 0) g.fill(old.right(), compare.y(), compare.right(), compare.bottom(), 0xB0000000 | Theme.FIXED_PANEL & 0xFFFFFF);
+        if (old.contains(mouseX, mouseY)) g.outline(old.x(), old.y(), old.w(), old.h(), 0xFFFFFFFF);
     }
-
-    private Bounds old() { return new Bounds(compare.x(), compare.y(), compare.w() / 2, compare.h()); }
 
     private void swatch(GuiGraphicsExtractor g, Font font, int x, int w, int rgb, Component label) {
         Widgets.swatch(g, x, compare.y(), w, compare.h(), rgb);
@@ -146,7 +148,7 @@ final class ColourDialog extends Popup {
             hint = KEYS;
             return true;
         }
-        if (old().contains(e.x(), e.y())) {
+        if (old.contains(e.x(), e.y())) {
             picker.model.setColour(start);
             picked(-1);
             return true;
