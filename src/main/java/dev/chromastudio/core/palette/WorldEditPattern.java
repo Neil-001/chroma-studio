@@ -8,24 +8,52 @@ public final class WorldEditPattern {
 
     private WorldEditPattern() {}
 
+    public enum Kind { COMMAND, FROM, SHARE, BLOCK, SEPARATOR }
+
+    public record Piece(Kind kind, String text) {}
+
     public static String of(Palette p) {
-        List<PaletteEntry> entries = p.entries;
-        boolean even = entries.stream().allMatch(e -> e.weight() == 1);
-        int[] shares = even ? null : entries.size() > 100 ? weights(entries) : percentages(entries);
-        List<String> parts = new ArrayList<>(entries.size());
-        for (int i = 0; i < entries.size(); i++) {
-            String block = entries.get(i).shortIdWithProperties();
-            parts.add(shares == null ? block : shares[i] + "%" + block);
-        }
-        return String.join(",", parts);
+        StringBuilder out = new StringBuilder();
+        for (Piece piece : pattern(p)) out.append(piece.text());
+        return out.toString();
     }
 
     public static String command(String which, Palette p, String replaceFrom) {
+        StringBuilder out = new StringBuilder();
+        for (Piece piece : pieces(which, p, replaceFrom)) out.append(piece.text());
+        return out.toString();
+    }
+
+    public static List<Piece> pieces(String which, Palette p, String replaceFrom) {
         if (which == null || !COMMANDS.contains(which)) throw new IllegalArgumentException("Unknown WorldEdit command: " + which);
         if (p.entries.isEmpty()) throw new IllegalArgumentException("The palette is empty");
-        if (!which.equals("replace")) return "//" + which + " " + of(p);
-        if (replaceFrom == null || replaceFrom.isBlank()) throw new IllegalArgumentException("Replace needs the blocks to replace");
-        return "//replace " + replaceFrom.strip() + " " + of(p);
+        List<Piece> out = new ArrayList<>();
+        out.add(new Piece(Kind.COMMAND, "//" + which));
+        out.add(new Piece(Kind.SEPARATOR, " "));
+        if (which.equals("replace")) {
+            if (replaceFrom == null || replaceFrom.isBlank()) throw new IllegalArgumentException("Replace needs the blocks to replace");
+            String[] blocks = replaceFrom.strip().split(",", -1);
+            for (int i = 0; i < blocks.length; i++) {
+                if (i > 0) out.add(new Piece(Kind.SEPARATOR, ","));
+                if (!blocks[i].isEmpty()) out.add(new Piece(Kind.FROM, blocks[i]));
+            }
+            out.add(new Piece(Kind.SEPARATOR, " "));
+        }
+        out.addAll(pattern(p));
+        return out;
+    }
+
+    private static List<Piece> pattern(Palette p) {
+        List<PaletteEntry> entries = p.entries;
+        boolean even = entries.stream().allMatch(e -> e.weight() == 1);
+        int[] shares = even ? null : entries.size() > 100 ? weights(entries) : percentages(entries);
+        List<Piece> out = new ArrayList<>();
+        for (int i = 0; i < entries.size(); i++) {
+            if (i > 0) out.add(new Piece(Kind.SEPARATOR, ","));
+            if (shares != null) out.add(new Piece(Kind.SHARE, shares[i] + "%"));
+            out.add(new Piece(Kind.BLOCK, entries.get(i).shortIdWithProperties()));
+        }
+        return out;
     }
 
     private static int[] weights(List<PaletteEntry> entries) {
