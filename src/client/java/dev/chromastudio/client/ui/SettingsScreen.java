@@ -535,7 +535,7 @@ public final class SettingsScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         if (popup != null) return popup.mouseClicked(event, doubled);
         if (list.mouseClicked(event, doubled)) {
-            setFocused(null);
+            setFocused(list.getFocused() instanceof EditBox ? list : null);
             return true;
         }
         boolean hit = super.mouseClicked(event, doubled);
