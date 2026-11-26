@@ -54,6 +54,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.CommonComponents;
@@ -86,7 +87,7 @@ final class PaletteDialogs {
     }
 
     static final class Name extends Dialog {
-        private static final int FIELD_Y = 12;
+        private static final int FIELD_Y = 12, WIDTH = 280;
         private final String initial;
         private final Component action;
         private final Predicate<String> taken;
@@ -94,15 +95,28 @@ final class PaletteDialogs {
         private EditBox field;
         private String text;
         private boolean warned;
+        private final boolean messageBelow;
         private int messageW;
 
         Name(Component title, Component action, String initial, Predicate<String> taken, Consumer<String> done) {
-            super(title, 280, 70);
+            this(title, action, initial, taken, done, messageBelow(action));
+        }
+
+        private Name(Component title, Component action, String initial, Predicate<String> taken, Consumer<String> done, boolean messageBelow) {
+            super(title, WIDTH, messageBelow ? 81 : 70);
+            this.messageBelow = messageBelow;
             this.initial = initial;
             this.action = action;
             this.taken = taken;
             this.done = done;
             text = initial;
+        }
+
+        private static int buttonW(Component action) { return Math.max(Widgets.buttonWidth(action), Widgets.buttonWidth(CommonComponents.GUI_CANCEL)); }
+
+        private static boolean messageBelow(Component action) {
+            int beside = WIDTH - 10 - 2 * buttonW(action) - 8;
+            return Math.max(Widgets.tw(tr("palettes.chromastudio.name_needed")), Widgets.tw(tr("palettes.chromastudio.name_taken"))) > beside;
         }
 
         @Override
@@ -120,11 +134,18 @@ final class PaletteDialogs {
                 field.setFocused(true);
                 widgets.setFocused(field);
             }
-            int y = in.bottom() - Widgets.H, w = Math.max(Widgets.buttonWidth(action), Widgets.buttonWidth(CommonComponents.GUI_CANCEL));
+            int y = in.bottom() - Widgets.H, w = buttonW(action);
             int cancelX = in.right() - 2 * w - 4;
             widgets.button(in.right() - w, y, w, action, this::confirm);
             widgets.button(cancelX, y, w, CommonComponents.GUI_CANCEL, this::close);
-            messageW = cancelX - 4 - in.x();
+            messageW = messageBelow ? in.w() : cancelX - 4 - in.x();
+        }
+
+        @Override
+        boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
+            boolean handled = super.mouseClicked(e, doubled);
+            if (problem() != null) widgets.setFocused(field);
+            return handled;
         }
 
         @Override
@@ -133,13 +154,14 @@ final class PaletteDialogs {
             Component problem = problem();
             if (problem == null) return;
             g.outline(field.getX() - 1, field.getY() - 1, field.getWidth() + 2, field.getHeight() + 2, Theme.BAD);
-            g.text(PanelTab.font(), PanelTab.fit(problem.getString(), messageW), in.x(), in.bottom() - Widgets.H + 4, Theme.BAD, false);
+            int y = messageBelow ? field.getBottom() + 4 : in.bottom() - Widgets.H + 4;
+            g.text(PanelTab.font(), PanelTab.fit(problem.getString(), messageW), in.x(), y, Theme.BAD, false);
         }
 
         private @Nullable Component problem() {
             String name = text.strip();
             if (name.isEmpty()) return warned ? tr("palettes.chromastudio.name_needed") : null;
-            return !name.equalsIgnoreCase(initial) && taken.test(name) ? tr("palettes.chromastudio.name_taken") : null;
+            return !text.equals(initial) && taken.test(name) ? tr("palettes.chromastudio.name_taken") : null;
         }
 
         @Override
@@ -147,7 +169,7 @@ final class PaletteDialogs {
             warned = true;
             if (problem() != null) return true;
             close();
-            if (!text.strip().equals(initial)) done.accept(text.strip());
+            if (!text.equals(initial)) done.accept(text.strip());
             return true;
         }
     }

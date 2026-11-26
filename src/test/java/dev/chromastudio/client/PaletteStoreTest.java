@@ -91,6 +91,18 @@ class PaletteStoreTest {
     }
 
     @Test
+    void aNameIsTakenByAnotherPaletteIgnoringCase() {
+        PaletteStore store = new PaletteStore(dir);
+        Palette wall = store.create("Wall", STONES);
+        assertTrue(store.taken(" wall ", null));
+        assertFalse(store.taken("WALL", wall));
+        Palette other = store.create("Tower", STONES);
+        assertTrue(store.rename(other, "wall"));
+        assertTrue(store.taken("WALL", wall));
+        assertFalse(store.taken("Gate", null));
+    }
+
+    @Test
     void fileNamesAreSafe() {
         assertEquals("castle-walls", PaletteStore.fileBase("  Castle / Walls?  "));
         assertEquals("palette", PaletteStore.fileBase("../.."));
