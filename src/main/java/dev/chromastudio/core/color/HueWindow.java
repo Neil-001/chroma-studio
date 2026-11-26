@@ -14,4 +14,9 @@ public record HueWindow(double start, double width) {
     }
 
     public double offset(double hue) { return wrap(hue - start); }
+
+    public double offset(double hue, double lead) {
+        double l = Math.min(lead, (1 - width) / 2);
+        return wrap(hue - start + l) - l;
+    }
 }

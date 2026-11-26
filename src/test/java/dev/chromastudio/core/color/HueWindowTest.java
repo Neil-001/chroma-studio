@@ -47,4 +47,28 @@ class HueWindowTest {
         assertTrue(w.offset(0.5) > w.width());
         assertEquals(0.5, w.offset(0) / w.width(), 1e-12);
     }
+
+    @Test
+    void aLeadNeverPullsAVisibleHueOffTheRight() {
+        HueWindow w = new HueWindow(0, 0.99);
+        double hue = 356.2 / 360;
+        assertEquals(hue, w.offset(hue, 0.02), 1e-12);
+        assertTrue(w.offset(hue, 0.02) <= w.width());
+    }
+
+    @Test
+    void aLeadKeepsAHueJustPastTheLeftEdgeOnTheLeft() {
+        HueWindow w = new HueWindow(0.5, 0.1);
+        assertEquals(-0.01, w.offset(0.49, 0.02), 1e-12);
+        assertEquals(0.89, w.offset(0.39, 0.02), 1e-12);
+    }
+
+    @Test
+    void theFullCircleHasNoLead() {
+        HueWindow w = new HueWindow(0.25, 1);
+        for (int d = 0; d < 360; d++) {
+            double o = w.offset(d / 360.0, 0.05);
+            assertTrue(o >= 0 && o < 1, d + " " + o);
+        }
+    }
 }

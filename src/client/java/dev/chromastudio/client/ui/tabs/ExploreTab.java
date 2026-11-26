@@ -52,7 +52,6 @@ public final class ExploreTab extends Tab {
     private Bounds area = new Bounds(0, 0, 0, 0), plot = area;
     private final Widgets controls = new Widgets();
     private AbstractWidget clear, reset, resetChroma;
-    private EditBox chromaMaxField;
     private List<Dot> dots = List.of();
     private int ringCount;
     private int seenRevision = -1, seenVersion = -1;
@@ -83,14 +82,13 @@ public final class ExploreTab extends Tab {
         Component to = tr("chroma.to");
         controls.label(x, y + 4, to, DIM);
         x += Widgets.tw(to) + GAP;
-        EditBox max = controls.spin(x, y, 50, f.chromaMax, 0.02, 0, TargetModel.CHROMA_MAX, false, v -> {
+        EditBox max = controls.spin(x, y, 50, f.chromaMax, 0.02, 0, TargetModel.CHROMA_MAX, false, TargetModel.CHROMA_MAX, v -> {
             f.chromaMax = v;
             MatchState.changed();
         });
         max.setTooltip(Tooltip.create(tr("chroma.max.tip")));
         max.setHint(tr("no_limit"));
         if (f.chromaMax >= TargetModel.CHROMA_MAX) max.setValue("");
-        chromaMaxField = max;
         x += 50 + GAP;
         Component resetLabel = tr("reset_view");
         reset = controls.button(x, y, resetLabel, () -> {
@@ -133,10 +131,6 @@ public final class ExploreTab extends Tab {
             reset.active = moved;
             reset.setTooltip(moved ? null : Tooltip.create(tr("reset_view.none")));
         }
-        if (chromaMaxField != null && chromaMaxField.getValue().isBlank() && MatchState.filters().chromaMax < TargetModel.CHROMA_MAX) {
-            MatchState.filters().chromaMax = TargetModel.CHROMA_MAX;
-            MatchState.changed();
-        }
         if (resetChroma != null) {
             MatchFilters f = MatchState.filters();
             resetChroma.visible = index.ready() && dots.isEmpty() && chromaLimited(f);
@@ -172,8 +166,7 @@ public final class ExploreTab extends Tab {
 
     private int screenX(double hue) {
         HueWindow w = window();
-        double margin = zoom > 1 ? (double) EDGE / spanX() * w.width() : 0;
-        return plot.x() + INSET + (int) Math.round((w.offset(hue + margin) - margin) / w.width() * spanX());
+        return plot.x() + INSET + (int) Math.round(w.offset(hue, (double) EDGE / spanX() * w.width()) / w.width() * spanX());
     }
 
     private int screenY(double lightness) { return plot.y() + INSET + (int) Math.round((0.5 - (lightness - centreY) * zoom) * spanY()); }
@@ -228,14 +221,17 @@ public final class ExploreTab extends Tab {
         var window = Minecraft.getInstance().getWindow();
         int screenW = window.getGuiScaledWidth(), screenH = window.getGuiScaledHeight();
         int x = mouseX + TIP_OFFSET + ICON_BOX + 2 * TIP_MARGIN, ix = mouseX + TIP_OFFSET;
-        if (x + w + TIP_MARGIN > screenW) {
+        if (x + w + TIP_MARGIN > screenW || ix + ICON_BOX > area.right()) {
             x = Math.max(ICON_BOX + 3 * TIP_MARGIN, mouseX - TIP_OFFSET - TIP_MARGIN - w);
             ix = x - 2 * TIP_MARGIN - ICON_BOX;
         }
-        int y = Math.clamp(mouseY - TIP_OFFSET, TIP_MARGIN, Math.max(TIP_MARGIN, screenH - h - TIP_MARGIN)), iy = y - 3;
-        g.fill(ix, iy, ix + ICON_BOX, iy + ICON_BOX, Theme.sink(0xE0));
-        g.outline(ix, iy, ICON_BOX, ICON_BOX, BORDER);
-        Widgets.blockIcon(g, e.block(), ix + 1, iy + 1);
+        int y = Math.clamp(mouseY - TIP_OFFSET, TIP_MARGIN, Math.max(TIP_MARGIN, screenH - h - TIP_MARGIN));
+        int iy = Math.clamp(y - 3, area.y(), Math.max(area.y(), area.bottom() - ICON_BOX));
+        if (ix >= area.x() && ix + ICON_BOX <= area.right()) {
+            g.fill(ix, iy, ix + ICON_BOX, iy + ICON_BOX, Theme.sink(0xE0));
+            g.outline(ix, iy, ICON_BOX, ICON_BOX, BORDER);
+            Widgets.blockIcon(g, e.block(), ix + 1, iy + 1);
+        }
         int tx = x, ty = y;
         g.setTooltipForNextFrame(font, tip.stream().map(Component::getVisualOrderText).toList(), (_, _, _, _, _, _) -> new Vector2i(tx, ty), mouseX, mouseY, false);
     }
@@ -295,9 +291,8 @@ public final class ExploreTab extends Tab {
             return null;
         }
         ticks(g, font, opacity);
-        Dot nearest = null;
-        int best = REACH * REACH + 1;
-        boolean ringing = ringCount > 0, hoverable = p.contains(mouseX, mouseY) && !(zoom > 1 && mini().contains(mouseX, mouseY));
+        Dot nearest = at(mouseX, mouseY);
+        boolean ringing = ringCount > 0;
         g.enableScissor(p.x(), p.y(), p.right(), p.bottom());
         for (int pass = 0; pass < 2; pass++) {
             for (Dot d : dots) {
@@ -311,11 +306,6 @@ public final class ExploreTab extends Tab {
                     g.outline(x0 - 2, y0 - 2, s + 4, s + 4, ARGB.multiplyAlpha(Theme.STRONG, opacity));
                     g.outline(x0 - 3, y0 - 3, s + 6, s + 6, ARGB.multiplyAlpha(Theme.sink(0xC0), opacity));
                 }
-                int dx = x - mouseX, dy = y - mouseY, far = dx * dx + dy * dy;
-                if (far < best && hoverable) {
-                    best = far;
-                    nearest = d;
-                }
             }
         }
         if (nearest != null) {
@@ -325,7 +315,7 @@ public final class ExploreTab extends Tab {
             g.outline(x0 - 3, y0 - 3, s + 6, s + 6, Theme.sink(0xFF));
         }
         g.disableScissor();
-        if (zoom > 1) minimap(g, opacity);
+        if (miniShown()) minimap(g, opacity);
         double half = 0.5 / zoom;
         label(g, font, tr("range.lightness", Math.round((centreY - half) * 100), Math.round((centreY + half) * 100)), p.x() + 2, p.y() + 2, opacity);
         Component hue = hueLabel();
@@ -393,8 +383,10 @@ public final class ExploreTab extends Tab {
         g.text(font, text, x, y, ARGB.multiplyAlpha(DIM, opacity), false);
     }
 
+    private boolean miniShown() { return zoom > 1 && !dots.isEmpty(); }
+
     private Dot at(double mx, double my) {
-        if (!plot.contains(mx, my)) return null;
+        if (!plot.contains(mx, my) || miniShown() && mini().contains(mx, my)) return null;
         Dot nearest = null;
         double best = REACH * REACH + 1;
         for (Dot d : dots) {
@@ -412,7 +404,7 @@ public final class ExploreTab extends Tab {
         if (controls.mouseClicked(e, doubled)) return true;
         if (e.button() != InputConstants.MOUSE_BUTTON_LEFT || !plot.contains(e.x(), e.y())) return false;
         Bounds m = mini();
-        if (zoom > 1 && m.contains(e.x(), e.y())) {
+        if (miniShown() && m.contains(e.x(), e.y())) {
             centreX = HueWindow.wrap((e.x() - m.x() - 1) / (m.w() - 2));
             centreY = 1 - (e.y() - m.y() - 1) / (m.h() - 2);
             confine();
