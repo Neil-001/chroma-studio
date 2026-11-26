@@ -185,7 +185,9 @@ public final class Widgets extends AbstractContainerEventHandler {
 
     private int maxScroll() { return viewport == null ? 0 : Math.max(0, contentHeight - viewport.h()); }
 
-    private void scrollTo(int to) {
+    public int scrolled() { return scroll; }
+
+    public void scrollTo(int to) {
         scroll = Math.max(0, Math.min(maxScroll(), to));
         for (AbstractWidget w : children) w.setY(baseY.get(w) - scroll);
     }

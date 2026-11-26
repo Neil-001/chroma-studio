@@ -219,6 +219,8 @@ public final class ModSettings {
         return values;
     }
 
+    public static boolean isDefault(String name) { return get(name).equals(DEFAULTS.get(name)); }
+
     public static void restore(Map<String, Object> snapshot) { FIELDS.keySet().forEach(name -> put(name, snapshot.get(name))); }
 
     public static void restore(String group, Map<String, Object> snapshot) { GROUPS.get(group).forEach(name -> put(name, snapshot.get(name))); }

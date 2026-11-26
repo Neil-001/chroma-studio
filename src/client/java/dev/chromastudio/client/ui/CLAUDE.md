@@ -18,3 +18,4 @@
 - `ColourDialog` draws its frame in `Theme.FIXED_*` because it previews the custom colour live, and a very light or dark pick would otherwise make the editor itself hard to read. Escape and Cancel restore the starting colour, and a click outside does nothing, so only Done keeps a change. Its third field is HSV so the numbers match the square.
 - `ColourDialog` and `MatchTab.typed` ignore text they wrote themselves. Rounding then reading it back would shift the colour.
 - Read `Theme` colours while drawing and call `Theme.sync` at the start of a frame. `Theme.LIGHT_FROM` is the OKLab lightness where black and white have equal contrast.
+- `SettingsScreen` lights a group's Reset only when a shown row differs from its default. Window and brush memory, and `hotbarAxiom` without Axiom, still reset with their group but don't light the button or appear in the Reset all list, because the player can't see them.
