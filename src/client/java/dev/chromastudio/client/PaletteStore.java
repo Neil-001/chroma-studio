@@ -135,8 +135,13 @@ public final class PaletteStore implements PaletteSink {
         load();
         String base = name == null || name.isBlank() ? "Palette" : name.strip();
         String candidate = base;
-        for (int n = 2; taken(candidate, null); n++) candidate = base + " (" + n + ")";
+        for (int n = 2; used(candidate); n++) candidate = base + " (" + n + ")";
         return candidate;
+    }
+
+    private boolean used(String name) {
+        for (Palette p : own) if (p.name.equalsIgnoreCase(name)) return true;
+        return false;
     }
 
     public boolean taken(String name, @Nullable Palette except) {
