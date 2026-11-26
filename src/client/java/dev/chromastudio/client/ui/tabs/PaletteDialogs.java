@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.function.Consumer;
@@ -942,7 +943,7 @@ final class PaletteDialogs {
             Fitted next = fit(splitter, made.nextStep(), width - CALLOUT, NEXT_LINES);
             int left = (room - scope.height() - size.height() - next.height() - RULE) / 9;
             List<Fitted> details = new ArrayList<>();
-            for (Component d : details(made)) {
+            for (Component d : made.details()) {
                 if (left <= 0) {
                     details.add(new Fitted(List.of(), true));
                     break;
@@ -952,10 +953,6 @@ final class PaletteDialogs {
                 left -= f.lines().size();
             }
             return new Lines(scope, size, next, details, none);
-        }
-
-        private static List<Component> details(AxiomBridge.Script made) {
-            return made.details().stream().filter(d -> d != made.nextStep()).toList();
         }
 
         private void make() {
@@ -1016,7 +1013,7 @@ final class PaletteDialogs {
             widgets.cycler(x, y, w, null, List.of(Script.values()), script, s -> tr("axiom.chromastudio.script." + s.name().toLowerCase(Locale.ROOT)),
                     s -> { script = s; changed(); }, tr("axiom.chromastudio.script.tip"));
             y += PanelTab.ROW;
-            Palette from = from(palette) == null ? palette : from(palette);
+            Palette from = Objects.requireNonNullElse(from(palette), palette);
             Function<Palette, String> name = p -> p == palette ? tr("axiom.chromastudio.from.any").getString() : AxiomBridge.fromName(p);
             boolean fitted = Export.middle(name.apply(from), w - 10).equals(name.apply(from));
             var fromButton = widgets.cycler(x, y, w, null, fromChoices(), from, p -> Component.literal(Export.middle(name.apply(p), w - 10)),
@@ -1067,7 +1064,7 @@ final class PaletteDialogs {
                 if (!d.lines().isEmpty()) g.fill(in.x() + 2, detailsY + 3, in.x() + 4, detailsY + 5, Theme.DIM);
                 detailsY = drawLines(g, d, in.x() + BULLET, detailsY, Theme.DIM);
             }
-            if (lines.cut() && over(mouseX, mouseY, in.x(), y + RULE, in.w(), detailsY - y - RULE)) tip(g, details(made), mouseX, mouseY);
+            if (lines.cut() && over(mouseX, mouseY, in.x(), y + RULE, in.w(), detailsY - y - RULE)) tip(g, made.details(), mouseX, mouseY);
         }
 
         private static void cutTip(GuiGraphicsExtractor g, Fitted shown, List<Component> full, int x, int top, int w, int bottom, int mouseX, int mouseY) {
