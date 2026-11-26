@@ -146,19 +146,19 @@ final class SamplerTool implements CustomTool {
             for (String id : sample.removed()) sample.forEachOf(id, excluded::add);
             excludedStale = false;
         }
+        String showing = hovered;
+        hovered = null;
         if (level != null && level == sampledIn.get()) {
             sampled.render(rc, Vec3.ZERO, Effects.OUTLINE);
             excluded.render(rc, Vec3.ZERO, Effects.RED);
-        }
-        String showing = hovered;
-        hovered = null;
-        if (showing != null && level != null && level == sampledIn.get()) {
-            if (!showing.equals(focused)) {
-                focus.clear();
-                sample.forEachOf(showing, focus::add);
-                focused = showing;
+            if (showing != null) {
+                if (!showing.equals(focused)) {
+                    focus.clear();
+                    sample.forEachOf(showing, focus::add);
+                    focused = showing;
+                }
+                focus.render(rc, Vec3.ZERO, Effects.BLUE);
             }
-            focus.render(rc, Vec3.ZERO, Effects.BLUE);
         }
         if (pather != null) return;
         BlockHitResult hit = AxiomTools.tools.raycastBlock();
@@ -238,7 +238,7 @@ final class SamplerTool implements CustomTool {
                 changed();
             });
         }
-        table(ordered(kinds()), total);
+        table(kinds(), total);
         if (!sample.removed().isEmpty()) AxiomPanel.note(tr("axiom.chromastudio.sampler.out.note"));
     }
 
@@ -265,6 +265,11 @@ final class SamplerTool implements CustomTool {
         for (BuildSample.Row r : sample.rows()) out.add(new Kind(r.id(), r.count(), true));
         for (String id : sample.removed()) out.add(new Kind(id, sample.count(id), false));
         out.sort(Comparator.comparingInt(Kind::count).reversed().thenComparing(Kind::id));
+        if (pather == null) shownOrder = out.stream().map(Kind::id).toList();
+        else out.sort(Comparator.comparingInt(k -> {
+            int i = shownOrder.indexOf(k.id());
+            return i < 0 ? Integer.MAX_VALUE : i;
+        }));
         return out;
     }
 
@@ -303,19 +308,6 @@ final class SamplerTool implements CustomTool {
         return askedName == null ? receipt : receipt.withTip(tr("axiom.chromastudio.sampler.saved.renamed", askedName));
     }
 
-    private List<Kind> ordered(List<Kind> rows) {
-        if (pather == null) {
-            shownOrder = rows.stream().map(Kind::id).toList();
-            return rows;
-        }
-        List<Kind> out = new ArrayList<>(rows);
-        out.sort(Comparator.comparingInt(r -> {
-            int i = shownOrder.indexOf(r.id());
-            return i < 0 ? Integer.MAX_VALUE : i;
-        }));
-        return out;
-    }
-
     private void table(List<Kind> rows, int total) {
         float row = ImGui.getFrameHeightWithSpacing(), pad = ImGui.getStyle().getWindowPaddingY() * 2;
         float height = layout.grow(rows.size() * row + pad, Math.min(rows.size(), LEAST_ROWS) * row + pad);
@@ -338,6 +330,7 @@ final class SamplerTool implements CustomTool {
 
     private void row(Kind r, int i, int total) {
         String shown = shown(r.id());
+        String toggleTip = tr(r.in() ? "axiom.chromastudio.sampler.in.tip" : "axiom.chromastudio.sampler.out.tip");
         ImGui.tableNextRow();
         float padY = ImGui.getStyle().getFramePaddingY();
         ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImGui.getStyle().getFramePaddingX(), 0);
@@ -345,7 +338,7 @@ final class SamplerTool implements CustomTool {
         try {
             ImGui.tableNextColumn();
             ImGui.setCursorPosY(ImGui.getCursorPosY() + padY);
-            if (AxiomPanel.checkbox("##in" + i, r.in(), true, tr(r.in() ? "axiom.chromastudio.sampler.in.tip" : "axiom.chromastudio.sampler.out.tip"))) toggle(r);
+            if (AxiomPanel.checkbox("##in" + i, r.in(), true, toggleTip)) toggle(r);
             over = ImGui.isItemHovered();
             ImGui.tableNextColumn();
             Color c = PaletteBlocks.colour(new PaletteEntry(r.id(), ""));
@@ -366,14 +359,12 @@ final class SamplerTool implements CustomTool {
         if (ImGui.selectable(fitted + "##name" + i, false)) toggle(r);
         if (!r.in()) ImGui.popStyleColor();
         over |= ImGui.isItemHovered();
-        AxiomPanel.tip(fitted.equals(shown) ? tr(r.in() ? "axiom.chromastudio.sampler.in.tip" : "axiom.chromastudio.sampler.out.tip") : shown);
+        AxiomPanel.tip(fitted.equals(shown) ? toggleTip : shown);
         if (over) hovered = r.id();
-        ImGui.beginDisabled(!r.in());
         ImGui.tableNextColumn();
         right(Integer.toString(r.count()));
         ImGui.tableNextColumn();
         if (r.in()) right(tr("axiom.chromastudio.sampler.share", share(r.count(), total)));
-        ImGui.endDisabled();
     }
 
     private void toggle(Kind r) {
