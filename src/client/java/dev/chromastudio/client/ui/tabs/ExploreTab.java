@@ -224,6 +224,7 @@ public final class ExploreTab extends Tab {
         if (x + w + TIP_MARGIN > screenW || ix + ICON_BOX > area.right()) {
             x = Math.max(TIP_MARGIN, Math.min(screenW - TIP_MARGIN - w, Math.max(area.x() + ICON_BOX + 2 * TIP_MARGIN, mouseX - TIP_OFFSET - TIP_MARGIN - w)));
             ix = x - 2 * TIP_MARGIN - ICON_BOX;
+            if (ix < area.x()) ix = x + w + 2 * TIP_MARGIN;
         }
         int y = Math.clamp(mouseY - TIP_OFFSET, TIP_MARGIN, Math.max(TIP_MARGIN, screenH - h - TIP_MARGIN));
         int iy = Math.clamp(y - 3, area.y(), Math.max(area.y(), area.bottom() - ICON_BOX));
@@ -394,12 +395,12 @@ public final class ExploreTab extends Tab {
         int mx = (int) Math.floor(mouseX), my = (int) Math.floor(mouseY);
         if (!plot.contains(mx, my) || miniShown() && mini().contains(mx, my)) return null;
         Dot nearest = null;
-        int best = REACH * REACH + 1;
+        int best = Integer.MAX_VALUE;
         for (Dot d : dots) {
             int x = screenX(d.hue), y = screenY(d.lightness), s = d.size + grow(), x0 = x - s / 2, y0 = y - s / 2;
             if (!shown(d, x0, y0, s)) continue;
-            int dx = x - mx, dy = y - my, far = dx * dx + dy * dy;
-            if (far < best) {
+            int reach = Math.max(REACH, s / 2 + (d.ringed ? 4 : 1)), dx = x - mx, dy = y - my, far = dx * dx + dy * dy;
+            if (far <= reach * reach && far < best) {
                 best = far;
                 nearest = d;
             }
