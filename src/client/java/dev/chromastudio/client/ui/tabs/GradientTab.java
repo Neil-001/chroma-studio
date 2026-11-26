@@ -107,6 +107,7 @@ public final class GradientTab extends PanelTab {
     public static List<PaletteEntry> stepsOnShow() { return onShow; }
     private List<Gradient.Candidate> pool = List.of();
     private Map<String, Entry> poolById = Map.of();
+    private Map<String, TextureStats> poolLooks = Map.of();
     private Metric poolMetric = Metric.OKLAB;
     private int swapStep = -1;
     private List<Option> swapOptions = List.of();
@@ -414,6 +415,7 @@ public final class GradientTab extends PanelTab {
         meanDeltaE = mean;
         pool = chosenFrom.candidates;
         poolById = chosenFrom.byId;
+        poolLooks = chosenFrom.looks;
         poolMetric = PaletteBlocks.metric();
         solvedFor = inputs();
         solvedBuild = build;
@@ -521,6 +523,7 @@ public final class GradientTab extends PanelTab {
                 meanDeltaE = meanOklab;
                 pool = candidates;
                 poolById = byId;
+                poolLooks = looks;
                 poolMetric = metric;
                 PINS.keySet().removeIf(step -> step >= found.size() || !found.get(step).pinned);
                 rebuild();
@@ -566,7 +569,7 @@ public final class GradientTab extends PanelTab {
             Entry e = poolById.get((String) o.candidate().key());
             List<Entry> set = BlockIndex.get().materialSet(e);
             if (!materials.add(set.isEmpty() ? e.id() : set.getFirst().id())) continue;
-            options.add(new Option(e, PaletteBlocks.stats(e).mean(PaletteBlocks.scale()), target.emd(o.candidate().distribution(), Metric.OKLAB)));
+            options.add(new Option(e, poolLooks.get(e.id()).mean(PaletteBlocks.scale()), target.emd(o.candidate().distribution(), Metric.OKLAB)));
             if (options.size() == SWAP_OPTIONS) break;
         }
         swapOptions = options;
@@ -683,7 +686,7 @@ public final class GradientTab extends PanelTab {
     }
 
     private int stepAt(double mx, double my) {
-        if (filtersOpen || result.isEmpty()) return -1;
+        if (filtersOpen || solving || result.isEmpty()) return -1;
         Grid grid = stepsGrid();
         for (int i = 0; i < result.size(); i++) {
             int x = grid.cellX(i), y = grid.cellY(i);
@@ -770,7 +773,7 @@ public final class GradientTab extends PanelTab {
             else if (over) {
                 List<Detail> parts = new ArrayList<>(List.of(new Detail(s.entry.name(), TEXT),
                         new Detail(tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE)), DIM)));
-                if (weak) parts.add(new Detail(tr("gradient.chromastudio.legend.weakest"), rating(s.deltaE)));
+                if (weak) parts.add(new Detail(tr(i == weakest ? "gradient.chromastudio.legend.weakest" : "gradient.chromastudio.badge.poor"), rating(s.deltaE)));
                 if (s.pinned) parts.add(new Detail(tr("gradient.chromastudio.step.pinned"), TEXT));
                 details(cell, parts.toArray(Detail[]::new));
             }
@@ -867,7 +870,7 @@ public final class GradientTab extends PanelTab {
     private boolean legend(GuiGraphicsExtractor g, Grid grid) {
         int top = grid.y - LEGEND + 1, line = Math.max(stripArea.y() + 4, top - 2 * LEGEND), bottom = grid.cellY(result.size() - 1) + grid.body() + 4;
         if (top - LEGEND < stripArea.y() + 1 || bottom + 9 > stripArea.bottom()) return false;
-        int left = grid.x + 2, right = grid.x + grid.perRow * grid.cellW - 2;
+        int left = stripArea.x() + 2, right = stripArea.right() - 2;
         g.text(font(), fit(tr("gradient.chromastudio.legend.wanted").getString(), right - left), left, top, DIM, false);
         String key = tr("gradient.chromastudio.legend.weakest").getString();
         int keyW = 12 + font().width(key);
