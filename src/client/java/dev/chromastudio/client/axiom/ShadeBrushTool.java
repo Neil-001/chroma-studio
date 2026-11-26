@@ -252,9 +252,13 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             return true;
         }
         named("here", here, pointedFace, here.getBlock().getName().getString());
-        BlockState next = masked && !AxiomMask.scripted() ? null : p.apply(here, direction, kinds);
+        if (masked && !AxiomMask.scripted()) {
+            AxiomPanel.wrapped(tr("axiom.chromastudio.shade.left.masked"));
+            return true;
+        }
+        BlockState next = p.apply(here, direction, kinds);
         if (next == null) {
-            AxiomPanel.wrapped(tr(masked && !AxiomMask.scripted() ? "axiom.chromastudio.shade.left.masked" : p.whyLeft(here, direction, kinds)));
+            AxiomPanel.wrapped(tr(p.whyLeft(here, direction, kinds)));
             return true;
         }
         boolean scripted = AxiomMask.scripted() && !AxiomMask.windowClosed().orElse(false);
