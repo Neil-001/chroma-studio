@@ -68,8 +68,8 @@ final class AxiomScripts {
         List<Component> details = new ArrayList<>(List.of(Component.translatable("axiom.chromastudio.scatter.rules")));
         if (!skipped.isEmpty()) {
             scope.append(" ").append(Component.translatable("axiom.chromastudio.script.left_out", skipped.size()));
-            details.add(leftOut);
             details.add(Component.translatable("axiom.chromastudio.brush.left_out.tip"));
+            details.add(leftOut);
         }
         AxiomScript.Kept kept = kept(s -> !ScatterBlocks.paintsOver(s), s -> {
             String half = property(s, "half");

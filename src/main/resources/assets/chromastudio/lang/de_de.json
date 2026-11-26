@@ -731,7 +731,7 @@
   "axiom.chromastudio.gradient.done": "Malt %1$s Schritte entlang %2$s.",
   "axiom.chromastudio.gradient.rules": "Beginnt, wo du stehst. Die Regler des Werkzeugs „%s“ verschieben seine Enden.",
   "axiom.chromastudio.gradient.left_alone": "Bemalt feste Blöcke, die es erreicht. Überspringt Luft, den Boden, Pflanzen, Blöcke mit Inhalt, Treppen, Stufen, Mauern, Türen und Blöcke mit Ausrichtung.",
-  "axiom.chromastudio.gradient.skipped": "Schritte werden ausgelassen, wenn sie keine vollen Blöcke sind oder in diesem Spiel fehlen.",
+  "axiom.chromastudio.gradient.skipped": "Schritte werden ausgelassen, wenn sie keine einfachen vollen Blöcke sind, Inhalt fassen oder in diesem Spiel fehlen.",
   "axiom.chromastudio.gradient.too_short": "Ein Verlauf braucht mindestens zwei Blöcke.",
   "axiom.chromastudio.no_blocks": "Keiner der Blöcke der Palette ist in diesem Spiel.",
   "axiom.chromastudio.nothing_to_change": "Nichts würde sich ändern: Jeder Block bliebe, wie er ist, oder die Palette hat keinen Block seiner Form.",

@@ -731,7 +731,7 @@
   "axiom.chromastudio.gradient.done": "Pinta %1$s pasos a lo largo de %2$s.",
   "axiom.chromastudio.gradient.rules": "Empieza donde estás. Los controles de la propia herramienta «%s» mueven sus extremos.",
   "axiom.chromastudio.gradient.left_alone": "Pinta los bloques sólidos que alcanza. Omite el aire, el suelo, las plantas, los bloques que guardan objetos, escaleras, losas, muros, puertas y bloques orientados.",
-  "axiom.chromastudio.gradient.skipped": "Se omiten los pasos que no son bloques completos o que este juego no tiene.",
+  "axiom.chromastudio.gradient.skipped": "Se omiten los pasos que no son bloques completos simples, que guardan objetos o que este juego no tiene.",
   "axiom.chromastudio.gradient.too_short": "Un degradado necesita al menos dos bloques.",
   "axiom.chromastudio.no_blocks": "Ninguno de los bloques de la paleta está en este juego.",
   "axiom.chromastudio.nothing_to_change": "No cambiaría nada: cada bloque se quedaría igual, o la paleta no tiene ninguno de su forma.",

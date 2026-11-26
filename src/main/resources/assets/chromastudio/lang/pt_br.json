@@ -731,7 +731,7 @@
   "axiom.chromastudio.gradient.done": "Pinta %1$s passos ao longo de %2$s.",
   "axiom.chromastudio.gradient.rules": "Começa onde você está. Os controles da própria ferramenta “%s” movem as pontas.",
   "axiom.chromastudio.gradient.left_alone": "Pinta os blocos sólidos que alcança. Pula o ar, o chão, plantas, blocos que guardam itens, escadas, lajes, muros, portas e blocos virados para um lado.",
-  "axiom.chromastudio.gradient.skipped": "Os passos ficam de fora quando não são blocos inteiros ou não existem neste jogo.",
+  "axiom.chromastudio.gradient.skipped": "Os passos ficam de fora quando não são blocos inteiros comuns, guardam itens ou não existem neste jogo.",
   "axiom.chromastudio.gradient.too_short": "Um degradê precisa de pelo menos dois blocos.",
   "axiom.chromastudio.no_blocks": "Nenhum dos blocos da paleta existe neste jogo.",
   "axiom.chromastudio.nothing_to_change": "Nada mudaria: cada bloco ficaria como está, ou a paleta não tem nenhum da forma dele.",

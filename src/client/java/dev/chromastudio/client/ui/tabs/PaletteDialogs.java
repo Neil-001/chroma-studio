@@ -883,21 +883,25 @@ final class PaletteDialogs {
         private final List<PaletteEntry> steps;
         private AxiomBridge.Script made;
         private Component problem;
+        private final int body;
         private boolean copied;
         private Lines lines;
 
-        Axiom(Palette palette) {
-            super(tr("axiom.chromastudio.title"), WIDTH, height(3, Math.max(bodyLines(script(Script.RECOLOUR, palette)), bodyLines(script(Script.SCATTER, palette)))));
+        Axiom(Palette palette) { this(palette, null, null, body(palette, null, null)); }
+
+        Axiom(String gradientName, List<PaletteEntry> steps) { this(null, gradientName, List.copyOf(steps), body(null, gradientName, steps)); }
+
+        private Axiom(@Nullable Palette palette, @Nullable String gradientName, @Nullable List<PaletteEntry> steps, int body) {
+            super(tr("axiom.chromastudio.title"), WIDTH, height(palette == null ? 1 : 3, body));
             this.palette = palette;
-            this.gradientName = null;
-            this.steps = null;
+            this.gradientName = gradientName;
+            this.steps = steps;
+            this.body = body;
         }
 
-        Axiom(String gradientName, List<PaletteEntry> steps) {
-            super(tr("axiom.chromastudio.title"), WIDTH, height(1, bodyLines(gradient(gradientName, steps))));
-            this.palette = null;
-            this.gradientName = gradientName;
-            this.steps = List.copyOf(steps);
+        private static int body(@Nullable Palette palette, @Nullable String gradientName, @Nullable List<PaletteEntry> steps) {
+            if (palette == null) return bodyLines(gradient(gradientName, steps));
+            return Math.max(bodyLines(script(Script.RECOLOUR, palette)), bodyLines(script(Script.SCATTER, palette)));
         }
 
         private static int height(int rows, int body) {
@@ -934,6 +938,11 @@ final class PaletteDialogs {
             int detailsHeight() { return details.stream().mapToInt(Fitted::height).sum(); }
 
             boolean cut() { return details.stream().anyMatch(Fitted::cut); }
+
+            int firstCut() {
+                for (int i = 0; i < details.size(); i++) if (details.get(i).cut()) return i;
+                return details.size();
+            }
         }
 
         static Lines lines(StringSplitter splitter, int width, int room, AxiomBridge.@Nullable Script made, @Nullable Component problem) {
@@ -963,7 +972,9 @@ final class PaletteDialogs {
 
         private void changed() {
             copied = false;
-            refresh();
+            int now = body(palette, gradientName, steps);
+            if (now == body) refresh();
+            else tab.open(new Axiom(palette, gradientName, steps, now));
         }
 
         private static @Nullable Palette from(Palette palette) {
@@ -1064,7 +1075,8 @@ final class PaletteDialogs {
                 if (!d.lines().isEmpty()) g.fill(in.x() + 2, detailsY + 3, in.x() + 4, detailsY + 5, Theme.DIM);
                 detailsY = drawLines(g, d, in.x() + BULLET, detailsY, Theme.DIM);
             }
-            if (lines.cut() && over(mouseX, mouseY, in.x(), y + RULE, in.w(), detailsY - y - RULE)) tip(g, made.details(), mouseX, mouseY);
+            if (lines.cut() && over(mouseX, mouseY, in.x(), y, in.w(), footerY(in) - y))
+                tip(g, made.details().subList(lines.firstCut(), made.details().size()), mouseX, mouseY);
         }
 
         private static void cutTip(GuiGraphicsExtractor g, Fitted shown, List<Component> full, int x, int top, int w, int bottom, int mouseX, int mouseY) {
