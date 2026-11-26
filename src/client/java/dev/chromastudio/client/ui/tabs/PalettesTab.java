@@ -330,13 +330,15 @@ public final class PalettesTab extends PanelTab {
             Component label = tr("palettes.chromastudio.copy_to_edit");
             int w = Widgets.tw(label) + 6;
             int bx = (n > 0 ? weightX - Widgets.tw(tr("palettes.chromastudio.entry.weight")) - 4 : titleArea.right() - 3) - w;
-            if (bx - 4 - titleArea.x() - 3 >= Math.min(Widgets.tw(name(p)), MIN_NAME_W)) copyToEdit = widgets.add(new SmallButton(bx, titleArea.y() - 1, w, TITLE_H + 2, label, () -> { flush(); store.copy(p); showEntries(); }));
-            if (copyToEdit != null) copyToEdit.setTooltip(Tooltip.create(tr("palettes.chromastudio.copy.tip")));
+            if (bx - 4 - titleArea.x() - 3 >= Math.min(Widgets.tw(name(p)), MIN_NAME_W)) {
+                copyToEdit = widgets.add(new SmallButton(bx, titleArea.y() - 1, w, TITLE_H + 2, label, () -> { flush(); store.copy(p); showEntries(); }));
+                copyToEdit.setTooltip(Tooltip.create(tr("palettes.chromastudio.copy.tip")));
+            }
         }
         for (int i = 0; i < n; i++) {
             int index = i, y = entriesArea.y() + i * ENTRY_ROW;
             PaletteEntry e = p.entries.get(i);
-            rows.add(new EntryCell(cellX, y, spinX - 3 - cellX, ENTRY_ROW - 1, p, index, i % 2 == 1 ? left : 0, right, shareX));
+            rows.add(new EntryCell(cellX, y, spinX - 3 - cellX, ENTRY_ROW - 1, p, index, i % 2 == 1 ? left : 0, right, shareRight));
             IconButton up = rows.add(new IconButton(left + 1, y + 1, 10, 8, IconButton.Glyph.UP, tr("palettes.chromastudio.entry.up"), () -> move(index, -1)));
             IconButton down = rows.add(new IconButton(left + 1, y + 9, 10, 8, IconButton.Glyph.DOWN, tr("palettes.chromastudio.entry.down"), () -> move(index, 1)));
             if (p.preset) rows.add(new EntryCell.Weight(spinX, y, WEIGHT_W, ENTRY_ROW - 1, e.weight(), fixed));
@@ -391,19 +393,19 @@ public final class PalettesTab extends PanelTab {
 
     private static final class EntryCell extends AbstractWidget {
         private final Palette palette;
-        private final int index, stripeFrom, stripeTo, shareX;
+        private final int index, stripeFrom, stripeTo, shareRight;
         private final PaletteEntry entry;
         private final ItemStack icon;
         private final Color colour;
         private final boolean known;
 
-        EntryCell(int x, int y, int w, int h, Palette palette, int index, int stripeFrom, int stripeTo, int shareX) {
+        EntryCell(int x, int y, int w, int h, Palette palette, int index, int stripeFrom, int stripeTo, int shareRight) {
             super(x, y, w, h, PaletteBlocks.name(palette.entries.get(index)));
             this.palette = palette;
             this.index = index;
             this.stripeFrom = stripeFrom;
             this.stripeTo = stripeTo;
-            this.shareX = shareX;
+            this.shareRight = shareRight;
             entry = palette.entries.get(index);
             icon = PaletteBlocks.icon(entry);
             colour = PaletteBlocks.colour(entry);
@@ -418,7 +420,7 @@ public final class PalettesTab extends PanelTab {
             if (stripeFrom > 0) g.fill(stripeFrom, y, stripeTo, y + ENTRY_ROW, Theme.PANEL);
             if (index < palette.entries.size()) {
                 String share = shares(palette.entries)[index] + "%";
-                g.text(font(), share, shareX + font().width("100%") - font().width(share), y + 5, DIM, false);
+                g.text(font(), share, shareRight - font().width(share), y + 5, DIM, false);
             }
             Widgets.blockIcon(g, icon, x, y + 1);
             int swatch = 12, textX = x + 19, room = width - 19 - (colour != null ? swatch + 5 : 0);
@@ -552,16 +554,17 @@ public final class PalettesTab extends PanelTab {
         }
         if (copyToEdit != null) right = copyToEdit.getX() - 4;
         String count = tr("palettes.chromastudio.count", p.entries.size()).getString();
-        int countW = font().width(count), fullName = font().width(name(p).getString());
+        String full = name(p).getString();
+        int countW = font().width(count), nameW = font().width(full);
         String badge = p.preset ? tr("palettes.chromastudio.read_only").getString() : "";
         int badgeFull = badge.isEmpty() ? 0 : font().width(badge) + 11;
-        if (x + fullName + badgeFull + countW + 10 <= right) {
+        if (x + nameW + badgeFull + countW + 10 <= right) {
             g.text(font(), count, right - countW, y, DIM, false);
             right -= countW + 10;
         }
-        int room = right - x, nameW = font().width(name(p).getString());
+        int room = right - x;
         int badgeW = badge.isEmpty() || nameW + 4 + font().width(badge) + 6 > room ? 0 : font().width(badge) + 6;
-        String name = fit(name(p).getString(), right - x - (badgeW > 0 ? badgeW + 4 : 0));
+        String name = fit(full, room - (badgeW > 0 ? badgeW + 4 : 0));
         g.text(font(), name, x, y, TEXT, false);
         if (badgeW == 0) return;
         int bx = x + font().width(name) + 4;
