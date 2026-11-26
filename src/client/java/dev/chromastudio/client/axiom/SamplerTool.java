@@ -187,6 +187,7 @@ final class SamplerTool implements CustomTool {
         if (!sample.isEmpty()) {
             sample.clear();
             changed();
+            quiet = false;
             said = Component.translatable("axiom.chromastudio.sampler.new_world");
         }
         sampledIn = new WeakReference<>(level);
@@ -368,8 +369,11 @@ final class SamplerTool implements CustomTool {
             if (c != null) {
                 ImGui.setCursorPosY(ImGui.getCursorPosY() + padY);
                 if (!r.in()) ImGui.pushStyleVar(ImGuiStyleVar.Alpha, OUT_ALPHA);
-                AxiomPanel.swatch("swatch" + i, new AxiomPanel.Swatch(c, shown));
-                if (!r.in()) ImGui.popStyleVar();
+                try {
+                    AxiomPanel.swatch("swatch" + i, new AxiomPanel.Swatch(c, shown));
+                } finally {
+                    if (!r.in()) ImGui.popStyleVar();
+                }
                 over |= ImGui.isItemHovered();
             }
         } finally {
