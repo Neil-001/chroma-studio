@@ -29,6 +29,7 @@ public final class ScreenPicker {
     private static double clickX = -1, clickY = -1;
     private static int[] seen;
     private static int seenAt;
+    private static List<int[]> drawn = List.of();
     private static int session;
 
     public static void arm(IntConsumer onPick) {
@@ -58,7 +59,11 @@ public final class ScreenPicker {
         Font font = mc.font;
         frames++;
         boolean picking = clickX >= 0;
-        if (frames >= SETTLE) {
+        RenderTarget target = mc.gameRenderer.mainRenderTarget();
+        double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
+        int guiScale = mc.getWindow().getGuiScale();
+        boolean fits = target.width >= LOUPE && target.height >= LOUPE;
+        if (frames >= SETTLE && (picking || fits && !touches(drawn, guiScale, mouseX, mouseY, scale, target.width, target.height))) {
             int run = session;
             read(picking ? clickX : mouseX, picking ? clickY : mouseY, (pixels, at) -> {
                 if (run != session) return;
@@ -68,15 +73,17 @@ public final class ScreenPicker {
             });
         }
 
+        drawn = List.of();
         if (picking) return;
         Hud.banner(g, Component.translatable("picker.chromastudio.title"), Component.translatable("picker.chromastudio.hint"));
 
-        RenderTarget target = mc.gameRenderer.mainRenderTarget();
-        double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
-        for (int[] bar : target.width < LOUPE || target.height < LOUPE ? List.<int[]>of() : reticle(mouseX, mouseY, scale, target.width, target.height)) {
+        List<int[]> overlays = new ArrayList<>();
+        for (int[] bar : fits ? reticle(mouseX, mouseY, scale, guiScale, target.width, target.height) : List.<int[]>of()) {
             g.fill(bar[0] - 1, bar[1] - 1, bar[2] + 1, bar[3] + 1, 0xFF000000);
             g.fill(bar[0], bar[1], bar[2], bar[3], 0xFFFFFFFF);
+            overlays.add(shadow(bar));
         }
+        drawn = overlays;
         if (seen == null) return;
         int rgb = mean(centre(seen, seenAt));
         String hex = String.format("#%06X", rgb);
@@ -86,6 +93,7 @@ public final class ScreenPicker {
         if (y + h > g.guiHeight()) y = mouseY - OFFSET - h;
         g.fill(x - 1, y - 1, x + w + 1, y + h + 1, 0xFFFFFFFF);
         g.fill(x, y, x + w, y + h, 0xFF000000);
+        overlays.add(new int[] {x - 1, y - 1, x + w + 1, y + h + 1});
         int gx = x + (w - grid) / 2, gy = y + 2;
         for (int i = 0; i < seen.length; i++) {
             int cx = gx + i % LOUPE * CELL, cy = gy + i / LOUPE * CELL;
@@ -100,18 +108,27 @@ public final class ScreenPicker {
         g.text(font, hex, x + 2 + SWATCH + 3, sy + 1, 0xFFFFFFFF, false);
     }
 
-    static List<int[]> reticle(int x, int y, double scale, int width, int height) {
-        int near = (int) Math.ceil(LOUPE / 2 / scale) + 2, far = near + RETICLE;
+    static List<int[]> reticle(int x, int y, double scale, int guiScale, int width, int height) {
+        int near = (int) Math.ceil((LOUPE / 2 + guiScale - 1) / (double) guiScale) + 2, far = near + RETICLE;
         int lx = loupeStart(pick(x, scale, width), width), ly = loupeStart(pick(y, scale, height), height);
         List<int[]> bars = new ArrayList<>();
         for (int[] bar : List.of(new int[] {x - far, y, x - near + 1, y + 2}, new int[] {x + near, y, x + far + 1, y + 2},
-                new int[] {x, y - far, x + 2, y - near + 1}, new int[] {x, y + near, x + 2, y + far + 1})) {
-            boolean clearX = (bar[2] + 1) * scale <= lx || (bar[0] - 1) * scale >= lx + LOUPE;
-            boolean clearY = (bar[3] + 1) * scale <= ly || (bar[1] - 1) * scale >= ly + LOUPE;
-            if (clearX || clearY) bars.add(bar);
-        }
+                new int[] {x, y - far, x + 2, y - near + 1}, new int[] {x, y + near, x + 2, y + far + 1}))
+            if (!overlaps(shadow(bar), guiScale, lx, ly)) bars.add(bar);
         return bars;
     }
+
+    static boolean touches(List<int[]> overlays, int guiScale, int x, int y, double scale, int width, int height) {
+        int lx = loupeStart(pick(x, scale, width), width), ly = loupeStart(pick(y, scale, height), height);
+        for (int[] overlay : overlays) if (overlaps(overlay, guiScale, lx, ly)) return true;
+        return false;
+    }
+
+    static boolean overlaps(int[] gui, int guiScale, int lx, int ly) {
+        return gui[0] * guiScale < lx + LOUPE && gui[2] * guiScale > lx && gui[1] * guiScale < ly + LOUPE && gui[3] * guiScale > ly;
+    }
+
+    private static int[] shadow(int[] bar) { return new int[] {bar[0] - 1, bar[1] - 1, bar[2] + 1, bar[3] + 1}; }
 
     static int pick(double gui, double scale, int size) { return Math.clamp((int) (gui * scale) - 1, 0, size - SIDE); }
 

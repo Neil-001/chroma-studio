@@ -2,8 +2,10 @@ package dev.chromastudio.client.action;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ScreenPickerTest {
@@ -27,20 +29,33 @@ class ScreenPickerTest {
 
     @Test
     void theReticleNeverDrawsWhereTheLoupeReadsEvenAtTheEdges() {
-        for (int scale = 1; scale <= 4; scale++) {
-            int guiW = 427, guiH = 240, width = guiW * scale, height = guiH * scale;
-            for (int x = 0; x < guiW; x++)
-                for (int y = 0; y < guiH; y += x % 7 == 0 ? 1 : 37) {
-                    int lx = ScreenPicker.loupeStart(ScreenPicker.pick(x, scale, width), width);
-                    int ly = ScreenPicker.loupeStart(ScreenPicker.pick(y, scale, height), height);
-                    for (int[] bar : ScreenPicker.reticle(x, y, scale, width, height)) {
-                        boolean apart = (bar[2] + 1) * scale <= lx || (bar[0] - 1) * scale >= lx + LOUPE
-                                || (bar[3] + 1) * scale <= ly || (bar[1] - 1) * scale >= ly + LOUPE;
-                        assertTrue(apart, "scale " + scale + ", pointer at " + x + ", " + y);
+        for (int guiScale = 1; guiScale <= 4; guiScale++) {
+            for (int width : new int[] {854 * guiScale / 2, 1366}) {
+                int height = width * 9 / 16, guiW = (width + guiScale - 1) / guiScale, guiH = (height + guiScale - 1) / guiScale;
+                double scale = (double) width / guiW;
+                for (int x = 0; x < guiW; x++)
+                    for (int y = 0; y < guiH; y += x % 7 == 0 ? 1 : 37) {
+                        int lx = ScreenPicker.loupeStart(ScreenPicker.pick(x, scale, width), width);
+                        int ly = ScreenPicker.loupeStart(ScreenPicker.pick(y, scale, height), height);
+                        List<int[]> bars = ScreenPicker.reticle(x, y, scale, guiScale, width, height);
+                        for (int[] bar : bars) {
+                            int[] shadow = {bar[0] - 1, bar[1] - 1, bar[2] + 1, bar[3] + 1};
+                            boolean apart = shadow[2] * guiScale <= lx || shadow[0] * guiScale >= lx + LOUPE
+                                    || shadow[3] * guiScale <= ly || shadow[1] * guiScale >= ly + LOUPE;
+                            assertTrue(apart, "scale " + guiScale + ", width " + width + ", pointer at " + x + ", " + y);
+                        }
+                        if (x > 20 && x < guiW - 20 && y > 20 && y < guiH - 20)
+                            assertEquals(4, bars.size(), "all arms show away from the edges at scale " + guiScale + ", width " + width);
                     }
-                    if (x > 20 && x < guiW - 20 && y > 20 && y < guiH - 20)
-                        assertEquals(4, ScreenPicker.reticle(x, y, scale, width, height).size(), "all arms show away from the edges");
-                }
+            }
         }
+    }
+
+    @Test
+    void aPreviewThatWouldReadLastFramesReticleIsSkipped() {
+        int width = 854, height = 480;
+        List<int[]> drawn = ScreenPicker.reticle(200, 100, 1, 1, width, height).stream().map(b -> new int[] {b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1}).toList();
+        assertTrue(ScreenPicker.touches(drawn, 1, 209, 100, 1, width, height), "the pointer moved onto the old right arm");
+        assertFalse(ScreenPicker.touches(drawn, 1, 200, 100, 1, width, height), "a still pointer reads clear of its own reticle");
     }
 }
