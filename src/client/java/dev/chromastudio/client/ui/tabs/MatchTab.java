@@ -400,6 +400,10 @@ public final class MatchTab extends Tab {
         }
     }
 
+    private void refreshPanel() {
+        if (panel == Panel.FIND_BIOME || panel == Panel.DYE) panelData();
+    }
+
     private void buildPanel() {
         panelWidgets = new Widgets();
         panelData();
@@ -515,6 +519,7 @@ public final class MatchTab extends Tab {
     private void adopt() {
         MatchState.setColour(picker.model.colour());
         seenRevision = MatchState.revision();
+        refreshPanel();
         search.request();
     }
 
@@ -567,7 +572,7 @@ public final class MatchTab extends Tab {
             }
             ranges.clear();
             findState();
-            if (panel == Panel.FIND_BIOME || panel == Panel.DYE) panelData();
+            refreshPanel();
             search.request();
         }
         if (index.version() != seenVersion) {
