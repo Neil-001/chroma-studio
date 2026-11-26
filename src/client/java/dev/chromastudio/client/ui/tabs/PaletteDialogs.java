@@ -24,6 +24,7 @@ import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Harmony;
 import dev.chromastudio.core.color.Oklch;
+import dev.chromastudio.core.export.Arrangement;
 import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.export.LayoutOptions;
 import dev.chromastudio.core.palette.AxiomScript;
@@ -737,13 +738,21 @@ final class PaletteDialogs {
         private SchematicExporter.Format format = SchematicExporter.Format.LITEMATIC;
         private int height, patch = ModSettings.patchSize, width = LayoutOptions.DIORAMA_WIDTH;
         private boolean gap = ModSettings.exportGap;
-        private final long seed;
-        private Component skipped;
-        private final List<Component> statusTip = new ArrayList<>();
+        private long seed;
         private int labelW;
+        private final int[] sizeX = new int[3];
+        private @Nullable Component placeWhy, size;
+        private @Nullable Arrangement shape;
+        private int[] colours = new int[0];
+        private List<PaletteEntry> kept = List.of();
+        private int actionsX;
+        private Bounds preview = new Bounds(0, 0, 0, 0);
+        private static final int SPIN_W = 40, PREVIEW_H = 44, CELL_MAX = 16;
+        private static final String NOT_USED = "\u2014";
+        private static final String[] SIZES = {"palettes.chromastudio.export.height", "palettes.chromastudio.export.width", "palettes.chromastudio.export.patch"};
 
         Export(Palette palette, Layout layout, long seed) {
-            super(tr("palettes.chromastudio.export.title"), 290, 150);
+            super(palette.name == null || palette.name.isBlank() ? tr("palettes.chromastudio.export.title") : tr("palettes.chromastudio.export.title.named", palette.name), 340, 173);
             this.palette = palette;
             this.layout = layout;
             this.seed = seed;
@@ -753,20 +762,30 @@ final class PaletteDialogs {
         @Override
         protected int statusLines() { return 3; }
 
+        @Override
+        protected boolean statusFromTop() { return true; }
+
         private boolean diorama() { return layout == Layout.NOISE_CLUSTERS || layout == Layout.HEIGHT_GRADIENT || layout == Layout.DITHER; }
+
+        private boolean[] sizesApply() { return new boolean[] {layout == Layout.WALL || diorama(), diorama(), layout == Layout.PATCH_GRID}; }
 
         private static Component layoutName(Layout l) { return tr("option.chromastudio.layoutchoice." + l.name().toLowerCase(Locale.ROOT)); }
 
-        private void spinner(int x, int y, double value, double min, double max, boolean applies, String why, DoubleConsumer set) {
-            EditBox f = widgets.spin(x, y, 40, value, 1, min, max, true, set);
-            if (!applies) Widgets.disable(f, tr(why));
+        private void spinner(int x, int y, double value, double min, double max, boolean applies, String key, DoubleConsumer set) {
+            EditBox f = widgets.spin(x, y, SPIN_W, value, 1, min, max, true, set);
+            if (applies) f.setTooltip(Tooltip.create(tr(key + ".tip", (int) min, (int) max)));
+            else Widgets.disable(f, tr(key + ".na")).setValue(key.equals(SIZES[2]) ? NOT_USED : tr("palettes.chromastudio.export.auto").getString());
         }
 
         @Override
         protected void build(Bounds in) {
-            labelW = labelWidth("palettes.chromastudio.export.layout", "palettes.chromastudio.export.format", "palettes.chromastudio.export.height");
-            int x = in.x() + labelW, y = in.y(), half = in.x() + in.w() / 2;
-            int secondW = labelWidth("palettes.chromastudio.export.width", "palettes.chromastudio.export.patch", "palettes.chromastudio.export.gap");
+            labelW = labelWidth("palettes.chromastudio.export.layout", "palettes.chromastudio.export.format", SIZES[0]);
+            int secondW = labelWidth(SIZES[1], "palettes.chromastudio.export.gap"), thirdW = labelWidth(SIZES[2]);
+            int spare = Math.max(0, (in.w() - labelW - secondW - thirdW - 3 * SPIN_W) / 2);
+            sizeX[0] = in.x();
+            sizeX[1] = in.x() + labelW + SPIN_W + spare;
+            sizeX[2] = sizeX[1] + secondW + SPIN_W + spare;
+            int x = in.x() + labelW, y = in.y();
             widgets.cycler(x, y, in.right() - x, null, List.of(Layout.values()), layout, Export::layoutName, l -> {
                 boolean wasDefault = height == (layout == Layout.WALL ? LayoutOptions.WALL_HEIGHT : LayoutOptions.DIORAMA_HEIGHT);
                 layout = l;
@@ -774,42 +793,102 @@ final class PaletteDialogs {
                 refresh();
             });
             y += PanelTab.ROW;
-            widgets.cycler(x, y, 70, null, List.of(SchematicExporter.Format.values()), format,
+            widgets.cycler(x, y, Math.min(70, sizeX[1] - 3 * PanelTab.GAP - x), null, List.of(SchematicExporter.Format.values()), format,
                     f -> Component.literal("." + f.extension), f -> { format = f; refresh(); });
-            AbstractWidget gapToggle = widgets.cycler(half + secondW, y, 40, null, List.of(true, false), gap, CommonComponents::optionStatus, v -> gap = v);
+            AbstractWidget gapToggle = widgets.cycler(sizeX[1] + secondW, y, SPIN_W, null, List.of(true, false), gap, v -> diorama() ? Component.literal(NOT_USED) : CommonComponents.optionStatus(v), v -> { gap = v; size = size(); });
             if (diorama()) Widgets.disable(gapToggle, tr("palettes.chromastudio.export.gap.na"));
+            else gapToggle.setTooltip(Tooltip.create(tr("palettes.chromastudio.export.gap.tip")));
             y += PanelTab.ROW;
-            spinner(x, y, height, 1, 256, layout == Layout.WALL || diorama(), "palettes.chromastudio.export.height.na", v -> height = (int) v);
-            spinner(half + secondW, y, width, 1, 256, diorama(), "palettes.chromastudio.export.width.na", v -> width = (int) v);
-            y += PanelTab.ROW;
-            spinner(half + secondW, y, patch, ModSettings.min("patchSize"), ModSettings.max("patchSize"), layout == Layout.PATCH_GRID, "palettes.chromastudio.export.patch.na", v -> patch = (int) v);
+            boolean[] applies = sizesApply();
+            spinner(sizeX[0] + labelW, y, height, 1, 256, applies[0], SIZES[0], v -> { height = (int) v; size = size(); });
+            spinner(sizeX[1] + secondW, y, width, 1, 256, applies[1], SIZES[1], v -> { width = (int) v; size = size(); });
+            spinner(sizeX[2] + thirdW, y, patch, ModSettings.min("patchSize"), ModSettings.max("patchSize"), applies[2], SIZES[2], v -> { patch = (int) v; size = size(); });
 
             Component export = tr("palettes.chromastudio.export.go"), place = tr("palettes.chromastudio.export.place");
             int placeW = Widgets.buttonWidth(place), exportW = Widgets.buttonWidth(export);
             y += PanelTab.ROW;
+            preview = new Bounds(in.x(), y, in.w(), PREVIEW_H);
+            if (diorama()) {
+                Component shuffle = tr("palettes.chromastudio.export.shuffle");
+                widgets.button(preview.right() - Widgets.buttonWidth(shuffle) - PanelTab.GAP, y + PanelTab.GAP, shuffle, () -> {
+                    seed = new Random().nextLong();
+                    size = size();
+                });
+            }
+            y += PREVIEW_H + PanelTab.GAP;
             Button placeButton = widgets.button(in.right() - placeW, y, place, () -> run(true));
             placeButton.setTooltip(Tooltip.create(tr("palettes.chromastudio.export.place.tip")));
-            if (!LitematicaBridge.isAvailable()) Widgets.disable(placeButton, tr("palettes.chromastudio.export.place.no_litematica"));
-            else if (format != SchematicExporter.Format.LITEMATIC) Widgets.disable(placeButton, tr("palettes.chromastudio.export.place.nbt"));
-            else if (Minecraft.getInstance().level == null) Widgets.disable(placeButton, tr("export.chromastudio.litematica.no_world"));
-            widgets.button(in.right() - placeW - PanelTab.GAP - exportW, y, export, () -> run(false));
+            placeWhy = !LitematicaBridge.isAvailable() ? tr("palettes.chromastudio.export.place.no_litematica")
+                    : format != SchematicExporter.Format.LITEMATIC ? tr("palettes.chromastudio.export.place.nbt")
+                    : Minecraft.getInstance().level == null ? tr("export.chromastudio.litematica.no_world") : null;
+            if (placeWhy != null) Widgets.disable(placeButton, placeWhy).setTooltip(null);
+            actionsX = in.right() - placeW - PanelTab.GAP - exportW;
+            widgets.button(actionsX, y, export, () -> run(false));
+            size = size();
+        }
+
+        private @Nullable Component size() {
+            kept = palette.entries.stream().filter(e -> SchematicExporter.stateFor(e) != null).toList();
+            shape = null;
+            if (kept.isEmpty()) return null;
+            shape = Arrangement.of(kept.stream().map(PaletteEntry::weight).toList(), new LayoutOptions(layout, height, patch, width, gap, seed));
+            colours = kept.stream().mapToInt(e -> {
+                Color c = PaletteBlocks.colour(e);
+                return c == null ? Theme.GREYED : 0xFF000000 | c.rgb();
+            }).toArray();
+            return tr("palettes.chromastudio.export.size", shape.sizeX(), shape.sizeY());
+        }
+
+        private void drawPreview(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+            g.fill(preview.x(), preview.y(), preview.right(), preview.bottom(), Theme.WELL);
+            if (shape == null) return;
+            double fit = Math.min(CELL_MAX, Math.min((preview.w() - 4.0) / shape.sizeX(), (preview.h() - 4.0) / shape.sizeY()));
+            double scale = fit >= 1 ? Math.floor(fit) : fit;
+            int w = Math.max(1, (int) Math.round(shape.sizeX() * scale)), h = Math.max(1, (int) Math.round(shape.sizeY() * scale));
+            int left = preview.x() + (preview.w() - w) / 2, top = preview.y() + (preview.h() - h) / 2;
+            if (mouseX >= left && mouseX < left + w && mouseY >= top && mouseY < top + h) {
+                int cell = shape.at(Math.min(shape.sizeX() - 1, (int) ((mouseX - left) / scale)), shape.sizeY() - 1 - Math.min(shape.sizeY() - 1, (int) ((mouseY - top) / scale)), 0);
+                if (cell != Arrangement.AIR) tip(g, List.of(PaletteBlocks.name(kept.get(cell))), mouseX, mouseY);
+            }
+            for (int py = 0; py < h; py++) {
+                int row = shape.sizeY() - 1 - Math.min(shape.sizeY() - 1, (int) (py / scale));
+                int runStart = 0, runColour = 0;
+                for (int px = 0; px <= w; px++) {
+                    int colour = 0;
+                    if (px < w) {
+                        int cell = shape.at(Math.min(shape.sizeX() - 1, (int) (px / scale)), row, 0);
+                        colour = cell == Arrangement.AIR ? 0 : colours[cell];
+                    }
+                    if (px == w || colour != runColour) {
+                        if (runColour != 0) g.fill(left + runStart, top + py, left + px, top + py + 1, runColour);
+                        runStart = px;
+                        runColour = colour;
+                    }
+                }
+            }
         }
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            int half = in.x() + in.w() / 2, y = in.y();
+            int y = in.y();
             label(g, "palettes.chromastudio.export.layout", in.x(), y);
             y += PanelTab.ROW;
             label(g, "palettes.chromastudio.export.format", in.x(), y);
-            label(g, "palettes.chromastudio.export.gap", half, y);
+            fieldLabel(g, "palettes.chromastudio.export.gap", sizeX[1], y, !diorama());
             y += PanelTab.ROW;
-            label(g, "palettes.chromastudio.export.height", in.x(), y);
-            label(g, "palettes.chromastudio.export.width", half, y);
-            y += PanelTab.ROW;
-            label(g, "palettes.chromastudio.export.patch", half, y);
-            int statusH = statusLines() * 9;
-            if (skipped != null) g.text(PanelTab.font(), PanelTab.fit(skipped.getString(), in.w()), in.x(), in.bottom() - statusH - 11, Theme.FAIR, false);
-            if (!statusTip.isEmpty() && over(mouseX, mouseY, in.x(), in.bottom() - statusH, in.w(), statusH)) tip(g, statusTip, mouseX, mouseY);
+            boolean[] applies = sizesApply();
+            for (int i = 0; i < SIZES.length; i++) fieldLabel(g, SIZES[i], sizeX[i], y, applies[i]);
+            drawPreview(g, mouseX, mouseY);
+            if (size != null) g.text(PanelTab.font(), PanelTab.fit(size.getString(), actionsX - in.x() - PanelTab.GAP), in.x(), preview.bottom() + PanelTab.GAP + 4, Theme.SOFT, false);
+            if (status == null && placeWhy != null) {
+                List<FormattedCharSequence> lines = PanelTab.font().split(placeWhy, in.w());
+                int top = in.bottom() - statusLines() * 9;
+                for (int i = 0; i < Math.min(statusLines(), lines.size()); i++) g.text(PanelTab.font(), lines.get(i), in.x(), top + i * 9, Theme.FAIR, false);
+            }
+        }
+
+        private static void fieldLabel(GuiGraphicsExtractor g, String key, int x, int y, boolean applies) {
+            g.text(PanelTab.font(), tr(key), x, y + 4, applies ? Theme.DIM : Theme.GREYED, false);
         }
 
         @Override
@@ -832,8 +911,6 @@ final class PaletteDialogs {
         }
 
         private void run(boolean place) {
-            skipped = null;
-            statusTip.clear();
             LayoutOptions options = new LayoutOptions(layout, height, patch, width, gap, seed);
             SchematicExporter.Result result;
             try {
@@ -845,13 +922,11 @@ final class PaletteDialogs {
                 status(tr("command.chromastudio.export.failed", String.valueOf(e.getMessage())), Theme.BAD);
                 return;
             }
-            if (!result.skippedIds().isEmpty()) skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds()));
-            int room = box.w() - 10 - Widgets.tw(tr("command.chromastudio.export.done", ""));
-            String path = shortPath(result.file()), shown = middle(path, room);
-            Component route = format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty() ? AxiomBridge.named("palettes.chromastudio.export.axiom").withColor(Theme.DIM) : null;
-            MutableComponent done = tr("command.chromastudio.export.done", shown);
-            if (route != null) done.append("\n").append(route);
-            if (!shown.equals(path)) statusTip.add(Component.literal(path));
+            MutableComponent done = tr("command.chromastudio.export.done", Component.literal(shortPath(result.file())).withColor(Theme.TEXT));
+            if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty())
+                done.append("\n").append(AxiomBridge.named("palettes.chromastudio.export.axiom").withColor(Theme.DIM));
+            if (!result.skippedIds().isEmpty())
+                done.append("\n").append(tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds())).withColor(Theme.FAIR));
             if (!place) {
                 status(done, Theme.GOOD);
                 return;
@@ -860,9 +935,7 @@ final class PaletteDialogs {
             String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
             Optional<Component> problem = LitematicaBridge.place(result.file(), origin, name);
             Component placed = problem.orElseGet(() -> tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()));
-            String flat = placed.getString().replace('\n', ' '), line = PanelTab.fit(flat, box.w() - 10);
-            if (!line.equals(flat)) statusTip.add(placed);
-            done.append("\n").append(Component.literal(line).withColor(problem.isPresent() ? Theme.BAD : Theme.GOOD));
+            done.append("\n").append(placed.copy().withColor(problem.isPresent() ? Theme.BAD : Theme.GOOD));
             status(done, Theme.GOOD);
         }
     }
