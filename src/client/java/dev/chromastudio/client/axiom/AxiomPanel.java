@@ -53,7 +53,7 @@ final class AxiomPanel {
     private static final String ELLIPSIS = "...";
 
     static final class Layout {
-        private float bottom = -1, packedBottom = -1;
+        private float bottom = -1, packedBottom = -1, packedWidth = -1, packedRoom = -1;
         private float optionsEnd = -1, grownEnd = -1;
         private final List<Runnable> later = new ArrayList<>();
         private final boolean packed;
@@ -87,6 +87,12 @@ final class AxiomPanel {
             };
             float room = ImGui.getContentRegionAvailY();
             float above = this.bottom < 0 ? 0 : room - this.bottom - ImGui.getStyle().getItemSpacingY();
+            float width = ImGui.getContentRegionAvailX();
+            if (width != packedWidth || room != packedRoom) {
+                packedBottom = -1;
+                packedWidth = width;
+                packedRoom = room;
+            }
             float footer = Math.max(this.bottom, packedBottom);
             together = packed && optionsEnd >= 0 && this.bottom >= 0 && optionsEnd + footer <= room;
             if (together || this.bottom >= 0 && above < ImGui.getFrameHeightWithSpacing() * 2) {
