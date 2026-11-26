@@ -8,10 +8,13 @@
 
 - `Eyedropper.press` uses the pointer in Axiom's editor because Axiom hides the crosshair.
 - `ScreenPicker` reads the last frame, including its GUI. Hide the window and wait `SETTLE` frames before accepting a click. The main frame's `RGBA8_UNORM` rows run from bottom to top.
+- `ScreenPicker` reads a 9 by 9 loupe and picks the mean of the 3 by 3 under the pointer. The loupe shifts at the screen's edges, so `centre` takes the pointer's cell from the read's offset.
+- `ScreenPicker.reticle` keeps clear of the pixels the loupe reads, at any GUI scale, because the next frame's read would include it.
 - `PaletteBlocks.tint` uses the player's location for a range of biomes because the range has no single tint.
 
 ## Capture and items
 
+- `Capture.render` draws a wide black outline under the white one, pushed off the block faces, so the box shows on pale blocks and beside the game's block highlight.
 - `Capture` bounds the sides and their horizontal product before multiplying by height. Three command arguments can overflow a `long`. Iterate by offset so a box ending at `Integer.MAX_VALUE` terminates.
 - `Give.commandItem` skips components without a codec because a command can't set network-only components.
 - `Dye` lists vanilla dyeable items by name because Minecraft 26.3 has no `dyeable` tag and the server doesn't send its `crafting_dye` recipes. Keep reading the tag for mods and data packs.

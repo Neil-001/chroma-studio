@@ -20,7 +20,7 @@ public final class Theme {
     public static final int LIT = 0xFF2F5D8A, LIT_HOVER = 0xFF3F78B0, ON_LIT = 0xFFFFFFFF;
     public static final int FIELD_BAD = 0xFFFF6B6B;
     public static final int FIXED_PANEL = 0xFF161A20, FIXED_BAR = 0xFF1B2027, FIXED_BORDER = 0xFF55606E, FIXED_TEXT = 0xFFE4E9EF, FIXED_SOFT = 0xFFC8CED6;
-    public static final int TIP_DIM = 0x9AA5B3, TIP_GREYED = 0x4E5560, TIP_TINT = 0x6FC45A;
+    public static final int TIP_DIM = 0x9AA5B3, TIP_GREYED = 0x4E5560, TIP_TINT = 0x6FC45A, TIP_PROMPT = 0x6FA8DC;
 
     public static int WINDOW, BACKING;
     public static int WELL, PANEL, BAR, HOVER, SELECTED;
