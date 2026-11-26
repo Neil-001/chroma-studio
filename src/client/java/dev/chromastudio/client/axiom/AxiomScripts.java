@@ -170,8 +170,8 @@ final class AxiomScripts {
         if (bytes > ClipboardSize.MAX_BYTES) {
             throw new Refused(Component.translatable(tooBig, ClipboardSize.kilobytes(bytes), ClipboardSize.kilobytes(ClipboardSize.MAX_BYTES)));
         }
-        Component size = Component.translatable("axiom.chromastudio.size", counted);
-        if (counted <= AxiomScript.SERVER_LIMIT) return new Script(script, scope, size, null, null, List.copyOf(details));
+        if (counted <= AxiomScript.SERVER_LIMIT) return new Script(script, scope, Component.translatable("axiom.chromastudio.size", counted), null, null, List.copyOf(details));
+        Component size = Component.translatable("axiom.chromastudio.size.over", counted, AxiomScript.SERVER_LIMIT);
         Component next = Component.translatable(nextStep);
         List<Component> all = new ArrayList<>(details);
         all.add(next);
