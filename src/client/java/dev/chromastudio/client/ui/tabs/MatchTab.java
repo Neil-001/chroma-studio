@@ -133,6 +133,8 @@ public final class MatchTab extends Tab {
     private List<ResourceKey<Biome>> biomes = List.of();
     private List<BiomeFit> fits = List.of();
     private List<ItemStack> dyes = List.of();
+    private List<String> hint = List.of();
+    private int hintRgb;
     private final Map<ResourceKey<Biome>, int[]> biomeTints = new HashMap<>();
     private final Map<Entry, int[]> ranges = new HashMap<>();
 
@@ -357,6 +359,14 @@ public final class MatchTab extends Tab {
 
     private int columns() { return Math.max(1, (results.w() - 5) / CELL); }
 
+    private void hint(Component text, Color swatch) {
+        Font font = Minecraft.getInstance().font;
+        int w = results.w() - 28;
+        List<String> lines = font.getSplitter().splitLines(text, w, Style.EMPTY).stream().map(FormattedText::getString).toList();
+        hint = lines.size() <= 2 ? lines : List.of(lines.getFirst(), ellipsis(font, String.join(" ", lines.subList(1, lines.size())), w));
+        hintRgb = swatch.rgb();
+    }
+
     private void pickBiome() {
         if (ModSettings.biomeMode != BiomeMode.CHOSEN) {
             ModSettings.biomeMode = BiomeMode.CHOSEN;
@@ -375,19 +385,26 @@ public final class MatchTab extends Tab {
 
     private void buildPanel() {
         panelWidgets = new Widgets();
+        hint = List.of();
         switch (panel) {
-            case FIND_BIOME -> fits = whyNoFind() == null ? fits() : List.of();
-            case DYE -> dyes = Dye.items(MatchState.colour().rgb());
+            case FIND_BIOME -> {
+                fits = whyNoFind() == null ? fits() : List.of();
+                if (!fits.isEmpty()) hint(tr("find_biome.hint", MatchState.entry().name(), MatchState.lastFlat().hex()), MatchState.lastFlat());
+            }
+            case DYE -> {
+                dyes = Dye.items(MatchState.colour().rgb());
+                hint(tr("dye.hint", MatchState.colour().hex()), MatchState.colour());
+            }
             default -> { }
         }
-        Bounds wide = new Bounds(results.x() + 1, results.y() + HEAD, results.w() - 2, results.h());
+        int hinted = hint.isEmpty() ? 0 : hint.size() * 10 + 4;
         int most = results.h() - 2 * ROW - 2, content = switch (panel) {
-            case FIND_BIOME -> HEAD + (fits.isEmpty() ? 24 : hintHeight(findHint(), wide) + fits.size() * ROW) + 2;
-            case DYE -> HEAD + hintHeight(dyeHint(), wide) + dyes.size() * ROW + 2;
+            case FIND_BIOME -> HEAD + (fits.isEmpty() ? 24 : hinted + fits.size() * ROW) + 2;
+            case DYE -> HEAD + hinted + dyes.size() * ROW + 2;
             default -> most;
         };
         panelArea = new Bounds(results.x(), results.y(), results.w(), panel == Panel.NONE ? 0 : Math.max(HEAD + ROW, Math.min(content, most)));
-        Bounds body = panelBody();
+        Bounds body = panelBody(), belowHint = new Bounds(body.x(), body.y() + hinted, body.w(), body.h() - hinted);
         panelList = new Widgets.ScrollList(body, ROW, () -> 0);
         switch (panel) {
             case FILTERS -> FilterControls.build(panelWidgets, body, false, this::build);
@@ -408,17 +425,12 @@ public final class MatchTab extends Tab {
                 box.setValue(biomeSearch);
                 panelWidgets.setFocused(box);
                 panelList = new Widgets.ScrollList(new Bounds(body.x(), body.y() + LINE + 1, body.w(), body.h() - LINE - 1), 11, () -> matchingBiomes().size());
-                int at = matchingBiomes().stream().map(k -> k.identifier().toString()).toList().indexOf(ModSettings.biome);
-                if (at >= 0) panelList.reveal(Math.min(at + (body.h() - LINE - 1) / 22, matchingBiomes().size() - 1));
+                List<ResourceKey<Biome>> listed = matchingBiomes();
+                int at = listed.stream().map(k -> k.identifier().toString()).toList().indexOf(ModSettings.biome);
+                if (at >= 0) panelList.reveal(Math.min(at + (body.h() - LINE - 1) / 22, listed.size() - 1));
             }
-            case FIND_BIOME -> {
-                int hinted = fits.isEmpty() ? 0 : hintHeight(findHint(), body);
-                panelList = new Widgets.ScrollList(new Bounds(body.x(), body.y() + hinted, body.w(), body.h() - hinted), ROW, () -> fits.size());
-            }
-            case DYE -> {
-                int hinted = hintHeight(dyeHint(), body);
-                panelList = new Widgets.ScrollList(new Bounds(body.x(), body.y() + hinted, body.w(), body.h() - hinted), ROW, () -> dyes.size());
-            }
+            case FIND_BIOME -> panelList = new Widgets.ScrollList(belowHint, ROW, () -> fits.size());
+            case DYE -> panelList = new Widgets.ScrollList(belowHint, ROW, () -> dyes.size());
             default -> { }
         }
     }
@@ -924,6 +936,10 @@ public final class MatchTab extends Tab {
             g.fill(cx + i, cy - 1 - i, cx + i + 1, cy - i, c);
         }
         panelWidgets.render(g, mouseX, mouseY, delta);
+        if (!hint.isEmpty()) {
+            Widgets.swatch(g, body.x() + 6, body.y() + 2, 10, 10, hintRgb);
+            for (int i = 0; i < hint.size(); i++) g.text(font, hint.get(i), body.x() + 24, body.y() + 3 + i * 10, Theme.SOFT, false);
+        }
         switch (panel) {
             case BIOMES -> {
                 List<ResourceKey<Biome>> listed = matchingBiomes();
@@ -942,9 +958,6 @@ public final class MatchTab extends Tab {
                 if (listed.isEmpty()) Widgets.centred(g, tr("biome.none"), r.x() + r.w() / 2, r.y() + r.h() / 2, DIM);
             }
             case FIND_BIOME -> {
-                if (!fits.isEmpty()) {
-                    hint(g, font, findHint(), body, MatchState.lastFlat().rgb());
-                }
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
                     BiomeFit fit = fits.get(i);
                     if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
@@ -960,7 +973,6 @@ public final class MatchTab extends Tab {
             }
             case DYE -> {
                 Optional<Component> noGive = Give.whyNot();
-                hint(g, font, dyeHint(), body, MatchState.colour().rgb());
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
                     ItemStack stack = dyes.get(i);
                     if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
@@ -970,29 +982,6 @@ public final class MatchTab extends Tab {
                 });
             }
             default -> { }
-        }
-    }
-
-    private static Component findHint() { return tr("find_biome.hint", MatchState.entry().name(), MatchState.lastFlat().hex()); }
-
-    private static Component dyeHint() { return tr("dye.hint", MatchState.colour().hex()); }
-
-    private static List<String> hintLines(Component hint, Bounds body) {
-        Font font = Minecraft.getInstance().font;
-        int w = body.w() - 26;
-        List<String> lines = font.getSplitter().splitLines(hint, w, Style.EMPTY).stream().map(FormattedText::getString).toList();
-        if (lines.size() <= 2) return lines;
-        return List.of(lines.getFirst(), ellipsis(font, String.join(" ", lines.subList(1, lines.size())), w));
-    }
-
-    private static int hintHeight(Component hint, Bounds body) { return hintLines(hint, body).size() * 10 + 4; }
-
-    private static void hint(GuiGraphicsExtractor g, Font font, Component hint, Bounds body, int rgb) {
-        Widgets.swatch(g, body.x() + 6, body.y() + 2, 10, 10, rgb);
-        int y = body.y() + 3;
-        for (String line : hintLines(hint, body)) {
-            g.text(font, line, body.x() + 24, y, Theme.SOFT, false);
-            y += 10;
         }
     }
 
