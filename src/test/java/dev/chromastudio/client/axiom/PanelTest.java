@@ -209,6 +209,7 @@ class PanelTest {
             assertTrue(ImGui.drawn.contains(Blocks.STONE_BRICKS.getName().getString()), ImGui.drawn.toString());
             assertTrue(ImGui.drawn.contains(tuff), ImGui.drawn.toString());
             assertFalse(ImGui.tips.contains(tuff), ImGui.tips.toString());
+            assertTrue(ImGui.tips.contains("minecraft:tuff_bricks"), ImGui.tips.toString());
         } finally {
             PaletteStore.get().delete(shades);
         }

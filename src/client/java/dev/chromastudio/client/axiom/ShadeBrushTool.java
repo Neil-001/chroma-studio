@@ -261,7 +261,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private static void named(String id, BlockState state, String label) {
         Optional<Color> c = BlockIndex.get().colourOf(state, PaletteBlocks.queryFace(), PaletteBlocks.tint());
         if (c.isPresent()) {
-            AxiomPanel.swatch(id, new AxiomPanel.Swatch(c.get(), ""));
+            AxiomPanel.swatch(id, new AxiomPanel.Swatch(c.get(), BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString()));
             AxiomPanel.sameLine();
         }
         ImGui.alignTextToFramePadding();
