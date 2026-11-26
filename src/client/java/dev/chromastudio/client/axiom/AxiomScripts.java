@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -69,8 +68,8 @@ final class AxiomScripts {
         List<Component> details = new ArrayList<>(List.of(Component.translatable("axiom.chromastudio.scatter.rules")));
         if (!skipped.isEmpty()) {
             scope.append(" ").append(Component.translatable("axiom.chromastudio.script.left_out", skipped.size()));
-            details.add(leftOut);
             details.add(Component.translatable("axiom.chromastudio.brush.left_out.tip"));
+            details.add(leftOut);
         }
         AxiomScript.Kept kept = kept(s -> !ScatterBlocks.paintsOver(s), s -> {
             String half = property(s, "half");
@@ -97,7 +96,7 @@ final class AxiomScripts {
             case Y -> at.getY();
             case Z -> at.getZ();
         };
-        MutableComponent scope = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name().toLowerCase(Locale.ROOT));
+        MutableComponent scope = Component.translatable("axiom.chromastudio.gradient.done", full.size(), axis.name());
         List<Component> details = new ArrayList<>(List.of(AxiomNames.text("axiom.chromastudio.gradient.rules"),
                 Component.translatable("axiom.chromastudio.gradient.left_alone")));
         int skipped = steps.size() - full.size();
@@ -171,11 +170,7 @@ final class AxiomScripts {
         if (bytes > ClipboardSize.MAX_BYTES) {
             throw new Refused(Component.translatable(tooBig, ClipboardSize.kilobytes(bytes), ClipboardSize.kilobytes(ClipboardSize.MAX_BYTES)));
         }
-        Component size = Component.translatable("axiom.chromastudio.size", ClipboardSize.kilobytes(bytes), counted);
-        if (counted <= AxiomScript.SERVER_LIMIT) return new Script(script, scope, size, null, null, List.copyOf(details));
-        Component next = Component.translatable(nextStep);
-        List<Component> all = new ArrayList<>(details);
-        all.add(next);
-        return new Script(script, scope, size, Component.translatable("axiom.chromastudio.script.over", AxiomScript.SERVER_LIMIT), next, List.copyOf(all));
+        if (counted <= AxiomScript.SERVER_LIMIT) return new Script(script, scope, Component.translatable("axiom.chromastudio.size", counted), null, null, List.copyOf(details));
+        return new Script(script, scope, Component.translatable("axiom.chromastudio.size.over", counted, AxiomScript.SERVER_LIMIT), Component.translatable("axiom.chromastudio.script.over", AxiomScript.SERVER_LIMIT), Component.translatable(nextStep), List.copyOf(details));
     }
 }

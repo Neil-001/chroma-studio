@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.function.Consumer;
@@ -870,7 +871,7 @@ final class PaletteDialogs {
     static final class Axiom extends Dialog {
         private enum Script { RECOLOUR, SCATTER }
 
-        static final int WIDTH = 300, SCOPE_LINES = 1, WARNING_LINES = 2, BODY_LINES = 5;
+        static final int WIDTH = 300, SCOPE_LINES = 1, SIZE_LINES = 2, NEXT_LINES = 3, RECEIPT_LINES = 2, RULE = 7, CALLOUT = 6, BULLET = 8;
 
         private static Script script = Script.RECOLOUR;
         private static AxiomScript.Axis axis = AxiomScript.Axis.Y;
@@ -882,54 +883,90 @@ final class PaletteDialogs {
         private final List<PaletteEntry> steps;
         private AxiomBridge.Script made;
         private Component problem;
-        private int labelW;
+        private final int body;
+        private boolean copied;
         private Lines lines;
+        private Widgets.ScrollList detailList;
 
-        Axiom(Palette palette) {
-            super(tr("axiom.chromastudio.title"), WIDTH, height(3));
+        Axiom(Palette palette) { this(palette, null, null, body(palette, null, null)); }
+
+        Axiom(String gradientName, List<PaletteEntry> steps) { this(null, gradientName, List.copyOf(steps), body(null, gradientName, steps)); }
+
+        private Axiom(@Nullable Palette palette, @Nullable String gradientName, @Nullable List<PaletteEntry> steps, int body) {
+            super(tr("axiom.chromastudio.title"), WIDTH, height(palette == null ? 1 : 3, body));
             this.palette = palette;
-            this.gradientName = null;
-            this.steps = null;
-        }
-
-        Axiom(String gradientName, List<PaletteEntry> steps) {
-            super(tr("axiom.chromastudio.title"), WIDTH, height(1));
-            this.palette = null;
             this.gradientName = gradientName;
-            this.steps = List.copyOf(steps);
+            this.steps = steps;
+            this.body = body;
         }
 
-        private static int height(int rows) {
-            return TITLE_H + 7 + rows * PanelTab.ROW + PanelTab.GAP + BODY_LINES * 9 + 2 * PanelTab.GAP + Widgets.H + STATUS_H;
+        private static int body(@Nullable Palette palette, @Nullable String gradientName, @Nullable List<PaletteEntry> steps) {
+            if (palette == null) return bodyLines(gradient(gradientName, steps));
+            return Math.max(bodyLines(script(Script.RECOLOUR, palette)), bodyLines(script(Script.SCATTER, palette)));
         }
 
-        record Lines(Fitted scope, Fitted size, Fitted warning, Fitted problem, int detailsW) {}
-
-        static Lines lines(StringSplitter splitter, int width, AxiomBridge.@Nullable Script made, @Nullable Component problem) {
-            Fitted none = new Fitted(List.of(), false);
-            if (made == null) return new Lines(none, none, none, fit(splitter, problem, width, BODY_LINES), 0);
-            int detailsW = (int) Math.ceil(splitter.stringWidth(tr("axiom.chromastudio.script.details"))) + 2 * PanelTab.GAP;
-            return new Lines(fit(splitter, made.scope(), width, SCOPE_LINES), fit(splitter, made.size(), width - detailsW, 1),
-                    fit(splitter, made.warning(), width, WARNING_LINES), none, detailsW);
+        private static int height(int rows, int body) {
+            return TITLE_H + 7 + rows * PanelTab.ROW + PanelTab.GAP + body + PanelTab.GAP + Widgets.H;
         }
 
-        private void make() {
-            made = null;
-            problem = null;
+        private static int bodyLines(Made m) {
+            Lines l = lines(PanelTab.font().getSplitter(), WIDTH - 10, Integer.MAX_VALUE / 2, m.script(), m.problem());
+            return l.top() + l.details().size() * 9;
+        }
+
+        private record Made(AxiomBridge.@Nullable Script script, @Nullable Component problem) {}
+
+        private static Made script(Script kind, Palette palette) {
             try {
-                if (palette == null) {
-                    var player = Minecraft.getInstance().player;
-                    made = AxiomBridge.gradientScript(gradientName, steps, axis, player == null ? BlockPos.ZERO : player.blockPosition());
-                }
-                else if (script == Script.SCATTER) made = AxiomBridge.scatterScript(palette);
-                else made = AxiomBridge.recolourScript(palette, from(), match);
+                return new Made(kind == Script.SCATTER ? AxiomBridge.scatterScript(palette) : AxiomBridge.recolourScript(palette, from(palette), match), null);
             } catch (AxiomBridge.Refused r) {
-                problem = r.reason();
+                return new Made(null, r.reason());
             }
         }
 
-        private Palette from() {
-            for (Palette p : fromChoices()) if (p != palette && key(p).equals(fromKey)) return p;
+        private static Made gradient(String name, List<PaletteEntry> steps) {
+            try {
+                var player = Minecraft.getInstance().player;
+                return new Made(AxiomBridge.gradientScript(name, steps, axis, player == null ? BlockPos.ZERO : player.blockPosition()), null);
+            } catch (AxiomBridge.Refused r) {
+                return new Made(null, r.reason());
+            }
+        }
+
+        record Detail(FormattedText text, boolean first) {}
+
+        record Lines(Fitted scope, Fitted size, Fitted next, List<Detail> details, Fitted problem) {
+            int top() { return problem.height() + scope.height() + size.height() + next.height() + (details.isEmpty() ? 0 : RULE); }
+        }
+
+        static Lines lines(StringSplitter splitter, int width, int room, AxiomBridge.@Nullable Script made, @Nullable Component problem) {
+            Fitted none = new Fitted(List.of(), false);
+            if (made == null) return new Lines(none, none, none, List.of(), fit(splitter, problem, width, Math.max(1, room / 9)));
+            Fitted scope = fit(splitter, made.scope(), width, SCOPE_LINES), size = fit(splitter, made.size(), width - CALLOUT, SIZE_LINES);
+            Fitted next = fit(splitter, made.nextStep(), width - CALLOUT, NEXT_LINES);
+            List<Detail> details = new ArrayList<>();
+            for (Component d : made.details()) {
+                List<FormattedText> split = splitter.splitLines(d, width - BULLET - Widgets.BAR_W - 2, Style.EMPTY);
+                for (FormattedText line : split) details.add(new Detail(line, line == split.getFirst()));
+            }
+            return new Lines(scope, size, next, details, none);
+        }
+
+        private void make() {
+            Made m = palette == null ? gradient(gradientName, steps) : script(script, palette);
+            made = m.script();
+            problem = m.problem();
+        }
+
+        private void changed() {
+            copied = false;
+            int now = body(palette, gradientName, steps);
+            if (now == body) refresh();
+            else tab.open(new Axiom(palette, gradientName, steps, now));
+        }
+
+        private static @Nullable Palette from(Palette palette) {
+            for (Palette p : PaletteStore.get().all()) if (p != palette && key(p).equals(fromKey)) return p;
             return null;
         }
 
@@ -947,46 +984,52 @@ final class PaletteDialogs {
 
         private int rows() { return palette == null ? 1 : 3; }
 
+        private int bodyTop(Bounds in) { return in.y() + rows() * PanelTab.ROW + PanelTab.GAP; }
+
         @Override
         protected void build(Bounds in) {
             make();
-            lines = lines(PanelTab.font().getSplitter(), in.w(), made, problem);
-            int x, y = in.y();
-            if (palette == null) {
-                labelW = labelWidth("axiom.chromastudio.axis");
-                x = in.x() + labelW;
-                widgets.cycler(x, y, 40, null, List.of(AxiomScript.Axis.values()), axis, a -> Component.literal(a.name().toLowerCase(Locale.ROOT)),
-                        a -> { axis = a; refresh(); }, tr("axiom.chromastudio.axis.tip"));
-            } else {
-                labelW = labelWidth("axiom.chromastudio.script", "axiom.chromastudio.from", "axiom.chromastudio.match");
-                x = in.x() + labelW;
-                int w = in.right() - x;
-                widgets.cycler(x, y, w, null, List.of(Script.values()), script, s -> tr("axiom.chromastudio.script." + s.name().toLowerCase(Locale.ROOT)),
-                        s -> { script = s; refresh(); }, tr("axiom.chromastudio.script.tip"));
-                y += PanelTab.ROW;
-                Palette from = from() == null ? palette : from();
-                Function<Palette, String> name = p -> p == palette ? tr("axiom.chromastudio.from.any").getString() : AxiomBridge.fromName(p);
-                boolean fitted = Export.middle(name.apply(from), w - 10).equals(name.apply(from));
-                var fromButton = widgets.cycler(x, y, w, null, fromChoices(), from, p -> Component.literal(Export.middle(name.apply(p), w - 10)),
-                        p -> { fromKey = p == palette ? "" : key(p); refresh(); },
-                        fitted ? tr("axiom.chromastudio.from.tip") : screenTip(name.apply(from)));
-                y += PanelTab.ROW;
-                var matchButton = widgets.cycler(x, y, w, null, List.of(Recolour.Mode.values()), match,
-                        m -> tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT)), m -> { match = m; refresh(); }, tr("axiom.chromastudio.match.tip"));
-                if (script != Script.RECOLOUR) {
-                    Widgets.disable(fromButton, tr("axiom.chromastudio.script.recolour_only"));
-                    Widgets.disable(matchButton, tr("axiom.chromastudio.script.recolour_only"));
-                }
-            }
+            lines = lines(PanelTab.font().getSplitter(), in.w(), footerY(in) - PanelTab.GAP - bodyTop(in), made, problem);
+            int detailsY = bodyTop(in) + lines.top();
+            detailList = new Widgets.ScrollList(new Bounds(in.x(), detailsY, in.w(), Math.max(0, footerY(in) - PanelTab.GAP - detailsY)), 9, () -> lines.details().size());
+            controls(in);
             Component copyLabel = tr("palettes.chromastudio.copy");
-            Button copy = widgets.button(in.right() - Widgets.buttonWidth(copyLabel), copyY(in), copyLabel, () -> {
+            Button copy = widgets.button(in.right() - Widgets.buttonWidth(copyLabel), footerY(in), copyLabel, () -> {
                 AxiomBridge.copy(made);
-                status(AxiomBridge.named("axiom.chromastudio.copied"), Theme.GOOD);
+                copied = true;
             });
             if (made == null) Widgets.disable(copy, problem);
         }
 
-        private static int copyY(Bounds in) { return in.bottom() - Widgets.H - STATUS_H; }
+        private void controls(Bounds in) {
+            int x, y = in.y();
+            if (palette == null) {
+                x = in.x() + labelWidth("axiom.chromastudio.axis");
+                widgets.cycler(x, y, 40, null, List.of(AxiomScript.Axis.values()), axis, a -> Component.literal(a.name()),
+                        a -> { axis = a; changed(); }, tr("axiom.chromastudio.axis.tip"));
+                return;
+            }
+            x = in.x() + labelWidth("axiom.chromastudio.script", "axiom.chromastudio.from", "axiom.chromastudio.match");
+            int w = in.right() - x;
+            widgets.cycler(x, y, w, null, List.of(Script.values()), script, s -> tr("axiom.chromastudio.script." + s.name().toLowerCase(Locale.ROOT)),
+                    s -> { script = s; changed(); }, tr("axiom.chromastudio.script.tip"));
+            y += PanelTab.ROW;
+            Palette from = Objects.requireNonNullElse(from(palette), palette);
+            Function<Palette, String> name = p -> p == palette ? tr("axiom.chromastudio.from.any").getString() : AxiomBridge.fromName(p);
+            boolean fitted = Export.middle(name.apply(from), w - 10).equals(name.apply(from));
+            var fromButton = widgets.cycler(x, y, w, null, fromChoices(), from, p -> Component.literal(Export.middle(name.apply(p), w - 10)),
+                    p -> { fromKey = p == palette ? "" : key(p); changed(); },
+                    fitted ? tr("axiom.chromastudio.from.tip") : screenTip(name.apply(from)));
+            y += PanelTab.ROW;
+            var matchButton = widgets.cycler(x, y, w, null, List.of(Recolour.Mode.values()), match,
+                    m -> tr("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT)), m -> { match = m; changed(); }, tr("axiom.chromastudio.match.tip"));
+            if (script != Script.RECOLOUR) {
+                Widgets.disable(fromButton, tr("axiom.chromastudio.script.recolour_only"));
+                Widgets.disable(matchButton, tr("axiom.chromastudio.script.recolour_only"));
+            }
+        }
+
+        private static int footerY(Bounds in) { return in.bottom() - Widgets.H; }
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
@@ -996,32 +1039,56 @@ final class PaletteDialogs {
                 label(g, "axiom.chromastudio.from", in.x(), in.y() + PanelTab.ROW);
                 label(g, "axiom.chromastudio.match", in.x(), in.y() + 2 * PanelTab.ROW);
             }
-            int top = in.y() + rows() * PanelTab.ROW + PanelTab.GAP;
+            if (copied) {
+                Fitted receipt = fit(PanelTab.font().getSplitter(), AxiomBridge.named("axiom.chromastudio.copied"),
+                        in.w() - Widgets.buttonWidth(tr("palettes.chromastudio.copy")) - PanelTab.GAP, RECEIPT_LINES);
+                drawLines(g, receipt, in.x(), footerY(in) + (Widgets.H - receipt.height()) / 2 + 1, Theme.GOOD);
+            }
+            int top = bodyTop(in);
             if (made == null) {
-                int bottom = drawLines(g, lines.problem(), in.x(), top, Theme.FAIR);
-                if (lines.problem().cut() && over(mouseX, mouseY, in.x(), top, in.w(), bottom - top)) tip(g, List.of(problem), mouseX, mouseY);
+                cutTip(g, lines.problem(), List.of(problem), in.x(), top, in.w(), drawLines(g, lines.problem(), in.x(), top, Theme.FAIR), mouseX, mouseY);
                 return;
             }
             int y = drawLines(g, lines.scope(), in.x(), top, Theme.TEXT);
-            int sizeY = y;
-            drawLines(g, lines.size(), in.x(), y, Theme.DIM);
-            Component details = tr("axiom.chromastudio.script.details");
-            int detailsX = in.right() - Widgets.tw(details);
-            g.text(PanelTab.font(), details, detailsX, sizeY, Theme.DIM, false);
-            g.horizontalLine(detailsX, in.right() - 1, sizeY + 9, Theme.DIM);
-            if (over(mouseX, mouseY, in.x(), top, in.w(), sizeY + 10 - top)) {
-                List<Component> all = new ArrayList<>();
-                if (lines.scope().cut()) all.add(made.scope());
-                if (lines.size().cut()) all.add(made.size());
-                all.addAll(made.details());
-                tip(g, all, mouseX, mouseY);
+            cutTip(g, lines.scope(), List.of(made.scope()), in.x(), top, in.w(), y, mouseX, mouseY);
+            if (made.warning() == null) y = drawLines(g, lines.size(), in.x(), y, Theme.DIM);
+            else {
+                int calloutY = y;
+                y = drawLines(g, lines.size(), in.x() + CALLOUT, y, Theme.FAIR);
+                y = drawLines(g, lines.next(), in.x() + CALLOUT, y, Theme.TEXT);
+                g.fill(in.x(), calloutY, in.x() + 2, y - 1, Theme.FAIR);
             }
-            if (made.warning() == null) return;
-            int warningY = copyY(in) - PanelTab.GAP - lines.warning().height();
-            drawLines(g, lines.warning(), in.x(), warningY, Theme.FAIR);
-            if (over(mouseX, mouseY, in.x(), warningY, in.w(), lines.warning().height())) {
-                tip(g, lines.warning().cut() ? List.of(made.warning(), made.nextStep()) : List.of(made.nextStep()), mouseX, mouseY);
-            }
+            if (lines.details().isEmpty()) return;
+            g.horizontalLine(in.x(), in.right() - 1, y + 3, Theme.BORDER);
+            detailList.render(g, mouseX, mouseY, (gg, i, x, rowY, _, _, _) -> {
+                Detail d = lines.details().get(i);
+                if (d.first()) gg.fill(x + 2, rowY + 3, x + 4, rowY + 5, Theme.DIM);
+                gg.text(PanelTab.font(), Language.getInstance().getVisualOrder(d.text()), x + BULLET, rowY, Theme.DIM, false);
+            });
+        }
+
+        @Override
+        boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
+            return detailList != null && detailList.mouseClicked(e) || super.mouseClicked(e, doubled);
+        }
+
+        @Override
+        boolean mouseScrolled(double x, double y, double h, double v) {
+            return detailList != null && detailList.mouseScrolled(x, y, v) || super.mouseScrolled(x, y, h, v);
+        }
+
+        @Override
+        boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+            return detailList != null && detailList.mouseDragged(e) || super.mouseDragged(e, dx, dy);
+        }
+
+        @Override
+        boolean mouseReleased(MouseButtonEvent e) {
+            return detailList != null && detailList.mouseReleased() || super.mouseReleased(e);
+        }
+
+        private static void cutTip(GuiGraphicsExtractor g, Fitted shown, List<Component> full, int x, int top, int w, int bottom, int mouseX, int mouseY) {
+            if (shown.cut() && over(mouseX, mouseY, x, top, w, bottom - top)) tip(g, full, mouseX, mouseY);
         }
     }
 

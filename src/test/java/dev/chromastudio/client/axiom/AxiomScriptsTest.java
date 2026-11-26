@@ -41,7 +41,7 @@ class AxiomScriptsTest {
         assertTrue(script.text().contains("$int(Bottom, -53, -64, 319)$") && script.text().contains("$int(Top, -40, -64, 319)$"), script.text());
         List<String> keys = new ArrayList<>();
         keys(script, keys);
-        assertTrue(keys.contains("axiom.chromastudio.gradient.done[7, y]"), keys.toString());
+        assertTrue(keys.contains("axiom.chromastudio.gradient.done[7, Y]"), keys.toString());
         assertTrue(keys.contains("axiom.chromastudio.script.left_out[2]"), keys.toString());
         keys.clear();
         keys(AxiomScripts.gradient("Tower", tower.subList(0, 3), AxiomScript.Axis.Y, BlockPos.ZERO), keys);
