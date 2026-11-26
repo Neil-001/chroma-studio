@@ -1211,16 +1211,35 @@ final class PaletteDialogs {
     static final class WorldEdit extends Dialog {
         private static String which = WorldEditPattern.COMMANDS.getFirst(), from = "";
 
+        private static final int WIDTH = 320, LINE = 10, INDENT = 6;
+
         private final Palette palette;
         private int labelW;
         private Button copy, send;
+        private List<List<WorldEditPattern.Piece>> scrolled = List.of();
+        private final Widgets.ScrollList scroller = new Widgets.ScrollList(new Bounds(0, 0, 0, 0), LINE, () -> scrolled.size());
+        private @Nullable Component note;
+        private int noteColour;
 
         WorldEdit(Palette palette) {
-            super(tr("palettes.chromastudio.worldedit.title"), 320, 170);
+            super(tr("palettes.chromastudio.worldedit.title"), WIDTH, height(palette));
             this.palette = palette;
         }
 
-        private String command() {
+        private static int height(Palette palette) {
+            int lines = palette.entries.isEmpty() ? 1 : wrap(WorldEditPattern.pieces("replace", palette, from.isBlank() ? "stone,andesite" : from), WIDTH - 16).size() + 1;
+            return TITLE_H + 7 + 2 * PanelTab.ROW + LINE + Math.clamp(lines, 2, 8) * LINE + 6 + 2 * PanelTab.GAP + Widgets.H;
+        }
+
+        private @Nullable List<WorldEditPattern.Piece> pieces() {
+            try {
+                return WorldEditPattern.pieces(which, palette, from);
+            } catch (IllegalArgumentException _) {
+                return null;
+            }
+        }
+
+        private @Nullable String command() {
             try {
                 return WorldEditPattern.command(which, palette, from);
             } catch (IllegalArgumentException _) {
@@ -1228,25 +1247,47 @@ final class PaletteDialogs {
             }
         }
 
+        private void note(Component text, int colour) {
+            note = text;
+            noteColour = colour;
+        }
+
         @Override
         protected void build(Bounds in) {
-            labelW = labelWidth("palettes.chromastudio.worldedit.command", "palettes.chromastudio.worldedit.from");
-            int x = in.x() + labelW, y = in.y();
-            widgets.cycler(x, y, 80, null, WorldEditPattern.COMMANDS, which, c -> Component.literal("//" + c), c -> { which = c; refresh(); });
-            y += PanelTab.ROW;
+            labelW = labelWidth("palettes.chromastudio.worldedit.from");
+            int count = WorldEditPattern.COMMANDS.size(), x = in.x();
+            for (int i = 0; i < count; i++) {
+                String c = WorldEditPattern.COMMANDS.get(i);
+                int right = in.x() + (in.w() + PanelTab.GAP) * (i + 1) / count - PanelTab.GAP;
+                Chip chip = widgets.add(new Chip(x, in.y(), Component.literal("//" + c), () -> which.equals(c), () -> {
+                    if (which.equals(c)) return;
+                    which = c;
+                    note = null;
+                    refresh();
+                }));
+                chip.setWidth(right - x);
+                x = right + PanelTab.GAP;
+            }
             Component copyLabel = tr("palettes.chromastudio.copy"), sendLabel = tr("palettes.chromastudio.worldedit.send");
-            int sendW = Widgets.buttonWidth(sendLabel), copyW = Widgets.buttonWidth(copyLabel);
-            send = widgets.button(in.right() - sendW, in.bottom() - Widgets.H - STATUS_H, sendLabel, () -> {
+            int sendW = Widgets.buttonWidth(sendLabel), copyW = Widgets.buttonWidth(copyLabel), buttonY = in.bottom() - Widgets.H;
+            send = widgets.button(in.right() - sendW, buttonY, sendLabel, () -> {
                 ChromaStudioClient.platform.sendChatCommand(command().substring(1));
-                status(tr("palettes.chromastudio.worldedit.sent"), Theme.GOOD);
+                note(tr("palettes.chromastudio.worldedit.sent"), Theme.GOOD);
             });
-            copy = widgets.button(in.right() - sendW - PanelTab.GAP - copyW, in.bottom() - Widgets.H - STATUS_H, copyLabel, () -> {
-                Clipboard.copy(command()).ifPresentOrElse(why -> status(why, Theme.BAD),
-                        () -> status(tr("palettes.chromastudio.worldedit.copied"), Theme.GOOD));
+            copy = widgets.button(in.right() - sendW - PanelTab.GAP - copyW, buttonY, copyLabel, () -> {
+                Clipboard.copy(command()).ifPresentOrElse(why -> note(why, Theme.BAD),
+                        () -> note(tr("palettes.chromastudio.worldedit.copied"), Theme.GOOD));
             });
-            EditBox field = widgets.search(x, y, in.right() - x, tr("palettes.chromastudio.worldedit.from.hint"), s -> { from = s; enable(); });
-            field.setValue(from);
-            if (!which.equals("replace")) Widgets.disable(field, tr("palettes.chromastudio.worldedit.from.na"));
+            if (which.equals("replace")) {
+                int fieldX = in.x() + labelW;
+                EditBox field = widgets.search(fieldX, in.y() + PanelTab.ROW, in.right() - fieldX,
+                        Component.literal(PanelTab.fit(tr("palettes.chromastudio.worldedit.from.hint").getString(), in.right() - fieldX - 8)).withColor(Theme.TIP_DIM), s -> {
+                            if (!s.equals(from)) note = null;
+                            from = s;
+                            enable();
+                        });
+                field.setValue(from);
+            }
             enable();
         }
 
@@ -1261,21 +1302,117 @@ final class PaletteDialogs {
 
         @Override
         protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
-            label(g, "palettes.chromastudio.worldedit.command", in.x(), in.y());
-            label(g, "palettes.chromastudio.worldedit.from", in.x(), in.y() + PanelTab.ROW);
-            int top = in.y() + 2 * PanelTab.ROW, bottom = in.bottom() - Widgets.H - STATUS_H - PanelTab.GAP;
+            int fieldY = in.y() + PanelTab.ROW, fieldX = in.x() + labelW, fieldW = in.right() - fieldX;
+            boolean replace = which.equals("replace");
+            g.text(PanelTab.font(), tr("palettes.chromastudio.worldedit.from"), in.x(), fieldY + 4, replace ? Theme.SOFT : Theme.DIM, false);
+            if (!replace) {
+                Component na = tr("palettes.chromastudio.worldedit.from.na");
+                g.fill(fieldX, fieldY, in.right(), fieldY + Widgets.H, 0xFF000000);
+                g.outline(fieldX, fieldY, fieldW, Widgets.H, 0xFF000000 | Theme.TIP_GREYED);
+                g.text(PanelTab.font(), PanelTab.fit(na.getString(), fieldW - 8), fieldX + 4, fieldY + 4, 0xFF000000 | Theme.TIP_DIM, false);
+                if (over(mouseX, mouseY, fieldX, fieldY, fieldW, Widgets.H)) g.setTooltipForNextFrame(PanelTab.font(), PanelTab.font().split(na, 200), mouseX, mouseY);
+            }
+            int captionY = in.y() + 2 * PanelTab.ROW;
+            g.text(PanelTab.font(), tr("palettes.chromastudio.worldedit.preview"), in.x(), captionY + 1, Theme.DIM, false);
+            int top = captionY + LINE, bottom = in.bottom() - Widgets.H - 2 * PanelTab.GAP;
             g.fill(in.x(), top, in.right(), bottom, Theme.WELL);
-            String command = command();
-            Component shown = command != null ? Component.literal(command) : tr("palettes.chromastudio.worldedit.from.needed");
-            List<FormattedCharSequence> lines = PanelTab.font().split(shown, in.w() - 6);
-            int fit = Math.max(1, (bottom - top - 4) / 9);
-            for (int i = 0; i < Math.min(fit, lines.size()); i++) {
-                g.text(PanelTab.font(), lines.get(i), in.x() + 3, top + 3 + i * 9, command != null ? Theme.TEXT : Theme.FAIR, false);
+            int fit = Math.max(1, (bottom - top - 4) / LINE);
+            List<WorldEditPattern.Piece> pieces = pieces();
+            if (pieces == null) {
+                scrolled = List.of();
+                List<FormattedCharSequence> lines = PanelTab.font().split(tr("palettes.chromastudio.worldedit.from.needed"), in.w() - 6);
+                for (int i = 0; i < Math.min(fit, lines.size()); i++) g.text(PanelTab.font(), lines.get(i), in.x() + 3, top + 3 + i * LINE, Theme.FAIR, false);
+                if (replace) g.outline(fieldX - 1, fieldY - 1, fieldW + 2, Widgets.H + 2, Theme.FIELD_BAD);
+            } else {
+                List<List<WorldEditPattern.Piece>> lines = wrap(pieces, in.w() - 6);
+                Fitted full = lines.size() > fit ? fit(PanelTab.font().getSplitter(), Component.literal(command()), g.guiWidth() - 16, (g.guiHeight() - 12) / LINE) : null;
+                if (full != null && full.cut()) {
+                    scrolled = wrap(pieces, in.w() - 6 - Widgets.BAR_W - 2);
+                    scroller.area = new Bounds(in.x(), top + 3, in.w(), bottom - top - 4);
+                    scroller.render(g, mouseX, mouseY, (gg, i, x, y, _, _, _) -> drawLine(gg, scrolled.get(i), x + 3 + (i > 0 ? INDENT : 0), y));
+                } else {
+                    scrolled = List.of();
+                    for (int i = 0; i < Math.min(fit, lines.size()); i++) drawLine(g, lines.get(i), in.x() + 3 + (i > 0 ? INDENT : 0), top + 3 + i * LINE);
+                    if (full != null) {
+                        g.text(PanelTab.font(), "...", in.right() - 12, bottom - 10, Theme.DIM, false);
+                        if (over(mouseX, mouseY, in.x(), top, in.w(), bottom - top))
+                            g.setTooltipForNextFrame(PanelTab.font(), full.lines().stream().map(Language.getInstance()::getVisualOrder).toList(), mouseX, mouseY);
+                    }
+                }
             }
-            if (lines.size() > fit) {
-                g.text(PanelTab.font(), "...", in.right() - 12, bottom - 10, Theme.DIM, false);
-                if (mouseX >= in.x() && mouseX < in.right() && mouseY >= top && mouseY < bottom) g.setTooltipForNextFrame(PanelTab.font(), lines, mouseX, mouseY);
+            if (note != null) {
+                int noteW = copy.getX() - PanelTab.GAP - in.x();
+                Fitted shown = fit(PanelTab.font().getSplitter(), note, noteW, 1);
+                drawLines(g, shown, in.x(), in.bottom() - Widgets.H + 4, noteColour);
+                if (shown.cut() && over(mouseX, mouseY, in.x(), in.bottom() - Widgets.H, noteW, Widgets.H))
+                    g.setTooltipForNextFrame(PanelTab.font(), PanelTab.font().split(note, 200), mouseX, mouseY);
             }
+        }
+
+        private static void drawLine(GuiGraphicsExtractor g, List<WorldEditPattern.Piece> line, int x, int y) {
+            for (WorldEditPattern.Piece piece : line) {
+                g.text(PanelTab.font(), piece.text(), x, y, colour(piece.kind()), false);
+                x += PanelTab.font().width(piece.text());
+            }
+        }
+
+        @Override
+        boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
+            return !scrolled.isEmpty() && scroller.mouseClicked(e) || super.mouseClicked(e, doubled);
+        }
+
+        @Override
+        boolean mouseScrolled(double x, double y, double h, double v) {
+            return !scrolled.isEmpty() && scroller.mouseScrolled(x, y, v) || super.mouseScrolled(x, y, h, v);
+        }
+
+        @Override
+        boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+            return scroller.mouseDragged(e) || super.mouseDragged(e, dx, dy);
+        }
+
+        @Override
+        boolean mouseReleased(MouseButtonEvent e) {
+            return scroller.mouseReleased() || super.mouseReleased(e);
+        }
+
+        private static int colour(WorldEditPattern.Kind kind) {
+            return switch (kind) {
+                case COMMAND -> Theme.STRONG;
+                case FROM -> Theme.INFO;
+                case BLOCK -> Theme.TEXT;
+                case SHARE, SEPARATOR -> Theme.DIM;
+            };
+        }
+
+        private static List<List<WorldEditPattern.Piece>> wrap(List<WorldEditPattern.Piece> pieces, int width) {
+            List<List<WorldEditPattern.Piece>> lines = new ArrayList<>();
+            lines.add(new ArrayList<>());
+            int used = 0, start = 0;
+            for (int i = 0; i < pieces.size(); i++) {
+                if (pieces.get(i).kind() != WorldEditPattern.Kind.SEPARATOR && i < pieces.size() - 1) continue;
+                List<WorldEditPattern.Piece> word = pieces.subList(start, i + 1);
+                start = i + 1;
+                int w = 0;
+                for (WorldEditPattern.Piece piece : word) w += PanelTab.font().width(piece.text());
+                if (used > 0 && used + w > width) {
+                    lines.add(new ArrayList<>());
+                    used = INDENT;
+                }
+                for (WorldEditPattern.Piece piece : word) {
+                    List<String> parts = w <= width - INDENT ? List.of(piece.text()) : piece.text().codePoints().mapToObj(Character::toString).toList();
+                    for (String part : parts) {
+                        int pw = PanelTab.font().width(part);
+                        if (used > 0 && used + pw > width) {
+                            lines.add(new ArrayList<>());
+                            used = INDENT;
+                        }
+                        lines.getLast().add(new WorldEditPattern.Piece(piece.kind(), part));
+                        used += pw;
+                    }
+                }
+            }
+            return lines;
         }
     }
 

@@ -75,6 +75,29 @@ class WorldEditPatternTest {
     }
 
     @Test
+    void piecesMarkEachPartOfTheCommand() {
+        List<WorldEditPattern.Piece> pieces = WorldEditPattern.pieces("replace", palette(
+                new PaletteEntry("minecraft:oak_stairs", "facing=north,half=top", 3), block("stone", 1)), " dirt ");
+        assertEquals(List.of(
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.COMMAND, "//replace"),
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.SEPARATOR, " "),
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.FROM, "dirt"),
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.SEPARATOR, " "),
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.SHARE, "75%"),
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.BLOCK, "oak_stairs[facing=north,half=top]"),
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.SEPARATOR, ","),
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.SHARE, "25%"),
+                new WorldEditPattern.Piece(WorldEditPattern.Kind.BLOCK, "stone")), pieces);
+        assertEquals(List.of(WorldEditPattern.Kind.COMMAND, WorldEditPattern.Kind.SEPARATOR, WorldEditPattern.Kind.BLOCK),
+                WorldEditPattern.pieces("set", palette(block("stone", 1)), null).stream().map(WorldEditPattern.Piece::kind).toList());
+        List<WorldEditPattern.Piece> listed = WorldEditPattern.pieces("replace", palette(block("stone", 1)), "dirt,,grass_block");
+        assertEquals(List.of(WorldEditPattern.Kind.COMMAND, WorldEditPattern.Kind.SEPARATOR, WorldEditPattern.Kind.FROM, WorldEditPattern.Kind.SEPARATOR,
+                WorldEditPattern.Kind.SEPARATOR, WorldEditPattern.Kind.FROM, WorldEditPattern.Kind.SEPARATOR, WorldEditPattern.Kind.BLOCK),
+                listed.stream().map(WorldEditPattern.Piece::kind).toList());
+        assertEquals("//replace dirt,,grass_block stone", String.join("", listed.stream().map(WorldEditPattern.Piece::text).toList()));
+    }
+
+    @Test
     void whatCannotBeBuiltIsRefused() {
         assertThrows(IllegalArgumentException.class, () -> WorldEditPattern.command("stack", WEIGHTED, null));
         assertThrows(IllegalArgumentException.class, () -> WorldEditPattern.command("Set", WEIGHTED, null));
