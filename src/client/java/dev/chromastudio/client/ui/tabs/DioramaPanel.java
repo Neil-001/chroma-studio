@@ -35,6 +35,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.Util;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Vector2i;
 
@@ -43,7 +44,8 @@ final class DioramaPanel implements AutoCloseable {
     private static final int TEXELS = 16;
     private static final int NO_TEXTURE = 0xFF2A2E35;
     private static final int INSET = 4, CAPTION = 10, PADDING = 8, SEPARATION = 6;
-    private static final int MARK = 0xFFFFFFFF, SHADOW = 0xFF000000, DIMMED = 0x99000000;
+    private static final int MARK = 0xFFFFFFFF, SHADOW = 0xFF000000;
+    private static final long DOUBLE_CLICK_MS = 250;
     private static final int SWATCH = 10, LEGEND_ROW = 12;
     private static final float YAW = -25, PITCH = 15, MARGIN = 1.08f;
     private static int nextId;
@@ -64,9 +66,11 @@ final class DioramaPanel implements AutoCloseable {
     private Bounds view, stage, legend;
     private Widgets widgets;
     private final List<AbstractWidget> mine = new ArrayList<>();
+    private final int[] same;
     private int[] counts, firsts;
     private final List<Integer> order = new ArrayList<>();
     private boolean orbiting;
+    private long stageClick;
 
     DioramaPanel(Palette palette) {
         for (PaletteEntry e : palette.entries) {
@@ -75,6 +79,12 @@ final class DioramaPanel implements AutoCloseable {
             kept.add(e);
             states.add(state);
             looks.add(PaletteBlocks.stats(e));
+        }
+        same = new int[kept.size()];
+        for (int i = 0; i < same.length; i++) {
+            int j = 0;
+            while (states.get(j) != states.get(i) || looks.get(j) != looks.get(i)) j++;
+            same[i] = j;
         }
         arrange();
     }
@@ -95,11 +105,16 @@ final class DioramaPanel implements AutoCloseable {
         if (arrangement == null) return;
         int w = arrangement.sizeX();
         for (int i = 0; i < w * arrangement.sizeY(); i++) {
-            int entry = arrangement.at(i % w, i / w, 0);
+            int entry = block(i % w, i / w);
             if (entry >= 0 && counts[entry]++ == 0) firsts[entry] = i;
         }
         for (int i = 0; i < counts.length; i++) if (counts[i] > 0) order.add(i);
         order.sort((a, b) -> Integer.compare(counts[b], counts[a]));
+    }
+
+    private int block(int x, int y) {
+        int entry = arrangement.at(x, y, 0);
+        return entry < 0 ? entry : same[entry];
     }
 
     private static Component name(Layout l) { return Component.translatable("option.chromastudio.layoutchoice." + l.name().toLowerCase(Locale.ROOT)); }
@@ -155,7 +170,7 @@ final class DioramaPanel implements AutoCloseable {
                     if (entry >= 0) cells[y * w + x] = states.get(entry);
                 }
             float scale = Math.min(stage.w() / spanX(w), stage.h() / spanY(w, h));
-            if (orbiting || stage.contains(mouseX, mouseY)) g.requestCursor(CursorTypes.RESIZE_ALL);
+            if (stage.contains(mouseX, mouseY)) g.requestCursor(CursorTypes.RESIZE_ALL);
             DioramaPip.submit(stage.x(), stage.y(), stage.w(), stage.h(), scale, w, h, cells, yaw, pitch, ModSettings.dioramaPerspective);
             return;
         }
@@ -164,15 +179,15 @@ final class DioramaPanel implements AutoCloseable {
         ScreenRectangle anchor = null;
         if (pointed < 0 && mouseX >= dx && mouseX < dx + dw && mouseY >= dy && mouseY < dy + dh) {
             int cx = (mouseX - dx) / cell, cy = (mouseY - dy) / cell;
-            pointed = arrangement.at(cx, h - 1 - cy, 0);
+            pointed = block(cx, h - 1 - cy);
             anchor = new ScreenRectangle(dx + cx * cell, dy + cy * cell, cell, cell);
         }
         if (pointed < 0) return;
         for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++) {
                 int px = dx + x * cell, py = dy + y * cell;
-                if (arrangement.at(x, h - 1 - y, 0) == pointed) edges(g, x, y, pointed, px, py, cell);
-                else g.fill(px, py, px + cell, py + cell, DIMMED);
+                if (block(x, h - 1 - y) == pointed) edges(g, x, y, pointed, px, py, cell);
+                else g.fill(px, py, px + cell, py + cell, Theme.SCRIM);
             }
         if (anchor != null) tip(g, pointed, new BelowOrAboveWidgetTooltipPositioner(anchor), mouseX, mouseY);
     }
@@ -189,7 +204,7 @@ final class DioramaPanel implements AutoCloseable {
                 g.outline(legend.x() - 1, y - 1, SWATCH + 2, SWATCH + 2, MARK);
                 pointed = entry;
                 int rowY = y;
-                tip(g, entry, (_, screenH, _, _, tipW, tipH) -> new Vector2i(legend.x() - tipW - 6, Math.clamp(rowY - 4, 4, screenH - tipH - 4)), mouseX, mouseY);
+                tip(g, entry, (_, screenH, _, _, tipW, tipH) -> new Vector2i(Math.max(4, legend.x() - tipW - 6), Math.clamp(rowY - 4, 4, screenH - tipH - 4)), mouseX, mouseY);
             }
             g.text(PanelTab.font(), percent(counts[entry], w * h) + "%", legend.x() + SWATCH + 3, y + 2, over ? Theme.TEXT : Theme.SOFT, false);
         }
@@ -221,7 +236,7 @@ final class DioramaPanel implements AutoCloseable {
 
     private boolean same(int x, int y, int entry) {
         int w = arrangement.sizeX(), h = arrangement.sizeY();
-        return x >= 0 && y >= 0 && x < w && y < h && arrangement.at(x, h - 1 - y, 0) == entry;
+        return x >= 0 && y >= 0 && x < w && y < h && block(x, h - 1 - y) == entry;
     }
 
     private static float spanX(int w) {
@@ -282,12 +297,14 @@ final class DioramaPanel implements AutoCloseable {
         return a == 255 ? argb : ARGB.srgbLerp(a / 255f, background, ARGB.opaque(argb));
     }
 
-    boolean clicked(MouseButtonEvent e, boolean doubled) {
+    boolean clicked(MouseButtonEvent e) {
         orbiting = threeD && e.button() == InputConstants.MOUSE_BUTTON_LEFT && stage.contains(e.x(), e.y());
-        if (orbiting && doubled) {
+        long now = Util.getMillis();
+        if (orbiting && now - stageClick < DOUBLE_CLICK_MS) {
             yaw = YAW;
             pitch = PITCH;
         }
+        stageClick = orbiting ? now : 0;
         return orbiting;
     }
 

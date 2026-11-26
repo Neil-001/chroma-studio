@@ -454,7 +454,7 @@ public final class PalettesTab extends PanelTab {
         }
         return switch (panel) {
             case ANALYSE -> analyse.clicked(e);
-            case DIORAMA -> diorama.clicked(e, doubled);
+            case DIORAMA -> diorama.clicked(e);
             default -> rows.mouseClicked(e, doubled);
         };
     }
