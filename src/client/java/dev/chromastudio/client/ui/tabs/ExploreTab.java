@@ -222,7 +222,7 @@ public final class ExploreTab extends Tab {
         int screenW = window.getGuiScaledWidth(), screenH = window.getGuiScaledHeight();
         int x = mouseX + TIP_OFFSET + ICON_BOX + 2 * TIP_MARGIN, ix = mouseX + TIP_OFFSET;
         if (x + w + TIP_MARGIN > screenW || ix + ICON_BOX > area.right()) {
-            x = Math.max(area.x() + ICON_BOX + 2 * TIP_MARGIN, mouseX - TIP_OFFSET - TIP_MARGIN - w);
+            x = Math.max(TIP_MARGIN, Math.min(screenW - TIP_MARGIN - w, Math.max(area.x() + ICON_BOX + 2 * TIP_MARGIN, mouseX - TIP_OFFSET - TIP_MARGIN - w)));
             ix = x - 2 * TIP_MARGIN - ICON_BOX;
         }
         int y = Math.clamp(mouseY - TIP_OFFSET, TIP_MARGIN, Math.max(TIP_MARGIN, screenH - h - TIP_MARGIN));
@@ -298,7 +298,7 @@ public final class ExploreTab extends Tab {
             for (Dot d : dots) {
                 if (d.ringed != (pass == 1)) continue;
                 int x = screenX(d.hue), y = screenY(d.lightness), s = d.size + grow(), x0 = x - s / 2, y0 = y - s / 2;
-                if (x0 + s < p.x() || x0 > p.right() || y0 + s < p.y() || y0 > p.bottom()) continue;
+                if (!shown(d, x0, y0, s)) continue;
                 float fade = ringing && !d.ringed ? opacity * 0.5f : opacity;
                 if (Theme.contrast(0xFF000000 | d.rgb, WELL) < 1.4) g.fill(x0 + 1, y0 + 1, x0 + s + 1, y0 + s + 1, ARGB.multiplyAlpha(Theme.veil(0x70), fade));
                 g.fill(x0, y0, x0 + s, y0 + s, ARGB.multiplyAlpha(0xFF000000 | d.rgb, fade));
@@ -383,6 +383,11 @@ public final class ExploreTab extends Tab {
         g.text(font, text, x, y, ARGB.multiplyAlpha(DIM, opacity), false);
     }
 
+    private boolean shown(Dot d, int x0, int y0, int s) {
+        int ring = d.ringed ? 3 : 0;
+        return x0 + s + ring > plot.x() && x0 - ring < plot.right() && y0 + s + ring > plot.y() && y0 - ring < plot.bottom();
+    }
+
     private boolean miniShown() { return zoom > 1 && !dots.isEmpty(); }
 
     private Dot at(double mouseX, double mouseY) {
@@ -392,7 +397,7 @@ public final class ExploreTab extends Tab {
         int best = REACH * REACH + 1;
         for (Dot d : dots) {
             int x = screenX(d.hue), y = screenY(d.lightness), s = d.size + grow(), x0 = x - s / 2, y0 = y - s / 2;
-            if (x0 + s <= plot.x() || x0 >= plot.right() || y0 + s <= plot.y() || y0 >= plot.bottom()) continue;
+            if (!shown(d, x0, y0, s)) continue;
             int dx = x - mx, dy = y - my, far = dx * dx + dy * dy;
             if (far < best) {
                 best = far;
