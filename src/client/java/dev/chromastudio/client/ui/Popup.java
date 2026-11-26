@@ -25,10 +25,12 @@ abstract class Popup {
 
     final void layout(int screenW, int screenH) {
         int w = Math.min(wantW, screenW - 8), h = Math.min(wantH, screenH - 8);
-        box = new Bounds((screenW - w) / 2, (screenH - h) / 2, w, h);
+        box = place(screenW, screenH, w, h);
         widgets.clear();
         build(inside());
     }
+
+    protected Bounds place(int screenW, int screenH, int w, int h) { return new Bounds((screenW - w) / 2, (screenH - h) / 2, w, h); }
 
     private Bounds inside() { return new Bounds(box.x() + 5, box.y() + TITLE_H + 3, box.w() - 10, box.h() - TITLE_H - 7); }
 
