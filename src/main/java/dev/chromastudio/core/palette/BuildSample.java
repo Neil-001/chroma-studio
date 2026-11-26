@@ -39,6 +39,8 @@ public final class BuildSample {
         if (removed.remove(id)) rows = null;
     }
 
+    public int count(String id) { return counts.getOrDefault(id, 0); }
+
     public boolean isEmpty() { return at.isEmpty(); }
 
     public void clear() {
@@ -70,6 +72,13 @@ public final class BuildSample {
         return n;
     }
 
+    public String kindAt(int x, int y, int z) { return at.get(BuildSearch.pack(x, y, z)); }
+
+    public boolean leftOut(int x, int y, int z) {
+        String id = at.get(BuildSearch.pack(x, y, z));
+        return id != null && removed.contains(id);
+    }
+
     public boolean counts(int x, int y, int z) {
         return counted(at.get(BuildSearch.pack(x, y, z)));
     }
@@ -82,6 +91,19 @@ public final class BuildSample {
     public void forEach(Visitor visitor) {
         at.forEach((p, id) -> {
             if (counted(id)) visitor.at(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
+        });
+    }
+
+    public void forEachLeftOut(Visitor visitor) {
+        if (removed.isEmpty()) return;
+        at.forEach((p, id) -> {
+            if (removed.contains(id)) visitor.at(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
+        });
+    }
+
+    public void forEachOf(String id, Visitor visitor) {
+        at.forEach((p, kind) -> {
+            if (kind.equals(id)) visitor.at(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
         });
     }
 

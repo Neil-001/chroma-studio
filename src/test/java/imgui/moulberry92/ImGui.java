@@ -97,6 +97,12 @@ public final class ImGui {
 
     public static void setCursorPosY(float y) { cursorY = y; }
 
+    public static void pushStyleVar(int what, float x, float y) {}
+
+    public static void pushStyleVar(int what, float value) {}
+
+    public static void popStyleVar() {}
+
     public static void separator() {}
 
     public static void separatorText(String label) { drawn.add(label); }
