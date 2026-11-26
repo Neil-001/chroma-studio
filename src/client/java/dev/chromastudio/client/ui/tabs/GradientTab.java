@@ -687,7 +687,7 @@ public final class GradientTab extends PanelTab {
         Grid grid = stepsGrid();
         for (int i = 0; i < result.size(); i++) {
             int x = grid.cellX(i), y = grid.cellY(i);
-            if (mx >= x && mx < x + grid.cellW && my >= y && my < y + grid.cellH() - CELL_GAP) return i;
+            if (mx >= x && mx < x + grid.cellW && my >= y && my < y + grid.body()) return i;
         }
         return -1;
     }
@@ -718,7 +718,9 @@ public final class GradientTab extends PanelTab {
     }
 
     private record Grid(int perRow, int rows, int cellW, int x, int y, int ideal, int icon, int block) {
-        int cellH() { return ideal + icon + block + CELL_GAP; }
+        int body() { return ideal + icon + block; }
+
+        int cellH() { return body() + CELL_GAP; }
 
         int cellX(int i) { return x + i % perRow * cellW; }
 
@@ -749,8 +751,9 @@ public final class GradientTab extends PanelTab {
             icon(g, s.entry, x + (grid.cellW - grid.icon) / 2, iy, grid.icon);
             g.fill(x, by, x + grid.cellW, by + grid.block, ARGB.multiplyAlpha(0xFF000000 | s.mean.rgb(), opacity));
             boolean weak = i == weakest && s.deltaE > GOOD_UP_TO || s.deltaE > FAIR_UP_TO;
-            if (weak && controls) g.fill(x + 1, by + grid.block + 1, x + grid.cellW - 1, by + grid.block + 3, ARGB.multiplyAlpha(s.deltaE > FAIR_UP_TO ? BAD : FAIR, opacity));
-            boolean over = mouseX >= x && mouseX < x + grid.cellW && mouseY >= y && mouseY < y + grid.cellH() - CELL_GAP;
+            if (weak && controls) g.fill(x + 1, by + grid.block + 1, x + grid.cellW - 1, by + grid.block + 3, ARGB.multiplyAlpha(rating(s.deltaE), opacity));
+            Bounds cell = new Bounds(x, y, grid.cellW, grid.body());
+            boolean over = cell.contains(mouseX, mouseY);
             boolean onBack = controls && s.pinned && over && overBack(x, y, grid.cellW, mouseX, mouseY);
             if (s.pinned) {
                 int ix = x + (grid.cellW - grid.icon) / 2, corner = iy + grid.icon;
@@ -761,14 +764,13 @@ public final class GradientTab extends PanelTab {
                     sign(g, x + grid.cellW - BACK + 1, y + 1, UNDO, TEXT);
                 }
             }
-            if (controls && i == swapStep) g.outline(x, y, grid.cellW, grid.cellH() - CELL_GAP, Theme.HIGHLIGHT);
-            else if (controls && over && swapStep < 0) g.outline(x, y, grid.cellW, grid.cellH() - CELL_GAP, Theme.veil(0x60));
-            Bounds cell = new Bounds(x, y, grid.cellW, grid.cellH() - CELL_GAP);
+            if (controls && i == swapStep) g.outline(x, y, grid.cellW, grid.body(), Theme.HIGHLIGHT);
+            else if (controls && over && swapStep < 0) g.outline(x, y, grid.cellW, grid.body(), Theme.veil(0x60));
             if (onBack) details(cell, new Detail(tr("gradient.chromastudio.swap.back"), TEXT));
             else if (over) {
                 List<Detail> parts = new ArrayList<>(List.of(new Detail(s.entry.name(), TEXT),
                         new Detail(tr("gradient.chromastudio.step.tip", i + 1, s.ideal.hex(), String.format(Locale.ROOT, "%.3f", s.deltaE)), DIM)));
-                if (weak) parts.add(new Detail(tr("gradient.chromastudio.legend.weakest"), s.deltaE > FAIR_UP_TO ? BAD : FAIR));
+                if (weak) parts.add(new Detail(tr("gradient.chromastudio.legend.weakest"), rating(s.deltaE)));
                 if (s.pinned) parts.add(new Detail(tr("gradient.chromastudio.step.pinned"), TEXT));
                 details(cell, parts.toArray(Detail[]::new));
             }
@@ -786,15 +788,13 @@ public final class GradientTab extends PanelTab {
         if (details.isEmpty()) return;
         List<Component> lines = new ArrayList<>(List.of(details.getFirst().text));
         for (Detail d : details.subList(1, details.size())) lines.add(d.text.copy().withColor(Theme.TIP_DIM));
-        tipBeside(g, lines, detailsFor, mouseX, mouseY);
-    }
-
-    private static void tipBeside(GuiGraphicsExtractor g, List<Component> lines, Bounds anchor, int mouseX, int mouseY) {
         g.setTooltipForNextFrame(font(), lines.stream().map(Component::getVisualOrderText).toList(),
-                new BelowOrAboveWidgetTooltipPositioner(new ScreenRectangle(anchor.x(), anchor.y(), anchor.w(), anchor.h())), mouseX, mouseY, false);
+                new BelowOrAboveWidgetTooltipPositioner(new ScreenRectangle(detailsFor.x(), detailsFor.y(), detailsFor.w(), detailsFor.h())), mouseX, mouseY, false);
     }
 
-    private int badgeColour() { return meanDeltaE <= GOOD_UP_TO ? GOOD : meanDeltaE <= FAIR_UP_TO ? FAIR : BAD; }
+    private static int rating(double deltaE) { return deltaE <= GOOD_UP_TO ? GOOD : deltaE <= FAIR_UP_TO ? FAIR : BAD; }
+
+    private int badgeColour() { return rating(meanDeltaE); }
 
     private Component badge() {
         String quality = tr(meanDeltaE <= GOOD_UP_TO ? "gradient.chromastudio.badge.good" : meanDeltaE <= FAIR_UP_TO ? "gradient.chromastudio.badge.fair" : "gradient.chromastudio.badge.poor").getString();
@@ -865,16 +865,16 @@ public final class GradientTab extends PanelTab {
     }
 
     private boolean legend(GuiGraphicsExtractor g, Grid grid) {
-        int top = grid.y - LEGEND + 1, line = Math.max(stripArea.y() + 4, top - 2 * LEGEND), bottom = grid.cellY(result.size() - 1) + grid.cellH() - CELL_GAP + 4;
+        int top = grid.y - LEGEND + 1, line = Math.max(stripArea.y() + 4, top - 2 * LEGEND), bottom = grid.cellY(result.size() - 1) + grid.body() + 4;
         if (top - LEGEND < stripArea.y() + 1 || bottom + 9 > stripArea.bottom()) return false;
         int left = grid.x + 2, right = grid.x + grid.perRow * grid.cellW - 2;
         g.text(font(), fit(tr("gradient.chromastudio.legend.wanted").getString(), right - left), left, top, DIM, false);
         String key = tr("gradient.chromastudio.legend.weakest").getString();
         int keyW = 12 + font().width(key);
         g.text(font(), fit(tr("gradient.chromastudio.legend.blocks").getString(), right - left - keyW - 8), left, bottom, DIM, false);
-        Step weakest = result.stream().max((a, c) -> Double.compare(a.deltaE, c.deltaE)).orElseThrow();
-        if (weakest.deltaE > GOOD_UP_TO && swapStep < 0) {
-            g.fill(right - keyW, bottom + 3, right - keyW + 9, bottom + 5, weakest.deltaE > FAIR_UP_TO ? BAD : FAIR);
+        double weakest = result.stream().mapToDouble(Step::deltaE).max().orElseThrow();
+        if (weakest > GOOD_UP_TO && swapStep < 0) {
+            g.fill(right - keyW, bottom + 3, right - keyW + 9, bottom + 5, rating(weakest));
             g.text(font(), key, right - font().width(key), bottom, DIM, false);
         }
         List<Detail> parts = details.isEmpty() && swapStep < 0 ? List.of(new Detail(tr("gradient.chromastudio.step.click"), DIM)) : details;

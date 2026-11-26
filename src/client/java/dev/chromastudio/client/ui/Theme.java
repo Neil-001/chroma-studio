@@ -19,7 +19,7 @@ public final class Theme {
     public static final int SCRIM = 0x90000000;
     public static final int LIT = 0xFF2F5D8A, LIT_HOVER = 0xFF3F78B0, ON_LIT = 0xFFFFFFFF;
     public static final int FIELD_BAD = 0xFFFF6B6B;
-    public static final int TIP_DIM = 0x9AA5B3, TIP_GREYED = 0x4E5560, TIP_TINT = 0x6FC45A, TIP_SWAPPED = 0xFFB84D;
+    public static final int TIP_DIM = 0x9AA5B3, TIP_GREYED = 0x4E5560, TIP_TINT = 0x6FC45A;
 
     public static int WINDOW, BACKING;
     public static int WELL, PANEL, BAR, HOVER, SELECTED;
