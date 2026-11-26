@@ -68,6 +68,9 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private final BrushStroke stroke = new BrushStroke();
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private final BooleanRegion one = AxiomTools.regions.createBoolean();
+    private final BooleanRegion hovered = AxiomTools.regions.createBoolean();
+    private Set<Long> hoveredBlocks = Set.of();
+    private @Nullable ClientLevel hoveredIn;
     private int outlineRadius = -1;
 
     private final int[] radius = {ModSettings.brushRadius};
@@ -117,6 +120,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         pickedIn = null;
         refused = null;
         clearPreview();
+        hovered.clear();
+        hoveredBlocks = Set.of();
     }
 
     @Override
@@ -268,10 +273,29 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         if (picked == null) {
             BlockHitResult hit = AxiomTools.tools.raycastBlock();
-            if (hit != null && hit.getType() == HitResult.Type.BLOCK) one.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.BLUE | Effects.OUTLINE);
+            if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
+            BlockPos at = hit.getBlockPos();
+            if (!FoundBuild.member(level, at, level.getBlockState(at))) {
+                one.render(rc, Vec3.atLowerCornerOf(at), Effects.BLUE | Effects.OUTLINE);
+                return;
+            }
+            if (hoveredIn != level || !hoveredBlocks.contains(BuildSearch.pack(at.getX(), at.getY(), at.getZ()))) hover(level, at);
+            hovered.render(rc, Vec3.ZERO, Effects.OUTLINE);
         } else {
             preview.render(rc);
         }
+    }
+
+    private void hover(ClientLevel level, BlockPos at) {
+        hovered.clear();
+        hoveredIn = level;
+        Set<Long> blocks = new HashSet<>();
+        FoundBuild build = FoundBuild.from(level, at);
+        if (build != null) for (long p : build.blocks()) {
+            blocks.add(p);
+            hovered.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
+        }
+        hoveredBlocks = blocks;
     }
 
     void makePreview(ClientLevel level) {
