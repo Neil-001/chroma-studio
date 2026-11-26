@@ -3,6 +3,7 @@ package dev.chromastudio.client.ui.tabs;
 import dev.chromastudio.client.index.BlockIndex;
 import dev.chromastudio.client.index.Query.Tri;
 import dev.chromastudio.client.ui.Bounds;
+import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import dev.chromastudio.core.color.Badge;
 import dev.chromastudio.core.color.Tone;
@@ -19,7 +20,7 @@ import net.minecraft.network.chat.MutableComponent;
 final class FilterControls {
     private FilterControls() {}
 
-    private static final int ROW = 18, GAP = 2, TEXT = 0xFFE4E9EF, DIM = 0xFF9AA5B3;
+    private static final int ROW = 18, GAP = 2;
     private static final String ALL = "all";
 
     private static MutableComponent tr(String key, Object... args) { return Component.translatable("match.chromastudio." + key, args); }
@@ -30,7 +31,7 @@ final class FilterControls {
 
     private static void filterLabel(Widgets w, int x, int y, int room, Component name) {
         String fitted = MatchTab.ellipsis(Minecraft.getInstance().font, name.getString(), room);
-        AbstractWidget label = w.label(x, y + 4, Component.literal(fitted), TEXT);
+        AbstractWidget label = w.label(x, y + 4, Component.literal(fitted), Theme.TEXT);
         if (!fitted.equals(name.getString())) label.setTooltip(Tooltip.create(name));
     }
 
@@ -105,10 +106,10 @@ final class FilterControls {
             afterReset.run();
         });
         y += ROW + 2;
-        w.label(x, y + 4, tr("filter.mods"), DIM);
+        w.label(x, y + 4, tr("filter.mods"), Theme.DIM);
         y += 14;
         for (String namespace : BlockIndex.get().namespaces()) {
-            w.label(x, y + 4, Component.literal(namespace), TEXT);
+            w.label(x, y + 4, Component.literal(namespace), Theme.TEXT);
             w.cycler(cx, y, cw, null, tris, f.namespaces.getOrDefault(namespace, Tri.ANY), triName, v -> {
                 if (v == Tri.ANY) f.namespaces.remove(namespace);
                 else f.namespaces.put(namespace, v);

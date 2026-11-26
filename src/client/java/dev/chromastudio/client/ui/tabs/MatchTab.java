@@ -16,6 +16,7 @@ import dev.chromastudio.client.FaceChoice;
 import dev.chromastudio.client.Keys;
 import dev.chromastudio.client.ModSettings;
 import dev.chromastudio.client.PaletteSink;
+import dev.chromastudio.client.PaletteStore;
 import dev.chromastudio.client.action.Clipboard;
 import dev.chromastudio.client.action.Dye;
 import dev.chromastudio.client.action.Eyedropper;
@@ -43,6 +44,7 @@ import dev.chromastudio.core.color.Metric;
 import dev.chromastudio.core.color.Oklch;
 import dev.chromastudio.core.color.Scale;
 import dev.chromastudio.core.color.Viewing;
+import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,8 +68,12 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.locale.Language;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ARGB;
@@ -77,9 +83,10 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 
 public final class MatchTab extends Tab {
-    private static final int PAD = 3, ROW = 18, CELL = 20, HEAD = 13, GAP = 2, LINE = Widgets.H + 1, STATUS_H = 10;
+    private static final int PAD = 3, ROW = 18, CELL = 34, CELL_H = CELL + 10, HEAD = 13, GAP = 2, LINE = Widgets.H + 1, STATUS_H = 10;
     private static final long STATUS_MS = 2500;
     private static final int RESULT = 0, MEMBER = 1, MAKE = 2;
     private static final int BODY = 0, EXPAND = 1, ADD = 2;
@@ -99,7 +106,7 @@ public final class MatchTab extends Tab {
 
     private record BiomeFit(ResourceKey<Biome> biome, Color colour, double distance) {}
 
-    private Bounds area = new Bounds(0, 0, 0, 0), slot = area, swatch = area, recent = area, distance = area, results = area, statusLine = area;
+    private Bounds area = new Bounds(0, 0, 0, 0), slot = area, swatch = area, recent = area, distance = area, results = area, statusLine = area, panelArea = area, shownArea = area;
     private final Widgets controls = new Widgets();
     private Widgets panelWidgets = new Widgets();
     private EditBox hexField;
@@ -126,10 +133,16 @@ public final class MatchTab extends Tab {
     private List<ResourceKey<Biome>> biomes = List.of();
     private List<BiomeFit> fits = List.of();
     private List<ItemStack> dyes = List.of();
+    private List<String> hint = List.of();
+    private int hintRgb;
+    private final Map<ResourceKey<Biome>, int[]> biomeTints = new HashMap<>();
     private final Map<Entry, int[]> ranges = new HashMap<>();
 
     private Component status;
     private long statusUntil;
+    private String cameFrom;
+    private Palette cameFromPalette;
+    private Bounds backLink = new Bounds(0, 0, 0, 0);
 
     public MatchTab() { super("match"); }
 
@@ -198,10 +211,9 @@ public final class MatchTab extends Tab {
             else axiomButton.setTooltip(Tooltip.create(AxiomBridge.activeBlockTip()));
         }
         y += ROW;
-        int half = (w - GAP) / 2;
         fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;
         fieldFormats[1] = ModSettings.colourFormat == ColourFormat.HSL ? ColourFormat.OKLCH : ColourFormat.HSL;
-        int oklchW = font.width("0.00,.000,000") + 8;
+        int half = (w - GAP) / 2, oklchW = font.width("0.00,.000,000") + 8;
         int firstW = fieldFormats[0] == ColourFormat.OKLCH ? Math.max(half, oklchW)
                 : fieldFormats[1] == ColourFormat.OKLCH ? Math.min(half, w - GAP - oklchW) : half;
         for (int i = 0; i < 2; i++) {
@@ -226,7 +238,7 @@ public final class MatchTab extends Tab {
         }));
         screenButton.setTooltip(Tooltip.create(tr("pick_screen.tip")));
         bx += screenButton.getWidth() + GAP;
-        AbstractWidget dyeButton = controls.button(bx, by, dye, () -> toggle(Panel.DYE));
+        AbstractWidget dyeButton = controls.add(new Chip(bx, by, dye, () -> panel == Panel.DYE, () -> toggle(Panel.DYE)));
         Optional<Component> noGive = Give.whyNot();
         if (noGive.isPresent()) Widgets.disable(dyeButton, noGive.get());
 
@@ -235,54 +247,64 @@ public final class MatchTab extends Tab {
         picker.layout(new Bounds(x, y, w, Math.max(8, slidersY - 4 - y)), new Bounds(x, slidersY, w, 3 * (ColourPicker.SLIDER_H + 2)));
 
         Flow flow = new Flow(b.x() + lw, b.right() - PAD, b.y() + PAD);
+        int room = flow.right - flow.left;
+        MatchFilters filters = MatchState.filters();
+        List<String> kinds = new ArrayList<>(List.of(ALL));
+        for (Kind k : Kind.values()) kinds.add(k.name());
+        int kindW = widest(kinds.stream().map(MatchTab::kindName).toList());
+        Component more = filters.extras() > 0 && panel != Panel.FILTERS ? tr("filter.more.count", filters.extras()) : tr("filter.more"), gridLabel = tr("grid");
+        int filterRow = kindW + Chip.width(more) + 4 * GAP;
+        for (String key : List.of("filter.cube", "filter.solid", "filter.opaque")) filterRow += Chip.width(tr(key));
+        boolean gridWithFilters = filterRow + GAP + Chip.width(gridLabel) <= room;
+
         List<FaceChoice> faces = List.of(FaceChoice.values());
-        int faceW = widest(faces.stream().map(f -> lower("option.chromastudio.facechoice.", f)).toList());
-        controls.cycler(flow.take(faceW), flow.y, faceW, null, faces, ModSettings.defaultFace, f -> lower("option.chromastudio.facechoice.", f), f -> {
+        List<Component> faceNames = faces.stream().map(f -> lower("option.chromastudio.facechoice.", f)).toList();
+        List<Metric> metrics = List.of(Metric.values());
+        List<Component> metricNames = metrics.stream().map(m -> lower("option.chromastudio.metric.", m)).toList();
+        int gridRoom = gridWithFilters ? 0 : Chip.width(gridLabel) + GAP;
+        boolean labelFirst = widest(tr("face.label"), faceNames) + widest(tr("metric.label"), metricNames) + 2 * GAP + gridRoom + 70 <= room;
+        Component faceLabel = labelFirst ? tr("face.label") : null;
+        int faceW = labelFirst ? widest(faceLabel, faceNames) : widest(faceNames);
+        controls.cycler(flow.take(faceW), flow.y, faceW, faceLabel, faces, ModSettings.defaultFace, f -> lower("option.chromastudio.facechoice.", f), f -> {
             ModSettings.defaultFace = f;
             MatchState.changed();
         }, tr("face.tip"));
-        List<Metric> metrics = List.of(Metric.values());
-        int metricW = widest(metrics.stream().map(m -> lower("option.chromastudio.metric.", m)).toList());
-        controls.cycler(flow.take(metricW), flow.y, metricW, null, metrics, MatchState.metric(), m -> lower("option.chromastudio.metric.", m), m -> {
+        Component metricLabel = labelFirst ? tr("metric.label") : null;
+        int metricW = labelFirst ? widest(metricLabel, metricNames) : widest(metricNames);
+        controls.cycler(flow.take(metricW), flow.y, metricW, metricLabel, metrics, MatchState.metric(), m -> lower("option.chromastudio.metric.", m), m -> {
             ModSettings.metric = m.name();
             MatchState.changed();
         }, tr("metric.tip"));
-        Component gridLabel = tr("grid");
-        controls.add(new Chip(flow.take(Chip.width(gridLabel)), flow.y, gridLabel, () -> grid, () -> {
-            grid = !grid;
-            build();
-        }));
+        if (!gridWithFilters) gridChip(flow, gridLabel);
         int distanceW = flow.rest(70);
         distance = new Bounds(flow.x, flow.y, distanceW, Widgets.H);
 
         flow.line();
         List<BiomeMode> modes = List.of(BiomeMode.values());
-        int modeW = widest(modes.stream().map(m -> (Component) tr("biome." + m.name().toLowerCase(Locale.ROOT))).toList());
-        controls.cycler(flow.take(modeW), flow.y, modeW, null, modes, ModSettings.biomeMode, m -> tr("biome." + m.name().toLowerCase(Locale.ROOT)), m -> {
+        List<Component> modeNames = modes.stream().map(m -> (Component) tr("biome." + m.name().toLowerCase(Locale.ROOT))).toList();
+        Component shading = tr("shading"), find = tr("find_biome");
+        boolean labelMode = widest(tr("biome.label"), modeNames) + Chip.width(shading) + Chip.width(find) + 3 * GAP + 60 <= room;
+        Component modeLabel = labelMode ? tr("biome.label") : null;
+        int modeW = labelMode ? widest(modeLabel, modeNames) : widest(modeNames);
+        controls.cycler(flow.take(modeW), flow.y, modeW, modeLabel, modes, ModSettings.biomeMode, m -> tr("biome." + m.name().toLowerCase(Locale.ROOT)), m -> {
             ModSettings.biomeMode = m;
             if (panel == Panel.BIOMES) panel = Panel.NONE;
             MatchState.changed();
             build();
         }, tr("biome.tip"));
-        Component shading = tr("shading");
         controls.add(new Chip(flow.take(Chip.width(shading)), flow.y, shading, () -> ModSettings.shading, () -> {
             ModSettings.shading = !ModSettings.shading;
             MatchState.changed();
         })).setTooltip(Tooltip.create(Component.translatable("settings.chromastudio.shading.tip")));
-        Component find = tr("find_biome");
-        findButton = controls.button(flow.take(Widgets.buttonWidth(find)), flow.y, find, () -> toggle(Panel.FIND_BIOME));
+        findButton = controls.add(new Chip(flow.take(Chip.width(find)), flow.y, find, () -> panel == Panel.FIND_BIOME, () -> toggle(Panel.FIND_BIOME)));
         findState();
         int biomeW = flow.rest(60);
-        String biomePath = ModSettings.biome.substring(ModSettings.biome.indexOf(':') + 1);
-        AbstractWidget biomeButton = controls.button(flow.x, flow.y, biomeW, Component.literal(ellipsis(font, biomePath, biomeW - 8)), () -> toggle(Panel.BIOMES));
-        if (ModSettings.biomeMode != BiomeMode.CHOSEN) Widgets.disable(biomeButton, tr("biome.pick.off"));
-        else biomeButton.setTooltip(Tooltip.create(tr("biome.pick.tip", ModSettings.biome)));
+        Identifier chosen = Identifier.tryParse(ModSettings.biome);
+        String biomeText = chosen == null ? ModSettings.biome : biomeName(chosen).getString();
+        AbstractWidget biomeButton = controls.button(flow.x, flow.y, biomeW, Component.literal(ellipsis(font, biomeText, biomeW - 8)), this::pickBiome);
+        biomeButton.setTooltip(Tooltip.create(tr("biome.pick.tip", ModSettings.biome)));
 
         flow.line();
-        MatchFilters filters = MatchState.filters();
-        List<String> kinds = new ArrayList<>(List.of(ALL));
-        for (Kind k : Kind.values()) kinds.add(k.name());
-        int kindW = widest(kinds.stream().map(MatchTab::kindName).toList());
         controls.cycler(flow.take(kindW), flow.y, kindW, null, kinds, filters.kind == null ? ALL : filters.kind.name(), MatchTab::kindName, k -> {
             filters.kind = k.equals(ALL) ? null : Kind.valueOf(k);
             MatchState.changed();
@@ -290,16 +312,33 @@ public final class MatchTab extends Tab {
         chip(flow, "filter.cube", () -> filters.fullCube, () -> filters.fullCube = !filters.fullCube);
         chip(flow, "filter.solid", () -> filters.solid, () -> filters.solid = !filters.solid);
         chip(flow, "filter.opaque", () -> filters.opaque, () -> filters.opaque = !filters.opaque);
-        Component more = tr("filter.more");
         controls.add(new Chip(flow.take(Chip.width(more)), flow.y, more, () -> panel == Panel.FILTERS || filters.extras() > 0, () -> toggle(Panel.FILTERS)))
                 .setTooltip(Tooltip.create(tr("filter.more.tip")));
+        if (gridWithFilters) gridChip(flow, gridLabel);
 
         int top = flow.y + LINE + 1;
         statusLine = new Bounds(flow.left, b.bottom() - PAD - STATUS_H, flow.right - flow.left, STATUS_H);
         results = new Bounds(flow.left, top, flow.right - flow.left, Math.max(ROW, statusLine.y() - 1 - top));
-        list = grid ? new Widgets.ScrollList(results, CELL, () -> shown == null ? 0 : (shown.matches.size() + columns() - 1) / columns())
-                : new Widgets.ScrollList(results, ROW, () -> rows.size());
         buildPanel();
+        placeResults();
+    }
+
+    private void placeResults() {
+        int shownTop = panel == Panel.NONE ? results.y() : Math.min(results.bottom(), panelArea.bottom() + 2);
+        shownArea = new Bounds(results.x(), shownTop, results.w(), results.bottom() - shownTop);
+        list = resultList(shownArea);
+    }
+
+    private Widgets.ScrollList resultList(Bounds where) {
+        return grid ? new Widgets.ScrollList(where, CELL_H, () -> shown == null ? 0 : (shown.matches.size() + columns() - 1) / columns())
+                : new Widgets.ScrollList(where, ROW, () -> rows.size());
+    }
+
+    private void gridChip(Flow flow, Component label) {
+        controls.add(new Chip(flow.take(Chip.width(label)), flow.y, label, () -> grid, () -> {
+            grid = !grid;
+            build();
+        }));
     }
 
     private void chip(Flow flow, String key, BooleanSupplier on, Runnable flip) {
@@ -316,6 +355,10 @@ public final class MatchTab extends Tab {
         return w + 10;
     }
 
+    private static int widest(Component name, List<Component> values) {
+        return widest(values.stream().<Component>map(v -> CommonComponents.optionNameValue(name, v)).toList());
+    }
+
     private static Component kindName(String kind) { return Component.translatable("kind.chromastudio." + kind.toLowerCase(Locale.ROOT)); }
 
     static String ellipsis(Font font, String text, int width) {
@@ -325,41 +368,119 @@ public final class MatchTab extends Tab {
 
     private int columns() { return Math.max(1, (results.w() - 5) / CELL); }
 
+    private void hint(Component text, Color swatch) {
+        Font font = Minecraft.getInstance().font;
+        int w = results.w() - 28;
+        List<String> lines = font.getSplitter().splitLines(text, w, Style.EMPTY).stream().map(FormattedText::getString).toList();
+        hint = lines.size() <= 2 ? lines : List.of(lines.getFirst(), ellipsis(font, String.join(" ", lines.subList(1, lines.size())), w));
+        hintRgb = swatch.rgb();
+    }
+
+    private void pickBiome() {
+        if (ModSettings.biomeMode != BiomeMode.CHOSEN) {
+            ModSettings.biomeMode = BiomeMode.CHOSEN;
+            MatchState.changed();
+            panel = Panel.NONE;
+        }
+        toggle(Panel.BIOMES);
+    }
+
     private void toggle(Panel which) {
         panel = panel == which ? Panel.NONE : which;
+        if (panel == Panel.BIOMES) biomeSearch = "";
         build();
     }
 
-    private Bounds panelBody() { return new Bounds(results.x() + 1, results.y() + HEAD, results.w() - 2, results.h() - HEAD - 1); }
+    private Bounds panelBody() { return new Bounds(panelArea.x() + 1, panelArea.y() + HEAD, panelArea.w() - 2, panelArea.h() - HEAD - 1); }
+
+    private void panelData() {
+        hint = List.of();
+        switch (panel) {
+            case FIND_BIOME -> {
+                fits = whyNoFind() == null ? fits() : List.of();
+                if (!fits.isEmpty()) hint(tr("find_biome.hint", MatchState.entry().name(), MatchState.lastFlat().hex()), MatchState.lastFlat());
+            }
+            case DYE -> {
+                dyes = Dye.items(MatchState.colour().rgb());
+                hint(tr("dye.hint", MatchState.colour().hex()), MatchState.colour());
+            }
+            default -> { }
+        }
+    }
+
+    private void refreshPanel() {
+        if (panel != Panel.FIND_BIOME && panel != Panel.DYE) return;
+        int lines = hint.size();
+        panelData();
+        if (hint.size() == lines) panelList.area = belowHint();
+        else {
+            buildPanel();
+            placeResults();
+        }
+    }
+
+    private Bounds belowHint() {
+        Bounds body = panelBody();
+        int hinted = hint.isEmpty() ? 0 : hint.size() * 10 + 4;
+        return new Bounds(body.x(), body.y() + hinted, body.w(), body.h() - hinted);
+    }
 
     private void buildPanel() {
         panelWidgets = new Widgets();
-        Bounds body = panelBody();
+        panelData();
+        int hinted = hint.isEmpty() ? 0 : hint.size() * 10 + 4;
+        int most = results.h() - 2 * (grid ? CELL_H : ROW) - 2, content = switch (panel) {
+            case FIND_BIOME -> HEAD + (fits.isEmpty() ? 24 : hinted + fits.size() * ROW) + 2;
+            case DYE -> HEAD + hinted + dyes.size() * ROW + 2;
+            default -> most;
+        };
+        int least = switch (panel) {
+            case BIOMES -> HEAD + LINE + 1 + 3 * 11;
+            case FIND_BIOME, DYE -> HEAD + hinted + ROW + 1;
+            default -> HEAD + ROW + 2;
+        };
+        int height = most < least ? results.h() : Math.max(HEAD + ROW, Math.min(content, most));
+        panelArea = new Bounds(results.x(), results.y(), results.w(), panel == Panel.NONE ? 0 : height);
+        Bounds body = panelBody(), belowHint = belowHint();
         panelList = new Widgets.ScrollList(body, ROW, () -> 0);
         switch (panel) {
             case FILTERS -> FilterControls.build(panelWidgets, body, false, this::build);
             case BIOMES -> {
-                biomes = Tints.biomes();
-                EditBox box = panelWidgets.search(body.x() + 2, body.y() + 1, body.w() - 4, tr("biome.search"), text -> biomeSearch = text.trim().toLowerCase(Locale.ROOT));
+                biomes = Tints.biomes().stream().sorted(Comparator.comparing((ResourceKey<Biome> k) -> biomeName(k.identifier()).getString())).toList();
+                biomeTints.clear();
+                List<Entry> grass = BlockIndex.get().statesOf(Blocks.GRASS_BLOCK), leaves = BlockIndex.get().statesOf(Blocks.OAK_LEAVES);
+                for (ResourceKey<Biome> key : biomes) {
+                    TintContext tint = TintContext.biome(key);
+                    biomeTints.put(key, new int[] {
+                            grass.isEmpty() ? -1 : Target.of(grass.getFirst(), Face.UP, tint).colour().rgb(),
+                            leaves.isEmpty() ? -1 : Target.of(leaves.getFirst(), Face.UP, tint).colour().rgb()});
+                }
+                EditBox box = panelWidgets.search(body.x() + 2, body.y() + 1, body.w() - 4, tr("biome.search"), text -> {
+                    biomeSearch = text.trim().toLowerCase(Locale.ROOT);
+                    panelList.reveal(0);
+                });
                 box.setValue(biomeSearch);
                 panelWidgets.setFocused(box);
                 panelList = new Widgets.ScrollList(new Bounds(body.x(), body.y() + LINE + 1, body.w(), body.h() - LINE - 1), 11, () -> matchingBiomes().size());
+                List<ResourceKey<Biome>> listed = matchingBiomes();
+                int at = listed.stream().map(k -> k.identifier().toString()).toList().indexOf(ModSettings.biome);
+                if (at >= 0) panelList.reveal(Math.min(at + (body.h() - LINE - 1) / 22, listed.size() - 1));
             }
-            case FIND_BIOME -> {
-                fits = whyNoFind() == null ? fits() : List.of();
-                panelList = new Widgets.ScrollList(body, ROW, () -> fits.size());
-            }
-            case DYE -> {
-                dyes = Dye.items(MatchState.colour().rgb());
-                panelList = new Widgets.ScrollList(body, ROW, () -> dyes.size());
-            }
+            case FIND_BIOME -> panelList = new Widgets.ScrollList(belowHint, ROW, () -> fits.size());
+            case DYE -> panelList = new Widgets.ScrollList(belowHint, ROW, () -> dyes.size());
             default -> { }
         }
     }
 
     private List<ResourceKey<Biome>> matchingBiomes() {
         if (biomeSearch.isEmpty()) return biomes;
-        return biomes.stream().filter(k -> k.identifier().toString().contains(biomeSearch)).toList();
+        return biomes.stream().filter(k -> k.identifier().toString().contains(biomeSearch)
+                || biomeName(k.identifier()).getString().toLowerCase(Locale.ROOT).contains(biomeSearch)).toList();
+    }
+
+    private static Component biomeName(Identifier id) {
+        String key = Util.makeDescriptionId("biome", id);
+        return Language.getInstance().has(key) ? Component.translatable(key) : Component.literal(id.toString());
     }
 
     private void findState() {
@@ -425,6 +546,7 @@ public final class MatchTab extends Tab {
     private void adopt() {
         MatchState.setColour(picker.model.colour());
         seenRevision = MatchState.revision();
+        refreshPanel();
         search.request();
     }
 
@@ -442,6 +564,9 @@ public final class MatchTab extends Tab {
             Handoff.matchTarget = null;
             Handoff.matchFilter = null;
             Oklch around = target instanceof Color c ? c.oklch() : target instanceof Oklch o ? o : null;
+            Palette from = PaletteStore.get().selected();
+            cameFromPalette = filter != null ? from : null;
+            cameFrom = cameFromPalette != null ? PaletteStore.get().shownName(from) : null;
             if (filter != null && !filter.isEmpty()) {
                 MatchState.resetFilters();
                 MatchState.filters().preset(filter, around);
@@ -474,6 +599,7 @@ public final class MatchTab extends Tab {
             }
             ranges.clear();
             findState();
+            refreshPanel();
             search.request();
         }
         if (index.version() != seenVersion) {
@@ -540,13 +666,36 @@ public final class MatchTab extends Tab {
         target(g, font, 1, mouseX, mouseY, tip);
         controls.render(g, mouseX, mouseY, delta);
         distance(g, font, mouseX, mouseY, tip);
-        if (panel == Panel.NONE) results(g, font, 1, mouseX, mouseY, tip);
-        else panel(g, font, mouseX, mouseY, delta, tip);
+        results(g, font, 1, mouseX, mouseY, tip);
+        if (panel != Panel.NONE) panel(g, font, mouseX, mouseY, delta, tip);
 
-        if (status != null && Util.getMillis() < statusUntil) {
-            g.text(font, ellipsis(font, status.getString(), statusLine.w() - 4), statusLine.x() + 2, statusLine.y() + 1, TEXT, false);
-        }
+        statusLine(g, font, mouseX, mouseY);
         if (!tip.isEmpty() && !picker.dragging() && !draggingDistance) g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
+    }
+
+    private void statusLine(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
+        int x = statusLine.x() + 2, y = statusLine.y() + 1, right = statusLine.right() - 2;
+        backLink = new Bounds(0, 0, 0, 0);
+        if (status != null && Util.getMillis() < statusUntil) {
+            g.text(font, ellipsis(font, status.getString(), right - x), x, y, TEXT, false);
+            return;
+        }
+        if (cameFrom != null) {
+            String back = ellipsis(font, tr("back", cameFrom).getString(), (right - x) / 2);
+            backLink = new Bounds(x - 2, statusLine.y(), font.width(back) + 4, statusLine.h());
+            g.text(font, back, x, y, backLink.contains(mouseX, mouseY) ? Theme.STRONG : Theme.HIGHLIGHT, false);
+            x = backLink.right() + 6;
+        }
+        Palette target = PaletteStore.get().selected();
+        boolean strip = cameFrom == null && ModSettings.biomeMode == BiomeMode.ALL && panel == Panel.NONE && !grid;
+        String adds = target == null ? "" : ellipsis(font, (target.preset ? tr("add.new") : tr("add.target", PaletteStore.get().shownName(target))).getString(),
+                strip ? (right - x) / 2 : right - x);
+        int addsW = adds.isEmpty() ? 0 : font.width(adds) + 6;
+        if (strip) {
+            g.text(font, ellipsis(font, tr("biome.all.hint").getString(), right - x - addsW), x, y, Theme.SOFT, false);
+            x = right - addsW + 6;
+        }
+        if (!adds.isEmpty() && right - x >= font.width(adds)) g.text(font, adds, right - font.width(adds), y, Theme.SOFT, false);
     }
 
     @Override
@@ -556,7 +705,15 @@ public final class MatchTab extends Tab {
         List<Component> none = new ArrayList<>();
         target(g, font, opacity, -1, -1, none);
         g.text(font, picker.model.hex(), swatch.right() + 4, swatch.y() + 4, ARGB.multiplyAlpha(TEXT, opacity), false);
+        Bounds keptArea = shownArea;
+        Widgets.ScrollList keptList = list;
+        if (panel != Panel.NONE) {
+            shownArea = results;
+            list = resultList(results);
+        }
         results(g, font, opacity, -1, -1, none);
+        shownArea = keptArea;
+        list = keptList;
     }
 
     private void target(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
@@ -624,8 +781,7 @@ public final class MatchTab extends Tab {
         g.fill(kx - 1, d.y() + 1, kx + 2, d.bottom() - 1, over ? Theme.STRONG : Theme.HIGHLIGHT);
         boolean far = ModSettings.viewingDistance >= ModSettings.VIEW_FAR;
         Component label = far ? tr("distance.far") : ModSettings.viewingDistance == 1 ? tr("distance.block") : tr("distance.blocks", ModSettings.viewingDistance);
-        int lw = font.width(label), lx = kx < d.x() + d.w() / 2 ? d.right() - lw - 4 : d.x() + 4;
-        g.text(font, label, lx, d.y() + 4, TEXT, false);
+        Widgets.centred(g, Component.literal(ellipsis(font, label.getString(), d.w() - 6)), d.x() + d.w() / 2, d.y() + 4, TEXT);
         if (d.contains(mouseX, mouseY)) {
             tip.add(tr("distance.tip"));
             tip.add(tr("distance.scale", MatchState.scale().texels).withColor(Theme.TIP_DIM));
@@ -641,7 +797,8 @@ public final class MatchTab extends Tab {
 
     private void results(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
         BlockIndex index = BlockIndex.get();
-        Bounds r = results;
+        Bounds r = shownArea;
+        if (panel != Panel.NONE) g.fill(r.x(), results.y(), r.right(), r.y(), ARGB.multiplyAlpha(BACKING, opacity));
         g.fill(r.x(), r.y(), r.right(), r.bottom(), ARGB.multiplyAlpha(Theme.sink(0x60), opacity));
         if (!index.ready() || shown == null) {
             Component text = index.ready() ? tr("searching") : tr("building", Math.round(index.progress() * 100));
@@ -658,11 +815,16 @@ public final class MatchTab extends Tab {
             list.render(g, mouseX, mouseY, (g2, line, x, y, w, h, over) -> {
                 for (int c = 0; c < cols && line * cols + c < shown.matches.size(); c++) {
                     BlockIndex.Match m = shown.matches.get(line * cols + c);
-                    int cx = x + 2 + c * CELL;
+                    int cx = x + 2 + c * CELL, tile = CELL - 2;
                     boolean on = over && mouseX >= cx && mouseX < cx + CELL;
-                    Thumbnails.draw(g2, m.entry(), m.face(), shown.scale, shown.tint, cx + 2, y + 2, 16, opacity);
+                    int mean = m.entry().face(m.face(), shown.tint).mean(shown.scale).rgb();
+                    g2.fill(cx + 1, y + 1, cx + 1 + tile, y + 1 + tile, ARGB.multiplyAlpha(0xFF000000, opacity));
+                    g2.fill(cx + 2, y + 2, cx + tile, y + tile, ARGB.multiplyAlpha(0xFF000000 | mean, opacity));
+                    Thumbnails.draw(g2, m.entry(), m.face(), shown.scale, shown.tint, cx + 2, y + 2, tile - 2, opacity);
+                    Widgets.blockIcon(g2, m.entry().block(), cx + 1, y + 1);
+                    if (ModSettings.showDeltaE) Widgets.centred(g2, Component.literal(deltaE(m.distance(), shown.metric)), cx + 1 + tile / 2, y + tile + 1, ARGB.multiplyAlpha(on ? TEXT : DIM, opacity));
                     if (on) {
-                        g2.outline(cx + 1, y + 1, 18, 18, Theme.STRONG);
+                        g2.outline(cx, y, tile + 2, tile + 2, Theme.STRONG);
                         hovered = new Row(RESULT, m.entry(), m.face(), m.distance(), false);
                         describe(hovered, BODY, tip);
                     }
@@ -688,7 +850,10 @@ public final class MatchTab extends Tab {
     private void row(GuiGraphicsExtractor g, Font font, Row row, int x, int y, int w, int h, boolean over, float opacity, int mouseX, List<Component> tip) {
         int zone = over ? zone(row, x, w, mouseX) : -1;
         if (row.type != RESULT) g.fill(x, y, x + w, y + h, ARGB.multiplyAlpha(Theme.sink(0x38), opacity));
-        if (over) g.fill(x, y, x + w, y + h, Theme.veil(0x20));
+        if (over) {
+            g.fill(x, y, x + w, y + h, Theme.veil(0x30));
+            g.outline(x, y, w, h, ARGB.multiplyAlpha(Theme.HIGHLIGHT, opacity));
+        }
         int text = ARGB.multiplyAlpha(TEXT, opacity), dim = ARGB.multiplyAlpha(DIM, opacity);
         if (row.type == MAKE) {
             boolean can = PaletteSink.current() != null;
@@ -771,7 +936,7 @@ public final class MatchTab extends Tab {
             return Arrays.stream(all).boxed().sorted(Comparator.comparingDouble(t -> Color.ofRgb(t).oklch().l())).mapToInt(Integer::intValue).toArray();
         });
         for (int i = 0; i < tints.length; i++) {
-            g.fill(x + i * w / tints.length, y, x + (i + 1) * w / tints.length, y + 2, ARGB.multiplyAlpha(0xFF000000 | tints[i], opacity));
+            g.fill(x + i * w / tints.length, y, x + (i + 1) * w / tints.length, y + 3, ARGB.multiplyAlpha(0xFF000000 | tints[i], opacity));
         }
     }
 
@@ -792,8 +957,8 @@ public final class MatchTab extends Tab {
         var stats = e.face(row.face, shown.tint);
         tip.add(entryName(e));
         tip.add(Component.literal(e.toString()).withColor(Theme.TIP_DIM));
-        tip.add(tr("row.facts", deltaE(row.distance, shown.metric), Eyedropper.faceName(row.face), lower("badge.chromastudio.", stats.badge()),
-                kindName(e.kind().name()), stats.mean(shown.scale).hex()).withColor(Theme.TIP_DIM));
+        tip.add(tr("row.match", deltaE(row.distance, shown.metric), Eyedropper.faceName(row.face)).withColor(Theme.TIP_DIM));
+        tip.add(tr("row.texture", lower("badge.chromastudio.", stats.badge()), kindName(e.kind().name()), stats.mean(shown.scale).hex()).withColor(Theme.TIP_DIM));
         if (e.tinted()) tip.add(tr("row.tinted").withColor(Theme.TIP_TINT));
         Optional<Component> noGive = Give.whyNot();
         tip.add(noGive.isPresent() ? tr("row.give.off", noGive.get()).withColor(Theme.TIP_GREYED) : tr("row.give").withColor(Theme.TIP_DIM));
@@ -804,12 +969,14 @@ public final class MatchTab extends Tab {
     }
 
     private void panel(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, float delta, List<Component> tip) {
-        Bounds r = results;
+        Bounds r = panelArea;
         g.fill(r.x(), r.y(), r.right(), r.bottom(), PANEL);
         g.outline(r.x(), r.y(), r.w(), r.h(), BORDER);
         Bounds body = panelBody();
         g.fill(body.x(), body.y() - 1, body.right(), body.y(), BORDER);
         g.text(font, tr("panel." + panel.name().toLowerCase(Locale.ROOT)), r.x() + 5, r.y() + 3, TEXT, false);
+        Component legend = panel == Panel.BIOMES ? tr("biome.legend") : panel == Panel.FIND_BIOME && !fits.isEmpty() ? tr("column.delta_e") : null;
+        if (legend != null) g.text(font, legend, r.right() - HEAD - 6 - font.width(legend), r.y() + 3, Theme.SOFT, false);
         Bounds close = closeButton();
         boolean overClose = close.contains(mouseX, mouseY);
         int cx = close.x() + close.w() / 2, cy = close.y() + close.h() / 2, c = overClose ? Theme.STRONG : DIM;
@@ -818,13 +985,24 @@ public final class MatchTab extends Tab {
             g.fill(cx + i, cy - 1 - i, cx + i + 1, cy - i, c);
         }
         panelWidgets.render(g, mouseX, mouseY, delta);
+        if (!hint.isEmpty()) {
+            Widgets.swatch(g, body.x() + 6, body.y() + 2, 10, 10, hintRgb);
+            for (int i = 0; i < hint.size(); i++) g.text(font, hint.get(i), body.x() + 24, body.y() + 3 + i * 10, Theme.SOFT, false);
+        }
         switch (panel) {
             case BIOMES -> {
                 List<ResourceKey<Biome>> listed = matchingBiomes();
                 panelList.render(g, mouseX, mouseY, (g2, i, x, y, w, h, over) -> {
-                    String id = listed.get(i).identifier().toString();
+                    Identifier id = listed.get(i).identifier();
+                    boolean current = id.toString().equals(ModSettings.biome);
+                    if (current) g2.fill(x, y, x + w, y + h, Theme.veil(0x18));
                     if (over) g2.fill(x, y, x + w, y + h, Theme.veil(0x20));
-                    g2.text(font, ellipsis(font, id, w - 8), x + 4, y + 2, id.equals(ModSettings.biome) ? Theme.HIGHLIGHT : TEXT, false);
+                    String mod = id.getNamespace().equals(Identifier.DEFAULT_NAMESPACE) ? "" : id.getNamespace();
+                    int modW = mod.isEmpty() ? 0 : font.width(mod) + 6;
+                    int[] tints = biomeTints.getOrDefault(listed.get(i), new int[] {-1, -1});
+                    for (int t = 0; t < 2; t++) if (tints[t] != -1) Widgets.swatch(g2, x + 4 + t * 10, y + 1, 9, 9, tints[t]);
+                    g2.text(font, ellipsis(font, biomeName(id).getString(), w - 30 - modW), x + 26, y + 2, current ? Theme.HIGHLIGHT : TEXT, false);
+                    if (!mod.isEmpty()) g2.text(font, mod, x + w - 4 - font.width(mod), y + 2, DIM, false);
                 });
                 if (listed.isEmpty()) Widgets.centred(g, tr("biome.none"), r.x() + r.w() / 2, r.y() + r.h() / 2, DIM);
             }
@@ -835,7 +1013,7 @@ public final class MatchTab extends Tab {
                     Widgets.swatch(g2, x + 4, y + 3, 12, 12, fit.colour.rgb());
                     String de = deltaE(fit.distance, MatchState.metric());
                     g2.text(font, de, x + w - 4 - font.width(de), y + 5, DIM, false);
-                    g2.text(font, ellipsis(font, fit.biome.identifier().toString(), w - 32 - font.width(de)), x + 20, y + 5, TEXT, false);
+                    g2.text(font, ellipsis(font, biomeName(fit.biome.identifier()).getString(), w - 32 - font.width(de)), x + 20, y + 5, TEXT, false);
                 });
                 if (fits.isEmpty()) {
                     Component why = whyNoFind();
@@ -856,17 +1034,23 @@ public final class MatchTab extends Tab {
         }
     }
 
-    private Bounds closeButton() { return new Bounds(results.right() - HEAD - 1, results.y() + 1, HEAD, HEAD - 1); }
+    private Bounds closeButton() { return new Bounds(panelArea.right() - HEAD - 1, panelArea.y() + 1, HEAD, HEAD - 1); }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         double mx = e.x(), my = e.y();
         boolean left = e.button() == InputConstants.MOUSE_BUTTON_LEFT;
-        if (panel != Panel.NONE && results.contains(mx, my)) {
+        if (panel != Panel.NONE && panelArea.contains(mx, my)) {
             controls.setFocused(null);
             return panelClicked(e, doubled, left);
         }
         panelWidgets.setFocused(null);
+        if (left && backLink.contains(mx, my)) {
+            if (PaletteStore.get().all().contains(cameFromPalette)) PaletteStore.get().select(cameFromPalette);
+            ChromaScreen screen = ChromaScreen.current();
+            if (screen != null) screen.select("palettes");
+            return true;
+        }
         if (controls.mouseClicked(e, doubled)) return true;
         if (Keys.RECIPE.matchesMouse(e) && lookUpRecipe()) return true;
         if (left && picker.mouseClicked(mx, my)) return true;
@@ -885,7 +1069,7 @@ public final class MatchTab extends Tab {
             if (i >= 0 && i < colours.size()) MatchState.setColour(Color.ofRgb(colours.get(i)));
             return true;
         }
-        if (!results.contains(mx, my) || shown == null) return false;
+        if (!shownArea.contains(mx, my) || shown == null) return false;
         if (list.mouseClicked(e)) return true;
         int line = list.rowAt(mx, my);
         if (line < 0) return false;
@@ -897,7 +1081,7 @@ public final class MatchTab extends Tab {
         } else if (line < rows.size()) {
             Row row = rows.get(line);
             int w = results.w();
-            act(row, zone(row, results.x(), w - (rows.size() * ROW > results.h() ? 5 : 0), mx), e);
+            act(row, zone(row, results.x(), w - (rows.size() * ROW > list.area.h() ? Widgets.BAR_W + 2 : 0), mx), e);
         }
         return true;
     }
@@ -981,6 +1165,7 @@ public final class MatchTab extends Tab {
         else {
             MatchState.setEntry(states.getFirst(), Face.ANY, null);
             MatchState.remember();
+            status(tr("matched", states.getFirst().name()));
         }
     }
 
@@ -1008,14 +1193,14 @@ public final class MatchTab extends Tab {
             setDistance(e.x());
             return true;
         }
-        if (panel != Panel.NONE) return panelList.mouseDragged(e) || panelWidgets.mouseDragged(e, dx, dy);
+        if (panel != Panel.NONE && (panelList.mouseDragged(e) || panelWidgets.mouseDragged(e, dx, dy))) return true;
         return list.mouseDragged(e) || controls.mouseDragged(e, dx, dy);
     }
 
     @Override
     public boolean mouseScrolled(double x, double y, double h, double v) {
         if (v == 0) return false;
-        if (panel != Panel.NONE && results.contains(x, y)) return panelWidgets.mouseScrolled(x, y, h, v) || panelList.mouseScrolled(x, y, v);
+        if (panel != Panel.NONE && panelArea.contains(x, y)) return panelWidgets.mouseScrolled(x, y, h, v) || panelList.mouseScrolled(x, y, v);
         if (picker.mouseScrolled(x, y, v)) return true;
         if (distance.contains(x, y)) {
             int next = blocksAt(distanceAt(ModSettings.viewingDistance) + Math.signum(v) * 0.03);
@@ -1047,6 +1232,7 @@ public final class MatchTab extends Tab {
             if (e.isEscape()) return false;
             if (e.isConfirmation()) {
                 MatchState.remember();
+                fill(null);
                 controls.setFocused(null);
                 return true;
             }
@@ -1082,6 +1268,8 @@ public final class MatchTab extends Tab {
 
     @Override
     public void closed() {
+        cameFrom = null;
+        cameFromPalette = null;
         picker.close();
         Thumbnails.clear();
     }
