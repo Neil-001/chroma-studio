@@ -141,12 +141,14 @@ class AnalyzerTest {
         assertEquals(202.5, stray.suggestedTarget().h(), 1e-9);
         assertEquals(0.58, stray.suggestedTarget().l(), 1e-9);
         assertEquals(0.07, stray.suggestedTarget().c(), 1e-9);
+        assertEquals(List.of(0, 1, 2, 3, 4), stray.blocks());
 
         List<Oklch> withGrey = new ArrayList<>(colours);
         withGrey.add(new Oklch(0.20, 0, 0));
         stray = only(analyse(withGrey), Analyzer.HUES_STRAY);
         assertEquals(202.5, stray.suggestedTarget().h(), 1e-9);
         assertEquals(3.1 / 6, stray.suggestedTarget().l(), 1e-9);
+        assertEquals(List.of(0, 1, 2, 3, 4), stray.blocks());
         assertEquals(0.35 / 6, stray.suggestedTarget().c(), 1e-9);
 
         assertEquals(List.of(), analyse(List.of(new Oklch(0.30, 0.05, 2.5), new Oklch(0.45, 0.06, 42.5),

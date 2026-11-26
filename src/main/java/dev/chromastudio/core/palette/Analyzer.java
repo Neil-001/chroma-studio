@@ -65,11 +65,12 @@ public final class Analyzer {
         if (darkest > DARK_BELOW) out.add(new Finding(NO_DARKS, Severity.INFO, cast.withL(DARK), DARKER, List.of(byLightness.getFirst())));
         if (lightest < HIGHLIGHT_ABOVE) out.add(new Finding(NO_HIGHLIGHTS, Severity.INFO, cast.withL(HIGHLIGHT), LIGHTER, List.of(byLightness.getLast())));
 
-        List<Oklch> chromatic = colours.stream().filter(c -> c.c() >= Tone.MIN_CHROMA).toList();
+        List<Integer> chromaticAt = IntStream.range(0, n).filter(i -> colours.get(i).c() >= Tone.MIN_CHROMA).boxed().toList();
+        List<Oklch> chromatic = chromaticAt.stream().map(colours::get).toList();
         if (!chromatic.isEmpty()) {
             Fit fit = nearestHarmony(chromatic);
             if (fit.worst > HUE_TOLERANCE) {
-                out.add(new Finding(HUES_STRAY, Severity.INFO, cast.withHue(fit.missingHue), NO_FILTER, List.of()));
+                out.add(new Finding(HUES_STRAY, Severity.INFO, cast.withHue(fit.missingHue), NO_FILTER, chromaticAt));
             }
         }
 

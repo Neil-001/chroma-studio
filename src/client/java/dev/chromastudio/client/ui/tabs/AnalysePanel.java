@@ -16,6 +16,7 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -23,7 +24,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
 final class AnalysePanel {
-    private static final int LINE_H = 10, BAR_H = 8, ICON_BAR_H = 4, SWATCH = 16, ARROW_W = 7, PAD = 3;
+    private static final int LINE_H = 10, BAR_H = 8, ICON_BAR_H = 4, SWATCH = 16, ARROW_W = 7, PAD = 3, TIP_H = 16;
+    private static final Set<String> BY_LIGHTNESS = Set.of(Analyzer.NO_DARKS, Analyzer.NO_HIGHLIGHTS, Analyzer.ACCENT_CONTRAST);
 
     private final List<PaletteEntry> entries;
     private record Block(PaletteEntry entry, Color colour, int analysed) {}
@@ -103,7 +105,7 @@ final class AnalysePanel {
     }
 
     private Block from(Analyzer.Finding f) {
-        if (f.suggestedTarget() == null || f.blocks().size() != 1) return null;
+        if (!BY_LIGHTNESS.contains(f.key()) || f.blocks().size() != 1) return null;
         for (Block b : blocks) if (b.analysed == f.blocks().getFirst()) return b;
         return null;
     }
@@ -124,19 +126,21 @@ final class AnalysePanel {
             if (hovered) marked = f;
             gg.fill(x, y, x + w, y + h - 2, hovered ? Theme.HOVER : Theme.PANEL);
             gg.fill(x, y, x + 3, y + h - 2, f.severity() == Analyzer.Severity.WARNING ? Theme.FAIR : Theme.INFO);
-            int below = y + h - 2 + 14, rowY = y + PAD, right = x + w - PAD;
+            boolean pointing = list.area.contains(mouseX, mouseY);
+            int mx = pointing ? mouseX : -1, my = pointing ? mouseY : -1;
+            int tipY = y + h + TIP_H <= gg.guiHeight() ? y + h + 12 : y - 4, rowY = y + PAD, right = x + w - PAD;
             Block from = from(f);
             if (f.suggestedTarget() != null) {
                 Button button = fixes.get(i);
                 button.setPosition(right - fixW, rowY);
-                button.extractRenderState(gg, mouseX, mouseY, 0);
-                if (button.isHovered()) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, below);
+                button.extractRenderState(gg, mx, my, 0);
+                if (button.isHovered()) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, tipY);
                 Color target = Color.ofOklch(f.suggestedTarget());
                 int sx = button.getX() - 4 - SWATCH;
                 gg.fill(sx - 1, rowY - 1, sx + SWATCH + 1, rowY + SWATCH + 1, Theme.SOFT);
                 gg.fill(sx, rowY, sx + SWATCH, rowY + SWATCH, 0xFF000000 | target.rgb());
-                if (inside(mouseX, mouseY, sx, rowY, SWATCH)) {
-                    gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.target", target.hex()), mouseX, below);
+                if (inside(mx, my, sx, rowY, SWATCH)) {
+                    gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.target", target.hex()), mouseX, tipY);
                 }
                 right = sx - 4;
                 if (from != null) {
@@ -146,7 +150,7 @@ final class AnalysePanel {
                     gg.fill(ax + ARROW_W - 2, cy - 1, ax + ARROW_W - 1, cy + 2, Theme.DIM);
                     int fx = ax - 3 - ToolButton.ICON;
                     Widgets.blockIcon(gg, PaletteBlocks.icon(from.entry), fx, rowY);
-                    if (inside(mouseX, mouseY, fx, rowY, ToolButton.ICON)) gg.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(from.entry), mouseX, below);
+                    if (inside(mx, my, fx, rowY, ToolButton.ICON)) gg.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(from.entry), mouseX, tipY);
                     right = fx - 4;
                 }
             }
