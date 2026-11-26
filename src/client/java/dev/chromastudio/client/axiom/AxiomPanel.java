@@ -53,9 +53,15 @@ final class AxiomPanel {
     private static final String ELLIPSIS = "...";
 
     static final class Layout {
-        private float bottom = -1;
+        private float bottom = -1, packedBottom = -1, packedWidth = -1, packedRoom = -1;
         private float optionsEnd = -1, grownEnd = -1;
         private final List<Runnable> later = new ArrayList<>();
+        private final boolean packed;
+        private boolean together;
+
+        Layout() { this(false); }
+
+        Layout(boolean packed) { this.packed = packed; }
 
         void later(Runnable action) { later.add(action); }
 
@@ -81,13 +87,23 @@ final class AxiomPanel {
             };
             float room = ImGui.getContentRegionAvailY();
             float above = this.bottom < 0 ? 0 : room - this.bottom - ImGui.getStyle().getItemSpacingY();
-            if (this.bottom >= 0 && above < ImGui.getFrameHeightWithSpacing() * 2) {
+            float width = ImGui.getContentRegionAvailX();
+            if (width != packedWidth || room != packedRoom) {
+                packedBottom = -1;
+                packedWidth = width;
+                packedRoom = room;
+            }
+            float footer = Math.max(this.bottom, packedBottom);
+            together = packed && optionsEnd >= 0 && this.bottom >= 0 && optionsEnd + footer <= room;
+            if (together || this.bottom >= 0 && above < ImGui.getFrameHeightWithSpacing() * 2) {
+                boolean packing = together;
                 child("##options", 0, () -> {
                     measured.run();
                     float top = ImGui.getCursorPosY();
                     ImGui.separator();
                     bottom.run();
-                    this.bottom = ImGui.getCursorPosY() - top;
+                    if (packing) packedBottom = ImGui.getCursorPosY() - top;
+                    else this.bottom = ImGui.getCursorPosY() - top;
                 });
                 return;
             }
@@ -95,13 +111,16 @@ final class AxiomPanel {
             child("##bottom", 0, () -> {
                 ImGui.separator();
                 bottom.run();
-                this.bottom = ImGui.getCursorPosY();
+                float measuredBottom = ImGui.getCursorPosY();
+                if (measuredBottom != this.bottom) packedBottom = -1;
+                this.bottom = measuredBottom;
             });
         }
 
         float grow(float wanted, float least) {
             float below = optionsEnd < 0 || grownEnd < 0 ? 0 : Math.max(0, optionsEnd - grownEnd);
             float room = ImGui.getContentRegionAvailY() - below - ImGui.getStyle().getItemSpacingY();
+            if (together) room -= Math.max(bottom, packedBottom) + ImGui.getStyle().getItemSpacingY();
             return Math.max(Math.min(wanted, room), Math.min(wanted, least));
         }
 

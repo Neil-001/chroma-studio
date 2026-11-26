@@ -68,6 +68,9 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private final BrushStroke stroke = new BrushStroke();
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private final BooleanRegion one = AxiomTools.regions.createBoolean();
+    private final BooleanRegion hovered = AxiomTools.regions.createBoolean();
+    private @Nullable ClientLevel hoveredIn;
+    private long hoveredVisit;
     private int outlineRadius = -1;
 
     private final int[] radius = {ModSettings.brushRadius};
@@ -79,7 +82,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     private @Nullable Component said;
     private boolean dropped;
-    private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
+    private final AxiomPanel.Layout layout = new AxiomPanel.Layout(true);
     private @Nullable Component refused;
     private @Nullable FoundBuild found;
     private List<AxiomPanel.Swatch> foundSwatches = List.of();
@@ -117,12 +120,19 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         pickedIn = null;
         refused = null;
         clearPreview();
+        forgetHover();
+    }
+
+    private void forgetHover() {
+        hovered.clear();
+        hoveredIn = null;
     }
 
     @Override
     public void putAway() {
         stroke.away();
         clearPreview();
+        forgetHover();
     }
 
     private void clearPreview() {
@@ -253,7 +263,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             outline.clear();
             BallShape.SPHERE.fillRegion(outline, outlineRadius);
         }
-        outline.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.BLUE | Effects.OUTLINE);
+        outline.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.OUTLINE);
     }
 
     private void renderBuild(IAxiomWorldRenderContext rc, ClientLevel level) {
@@ -268,10 +278,28 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         }
         if (picked == null) {
             BlockHitResult hit = AxiomTools.tools.raycastBlock();
-            if (hit != null && hit.getType() == HitResult.Type.BLOCK) one.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.BLUE | Effects.OUTLINE);
+            if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
+                forgetHover();
+                return;
+            }
+            BlockPos at = hit.getBlockPos();
+            if (!FoundBuild.member(level, at, level.getBlockState(at))) {
+                forgetHover();
+                one.render(rc, Vec3.atLowerCornerOf(at), Effects.BLUE | Effects.OUTLINE);
+                return;
+            }
+            if (hoveredIn != level || hoveredVisit != AxiomTools.visit() || !hovered.contains(at.getX(), at.getY(), at.getZ())) hover(level, at);
+            hovered.render(rc, Vec3.ZERO, Effects.OUTLINE);
         } else {
             preview.render(rc);
         }
+    }
+
+    private void hover(ClientLevel level, BlockPos at) {
+        hovered.clear();
+        hoveredIn = level;
+        hoveredVisit = AxiomTools.visit();
+        for (long p : FoundBuild.blocks(level, at).blocks()) hovered.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
     }
 
     void makePreview(ClientLevel level) {
@@ -409,12 +437,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             readSwatches(shown);
             AxiomPanel.swatches("swatch", swatches);
         }
-        if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
-            String names = scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "));
-            String line = tr("axiom.chromastudio.brush.scatter_left_out", names), fitted = AxiomPanel.fit(line, ImGui.getContentRegionAvailX());
-            AxiomPanel.note(fitted);
-            AxiomPanel.tip(fitted.equals(line) ? tr("axiom.chromastudio.brush.left_out.tip") : line + "\n" + tr("axiom.chromastudio.brush.left_out.tip"));
-        }
 
         AxiomPanel.heading(tr("axiom.chromastudio.heading.brush"));
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.scatter"), mode == Mode.SCATTER, ready,
@@ -422,19 +444,26 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         AxiomPanel.besideChoice(tr("axiom.chromastudio.brush.recolour"));
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.recolour"), recolour, ready,
                 tr(ready ? "axiom.chromastudio.brush.recolour.tip" : "axiom.chromastudio.not_ready"))) layout.later(() -> setMode(Mode.RECOLOUR));
+        if (AxiomPanel.radius(radius, !wholeBuild(), wholeBuild() ? tr("axiom.chromastudio.radius.whole") : "")) remember();
+        if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
+            String names = scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "));
+            String line = tr("axiom.chromastudio.brush.left_out", names), fitted = AxiomPanel.fit(line, ImGui.getContentRegionAvailX());
+            AxiomPanel.note(fitted);
+            AxiomPanel.tip(fitted.equals(line) ? tr("axiom.chromastudio.brush.left_out.tip") : line + "\n" + tr("axiom.chromastudio.brush.left_out.tip"));
+        }
+
+        AxiomPanel.heading(tr("axiom.chromastudio.brush.recolour"));
         if (AxiomPanel.checkbox(tr("axiom.chromastudio.whole_build"), wholeBuild, recolour,
                 tr(recolour ? "axiom.chromastudio.brush.whole.tip" : "axiom.chromastudio.from.na"))) {
             layout.later(() -> {
                 wholeBuild = !wholeBuild;
                 said = null;
                 receipt = 0;
+                stroke.forget();
                 reset();
                 remember();
             });
         }
-        if (AxiomPanel.radius(radius, !wholeBuild(), wholeBuild() ? tr("axiom.chromastudio.radius.whole") : "")) remember();
-
-        AxiomPanel.heading(tr("axiom.chromastudio.brush.recolour"));
         recolourOptions(all, recolour);
         if (recolour && fromKey.equals(FROM_BUILD) && found != null) {
             String label = wholeBuild() && picked != null && said == null && refused == null
@@ -473,7 +502,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (found == null) return null;
         int total = found.blocks().length;
         String count = AxiomTools.count("axiom.chromastudio.count", total, preview.count(), total);
-        AxiomPanel.Status s = AxiomPanel.Status.of(kept > 0 ? count + " " + AxiomTools.count("axiom.chromastudio.brush.kept", kept, kept) : count);
+        AxiomPanel.Status s = AxiomPanel.Status.of(count);
+        if (kept > 0) s = s.withTip(AxiomTools.count("axiom.chromastudio.brush.kept", kept, kept));
         s = s.withTip(tr("axiom.chromastudio.brush.kinds", kindsBefore, kindsAfter));
         if (masked > 0) s = s.withTip(AxiomTools.count("axiom.chromastudio.masked", masked, masked));
         if (found.capped()) s = s.withTip(tr("axiom.chromastudio.capped", FoundBuild.CAP));
@@ -490,6 +520,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         mode = m;
         said = null;
         receipt = 0;
+        stroke.forget();
         reset();
         remember();
     }
