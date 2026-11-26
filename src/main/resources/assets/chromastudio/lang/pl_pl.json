@@ -927,7 +927,7 @@
   "axiom.chromastudio.sampler.save": "Zapisz jako paletę",
   "axiom.chromastudio.sampler.save.tip": "Dodaje próbkę do twoich palet, a każdy blok ma wagę równą jego liczbie.",
   "axiom.chromastudio.sampler.save.empty": "Najpierw pobierz próbkę kilku bloków.",
-  "axiom.chromastudio.sampler.save.done": "Już zapisano. Pobierz więcej bloków, aby zapisać ponownie.",
+  "axiom.chromastudio.sampler.save.done": "Już zapisano w Chroma Studio. Pobierz więcej bloków, aby zapisać ponownie.",
   "axiom.chromastudio.sampler.save.failed": "Nie udało się zapisać palety. Powód jest w dzienniku.",
   "axiom.chromastudio.sampler.saved": "Zapisano w Chroma Studio jako „%s”",
   "axiom.chromastudio.sampler.saved.renamed": "Masz już paletę o nazwie %s.",

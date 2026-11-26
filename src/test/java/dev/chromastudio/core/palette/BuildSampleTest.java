@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -122,6 +123,20 @@ class BuildSampleTest {
         assertFalse(s.leftOut(2, 0, 0));
         s.add(0, 0, 0, null);
         assertFalse(s.leftOut(0, 0, 0));
+    }
+
+    @Test
+    void forEachLeftOutVisitsEveryLeftOutKindOnce() {
+        BuildSample s = new BuildSample();
+        s.add(0, 0, 0, GLASS);
+        s.add(1, 0, 0, LANTERN);
+        s.add(2, 0, 0, BRICKS);
+        s.remove(GLASS);
+        s.remove(LANTERN);
+        List<String> seen = new ArrayList<>();
+        s.forEachLeftOut((x, y, z) -> seen.add(s.kindAt(x, y, z)));
+        assertEquals(2, seen.size());
+        assertTrue(seen.contains(GLASS) && seen.contains(LANTERN), seen.toString());
     }
 
     @Test

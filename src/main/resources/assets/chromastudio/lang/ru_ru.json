@@ -927,7 +927,7 @@
   "axiom.chromastudio.sampler.save": "Сохранить как палитру",
   "axiom.chromastudio.sampler.save.tip": "Добавляет образец в ваши палитры, вес каждого блока — по количеству таких блоков.",
   "axiom.chromastudio.sampler.save.empty": "Сначала соберите в образец несколько блоков.",
-  "axiom.chromastudio.sampler.save.done": "Уже сохранено. Возьмите ещё блоков, чтобы сохранить снова.",
+  "axiom.chromastudio.sampler.save.done": "Уже сохранено в Chroma Studio. Возьмите ещё блоков, чтобы сохранить снова.",
   "axiom.chromastudio.sampler.save.failed": "Не удалось сохранить палитру. Причина указана в журнале.",
   "axiom.chromastudio.sampler.saved": "Сохранено в Chroma Studio как «%s»",
   "axiom.chromastudio.sampler.saved.renamed": "Палитра с именем %s у вас уже есть.",

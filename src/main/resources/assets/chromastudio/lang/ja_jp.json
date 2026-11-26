@@ -927,7 +927,7 @@
   "axiom.chromastudio.sampler.save": "パレットとして保存",
   "axiom.chromastudio.sampler.save.tip": "サンプルをパレットに追加します。各ブロックはその数で重み付けされます。",
   "axiom.chromastudio.sampler.save.empty": "先にブロックをいくつか取り込んでください。",
-  "axiom.chromastudio.sampler.save.done": "保存済みです。もっとサンプルすると再び保存できます。",
+  "axiom.chromastudio.sampler.save.done": "Chroma Studio に保存済みです。もっとサンプルすると再び保存できます。",
   "axiom.chromastudio.sampler.save.failed": "パレットを保存できませんでした。理由はログにあります。",
   "axiom.chromastudio.sampler.saved": "Chroma Studio に「%s」として保存しました",
   "axiom.chromastudio.sampler.saved.renamed": "%s という名前のパレットがすでにあります。",

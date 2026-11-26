@@ -927,7 +927,7 @@
   "axiom.chromastudio.sampler.save": "Salvar como paleta",
   "axiom.chromastudio.sampler.save.tip": "Adiciona a amostra às suas paletas, com cada bloco ponderado pela contagem.",
   "axiom.chromastudio.sampler.save.empty": "Amostre alguns blocos primeiro.",
-  "axiom.chromastudio.sampler.save.done": "Já salva. Amostre mais blocos para salvar de novo.",
+  "axiom.chromastudio.sampler.save.done": "Já salva no Chroma Studio. Amostre mais blocos para salvar de novo.",
   "axiom.chromastudio.sampler.save.failed": "Não foi possível salvar a paleta. O registro diz por quê.",
   "axiom.chromastudio.sampler.saved": "Salva no Chroma Studio como \"%s\"",
   "axiom.chromastudio.sampler.saved.renamed": "Você já tem uma paleta chamada %s.",

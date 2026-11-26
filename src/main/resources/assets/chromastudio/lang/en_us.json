@@ -926,7 +926,7 @@
   "axiom.chromastudio.sampler.save": "Save as palette",
   "axiom.chromastudio.sampler.save.tip": "Adds the sample to your palettes, each block weighted by its count.",
   "axiom.chromastudio.sampler.save.empty": "Sample some blocks first.",
-  "axiom.chromastudio.sampler.save.done": "Already saved. Sample more blocks to save again.",
+  "axiom.chromastudio.sampler.save.done": "Already saved to Chroma Studio. Sample more blocks to save again.",
   "axiom.chromastudio.sampler.save.failed": "Couldn't save the palette. The log says why.",
   "axiom.chromastudio.sampler.saved": "Saved to Chroma Studio as \"%s\"",
   "axiom.chromastudio.sampler.saved.renamed": "You already have a palette called %s.",

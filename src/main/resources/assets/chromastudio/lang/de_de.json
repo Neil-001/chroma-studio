@@ -927,7 +927,7 @@
   "axiom.chromastudio.sampler.save": "Als Palette speichern",
   "axiom.chromastudio.sampler.save.tip": "Fügt die Probe deinen Paletten hinzu, jeder Block nach seiner Anzahl gewichtet.",
   "axiom.chromastudio.sampler.save.empty": "Nimm zuerst ein paar Blöcke in die Probe auf.",
-  "axiom.chromastudio.sampler.save.done": "Schon gespeichert. Erfasse mehr Blöcke, um erneut zu speichern.",
+  "axiom.chromastudio.sampler.save.done": "Schon in Chroma Studio gespeichert. Erfasse mehr Blöcke, um erneut zu speichern.",
   "axiom.chromastudio.sampler.save.failed": "Die Palette konnte nicht gespeichert werden. Das Protokoll sagt, warum.",
   "axiom.chromastudio.sampler.saved": "In Chroma Studio als „%s“ gespeichert",
   "axiom.chromastudio.sampler.saved.renamed": "Du hast schon eine Palette namens %s.",

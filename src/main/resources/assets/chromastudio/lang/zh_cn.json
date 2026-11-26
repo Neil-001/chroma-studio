@@ -927,7 +927,7 @@
   "axiom.chromastudio.sampler.save": "保存为调色板",
   "axiom.chromastudio.sampler.save.tip": "把取样添加到你的调色板，每个方块按数量加权。",
   "axiom.chromastudio.sampler.save.empty": "请先取样一些方块。",
-  "axiom.chromastudio.sampler.save.done": "已保存。再取样更多方块才能再次保存。",
+  "axiom.chromastudio.sampler.save.done": "已保存到 Chroma Studio。再取样更多方块才能再次保存。",
   "axiom.chromastudio.sampler.save.failed": "无法保存调色板。原因见日志。",
   "axiom.chromastudio.sampler.saved": "已保存到 Chroma Studio，名为“%s”",
   "axiom.chromastudio.sampler.saved.renamed": "你已经有名为 %s 的调色板。",

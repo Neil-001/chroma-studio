@@ -27,6 +27,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -46,6 +47,7 @@ final class SamplerTool implements CustomTool {
 
     private BuildSample sample = new BuildSample();
     private @Nullable BuildSample cleared;
+    private @Nullable Palette clearedSavedAs;
     private final BooleanRegion sampled = AxiomTools.regions.createBoolean();
     private boolean sampledStale;
     private final BooleanRegion ball = AxiomTools.regions.createBoolean();
@@ -67,11 +69,11 @@ final class SamplerTool implements CustomTool {
     private @Nullable Component said;
     private @Nullable String askedName;
     private final AxiomPanel.Layout layout = new AxiomPanel.Layout();
-    private List<String> shownOrder = List.of();
+    private final List<String> shownOrder = new ArrayList<>();
 
     private ToolPatherUnique pather;
     private ClientLevel strokeIn;
-    private int strokeStart;
+    private int counted;
 
     SamplerTool() {
         one.add(0, 0, 0);
@@ -99,7 +101,7 @@ final class SamplerTool implements CustomTool {
         said = null;
         if (mode == Mode.BRUSH) {
             strokeIn = level;
-            strokeStart = sampledIn.get() == level ? sample.total() : 0;
+            counted = 0;
             pather = AxiomTools.pathers.createUnique(AxiomPanel.radius(radius), BallShape.SPHERE);
             return true;
         }
@@ -108,12 +110,11 @@ final class SamplerTool implements CustomTool {
         BlockPos at = hit.getBlockPos();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         BuildSearch.Found found = BuildSearch.from(at.getX(), at.getY(), at.getZ(), (x, y, z) -> SampleKind.member(level.getBlockState(pos.set(x, y, z))), FoundBuild.CAP);
-        int before = sampledIn.get() == level ? sample.total() : 0;
+        counted = 0;
         for (long p : found.blocks()) add(level, pos, BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
-        int added = sampledIn.get() == level ? sample.total() - before : 0;
         report(found.blocks().length == 0 ? Component.translatable("axiom.chromastudio.not_build")
                 : found.capped() ? Component.translatable("axiom.chromastudio.capped", FoundBuild.CAP).append(" ").append(Component.translatable("axiom.chromastudio.sampler.capped"))
-                : added(added));
+                : added(counted));
         return true;
     }
 
@@ -132,7 +133,7 @@ final class SamplerTool implements CustomTool {
                 BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
                 pather.update((x, y, z) -> add(level, pos, x, y, z));
             } else {
-                if (level == strokeIn) report(added(level == sampledIn.get() ? Math.max(0, sample.total() - strokeStart) : 0));
+                if (level == strokeIn) report(added(counted));
                 reset();
             }
         }
@@ -143,7 +144,7 @@ final class SamplerTool implements CustomTool {
         }
         if (excludedStale) {
             excluded.clear();
-            for (String id : sample.removed()) sample.forEachOf(id, excluded::add);
+            sample.forEachLeftOut(excluded::add);
             excludedStale = false;
         }
         String showing = hovered;
@@ -193,10 +194,15 @@ final class SamplerTool implements CustomTool {
             if (kind == null) return;
             enter(level);
         }
+        if (Objects.equals(sample.kindAt(x, y, z), kind)) return;
         if (kind != null) cleared = null;
-        boolean wasOut = sample.leftOut(x, y, z);
+        boolean wasOut = sample.leftOut(x, y, z), wasCounted = sample.counts(x, y, z);
         boolean seen = sample.add(x, y, z, kind);
-        if (wasOut || sample.leftOut(x, y, z)) excludedStale = true;
+        if (!wasCounted && sample.counts(x, y, z)) counted++;
+        if (wasOut || sample.leftOut(x, y, z)) {
+            excludedStale = true;
+            focused = null;
+        }
         if (!seen) return;
         savedAs = null;
         focused = null;
@@ -235,6 +241,7 @@ final class SamplerTool implements CustomTool {
         if (AxiomPanel.button(tr("axiom.chromastudio.sampler.clear"), true, tr("axiom.chromastudio.sampler.clear.tip"))) {
             layout.later(() -> {
                 cleared = sample;
+                clearedSavedAs = savedAs;
                 sample = new BuildSample();
                 changed();
             });
@@ -257,6 +264,7 @@ final class SamplerTool implements CustomTool {
                 sample = cleared;
                 cleared = null;
                 changed();
+                savedAs = clearedSavedAs;
             });
         }
     }
@@ -266,8 +274,9 @@ final class SamplerTool implements CustomTool {
         for (BuildSample.Row r : sample.rows()) out.add(new Kind(r.id(), r.count(), true));
         for (String id : sample.removed()) out.add(new Kind(id, sample.count(id), false));
         out.sort(Comparator.comparingInt(Kind::count).reversed().thenComparing(Kind::id));
-        if (pather == null) shownOrder = out.stream().map(Kind::id).toList();
-        else out.sort(Comparator.comparingInt(k -> {
+        if (pather == null) shownOrder.clear();
+        for (Kind k : out) if (!shownOrder.contains(k.id())) shownOrder.add(k.id());
+        if (pather != null) out.sort(Comparator.comparingInt(k -> {
             int i = shownOrder.indexOf(k.id());
             return i < 0 ? Integer.MAX_VALUE : i;
         }));
@@ -283,8 +292,15 @@ final class SamplerTool implements CustomTool {
         Palette saved = savedAs != null && PaletteStore.get().own().contains(savedAs) ? savedAs : null;
         AxiomPanel.status(status(saved));
         String label = tr("axiom.chromastudio.sampler.name");
-        ImGui.setNextItemWidth(Math.max(ImGui.getFontSize() * 6, ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX(label) - ImGui.getStyle().getItemInnerSpacingX()));
-        ImGui.inputText(label, name);
+        float field = ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX(label) - ImGui.getStyle().getItemInnerSpacingX();
+        if (field >= ImGui.getFontSize() * 6) {
+            ImGui.setNextItemWidth(field);
+            ImGui.inputText(label, name);
+        } else {
+            AxiomPanel.text(label);
+            ImGui.setNextItemWidth(-1);
+            ImGui.inputText("##" + label, name);
+        }
         if (AxiomPanel.button(tr(saved == null ? "axiom.chromastudio.sampler.save" : "axiom.chromastudio.sampler.saved.button"), !empty && saved == null, tr(empty ? "axiom.chromastudio.sampler.save.empty"
                 : saved != null ? "axiom.chromastudio.sampler.save.done" : "axiom.chromastudio.sampler.save.tip"))) {
             layout.later(this::save);
@@ -361,11 +377,11 @@ final class SamplerTool implements CustomTool {
         if (!r.in()) ImGui.popStyleColor();
         over |= ImGui.isItemHovered();
         AxiomPanel.tip(fitted.equals(shown) ? toggleTip : shown);
+        ImGui.tableNextColumn();
+        over |= right(Integer.toString(r.count()));
+        ImGui.tableNextColumn();
+        if (r.in()) over |= right(tr("axiom.chromastudio.sampler.share", share(r.count(), total)));
         if (over) hovered = r.id();
-        ImGui.tableNextColumn();
-        right(Integer.toString(r.count()));
-        ImGui.tableNextColumn();
-        if (r.in()) right(tr("axiom.chromastudio.sampler.share", share(r.count(), total)));
     }
 
     private void toggle(Kind r) {
@@ -376,12 +392,13 @@ final class SamplerTool implements CustomTool {
         });
     }
 
-    private static void right(String text) {
+    private static boolean right(String text) {
         ImGui.alignTextToFramePadding();
         ImGui.setCursorPosX(ImGui.getCursorPosX() + Math.max(0, ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX(text)));
-        ImGui.beginDisabled();
+        ImGui.pushStyleColor(ImGuiCol.Text, ImGui.getColorU32(ImGuiCol.TextDisabled));
         AxiomPanel.text(text);
-        ImGui.endDisabled();
+        ImGui.popStyleColor();
+        return ImGui.isItemHovered();
     }
 
     private static String share(int count, int total) {

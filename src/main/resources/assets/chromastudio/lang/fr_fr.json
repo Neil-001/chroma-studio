@@ -927,7 +927,7 @@
   "axiom.chromastudio.sampler.save": "Enregistrer comme palette",
   "axiom.chromastudio.sampler.save.tip": "Ajoute l'échantillon à tes palettes, chaque bloc pondéré par son nombre.",
   "axiom.chromastudio.sampler.save.empty": "Échantillonne d'abord quelques blocs.",
-  "axiom.chromastudio.sampler.save.done": "Déjà enregistré. Échantillonne d'autres blocs pour enregistrer de nouveau.",
+  "axiom.chromastudio.sampler.save.done": "Déjà enregistrée dans Chroma Studio. Échantillonne d'autres blocs pour enregistrer de nouveau.",
   "axiom.chromastudio.sampler.save.failed": "Impossible d'enregistrer la palette. Le journal dit pourquoi.",
   "axiom.chromastudio.sampler.saved": "Enregistrée dans Chroma Studio sous « %s »",
   "axiom.chromastudio.sampler.saved.renamed": "Tu as déjà une palette nommée %s.",
