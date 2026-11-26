@@ -43,7 +43,7 @@ public final class DioramaPip extends PictureInPictureRenderer<DioramaPip.State>
     @Override
     protected void renderToTexture(State state, PoseStack pose, SubmitNodeCollector out) {
         Minecraft mc = Minecraft.getInstance();
-        mc.gameRenderer.lighting().setupFor(Lighting.Entry.ITEMS_3D);
+        mc.gameRenderer.lighting().setupFor(Lighting.Entry.ITEMS_FLAT);
         BlockModelResolver resolver = new BlockModelResolver(mc.getModelManager());
         if (state.perspective) lookThroughALens(pose);
         pose.rotateDegrees(Axis.ZP, 180);
