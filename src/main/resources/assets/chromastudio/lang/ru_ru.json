@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "Размер участка есть только у раскладки «Сетка участков».",
   "palettes.chromastudio.export.size": "%s × %s блоков",
   "palettes.chromastudio.export.auto": "авто",
-  "palettes.chromastudio.export.shuffle": "Перемешать",
   "palettes.chromastudio.export.patch.tip": "Блоков на сторону квадрата, от %s до %s.",
   "palettes.chromastudio.export.width.tip": "Ширина в блоках, от %s до %s.",
   "palettes.chromastudio.export.height.tip": "Высота в блоках, от %s до %s.",

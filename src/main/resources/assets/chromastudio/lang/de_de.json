@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "Nur das Patch-Raster hat eine Patch-Größe.",
   "palettes.chromastudio.export.size": "%s × %s Blöcke",
   "palettes.chromastudio.export.auto": "auto",
-  "palettes.chromastudio.export.shuffle": "Mischen",
   "palettes.chromastudio.export.patch.tip": "Blöcke pro Quadratseite, von %s bis %s.",
   "palettes.chromastudio.export.width.tip": "Breite in Blöcken, von %s bis %s.",
   "palettes.chromastudio.export.height.tip": "Höhe in Blöcken, von %s bis %s.",

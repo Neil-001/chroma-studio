@@ -809,8 +809,8 @@ final class PaletteDialogs {
             y += PanelTab.ROW;
             preview = new Bounds(in.x(), y, in.w(), PREVIEW_H);
             if (diorama()) {
-                Component shuffle = tr("palettes.chromastudio.export.shuffle");
-                widgets.button(preview.right() - Widgets.buttonWidth(shuffle) - PanelTab.GAP, y + PanelTab.GAP, shuffle, () -> {
+                Component reroll = tr("palettes.chromastudio.diorama.reroll");
+                widgets.button(preview.right() - Widgets.buttonWidth(reroll) - PanelTab.GAP, y + PanelTab.GAP, reroll, () -> {
                     seed = new Random().nextLong();
                     size = size();
                 });

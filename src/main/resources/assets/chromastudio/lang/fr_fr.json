@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "Seule la grille de carrés a une taille de carré.",
   "palettes.chromastudio.export.size": "%s × %s blocs",
   "palettes.chromastudio.export.auto": "auto",
-  "palettes.chromastudio.export.shuffle": "Mélanger",
   "palettes.chromastudio.export.patch.tip": "Blocs par côté de chaque carré, de %s à %s.",
   "palettes.chromastudio.export.width.tip": "Largeur en blocs, de %s à %s.",
   "palettes.chromastudio.export.height.tip": "Hauteur en blocs, de %s à %s.",

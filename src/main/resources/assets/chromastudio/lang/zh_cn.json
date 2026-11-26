@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "只有色块网格有色块大小。",
   "palettes.chromastudio.export.size": "宽 %s 格，高 %s 格",
   "palettes.chromastudio.export.auto": "自动",
-  "palettes.chromastudio.export.shuffle": "重新随机",
   "palettes.chromastudio.export.patch.tip": "每个正方形的边长（方块），%s 到 %s。",
   "palettes.chromastudio.export.width.tip": "宽度（方块），%s 到 %s。",
   "palettes.chromastudio.export.height.tip": "高度（方块），%s 到 %s。",

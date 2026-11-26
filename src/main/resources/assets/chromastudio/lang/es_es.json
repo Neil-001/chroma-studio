@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "Solo la cuadrícula de parches tiene un tamaño de parche.",
   "palettes.chromastudio.export.size": "%s × %s bloques",
   "palettes.chromastudio.export.auto": "auto",
-  "palettes.chromastudio.export.shuffle": "Mezclar",
   "palettes.chromastudio.export.patch.tip": "Bloques por lado de cada cuadrado, de %s a %s.",
   "palettes.chromastudio.export.width.tip": "Bloques de ancho, de %s a %s.",
   "palettes.chromastudio.export.height.tip": "Bloques de alto, de %s a %s.",

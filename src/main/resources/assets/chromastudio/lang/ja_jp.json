@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "パッチのサイズがあるのは、パッチグリッドだけです。",
   "palettes.chromastudio.export.size": "幅 %s ブロック、高さ %s",
   "palettes.chromastudio.export.auto": "自動",
-  "palettes.chromastudio.export.shuffle": "シャッフル",
   "palettes.chromastudio.export.patch.tip": "正方形の一辺のブロック数。%s〜%s。",
   "palettes.chromastudio.export.width.tip": "幅のブロック数。%s〜%s。",
   "palettes.chromastudio.export.height.tip": "高さのブロック数。%s〜%s。",

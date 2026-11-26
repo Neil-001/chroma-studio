@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "Tylko siatka kafli ma rozmiar kafla.",
   "palettes.chromastudio.export.size": "%s × %s bloków",
   "palettes.chromastudio.export.auto": "auto",
-  "palettes.chromastudio.export.shuffle": "Przetasuj",
   "palettes.chromastudio.export.patch.tip": "Bloki na bok kwadratu, od %s do %s.",
   "palettes.chromastudio.export.width.tip": "Szerokość w blokach, od %s do %s.",
   "palettes.chromastudio.export.height.tip": "Wysokość w blokach, od %s do %s.",

@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "Só o mosaico tem tamanho de bloco.",
   "palettes.chromastudio.export.size": "%s × %s blocos",
   "palettes.chromastudio.export.auto": "auto",
-  "palettes.chromastudio.export.shuffle": "Embaralhar",
   "palettes.chromastudio.export.patch.tip": "Blocos por lado de cada quadrado, de %s a %s.",
   "palettes.chromastudio.export.width.tip": "Blocos de largura, de %s a %s.",
   "palettes.chromastudio.export.height.tip": "Blocos de altura, de %s a %s.",

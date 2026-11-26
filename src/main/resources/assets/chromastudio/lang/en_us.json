@@ -404,7 +404,6 @@
   "palettes.chromastudio.export.patch.na": "Only the patch grid has a patch size.",
   "palettes.chromastudio.export.size": "%s blocks wide, %s tall",
   "palettes.chromastudio.export.auto": "auto",
-  "palettes.chromastudio.export.shuffle": "Shuffle",
   "palettes.chromastudio.export.patch.tip": "Blocks along each side of a square, from %s to %s.",
   "palettes.chromastudio.export.width.tip": "Blocks wide, from %s to %s.",
   "palettes.chromastudio.export.height.tip": "Blocks tall, from %s to %s.",

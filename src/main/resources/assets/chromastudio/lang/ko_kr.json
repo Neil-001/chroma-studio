@@ -405,7 +405,6 @@
   "palettes.chromastudio.export.patch.na": "패치 격자에만 패치 크기가 있습니다.",
   "palettes.chromastudio.export.size": "너비 %s블록, 높이 %s",
   "palettes.chromastudio.export.auto": "자동",
-  "palettes.chromastudio.export.shuffle": "섞기",
   "palettes.chromastudio.export.patch.tip": "정사각형 한 변의 블록 수, %s~%s.",
   "palettes.chromastudio.export.width.tip": "너비(블록), %s~%s.",
   "palettes.chromastudio.export.height.tip": "높이(블록), %s~%s.",
