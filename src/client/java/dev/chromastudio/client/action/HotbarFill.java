@@ -194,7 +194,7 @@ public final class HotbarFill {
                 : Component.translatable("hotbar.chromastudio.axiom.hotbars", active + 2, active + 1 + count);
     }
 
-    public record AxiomPreview(Component hotbars, int replaced) {}
+    public record AxiomPreview(Component hotbars, int first, int last, int replaced) {}
 
     public static int freeSlots() {
         LocalPlayer player = Minecraft.getInstance().player;
@@ -204,17 +204,21 @@ public final class HotbarFill {
         return free;
     }
 
-    public static int holdable(List<PaletteEntry> entries) {
-        return (int) entries.stream().filter(e -> !PaletteBlocks.icon(e).isEmpty()).count();
+    public static List<ItemStack> holdable(List<PaletteEntry> entries) {
+        return entries.stream().map(PaletteBlocks::icon).filter(s -> !s.isEmpty()).toList();
     }
 
-    public static Optional<AxiomPreview> axiomPreview(int blocks) {
-        int rest = blocks - HOTBAR;
+    public static Optional<AxiomPreview> axiomPreview(List<ItemStack> stacks) {
+        int rest = stacks.size() - HOTBAR;
         if (rest <= 0 || !usesAxiom()) return Optional.empty();
         try {
-            int active = AxiomBridge.activeHotbar(), replaced = 0;
-            for (HotbarPlan.Spot at : HotbarPlan.axiom(active, rest)) if (!AxiomBridge.hotbarItem(at.hotbar(), at.slot()).isEmpty()) replaced++;
-            return Optional.of(new AxiomPreview(axiomHotbarNames(active, rest), replaced));
+            int active = AxiomBridge.activeHotbar(), replaced = 0, k = HOTBAR;
+            for (HotbarPlan.Spot at : HotbarPlan.axiom(active, rest)) {
+                ItemStack held = AxiomBridge.hotbarItem(at.hotbar(), at.slot());
+                if (!held.isEmpty() && !ItemStack.isSameItemSameComponents(held, stacks.get(k))) replaced++;
+                k++;
+            }
+            return Optional.of(new AxiomPreview(axiomHotbarNames(active, rest), active + 2, active + 1 + HotbarPlan.axiomHotbars(rest), replaced));
         } catch (Throwable _) {
             return Optional.empty();
         }
@@ -343,14 +347,19 @@ public final class HotbarFill {
                 return Component.translatable("hotbar.chromastudio.axiom.undo_left", slotNames(back.left()));
             }
         }
-        for (Was was : slots) put(was.slot, was.stack);
+        boolean inventory = false;
+        for (Was was : slots) {
+            put(was.slot, was.stack);
+            inventory |= was.slot >= HOTBAR;
+        }
         boolean wroteAxiom = !lastAxiom.isEmpty();
         last = List.of();
         lastAxiom = List.of();
         lastHotbar = -1;
         lastFailed = false;
         Hud.strip(List.of());
-        return Component.translatable(wroteAxiom ? "hotbar.chromastudio.undone_axiom" : lastDropped ? "hotbar.chromastudio.undone_dropped" : "hotbar.chromastudio.undone");
+        return Component.translatable(wroteAxiom ? "hotbar.chromastudio.undone_axiom" : lastDropped ? "hotbar.chromastudio.undone_dropped"
+                : inventory ? "hotbar.chromastudio.undone_inventory" : "hotbar.chromastudio.undone");
     }
 
     private static void put(int slot, ItemStack stack) {
