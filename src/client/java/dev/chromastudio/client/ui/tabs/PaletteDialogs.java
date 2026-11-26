@@ -203,51 +203,136 @@ final class PaletteDialogs {
     }
 
     static final class Import extends Dialog {
+        private static final int LABEL_H = 11;
+
         private final Consumer<Palette> done;
         private String text = "";
         private EditBox field;
+        private @Nullable Palette shared;
+        private @Nullable Component problem;
+        private Component message = Component.empty();
+        private int messageColour = Theme.DIM;
+        private boolean refocus;
+        private Button go;
 
         Import(Consumer<Palette> done) {
-            super(tr("palettes.chromastudio.import.title"), 280, 86);
+            super(tr("palettes.chromastudio.import.title"), 280, 88);
             this.done = done;
         }
 
         @Override
         protected void build(Bounds in) {
             boolean first = field == null;
-            field = widgets.search(in.x(), in.y(), in.w(), tr("palettes.chromastudio.import.hint"), s -> text = s);
+            field = widgets.search(in.x(), in.y() + LABEL_H, in.w(), tr("palettes.chromastudio.import.hint"), _ -> {
+                String s = field.getValue();
+                boolean pasted = s.length() > text.length() + 1;
+                text = s;
+                if (pasted) field.moveCursorToStart(false);
+                preview();
+            });
             field.setMaxLength(Short.MAX_VALUE);
+            if (first) focusField();
+            Component browse = tr("palettes.chromastudio.import.browse"), paste = tr("palettes.chromastudio.import.paste"), action = tr("palettes.chromastudio.import");
+            int y = field.getY() + PanelTab.ROW;
+            Button chooser = widgets.button(in.x(), y, browse, () -> {
+                FileDialog.choose("JSON", "json", path -> field.setValue(path.toString()), () -> say(tr("palettes.chromastudio.no_dialog"), Theme.FAIR));
+                refocus = true;
+            });
+            widgets.button(chooser.getRight() + PanelTab.GAP, y, paste, () -> {
+                field.setValue(Minecraft.getInstance().keyboardHandler.getClipboard().strip());
+                field.moveCursorToStart(false);
+                refocus = true;
+            });
+            go = widgets.button(in.right() - Widgets.buttonWidth(action), y, action, this::confirm);
             field.setValue(text);
-            if (first) {
-                field.setFocused(true);
-                widgets.setFocused(field);
+        }
+
+        private void focusField() {
+            field.setFocused(true);
+            widgets.setFocused(field);
+        }
+
+        @Override
+        void tick() {
+            if (refocus) focusField();
+            refocus = false;
+        }
+
+        private void say(Component text, int colour) {
+            message = text;
+            messageColour = colour;
+        }
+
+        @Override
+        protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {
+            g.text(PanelTab.font(), PanelTab.fit(tr("palettes.chromastudio.import.label").getString(), in.w()), in.x(), in.y(), Theme.SOFT, false);
+            String mark = messageColour == Theme.GOOD ? "\u2714 " : messageColour == Theme.BAD ? "\u2716 " : messageColour == Theme.FAIR ? "! " : "";
+            if (!mark.isEmpty()) g.outline(field.getX() - 1, field.getY() - 1, field.getWidth() + 2, field.getHeight() + 2, messageColour);
+            if (go.active) g.outline(go.getX() - 1, go.getY() - 1, go.getWidth() + 2, go.getHeight() + 2, shared != null ? Theme.GOOD : Theme.SOFT);
+            int messageY = go.getBottom() + 4;
+            List<FormattedCharSequence> lines = PanelTab.font().split(Component.literal(mark).append(message), in.w());
+            for (int i = 0; i < Math.min(STATUS_LINES, lines.size()); i++) g.text(PanelTab.font(), lines.get(i), in.x(), messageY + i * 9, messageColour, false);
+            if (lines.size() > STATUS_LINES && mouseY >= messageY && mouseY < messageY + STATUS_LINES * 9 && mouseX >= in.x() && mouseX < in.right())
+                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), message), mouseX, mouseY);
+        }
+
+        private static boolean looksLikePath(String s) {
+            return s.contains("/") || s.contains("\\") || s.toLowerCase(Locale.ROOT).endsWith(".json");
+        }
+
+        private static String foundPrefix(String s) {
+            int colon = s.indexOf(':');
+            return colon > 0 && colon < ShareString.PREFIX.length() + 4 ? s.substring(0, colon + 1) : s.substring(0, Math.min(s.length(), ShareString.PREFIX.length()));
+        }
+
+        private void preview() {
+            String s = text.strip();
+            shared = null;
+            problem = null;
+            if (s.isEmpty()) say(tr("palettes.chromastudio.import.help"), Theme.DIM);
+            else if (s.startsWith("chroma")) {
+                try {
+                    shared = ShareString.decode(s);
+                    int n = shared.entries.size();
+                    say(tr(Plural.key("palettes.chromastudio.import.ready", n), PaletteStore.get().unique(shared.name), n), Theme.GOOD);
+                } catch (UnreadablePalette e) {
+                    problem = e.reason() == UnreadablePalette.Reason.NOT_SHARE
+                            ? tr("palettes.chromastudio.import.prefix", foundPrefix(s), ShareString.PREFIX)
+                            : tr("palettes.chromastudio.import.bad", PaletteStore.why(e));
+                    say(problem, Theme.BAD);
+                }
+            } else if (looksLikePath(s)) {
+                say(tr("palettes.chromastudio.import.file"), Theme.DIM);
+            } else {
+                problem = tr("palettes.chromastudio.import.unknown", ShareString.PREFIX);
+                say(problem, Theme.FAIR);
             }
-            Component browse = tr("palettes.chromastudio.browse"), go = tr("palettes.chromastudio.import");
-            int y = in.y() + PanelTab.ROW;
-            widgets.button(in.x(), y, browse, () -> FileDialog.choose("JSON", "json", path -> field.setValue(path.toString()),
-                    () -> status(tr("palettes.chromastudio.no_dialog"), Theme.FAIR)));
-            widgets.button(in.right() - Widgets.buttonWidth(go), y, go, this::confirm);
+            Component why = s.isEmpty() ? tr("palettes.chromastudio.import.empty") : problem;
+            go.active = why == null;
+            go.setTooltip(why == null ? null : Tooltip.create(why));
         }
 
         @Override
         protected boolean confirm() {
             String s = text.strip();
             if (s.isEmpty()) {
-                status(tr("palettes.chromastudio.import.empty"), Theme.FAIR);
+                say(tr("palettes.chromastudio.import.empty"), Theme.FAIR);
+                return true;
+            }
+            if (problem != null) {
+                say(problem, Theme.BAD);
                 return true;
             }
             try {
-                Palette p;
-                if (s.startsWith("chroma")) p = PaletteStore.get().importShare(s);
-                else p = PaletteStore.get().importJson(Files.readString(Path.of(s)));
+                Palette p = shared != null ? PaletteStore.get().importShare(s) : PaletteStore.get().importJson(Files.readString(Path.of(s)));
                 close();
                 done.accept(p);
             } catch (UnreadablePalette e) {
-                status(tr("palettes.chromastudio.import.bad", PaletteStore.why(e)), Theme.BAD);
+                say(tr("palettes.chromastudio.import.bad", PaletteStore.why(e)), Theme.BAD);
             } catch (InvalidPathException _) {
-                status(tr("palettes.chromastudio.import.bad", s), Theme.BAD);
+                say(tr("palettes.chromastudio.import.unknown", ShareString.PREFIX), Theme.BAD);
             } catch (IOException _) {
-                status(tr("palettes.chromastudio.import.no_file", s), Theme.BAD);
+                say(tr("palettes.chromastudio.import.no_file", s), Theme.BAD);
             }
             return true;
         }
