@@ -116,7 +116,6 @@ final class PaletteDialogs {
             field.setInvertHighlightedTextColor(false);
             field.setValue(text);
             if (first) {
-                field.moveCursorToEnd(false);
                 field.moveCursorToStart(true);
                 field.setFocused(true);
                 widgets.setFocused(field);
@@ -138,8 +137,9 @@ final class PaletteDialogs {
         }
 
         private @Nullable Component problem() {
-            if (text.isBlank()) return warned ? tr("palettes.chromastudio.name_needed") : null;
-            return taken.test(text) ? tr("palettes.chromastudio.name_taken") : null;
+            String name = text.strip();
+            if (name.isEmpty()) return warned ? tr("palettes.chromastudio.name_needed") : null;
+            return !name.equalsIgnoreCase(initial) && taken.test(name) ? tr("palettes.chromastudio.name_taken") : null;
         }
 
         @Override

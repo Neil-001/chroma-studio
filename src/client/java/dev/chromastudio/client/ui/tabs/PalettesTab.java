@@ -29,6 +29,7 @@ import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -125,11 +126,12 @@ public final class PalettesTab extends PanelTab {
         record Action(String key, Runnable run, Component unavailable) {}
         Component needsOne = tr("palettes.chromastudio.need_palette"), presetFixed = tr("palettes.chromastudio.preset_fixed");
         Component editable = p == null ? needsOne : p.preset ? presetFixed : null;
+        Predicate<String> taken = name -> !store.unique(name).equals(name);
         List<Action> top = List.of(
                 new Action("new", () -> open(new PaletteDialogs.Name(tr("palettes.chromastudio.new.title"), tr("palettes.chromastudio.create"), "",
-                        name -> !store.unique(name).equals(name.strip()), name -> { store.create(name, List.of()); showEntries(); })), null),
+                        taken, name -> { store.create(name, List.of()); showEntries(); })), null),
                 new Action("rename", () -> open(new PaletteDialogs.Name(tr("palettes.chromastudio.rename.title"), tr("palettes.chromastudio.rename"), p.name,
-                        name -> !name.strip().equalsIgnoreCase(p.name) && !store.unique(name).equals(name.strip()), name -> { flush(); store.rename(p, name); rebuild(); })), editable),
+                        taken, name -> { flush(); store.rename(p, name); rebuild(); })), editable),
                 new Action("delete", () -> open(new PaletteDialogs.Confirm(tr("palettes.chromastudio.delete.title"), tr("palettes.chromastudio.delete.question", p.name),
                         tr("palettes.chromastudio.delete"), () -> { dirty = false; store.delete(p); say(tr("palettes.chromastudio.deleted", p.name)); showEntries(); })), editable));
         List<Action> bottom = List.of(
