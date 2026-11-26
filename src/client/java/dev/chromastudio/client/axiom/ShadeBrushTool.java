@@ -84,6 +84,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private final Set<Kind> kinds = EnumSet.copyOf(CHANGEABLE);
     private @Nullable BlockState hovered;
     private @Nullable BlockState pointed;
+    private Face pointedFace = Face.ANY;
     private boolean overPanel;
     private @Nullable BlockPos maskedAsked;
     private int maskedFrame;
@@ -149,6 +150,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
         hovered = onBlock ? level.getBlockState(hit.getBlockPos()) : null;
         if (!onBlock) return;
         pointed = hovered;
+        pointedFace = Face.valueOf(hit.getDirection().name());
         BlockPos at = hit.getBlockPos();
         int frame = AxiomTools.frame();
         if (!at.equals(maskedAsked) || frame - maskedFrame >= MASK_FRAMES || frame < maskedFrame) {
@@ -249,19 +251,19 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
             AxiomPanel.wrapped(AxiomNames.text("axiom.chromastudio.shade.point"));
             return true;
         }
-        named("here", here, here.getBlock().getName().getString());
+        named("here", here, pointedFace, here.getBlock().getName().getString());
         BlockState next = masked && !AxiomMask.scripted() ? null : p.apply(here, direction, kinds);
         if (next == null) {
             AxiomPanel.wrapped(tr(masked && !AxiomMask.scripted() ? "axiom.chromastudio.shade.left.masked" : p.whyLeft(here, direction, kinds)));
             return true;
         }
         boolean scripted = AxiomMask.scripted() && !AxiomMask.windowClosed().orElse(false);
-        named("next", next, tr(scripted ? "axiom.chromastudio.shade.becomes.scripted" : "axiom.chromastudio.shade.becomes", next.getBlock().getName()));
+        named("next", next, pointedFace, tr(scripted ? "axiom.chromastudio.shade.becomes.scripted" : "axiom.chromastudio.shade.becomes", next.getBlock().getName()));
         return true;
     }
 
-    private static void named(String id, BlockState state, String label) {
-        Optional<Color> c = BlockIndex.get().colourOf(state, PaletteBlocks.queryFace(), PaletteBlocks.tint());
+    private static void named(String id, BlockState state, Face face, String label) {
+        Optional<Color> c = BlockIndex.get().colourOf(state, face, PaletteBlocks.tint());
         if (c.isEmpty()) {
             ImGui.alignTextToFramePadding();
             AxiomPanel.wrapped(label);
