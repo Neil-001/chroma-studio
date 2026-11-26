@@ -54,8 +54,16 @@ class ScreenPickerTest {
     @Test
     void aPreviewThatWouldReadLastFramesReticleIsSkipped() {
         int width = 854, height = 480;
-        List<int[]> drawn = ScreenPicker.reticle(200, 100, 1, 1, width, height).stream().map(b -> new int[] {b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1}).toList();
-        assertTrue(ScreenPicker.touches(drawn, 1, 209, 100, 1, width, height), "the pointer moved onto the old right arm");
-        assertFalse(ScreenPicker.touches(drawn, 1, 200, 100, 1, width, height), "a still pointer reads clear of its own reticle");
+        List<int[]> drawn = ScreenPicker.reticle(200, 100, 1, 1, width, height).stream()
+                .map(b -> ScreenPicker.physical(new int[] {b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1}, 1)).toList();
+        assertTrue(ScreenPicker.touches(drawn, 209, 100, 1, width, height), "the pointer moved onto the old right arm");
+        assertFalse(ScreenPicker.touches(drawn, 200, 100, 1, width, height), "a still pointer reads clear of its own reticle");
+    }
+
+    @Test
+    void aGuiScaleChangeStillSkipsTheOldReticle() {
+        List<int[]> drawn = ScreenPicker.reticle(200, 100, 3, 3, 960, 720).stream()
+                .map(b -> ScreenPicker.physical(new int[] {b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1}, 3)).toList();
+        assertTrue(ScreenPicker.touches(drawn, 304, 150, 2, 940, 720), "the same framebuffer point, now at GUI scale 2, reads the old right arm");
     }
 }

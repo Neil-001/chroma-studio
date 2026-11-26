@@ -63,7 +63,7 @@ public final class ScreenPicker {
         double scale = (double) target.width / mc.getWindow().getGuiScaledWidth();
         int guiScale = mc.getWindow().getGuiScale();
         boolean fits = target.width >= LOUPE && target.height >= LOUPE;
-        if (frames >= SETTLE && (picking || fits && !touches(drawn, guiScale, mouseX, mouseY, scale, target.width, target.height))) {
+        if (frames >= SETTLE && (picking || fits && !touches(drawn, mouseX, mouseY, scale, target.width, target.height))) {
             int run = session;
             read(picking ? clickX : mouseX, picking ? clickY : mouseY, (pixels, at) -> {
                 if (run != session) return;
@@ -81,7 +81,7 @@ public final class ScreenPicker {
         for (int[] bar : fits ? reticle(mouseX, mouseY, scale, guiScale, target.width, target.height) : List.<int[]>of()) {
             g.fill(bar[0] - 1, bar[1] - 1, bar[2] + 1, bar[3] + 1, 0xFF000000);
             g.fill(bar[0], bar[1], bar[2], bar[3], 0xFFFFFFFF);
-            overlays.add(shadow(bar));
+            overlays.add(physical(shadow(bar), guiScale));
         }
         drawn = overlays;
         if (seen == null) return;
@@ -93,7 +93,7 @@ public final class ScreenPicker {
         if (y + h > g.guiHeight()) y = mouseY - OFFSET - h;
         g.fill(x - 1, y - 1, x + w + 1, y + h + 1, 0xFFFFFFFF);
         g.fill(x, y, x + w, y + h, 0xFF000000);
-        overlays.add(new int[] {x - 1, y - 1, x + w + 1, y + h + 1});
+        overlays.add(physical(new int[] {x - 1, y - 1, x + w + 1, y + h + 1}, guiScale));
         int gx = x + (w - grid) / 2, gy = y + 2;
         for (int i = 0; i < seen.length; i++) {
             int cx = gx + i % LOUPE * CELL, cy = gy + i / LOUPE * CELL;
@@ -118,10 +118,14 @@ public final class ScreenPicker {
         return bars;
     }
 
-    static boolean touches(List<int[]> overlays, int guiScale, int x, int y, double scale, int width, int height) {
+    static boolean touches(List<int[]> physical, int x, int y, double scale, int width, int height) {
         int lx = loupeStart(pick(x, scale, width), width), ly = loupeStart(pick(y, scale, height), height);
-        for (int[] overlay : overlays) if (overlaps(overlay, guiScale, lx, ly)) return true;
+        for (int[] overlay : physical) if (overlaps(overlay, 1, lx, ly)) return true;
         return false;
+    }
+
+    static int[] physical(int[] gui, int guiScale) {
+        return new int[] {gui[0] * guiScale, gui[1] * guiScale, gui[2] * guiScale, gui[3] * guiScale};
     }
 
     static boolean overlaps(int[] gui, int guiScale, int lx, int ly) {
