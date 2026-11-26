@@ -487,6 +487,7 @@ final class PaletteDialogs {
         private Key shownFor;
         private List<PaletteEntry> shown = List.of();
         private Button go;
+        private @Nullable Component goRefused;
 
         Generate(Color seed, Consumer<Palette> done) {
             super(tr("palettes.chromastudio.generate.title"), WIDTH, HEIGHT);
@@ -556,6 +557,7 @@ final class PaletteDialogs {
             Component go = tr("palettes.chromastudio.generate.go");
             int goW = Widgets.buttonWidth(go);
             this.go = widgets.button(in.right() - goW, in.bottom() - Widgets.H, goW, go, this::confirm);
+            goRefused = null;
             int cancelW = Widgets.buttonWidth(CommonComponents.GUI_CANCEL);
             widgets.button(in.right() - goW - PanelTab.GAP - 2 - cancelW, in.bottom() - Widgets.H, cancelW, CommonComponents.GUI_CANCEL, this::close);
         }
@@ -578,14 +580,18 @@ final class PaletteDialogs {
             Component footer = entries.size() < count ? tr("palettes.chromastudio.count", entries.size()) : Component.empty();
             int footerColour = Theme.DIM;
             if (problem != null) {
-                if (go.active) Widgets.disable(go, problem);
+                if (!problem.equals(goRefused)) {
+                    goRefused = problem;
+                    Widgets.disable(go, problem);
+                }
                 List<FormattedCharSequence> lines = PanelTab.font().split(problem, well.w() - 8);
                 int top = well.y() + (well.h() - lines.size() * 9) / 2;
                 for (int i = 0; i < lines.size(); i++)
                     g.text(PanelTab.font(), lines.get(i), well.x() + (well.w() - PanelTab.font().width(lines.get(i))) / 2, top + i * 9, Theme.BAD, false);
                 return;
             }
-            if (!go.active) {
+            if (goRefused != null) {
+                goRefused = null;
                 go.active = true;
                 go.setTooltip(null);
             }
