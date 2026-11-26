@@ -839,7 +839,7 @@
   "axiom.chromastudio.brush.no_entries": "Esta paleta está vacía. Añádele bloques en Chroma Studio.",
   "axiom.chromastudio.brush.choose": "Elige una paleta.",
   "axiom.chromastudio.brush.materials": "Materiales de la construcción",
-  "axiom.chromastudio.brush.materials.kinds": "Materiales de la construcción: de %s a %s tipos",
+  "axiom.chromastudio.brush.materials.kinds": "Materiales de la construcción: %s tipos, %s después",
   "axiom.chromastudio.brush.materials.tip": "Los bloques de la construcción, del más oscuro al más claro, que fijan el sombreado.",
   "axiom.chromastudio.eyedropper": "Cuentagotas Chroma",
   "axiom.chromastudio.eyedropper.how": "Haz clic derecho en un bloque para buscar su color.",

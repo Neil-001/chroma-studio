@@ -839,7 +839,7 @@
   "axiom.chromastudio.brush.no_entries": "このパレットは空です。Chroma Studio でブロックを追加してください。",
   "axiom.chromastudio.brush.choose": "パレットを選んでください。",
   "axiom.chromastudio.brush.materials": "建築物の素材",
-  "axiom.chromastudio.brush.materials.kinds": "建築物の素材：%s～%s 種類",
+  "axiom.chromastudio.brush.materials.kinds": "建築物の素材：%s 種類、変更後 %s 種類",
   "axiom.chromastudio.brush.materials.tip": "建築物のブロックを暗い順に並べたものです。陰影の基準になります。",
   "axiom.chromastudio.eyedropper": "Chroma スポイト",
   "axiom.chromastudio.eyedropper.how": "ブロックを右クリックすると、その色に近いものを探します。",

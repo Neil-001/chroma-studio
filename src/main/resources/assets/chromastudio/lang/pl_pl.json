@@ -839,7 +839,7 @@
   "axiom.chromastudio.brush.no_entries": "Ta paleta jest pusta. Dodaj do niej bloki w Chroma Studio.",
   "axiom.chromastudio.brush.choose": "Wybierz paletę.",
   "axiom.chromastudio.brush.materials": "Materiały budowli",
-  "axiom.chromastudio.brush.materials.kinds": "Materiały budowli: od %s do %s rodzajów",
+  "axiom.chromastudio.brush.materials.kinds": "Materiały budowli: %s rodzajów, potem %s",
   "axiom.chromastudio.brush.materials.tip": "Bloki budowli, od najciemniejszego do najjaśniejszego, które ustalają cieniowanie.",
   "axiom.chromastudio.eyedropper": "Pipeta Chroma",
   "axiom.chromastudio.eyedropper.how": "Kliknij prawym przyciskiem blok, aby dopasować jego kolor.",

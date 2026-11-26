@@ -839,7 +839,7 @@
   "axiom.chromastudio.brush.no_entries": "Cette palette est vide. Ajoutes-y des blocs dans Chroma Studio.",
   "axiom.chromastudio.brush.choose": "Choisis une palette.",
   "axiom.chromastudio.brush.materials": "Matériaux de la construction",
-  "axiom.chromastudio.brush.materials.kinds": "Matériaux de la construction : de %s à %s types",
+  "axiom.chromastudio.brush.materials.kinds": "Matériaux de la construction : %s types, %s après",
   "axiom.chromastudio.brush.materials.tip": "Les blocs de la construction, du plus foncé au plus clair, qui fixent les nuances.",
   "axiom.chromastudio.eyedropper": "Pipette Chroma",
   "axiom.chromastudio.eyedropper.how": "Fais un clic droit sur un bloc pour chercher sa couleur.",

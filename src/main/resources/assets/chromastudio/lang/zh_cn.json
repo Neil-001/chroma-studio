@@ -839,7 +839,7 @@
   "axiom.chromastudio.brush.no_entries": "这个调色板是空的。请在 Chroma Studio 中添加方块。",
   "axiom.chromastudio.brush.choose": "请选择一个调色板。",
   "axiom.chromastudio.brush.materials": "建筑材料",
-  "axiom.chromastudio.brush.materials.kinds": "建筑材料：%s 至 %s 种",
+  "axiom.chromastudio.brush.materials.kinds": "建筑材料：%s 种，更改后 %s 种",
   "axiom.chromastudio.brush.materials.tip": "建筑的方块，从最暗到最亮，用来确定明暗。",
   "axiom.chromastudio.eyedropper": "Chroma 取色器",
   "axiom.chromastudio.eyedropper.how": "右键点击方块即可匹配它的颜色。",

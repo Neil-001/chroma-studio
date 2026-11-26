@@ -839,7 +839,7 @@
   "axiom.chromastudio.brush.no_entries": "Эта палитра пуста. Добавьте в неё блоки в Chroma Studio.",
   "axiom.chromastudio.brush.choose": "Выберите палитру.",
   "axiom.chromastudio.brush.materials": "Материалы постройки",
-  "axiom.chromastudio.brush.materials.kinds": "Материалы постройки: от %s до %s видов",
+  "axiom.chromastudio.brush.materials.kinds": "Материалы постройки: видов %s, потом %s",
   "axiom.chromastudio.brush.materials.tip": "Блоки постройки от самого тёмного до самого светлого, по ним задаётся затенение.",
   "axiom.chromastudio.eyedropper": "Пипетка Chroma",
   "axiom.chromastudio.eyedropper.how": "Щёлкните правой кнопкой по блоку, чтобы подобрать его цвет.",

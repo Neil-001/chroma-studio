@@ -253,7 +253,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             outline.clear();
             BallShape.SPHERE.fillRegion(outline, outlineRadius);
         }
-        outline.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.BLUE | Effects.OUTLINE);
+        outline.render(rc, Vec3.atLowerCornerOf(hit.getBlockPos()), Effects.OUTLINE);
     }
 
     private void renderBuild(IAxiomWorldRenderContext rc, ClientLevel level) {
@@ -409,12 +409,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             readSwatches(shown);
             AxiomPanel.swatches("swatch", swatches);
         }
-        if (anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
-            String names = scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "));
-            String line = tr("axiom.chromastudio.brush.left_out", names), fitted = AxiomPanel.fit(line, ImGui.getContentRegionAvailX());
-            AxiomPanel.note(fitted);
-            AxiomPanel.tip(fitted.equals(line) ? tr("axiom.chromastudio.brush.left_out.tip") : line + "\n" + tr("axiom.chromastudio.brush.left_out.tip"));
-        }
 
         AxiomPanel.heading(tr("axiom.chromastudio.heading.brush"));
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.scatter"), mode == Mode.SCATTER, ready,
@@ -423,6 +417,12 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         if (AxiomPanel.radio(tr("axiom.chromastudio.brush.recolour"), recolour, ready,
                 tr(ready ? "axiom.chromastudio.brush.recolour.tip" : "axiom.chromastudio.not_ready"))) layout.later(() -> setMode(Mode.RECOLOUR));
         if (AxiomPanel.radius(radius, !wholeBuild(), wholeBuild() ? tr("axiom.chromastudio.radius.whole") : "")) remember();
+        if (mode == Mode.SCATTER && anyInGame && scattered != null && !scattered.leftOut().isEmpty()) {
+            String names = scattered.leftOut().stream().map(e -> PaletteBlocks.name(e).getString()).collect(Collectors.joining(", "));
+            String line = tr("axiom.chromastudio.brush.left_out", names), fitted = AxiomPanel.fit(line, ImGui.getContentRegionAvailX());
+            AxiomPanel.note(fitted);
+            AxiomPanel.tip(fitted.equals(line) ? tr("axiom.chromastudio.brush.left_out.tip") : line + "\n" + tr("axiom.chromastudio.brush.left_out.tip"));
+        }
 
         AxiomPanel.heading(tr("axiom.chromastudio.brush.recolour"));
         if (AxiomPanel.checkbox(tr("axiom.chromastudio.whole_build"), wholeBuild, recolour,

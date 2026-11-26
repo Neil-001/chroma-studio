@@ -839,7 +839,7 @@
   "axiom.chromastudio.brush.no_entries": "Diese Palette ist leer. Füge in Chroma Studio Blöcke hinzu.",
   "axiom.chromastudio.brush.choose": "Wähle eine Palette.",
   "axiom.chromastudio.brush.materials": "Baumaterialien",
-  "axiom.chromastudio.brush.materials.kinds": "Baumaterialien: %s bis %s Arten",
+  "axiom.chromastudio.brush.materials.kinds": "Baumaterialien: %s Arten, danach %s",
   "axiom.chromastudio.brush.materials.tip": "Die Blöcke des Bauwerks, vom dunkelsten zum hellsten. Sie bestimmen die Schattierung.",
   "axiom.chromastudio.eyedropper": "Chroma-Pipette",
   "axiom.chromastudio.eyedropper.how": "Rechtsklicke einen Block, um seine Farbe abzugleichen.",

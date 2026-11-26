@@ -839,7 +839,7 @@
   "axiom.chromastudio.brush.no_entries": "이 팔레트가 비어 있습니다. Chroma Studio에서 블록을 추가하세요.",
   "axiom.chromastudio.brush.choose": "팔레트를 고르세요.",
   "axiom.chromastudio.brush.materials": "건축 재료",
-  "axiom.chromastudio.brush.materials.kinds": "건축 재료: %s~%s종",
+  "axiom.chromastudio.brush.materials.kinds": "건축 재료: %s종, 바뀐 뒤 %s종",
   "axiom.chromastudio.brush.materials.tip": "건축물의 블록을 어두운 순서로 나열한 것으로, 명암의 기준이 됩니다.",
   "axiom.chromastudio.eyedropper": "Chroma 스포이트",
   "axiom.chromastudio.eyedropper.how": "블록을 우클릭하면 그 색과 맞는 블록을 찾습니다.",
