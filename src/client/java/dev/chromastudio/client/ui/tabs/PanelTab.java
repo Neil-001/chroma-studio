@@ -134,7 +134,7 @@ abstract class PanelTab extends Tab {
     @Override
     public final boolean dismiss() {
         if (dialog == null) return dismissPanel();
-        closeDialog();
+        dialog.cancel();
         return true;
     }
 

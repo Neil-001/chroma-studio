@@ -39,7 +39,7 @@ abstract class Dialog {
         int w = Math.min(wantW, content.w() - 8), h = Math.min(wantH, content.h() - 8);
         box = new Bounds(content.x() + (content.w() - w) / 2, content.y() + (content.h() - h) / 2, w, h);
         widgets.clear();
-        widgets.add(new IconButton(box.right() - 13, box.y() + 2, 10, 10, IconButton.Glyph.CLOSE, Component.translatable("window.chromastudio.close"), this::close));
+        widgets.add(new IconButton(box.right() - 13, box.y() + 2, 10, 10, IconButton.Glyph.CLOSE, Component.translatable("window.chromastudio.close"), this::cancel));
         build(new Bounds(box.x() + 5, box.y() + TITLE_H + 3, box.w() - 10, box.h() - TITLE_H - 7));
     }
 
@@ -50,6 +50,8 @@ abstract class Dialog {
     protected void draw(GuiGraphicsExtractor g, Bounds in, int mouseX, int mouseY) {}
 
     protected final void close() { tab.closeDialog(); }
+
+    void cancel() { close(); }
 
     protected int statusLines() { return STATUS_LINES; }
 
@@ -77,7 +79,7 @@ abstract class Dialog {
 
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         if (!box.contains(e.x(), e.y())) {
-            close();
+            cancel();
             return true;
         }
         widgets.mouseClicked(e, doubled);
