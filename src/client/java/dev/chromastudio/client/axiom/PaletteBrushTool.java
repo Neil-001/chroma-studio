@@ -69,7 +69,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private final BooleanRegion outline = AxiomTools.regions.createBoolean();
     private final BooleanRegion one = AxiomTools.regions.createBoolean();
     private final BooleanRegion hovered = AxiomTools.regions.createBoolean();
-    private Set<Long> hoveredBlocks = Set.of();
     private @Nullable ClientLevel hoveredIn;
     private int outlineRadius = -1;
 
@@ -125,7 +124,6 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
 
     private void forgetHover() {
         hovered.clear();
-        hoveredBlocks = Set.of();
         hoveredIn = null;
     }
 
@@ -285,7 +283,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
                 one.render(rc, Vec3.atLowerCornerOf(at), Effects.BLUE | Effects.OUTLINE);
                 return;
             }
-            if (hoveredIn != level || !hoveredBlocks.contains(BuildSearch.pack(at.getX(), at.getY(), at.getZ()))) hover(level, at);
+            if (hoveredIn != level || !hovered.contains(at.getX(), at.getY(), at.getZ())) hover(level, at);
             hovered.render(rc, Vec3.ZERO, Effects.OUTLINE);
         } else {
             preview.render(rc);
@@ -295,13 +293,8 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
     private void hover(ClientLevel level, BlockPos at) {
         hovered.clear();
         hoveredIn = level;
-        Set<Long> blocks = new HashSet<>();
         FoundBuild build = FoundBuild.from(level, at);
-        if (build != null) for (long p : build.blocks()) {
-            blocks.add(p);
-            hovered.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
-        }
-        hoveredBlocks = blocks;
+        if (build != null) for (long p : build.blocks()) hovered.add(BuildSearch.x(p), BuildSearch.y(p), BuildSearch.z(p));
     }
 
     void makePreview(ClientLevel level) {
