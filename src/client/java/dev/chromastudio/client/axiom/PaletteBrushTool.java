@@ -120,14 +120,20 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
         pickedIn = null;
         refused = null;
         clearPreview();
+        forgetHover();
+    }
+
+    private void forgetHover() {
         hovered.clear();
         hoveredBlocks = Set.of();
+        hoveredIn = null;
     }
 
     @Override
     public void putAway() {
         stroke.away();
         clearPreview();
+        forgetHover();
     }
 
     private void clearPreview() {

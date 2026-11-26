@@ -829,7 +829,7 @@
   "axiom.chromastudio.brush.whole.tip": "Right-click a build to preview all of it recoloured, then press Apply.",
   "axiom.chromastudio.brush.from.tip": "Which blocks change. This build takes its shading from the build you right-click. A palette changes only its own blocks.",
   "axiom.chromastudio.brush.pick": "Right-click a build to preview it.",
-  "axiom.chromastudio.brush.kinds": "Block types: %s before, %s after.",
+  "axiom.chromastudio.brush.kinds": "Kinds of block: %s now, %s after.",
   "axiom.chromastudio.brush.kept": "%s are already palette blocks, so they stay.",
   "axiom.chromastudio.brush.kept.one": "One is already a palette block, so it stays.",
   "axiom.chromastudio.brush.from_gone": "The From palette was renamed or deleted. Choose From again.",
