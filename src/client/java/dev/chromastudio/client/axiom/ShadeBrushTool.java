@@ -25,6 +25,7 @@ import dev.chromastudio.core.palette.ShadeSteps;
 import dev.chromastudio.core.palette.ShadeSteps.Direction;
 import dev.chromastudio.core.palette.WeightedPick;
 import imgui.moulberry92.ImGui;
+import imgui.moulberry92.flag.ImGuiColorEditFlags;
 import imgui.moulberry92.flag.ImGuiHoveredFlags;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -66,6 +67,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     private static final Set<Kind> SHAPES = EnumSet.of(Kind.SLAB, Kind.STAIRS, Kind.WALL);
 
     private static final int MASK_FRAMES = 20;
+    private static final float SWATCH_SCALE = 1.5f;
 
     private static final Set<Block> STORAGE = Set.of(Blocks.COAL_BLOCK, Blocks.LAPIS_BLOCK, Blocks.RAW_IRON_BLOCK, Blocks.RAW_COPPER_BLOCK, Blocks.RAW_GOLD_BLOCK);
 
@@ -230,7 +232,7 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
     }
 
     private void preview() {
-        float top = ImGui.getCursorPosY(), least = ImGui.getFrameHeightWithSpacing() * 2;
+        float top = ImGui.getCursorPosY(), least = (ImGui.getFrameHeight() * SWATCH_SCALE + ImGui.getStyle().getItemSpacingY()) * 2;
         boolean shown = previewRows();
         float used = ImGui.getCursorPosY() - top;
         if (used < least) ImGui.dummy(0, least - used);
@@ -260,11 +262,17 @@ final class ShadeBrushTool implements CustomTool, GuardedTool.PutAway {
 
     private static void named(String id, BlockState state, String label) {
         Optional<Color> c = BlockIndex.get().colourOf(state, PaletteBlocks.queryFace(), PaletteBlocks.tint());
-        if (c.isPresent()) {
-            AxiomPanel.swatch(id, new AxiomPanel.Swatch(c.get(), BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString()));
-            AxiomPanel.sameLine();
+        if (c.isEmpty()) {
+            ImGui.alignTextToFramePadding();
+            AxiomPanel.wrapped(label);
+            return;
         }
-        ImGui.alignTextToFramePadding();
+        Color colour = c.get();
+        float size = ImGui.getFrameHeight() * SWATCH_SCALE;
+        ImGui.colorButton("##" + id, colour.red() / 255f, colour.green() / 255f, colour.blue() / 255f, 1f, ImGuiColorEditFlags.NoTooltip, size, size);
+        AxiomPanel.tip(BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+        AxiomPanel.sameLine();
+        ImGui.setCursorPosY(ImGui.getCursorPosY() + (size - ImGui.getTextLineHeight()) / 2);
         AxiomPanel.wrapped(label);
     }
 
