@@ -57,6 +57,8 @@ abstract class Dialog {
 
     protected boolean statusFromTop() { return false; }
 
+    protected Component statusTip() { return status; }
+
     protected final void status(Component text, int colour) {
         status = text;
         statusColour = colour;
@@ -74,8 +76,8 @@ abstract class Dialog {
             List<FormattedCharSequence> lines = PanelTab.font().split(status, in.w());
             int shown = Math.min(statusLines(), lines.size()), top = in.bottom() - (statusFromTop() ? statusLines() : shown) * 9;
             for (int i = 0; i < shown; i++) g.text(PanelTab.font(), lines.get(i), in.x(), top + i * 9, statusColour, false);
-            if (lines.size() > shown && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
-                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
+            if ((lines.size() > shown || statusTip() != status) && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
+                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), statusTip()), mouseX, mouseY);
         }
     }
 

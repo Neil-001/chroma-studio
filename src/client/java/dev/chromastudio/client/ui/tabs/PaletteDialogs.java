@@ -741,7 +741,7 @@ final class PaletteDialogs {
         private long seed;
         private int labelW;
         private final int[] sizeX = new int[3];
-        private @Nullable Component placeWhy;
+        private @Nullable Component placeWhy, fullStatus;
         private @Nullable Arrangement shape;
         private int[] colours = new int[0];
         private List<PaletteEntry> kept = List.of();
@@ -765,6 +765,9 @@ final class PaletteDialogs {
 
         @Override
         protected boolean statusFromTop() { return true; }
+
+        @Override
+        protected Component statusTip() { return fullStatus != null ? fullStatus : status; }
 
         private boolean diorama() { return layout == Layout.NOISE_CLUSTERS || layout == Layout.HEIGHT_GRADIENT || layout == Layout.DITHER; }
 
@@ -795,7 +798,11 @@ final class PaletteDialogs {
             });
             y += PanelTab.ROW;
             widgets.cycler(x, y, Math.min(70, sizeX[1] - 3 * PanelTab.GAP - x), null, List.of(SchematicExporter.Format.values()), format,
-                    f -> Component.literal("." + f.extension), f -> { format = f; refresh(); });
+                    f -> Component.literal("." + f.extension), f -> {
+                        format = f;
+                        status = fullStatus = null;
+                        refresh();
+                    });
             AbstractWidget gapToggle = widgets.cycler(sizeX[1] + secondW, y, SPIN_W, null, List.of(true, false), gap, v -> diorama() ? Component.literal(NOT_USED) : CommonComponents.optionStatus(v), v -> { gap = v; arrange(); },
                     diorama() ? null : tr("palettes.chromastudio.export.gap.tip"));
             if (diorama()) Widgets.disable(gapToggle, tr("palettes.chromastudio.export.gap.na"));
@@ -916,32 +923,47 @@ final class PaletteDialogs {
         }
 
         private void run(boolean place) {
+            fullStatus = null;
             LayoutOptions options = new LayoutOptions(layout, height, patch, width, gap, seed);
             SchematicExporter.Result result;
             try {
                 result = SchematicExporter.export(palette, options, format);
             } catch (SchematicExporter.NoBlocksException _) {
-                status(tr("command.chromastudio.export.empty"), Theme.BAD);
+                status(withReason(tr("command.chromastudio.export.empty")), Theme.BAD);
                 return;
             } catch (IOException e) {
-                status(tr("command.chromastudio.export.failed", String.valueOf(e.getMessage())), Theme.BAD);
+                status(withReason(tr("command.chromastudio.export.failed", String.valueOf(e.getMessage()))), Theme.BAD);
                 return;
             }
-            MutableComponent done = tr("command.chromastudio.export.done", Component.literal(shortPath(result.file())).withColor(Theme.TEXT));
+            String path = shortPath(result.file()), skipped = String.join(", ", result.skippedIds());
+            Component placed = null;
             if (place) {
                 BlockPos origin = LitematicaBridge.originFor(ModSettings.litematicaPlacement);
                 String name = palette.name == null || palette.name.isBlank() ? result.file().getFileName().toString() : palette.name;
                 Optional<Component> problem = LitematicaBridge.place(result.file(), origin, name);
-                Component placed = problem.orElseGet(() -> tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()));
-                done.append("\n").append(placed.copy().withColor(problem.isPresent() ? Theme.BAD : Theme.GOOD));
-            } else if (placeWhy != null) done.append("\n").append(placeWhy.copy().withColor(Theme.FAIR));
-            if (!result.skippedIds().isEmpty()) {
-                String skipped = tr("palettes.chromastudio.export.skipped", String.join(", ", result.skippedIds())).getString();
-                done.append("\n").append(Component.literal(PanelTab.fit(skipped, box.w() - 10)).withColor(Theme.FAIR));
+                placed = problem.orElseGet(() -> tr("command.chromastudio.place.done", name, origin.getX(), origin.getY(), origin.getZ()))
+                        .copy().withColor(problem.isPresent() ? Theme.BAD : Theme.GOOD);
             }
+            int room = box.w() - 10;
+            Component shown = result(middle(path, room - Widgets.tw(tr("command.chromastudio.export.done", ""))), placed,
+                    skipped.isEmpty() ? null : PanelTab.fit(tr("palettes.chromastudio.export.skipped", skipped).getString(), room));
+            Component full = result(path, placed, skipped.isEmpty() ? null : tr("palettes.chromastudio.export.skipped", skipped).getString());
+            status(shown, Theme.GOOD);
+            if (!full.getString().equals(shown.getString())) fullStatus = full;
+        }
+
+        private Component result(String path, @Nullable Component placed, @Nullable String skipped) {
+            MutableComponent done = tr("command.chromastudio.export.done", Component.literal(path).withColor(Theme.TEXT));
+            if (placed != null) done.append("\n").append(placed);
+            else if (placeWhy != null) done.append("\n").append(placeWhy.copy().withColor(Theme.FAIR));
+            if (skipped != null) done.append("\n").append(Component.literal(skipped).withColor(Theme.FAIR));
             if (format == SchematicExporter.Format.LITEMATIC && AxiomBridge.whyNot().isEmpty())
                 done.append("\n").append(AxiomBridge.named("palettes.chromastudio.export.axiom").withColor(Theme.DIM));
-            status(done, Theme.GOOD);
+            return done;
+        }
+
+        private Component withReason(Component failure) {
+            return placeWhy == null ? failure : failure.copy().append("\n").append(placeWhy.copy().withColor(Theme.FAIR));
         }
     }
 
