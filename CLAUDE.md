@@ -49,6 +49,7 @@ Most classes say what they do in a comment at the top, and their fields and meth
 
 ## Conventions
 
+- Use tooltips to name icon buttons, reveal clipped text, or give a shortcut, consequence or prerequisite. `ColourDialog` shows format instructions on invalid fields through `Widgets.colourFieldState` and uses HSL on this line.
 - Grey out inapplicable controls with a tooltip explaining why. Don't hide them.
 - Use cyclers for options, so right-click steps backwards, and spinners for numbers. Make them through `Widgets`, which lets the mouse wheel step them. In a scrolling list, such as the settings or the Palettes tab's entries, use `Widgets.wheelNeedsClick`, so scrolling past a control doesn't change it.
 - Size buttons with the text's width. Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.

@@ -203,9 +203,9 @@ public final class MatchTab extends Tab {
         int lw = Math.clamp(b.w() * 36 / 100, 146, 210), x = b.x() + PAD, w = lw - 2 * PAD, y = b.y() + PAD;
         slot = new Bounds(x, y - 1, 18, 18);
         swatch = new Bounds(x + 20, y, 16, 16);
-        hexField = controls.field(x + 38, y, w - 38, model.hex(), text -> typed(hexField, text, model::typeHex));
+        hexField = controls.field(x + 38, y, w - 38, model.hex(), text -> typed(hexField, "hex", text, model::typeHex));
         hexField.setMaxLength(7);
-        hexField.setTooltip(Tooltip.create(tr("hex.tip")));
+        Widgets.colourFieldState(hexField, "hex", true);
         y += ROW;
         int half = (w - GAP) / 2;
         fieldFormats[0] = ModSettings.colourFormat == ColourFormat.RGB ? ColourFormat.OKLCH : ColourFormat.RGB;
@@ -218,10 +218,11 @@ public final class MatchTab extends Tab {
         for (int i = 0; i < 2; i++) {
             int at = i;
             ColourFormat format = fieldFormats[i];
+            String name = format.name().toLowerCase(Locale.ROOT);
             EditBox field = controls.field(i == 0 ? x : x + firstW + GAP, y, i == 0 ? firstW : w - firstW - GAP, model.text(format),
-                    text -> typed(formatFields[at], text, t -> model.type(format, t)));
+                    text -> typed(formatFields[at], name, text, t -> model.type(format, t)));
             field.setMaxLength(16);
-            field.setTooltip(Tooltip.create(tr(format.name().toLowerCase(Locale.ROOT) + ".tip")));
+            Widgets.colourFieldState(field, name, true);
             formatFields[i] = field;
         }
         y += ROW;
@@ -229,13 +230,13 @@ public final class MatchTab extends Tab {
         int by = b.bottom() - PAD - Widgets.H, bx = x;
         Component block = tr("pick_block"), screen = tr("pick_screen"), dye = tr("dye");
         AbstractWidget blockButton = controls.button(bx, by, block, this::armEyedropper);
-        blockButton.setTooltip(Tooltip.create(tr("pick_block.tip", Keys.EYEDROPPER.getTranslatedKeyMessage())));
+        blockButton.setTooltip(Tooltip.create(Component.translatable("eyedropper.chromastudio.armed.how", Keys.EYEDROPPER.getTranslatedKeyMessage())));
         bx += blockButton.getWidth() + GAP;
         AbstractWidget screenButton = controls.button(bx, by, screen, () -> ScreenPicker.arm(rgb -> {
             MatchState.setColour(Color.ofRgb(rgb));
             MatchState.remember();
         }));
-        screenButton.setTooltip(Tooltip.create(tr("pick_screen.tip")));
+        screenButton.setTooltip(Tooltip.create(Component.translatable("picker.chromastudio.hint")));
         bx += screenButton.getWidth() + GAP;
         AbstractWidget dyeButton = controls.button(bx, by, dye, () -> toggle(Panel.DYE));
         Optional<Component> noGive = Give.whyNot();
@@ -289,7 +290,7 @@ public final class MatchTab extends Tab {
         String biomePath = ModSettings.biome.substring(ModSettings.biome.indexOf(':') + 1);
         AbstractWidget biomeButton = controls.button(flow.x, flow.y, biomeW, Component.literal(ellipsis(font, biomePath, biomeW - 8)), () -> toggle(Panel.BIOMES));
         if (ModSettings.biomeMode != BiomeMode.CHOSEN) Widgets.disable(biomeButton, tr("biome.pick.off"));
-        else biomeButton.setTooltip(Tooltip.create(tr("biome.pick.tip", ModSettings.biome)));
+        else biomeButton.setTooltip(Tooltip.create(Component.literal(ModSettings.biome)));
 
         flow.line();
         MatchFilters filters = MatchState.filters();
@@ -423,9 +424,17 @@ public final class MatchTab extends Tab {
         if (hexField == null) return;
         TargetModel model = picker.model;
         filling = true;
-        if (hexField != except) hexField.setValue(model.hex());
-        for (int i = 0; i < 2; i++) if (formatFields[i] != except) formatFields[i].setValue(model.text(fieldFormats[i]));
-        for (EditBox f : List.of(hexField, formatFields[0], formatFields[1])) if (f != except) f.setTextColor(EditBox.DEFAULT_TEXT_COLOR);
+        if (hexField != except) {
+            hexField.setValue(model.hex());
+            Widgets.colourFieldState(hexField, "hex", true);
+        }
+        for (int i = 0; i < formatFields.length; i++) {
+            EditBox field = formatFields[i];
+            if (field == except) continue;
+            ColourFormat format = fieldFormats[i];
+            field.setValue(model.text(format));
+            Widgets.colourFieldState(field, format.name().toLowerCase(Locale.ROOT), true);
+        }
         filling = false;
     }
 
@@ -433,10 +442,10 @@ public final class MatchTab extends Tab {
      * A field's text changed. Text that isn't a colour shows red and changes nothing. Text the tab put there itself
      * isn't read back: a colour rounded to whole numbers and taken again would drift.
      */
-    private void typed(EditBox field, String text, Predicate<String> take) {
+    private void typed(EditBox field, String format, String text, Predicate<String> take) {
         if (filling || field == null) return;
         boolean valid = take.test(text);
-        field.setTextColor(valid ? EditBox.DEFAULT_TEXT_COLOR : Theme.FIELD_BAD);
+        Widgets.colourFieldState(field, format, valid);
         if (!valid) return;
         fill(field);
         adopt();
@@ -624,7 +633,7 @@ public final class MatchTab extends Tab {
                 g.fill(rx, recent.y(), rx + cw - 1, recent.bottom(), ARGB.multiplyAlpha(0xFF000000, opacity));
                 g.fill(rx + 1, recent.y() + 1, rx + cw - 2, recent.bottom() - 1, ARGB.multiplyAlpha(0xFF000000 | colours.get(i), opacity));
                 if (mouseX >= rx && mouseX < rx + cw - 1 && mouseY >= recent.y() && mouseY < recent.bottom()) {
-                    tip.add(tr("recent.tip", String.format("#%06X", colours.get(i))));
+                    tip.add(Component.literal(Color.ofRgb(colours.get(i)).hex()));
                 }
             } else g.renderOutline(rx, recent.y(), cw - 1, recent.h(), ARGB.multiplyAlpha(Theme.CHIP, opacity));
         }
@@ -844,11 +853,12 @@ public final class MatchTab extends Tab {
                 kindName(e.kind().name()), stats.mean(shown.scale).hex()).withColor(Theme.TIP_DIM));
         if (e.tinted()) tip.add(tr("row.tinted").withColor(Theme.TIP_TINT));
         Optional<Component> noGive = Give.whyNot();
-        tip.add(noGive.isPresent() ? tr("row.give.off", noGive.get()).withColor(Theme.TIP_GREYED) : tr("row.give").withColor(Theme.TIP_DIM));
+        tip.add(noGive.orElseGet(() -> tr("row.give")).copy().withColor(noGive.isPresent() ? Theme.TIP_GREYED : Theme.TIP_DIM));
         tip.add(tr("row.copy").withColor(Theme.TIP_DIM));
         tip.add(tr("row.gradient").withColor(Theme.TIP_DIM));
         if (grid) tip.add(tr("row.add").withColor(PaletteSink.current() != null ? Theme.TIP_DIM : Theme.TIP_GREYED));
-        tip.add(tr("row.recipe", Keys.RECIPE.getTranslatedKeyMessage()).withColor(RecipeViewers.available() ? Theme.TIP_DIM : Theme.TIP_GREYED));
+        tip.add(RecipeViewers.available() ? tr("row.recipe", Keys.RECIPE.getTranslatedKeyMessage()).withColor(Theme.TIP_DIM)
+                : tr("recipe.none").withColor(Theme.TIP_GREYED));
     }
 
     private void panel(GuiGraphics g, Font font, int mouseX, int mouseY, float delta, List<Component> tip) {
