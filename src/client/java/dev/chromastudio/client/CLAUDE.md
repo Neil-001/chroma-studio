@@ -2,7 +2,7 @@
 
 - `ChromaCommand.build` and `Subcommand.attach` are generic because Fabric and NeoForge supply different command sources. Register subcommands before joining a world, when the loaders build the command.
 - `ChromaCommand.parse` gives block IDs precedence over hex colours unless a leading `#` forces a colour.
-- `ChromaStudioClient.openWindowSoon` waits for chat to close or Axiom to finish drawing.
+- `ChromaStudioClient.openWindowSoon` opens the window on the next tick so chat can close or Axiom can finish drawing.
 - NeoForge deprecates worldless model methods, so `ClientPlatform` supplies an empty world for indexing.
 
 ## Settings and stores
