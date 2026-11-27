@@ -11,4 +11,4 @@
 ## Text
 
 - `LineBreaks` keeps spaces next to Chinese or Japanese characters inside a line, so a number stays with its counter in text such as "2 個のブロック". Korean spaces its words and uses the caller's wrapping.
-- `Plural.key` uses `.one` for one. Each translation's base key needs wording that fits every other number.
+- Each translation's base `Plural` key needs wording that fits every number other than one.
