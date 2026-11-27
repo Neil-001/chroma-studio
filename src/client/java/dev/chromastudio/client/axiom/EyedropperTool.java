@@ -220,7 +220,7 @@ final class EyedropperTool implements CustomTool, GuardedTool.PutAway {
         } else {
             row("picked", p.colour(), pickedSize(), () -> {
                 lines(p);
-                if (AxiomPanel.button(tr("axiom.chromastudio.eyedropper.copy"), true, tr("axiom.chromastudio.eyedropper.copy.tip", p.colour().hex()))) later = () -> {
+                if (AxiomPanel.button(tr("axiom.chromastudio.eyedropper.copy"), true, "")) later = () -> {
                     Clipboard.copy(p.colour().hex());
                     copiedUntil = Util.getMillis() + NOTE_MS;
                 };
@@ -287,12 +287,12 @@ final class EyedropperTool implements CustomTool, GuardedTool.PutAway {
             Picked r = recent.get(i);
             Color c = r.colour();
             boolean clicked = ImGui.colorButton("##recent" + i, c.red() / 255f, c.green() / 255f, c.blue() / 255f, 1f, ImGuiColorEditFlags.NoTooltip, size, size);
-            AxiomPanel.tip(tr("axiom.chromastudio.eyedropper.recent.again"));
+            AxiomPanel.tip(c.hex());
             AxiomPanel.sameLine();
             String hex = "  " + c.hex();
-            String label = AxiomPanel.fit(r.name(), ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX(hex)) + hex;
-            clicked |= ImGui.selectable(label + "##recentRow" + i, false, 0, 0, size);
-            AxiomPanel.tip(r.name() + "\n" + r.detail() + "\n" + tr("axiom.chromastudio.eyedropper.recent.again"));
+            String label = AxiomPanel.fit(r.name(), ImGui.getContentRegionAvailX() - ImGui.calcTextSizeX(hex));
+            clicked |= ImGui.selectable(label + hex + "##recentRow" + i, false, 0, 0, size);
+            AxiomPanel.tip(label.equals(r.name()) ? r.detail() : r.name() + "\n" + r.detail());
             if (clicked) later = () -> pickAgain(r);
         }
     }

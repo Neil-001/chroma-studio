@@ -170,7 +170,7 @@ public final class GradientTab extends PanelTab {
         selectedStop = Math.clamp(selectedStop, 0, STOPS.size() - 1);
 
         int left = b.x() + PAD, right = b.right() - PAD, x = left, y = b.y() + PAD;
-        Component add = tr("gradient.chromastudio.stop.add"), hand = tr("gradient.chromastudio.stop.in_hand"), stepsLabel = tr("gradient.chromastudio.steps");
+        Component add = tr("gradient.chromastudio.stop.add"), hand = tr("colour.chromastudio.in_hand"), stepsLabel = tr("gradient.chromastudio.steps");
         Component easingLabel = tr("gradient.chromastudio.easing"), arcLabel = tr("gradient.chromastudio.arc"), spreadLabel = tr("gradient.chromastudio.spread");
         List<Component> easings = List.of(Easing.values()).stream().map(GradientTab::option).toList(), arcs = List.of(HueArc.values()).stream().map(GradientTab::option).toList();
         List<String> kinds = new ArrayList<>(List.of(ALL_KINDS));
@@ -209,11 +209,11 @@ public final class GradientTab extends PanelTab {
         Component full = STOPS.size() >= MAX_STOPS ? tr("gradient.chromastudio.stop.full", MAX_STOPS) : null;
         Button addButton = widgets.button(x, y, add, () -> {
             try {
-                addStop(Color.fromHex(hex.strip()));
+                addStop(Color.fromHex(hex));
                 hex = "";
                 changed();
             } catch (IllegalArgumentException _) {
-                say(tr("palettes.chromastudio.generate.bad_hex"), BAD);
+                say(tr("colour.chromastudio.hex.bad"), BAD);
             }
         });
         if (full != null) Widgets.disable(addButton, full);
@@ -224,7 +224,7 @@ public final class GradientTab extends PanelTab {
             changed();
         });
         if (full != null) Widgets.disable(handButton, full);
-        else if (held == null) Widgets.disable(handButton, tr("palettes.chromastudio.generate.in_hand.none"));
+        else if (held == null) Widgets.disable(handButton, tr("colour.chromastudio.in_hand.none"));
         if (filtersUp) filterButtons(right - moreW - GAP - kindW, y, kindW, kinds, more);
 
         x = left;

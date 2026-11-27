@@ -521,7 +521,7 @@ final class PaletteDialogs {
 
         private Color seed() {
             try {
-                return Color.fromHex(hex.strip());
+                return Color.fromHex(hex);
             } catch (IllegalArgumentException _) {
                 return null;
             }
@@ -549,22 +549,23 @@ final class PaletteDialogs {
         protected void build(Bounds in) {
             labelW = labelWidth("palettes.chromastudio.generate.seed", "palettes.chromastudio.generate.harmony", "palettes.chromastudio.generate.count");
             int x = in.x() + labelW, y = in.y();
-            Component hand = tr("palettes.chromastudio.generate.in_hand"), random = tr("palettes.chromastudio.generate.random");
+            Component hand = tr("colour.chromastudio.in_hand"), random = tr("palettes.chromastudio.generate.random");
             int handW = Widgets.buttonWidth(hand), randomW = Widgets.buttonWidth(random);
             EditBox field = widgets.field(x + Widgets.H + 2, y, Math.max(40, in.right() - x - Widgets.H - 2 * PanelTab.GAP - 2 - handW - randomW), hex, s -> hex = s);
             field.setMaxLength(7);
+            field.setTooltip(Tooltip.create(tr("colour.chromastudio.hex")));
             widgets.button(in.right() - randomW, y, random, () -> {
                 Random r = new Random();
                 harmony = Harmony.values()[r.nextInt(Harmony.values().length)];
                 hex = Color.ofOklch(new Oklch(0.35 + r.nextDouble() * 0.45, 0.04 + r.nextDouble() * 0.14, r.nextDouble() * 360)).hex();
                 salt = r.nextLong();
                 refresh();
-            });
+            }).setTooltip(Tooltip.create(tr("palettes.chromastudio.generate.random.tip")));
             Button handButton = widgets.button(in.right() - randomW - PanelTab.GAP - handW, y, hand, () -> {
                 Color c = inHand();
                 if (c != null) field.setValue(c.hex());
             });
-            if (inHand() == null) Widgets.disable(handButton, tr("palettes.chromastudio.generate.in_hand.none"));
+            if (inHand() == null) Widgets.disable(handButton, tr("colour.chromastudio.in_hand.none"));
             y += PanelTab.ROW;
             widgets.cycler(x, y, in.right() - x, null, List.of(Harmony.values()), harmony, PaletteDialogs::option, h -> harmony = h);
             y += PanelTab.ROW;
@@ -592,7 +593,7 @@ final class PaletteDialogs {
             g.fill(well.x(), well.y(), well.right(), well.bottom(), Theme.WELL);
             List<PaletteEntry> entries = preview();
             drawn = shownFor;
-            Component problem = seed == null ? tr("palettes.chromastudio.generate.bad_hex") : entries.isEmpty() ? tr("palettes.chromastudio.generate.none") : null;
+            Component problem = seed == null ? tr("colour.chromastudio.hex.bad") : entries.isEmpty() ? tr("palettes.chromastudio.generate.none") : null;
             Component footer = entries.size() < count ? tr("palettes.chromastudio.count", entries.size()) : Component.empty();
             int footerColour = Theme.DIM;
             if (problem != null) {
@@ -1800,7 +1801,7 @@ final class PaletteDialogs {
                         ModSettings.save();
                         result = null;
                         refresh();
-                    }, tr("palettes.chromastudio.hotbar.boxes.tip"));
+                    }, tr("settings.chromastudio.hotbarOverflowMode.tip"));
             if (preview.isPresent()) Widgets.disable(modeButton, tr("hotbar.chromastudio.axiom.instead"));
             else if (fits != null) Widgets.disable(modeButton, fits);
 

@@ -171,7 +171,7 @@ public final class SettingsScreen extends Screen {
         clear.visible = !search.isEmpty();
         searchField.setWidth(clear.visible ? searchW - Widgets.H - GAP : searchW);
         jump.active = !noRows;
-        jump.setTooltip(Tooltip.create(tr(noRows ? "search.none" : "jump.tip")));
+        jump.setTooltip(noRows ? Tooltip.create(tr("search.none")) : null);
     }
 
     private void showSection() {

@@ -59,7 +59,7 @@ public final class HotbarFill {
 
     public static Optional<Component> unavailable() {
         if (Minecraft.getInstance().player == null) return Optional.of(Component.translatable("palettes.chromastudio.no_world"));
-        return Give.canGive() ? Optional.empty() : Optional.of(Component.translatable("hotbar.chromastudio.no_permission"));
+        return Give.whyNot();
     }
 
     public static Optional<Component> whyNoFill() {
