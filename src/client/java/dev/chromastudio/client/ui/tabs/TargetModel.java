@@ -103,11 +103,12 @@ public final class TargetModel {
     }
 
     public boolean typeHex(String text) {
-        String s = text.trim();
-        if (s.startsWith("#")) s = s.substring(1);
-        if (!s.matches("[0-9a-fA-F]{6}")) return false;
-        setColour(Color.ofRgb(Integer.parseInt(s, 16)));
-        return true;
+        try {
+            setColour(Color.fromHex(text));
+            return true;
+        } catch (IllegalArgumentException _) {
+            return false;
+        }
     }
 
     public boolean typeRgb(String text) {

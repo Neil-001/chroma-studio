@@ -339,7 +339,6 @@ public final class PalettesTab extends PanelTab {
             int bx = (n > 0 ? weightX - Widgets.tw(tr("palettes.chromastudio.entry.weight")) - 4 : titleArea.right() - 3) - w;
             if (bx - 4 - titleArea.x() - 3 >= Math.min(Widgets.tw(name(p)), MIN_NAME_W)) {
                 copyToEdit = widgets.add(new SmallButton(bx, titleArea.y() - 1, w, TITLE_H + 2, label, () -> { flush(); store.copy(p); showEntries(); }));
-                copyToEdit.setTooltip(Tooltip.create(tr("palettes.chromastudio.copy.tip")));
             }
         }
         for (int i = 0; i < n; i++) {

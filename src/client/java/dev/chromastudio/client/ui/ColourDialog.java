@@ -41,7 +41,9 @@ final class ColourDialog extends Popup {
         picker = new ColourPicker(start, _ -> picked(-1));
     }
 
-    private static Component tr(String key) { return Component.translatable("settings.chromastudio.colour." + key); }
+    private static Component tr(String key, Object... args) { return Component.translatable("settings.chromastudio.colour." + key, args); }
+
+    private static Component format(String key) { return Component.translatable("colour.chromastudio." + key); }
 
     @Override
     protected boolean fixedColours() { return true; }
@@ -87,7 +89,7 @@ final class ColourDialog extends Popup {
         int at = firstBad();
         for (int i = 0; i < fields.length; i++) fields[i].setTextColor(bad[i] ? Theme.FIELD_BAD : at >= 0 ? STALE : EditBox.DEFAULT_TEXT_COLOR);
         done.active = at < 0;
-        done.setTooltip(at < 0 ? null : Tooltip.create(Component.translatable("settings.chromastudio.colour.fix", tr(NAMES[at]))));
+        done.setTooltip(at < 0 ? null : Tooltip.create(tr("fix", format(NAMES[at]))));
     }
 
     private void typed(int i, String text, Predicate<String> take) {
@@ -123,13 +125,12 @@ final class ColourDialog extends Popup {
         int labelX = fields[0].getX() - LABEL_W;
         for (int i = 0; i < NAMES.length; i++) {
             EditBox f = fields[i];
-            g.text(font, tr(NAMES[i]), labelX, f.getY() + 4, Theme.FIXED_SOFT, false);
+            g.text(font, format(NAMES[i]), labelX, f.getY() + 4, Theme.FIXED_SOFT, false);
             if (bad[i]) g.outline(f.getX() - 1, f.getY() - 1, f.getWidth() + 2, f.getHeight() + 2, Theme.FIELD_BAD);
         }
         trackFocus();
-        for (int i = 0; i < fields.length; i++) if (fields[i].isMouseOver(mouseX, mouseY)) hint = i;
         int wrong = firstBad();
-        Component text = wrong >= 0 ? tr(NAMES[wrong] + ".bad") : tr(hint == KEYS ? "keys.tip" : NAMES[hint] + ".tip");
+        Component text = wrong >= 0 ? format(NAMES[wrong] + ".bad") : hint == KEYS ? tr("keys.tip") : format(NAMES[hint] + ".bad");
         g.textWithWordWrap(font, text, labelX, compare.bottom() + 4, in.right() - labelX, wrong >= 0 ? Theme.FIELD_BAD : Theme.FIXED_SOFT, false);
         swatch(g, old.x(), old.w(), start.rgb(), tr("old"));
         swatch(g, old.right(), compare.w() - old.w(), picker.model.colour().rgb(), tr("new"));

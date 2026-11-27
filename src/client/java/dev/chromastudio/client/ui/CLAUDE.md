@@ -2,6 +2,8 @@
 
 - The game doesn't count key-bind presses while a screen is open, so `ChromaScreen` and `MatchTab` check mouse bindings against click events.
 - `CycleButton` rebuilds its tooltip on value changes. Create it through `Widgets.cycler` and use `Widgets.disable` for disabled tooltips.
+- In `Widgets` and `AxiomPanel` callers, use tooltips to name icon buttons, reveal clipped text, or show a shortcut, consequence or prerequisite the label doesn't convey.
+- `ColourDialog` and `MatchTab` share colour field names and format instructions under `colour.chromastudio`.
 - The game's fields copy selections without a size check. `Widgets.field` routes copy and cut through `Clipboard`, and `Widgets.disable` clears `active` so cut respects the disabled state.
 - `ChromaScreen.renderPinned` supplies screen size because the game updates it only for open screens.
 

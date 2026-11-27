@@ -240,7 +240,8 @@ class DialogTextTest {
                 Math.max(width(tr("palettes.chromastudio.generate.harmony")), width(tr("palettes.chromastudio.generate.count"))));
         int field = width(Component.literal("#3A7BD5")) + 8;
         within("the Generate dialog's colour row", labels + 18 + field + 2 * PanelTab.GAP + 2
-                + button(tr("palettes.chromastudio.generate.in_hand")) + button(tr("palettes.chromastudio.generate.random")), w);
+                + button(tr("colour.chromastudio.in_hand")) + button(tr("palettes.chromastudio.generate.random")), w);
         within("the Generate dialog's height", PaletteDialogs.Generate.HEIGHT, new Window().content(427, 240).h() - 8);
+        fits("the Generate dialog's hex instruction", tr("colour.chromastudio.hex.bad"), w - 8, 2);
     }
 }

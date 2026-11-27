@@ -24,6 +24,8 @@ class TargetModelTest {
         TargetModel m = new TargetModel(Color.ofRgb(0x000000));
         assertTrue(m.typeHex("3a7d44"));
         assertEquals("58,125,68", m.rgbText());
+        assertTrue(m.typeHex("#ＦＦ８８００"));
+        assertEquals("#FF8800", m.hex());
         assertTrue(m.typeRgb("255, 136, 0"));
         assertEquals("#FF8800", m.hex());
         assertTrue(m.typeHsl("210 50% 40%"));
@@ -37,7 +39,7 @@ class TargetModelTest {
     @Test
     void textThatIsNotAColourChangesNothing() {
         TargetModel m = new TargetModel(Color.ofRgb(0x123456));
-        for (String bad : new String[] {"", "#12345", "12345g", "#1234567"}) assertFalse(m.typeHex(bad), bad);
+        for (String bad : new String[] {"", "#F80", "#12345", "12345g", "#1234567"}) assertFalse(m.typeHex(bad), bad);
         for (String bad : new String[] {"", "1,2", "1,2,3,4", "256,0,0", "-1,0,0", "a,b,c"}) assertFalse(m.typeRgb(bad), bad);
         for (String bad : new String[] {"361,50,50", "10,101,50", "10,50", "x"}) assertFalse(m.typeHsl(bad), bad);
         for (String bad : new String[] {"361,50,50", "10,50,101", "10,50", "x"}) assertFalse(m.typeHsv(bad), bad);
