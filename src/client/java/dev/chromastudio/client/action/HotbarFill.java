@@ -68,7 +68,7 @@ public final class HotbarFill {
     /** Why the hotbar can't be filled now, or nothing when it can. */
     public static Optional<Component> unavailable() {
         if (Minecraft.getInstance().player == null) return Optional.of(Component.translatable("palettes.chromastudio.no_world"));
-        return Give.whyNot();
+        return Give.canGive() ? Optional.empty() : Optional.of(Component.translatable("hotbar.chromastudio.no_permission"));
     }
 
     public static boolean canUndo() {

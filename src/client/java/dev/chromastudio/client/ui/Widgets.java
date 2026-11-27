@@ -1,7 +1,6 @@
 package dev.chromastudio.client.ui;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dev.chromastudio.client.ui.tabs.TargetModel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -179,14 +178,6 @@ public final class Widgets extends AbstractContainerEventHandler {
         EditBox f = field(x, y, w, "", onChange);
         f.setHint(hint);
         return f;
-    }
-
-    public static void colourFieldState(EditBox field, String format, boolean valid) {
-        field.setTextColor(valid ? EditBox.DEFAULT_TEXT_COLOR : Theme.FIELD_BAD);
-        String key = "colour.chromastudio." + format;
-        Component tip = valid ? Component.translatable(key)
-                : format.equals("oklch") ? Component.translatable(key + ".bad", TargetModel.CHROMA_MAX) : Component.translatable(key + ".bad");
-        field.setTooltip(Tooltip.create(tip));
     }
 
     /** A line of text that scrolls with the group. */

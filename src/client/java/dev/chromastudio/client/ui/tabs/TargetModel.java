@@ -121,12 +121,11 @@ public final class TargetModel {
 
     /** Takes a typed hex code, with or without the {@code #}. Returns false, changing nothing, when it isn't one. */
     public boolean typeHex(String text) {
-        try {
-            setColour(Color.fromHex(text));
-            return true;
-        } catch (IllegalArgumentException _) {
-            return false;
-        }
+        String s = text.trim();
+        if (s.startsWith("#")) s = s.substring(1);
+        if (!s.matches("[0-9a-fA-F]{6}")) return false;
+        setColour(Color.ofRgb(Integer.parseInt(s, 16)));
+        return true;
     }
 
     /** Takes three typed numbers, 0 to 255. Returns false, changing nothing, for anything else. */
