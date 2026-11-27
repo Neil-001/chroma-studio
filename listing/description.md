@@ -37,7 +37,7 @@ Chroma Studio compares whole textures rather than just their average colour, and
 - Export `.litematic` and `.nbt` schematics, or copy WorldEdit patterns and commands.
 - Fill your hotbar with a palette or gradient, with undo, in creative mode or as an operator.
 - Explore every block by hue and lightness.
-- With [Axiom](https://modrinth.com/mod/axiom) on Fabric, recolour, shade or lay a gradient across a build in Axiom's editor, or sample one into a palette. The tools change blocks only through Axiom, so its undo and permissions apply.
+- With [Axiom](https://modrinth.com/mod/axiom) on Fabric, recolour, shade or lay a gradient across a build in Axiom's editor, or sample one into a palette.
 - Paint shapes with your gradients and palettes in [Curve Generator](https://modrinth.com/mod/curvegen) 3.0.0 or newer.
 
 ## Links
