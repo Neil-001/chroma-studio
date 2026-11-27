@@ -221,7 +221,7 @@ final class PaletteDialogs {
 
         private Color seed() {
             try {
-                return Color.fromHex(hex);
+                return Color.fromHex(hex.strip());
             } catch (IllegalArgumentException _) {
                 return null;
             }
@@ -231,16 +231,15 @@ final class PaletteDialogs {
         protected void build(Bounds in) {
             labelW = labelWidth("palettes.chromastudio.generate.seed", "palettes.chromastudio.generate.harmony", "palettes.chromastudio.generate.count");
             int x = in.x() + labelW, y = in.y();
-            Component hand = tr("colour.chromastudio.in_hand");
+            Component hand = tr("palettes.chromastudio.generate.in_hand");
             int handW = Widgets.buttonWidth(hand);
             EditBox field = widgets.field(x + Widgets.H + 2, y, Math.max(40, in.right() - x - Widgets.H - 4 - handW), hex, s -> hex = s);
             field.setMaxLength(7);
-            field.setTooltip(Tooltip.create(tr("colour.chromastudio.hex")));
             Button handButton = widgets.button(in.right() - handW, y, hand, () -> {
                 Color c = inHand();
                 if (c != null) field.setValue(c.hex());
             });
-            if (inHand() == null) Widgets.disable(handButton, tr("colour.chromastudio.in_hand.none"));
+            if (inHand() == null) Widgets.disable(handButton, tr("palettes.chromastudio.generate.in_hand.none"));
             y += PanelTab.ROW;
             widgets.cycler(x, y, in.right() - x, null, List.of(Harmony.values()), harmony, PaletteDialogs::option, h -> harmony = h);
             y += PanelTab.ROW;
@@ -271,7 +270,7 @@ final class PaletteDialogs {
         protected boolean confirm() {
             Color seed = seed();
             if (seed == null) {
-                status(tr("colour.chromastudio.hex.bad"), Theme.BAD);
+                status(tr("palettes.chromastudio.generate.bad_hex"), Theme.BAD);
                 return true;
             }
             List<PaletteEntry> entries = PaletteBlocks.closest(Generator.targets(seed.oklch(), harmony, count, new Random()));
