@@ -1,6 +1,5 @@
 package dev.chromastudio.client.ui;
 
-/** A rectangle in GUI pixels. */
 public record Bounds(int x, int y, int w, int h) {
     public int right() { return x + w; }
     public int bottom() { return y + h; }

@@ -5,13 +5,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.InfestedBlock;
 
-/** The blocks a survival player can't get or can't place as they are. */
 final class CreativeOnly {
     private CreativeOnly() {}
 
-    // Kept by hand: the game has no flag for this. Add a block here when no survival player can hold it, such as
-    // one with no item or one that can't be mined, even if a creative tab lists it. Infested blocks are found by
-    // class below, so modded ones count.
     private static final Set<Block> BLOCKS = Set.of(
             Blocks.BEDROCK, Blocks.REINFORCED_DEEPSLATE,
             Blocks.END_PORTAL_FRAME, Blocks.END_PORTAL, Blocks.END_GATEWAY, Blocks.NETHER_PORTAL,

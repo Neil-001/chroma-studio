@@ -1,0 +1,5 @@
+- `FakeAxiom` bypasses constructors that need a full client. Its 720-pixel window and 70-degree field of view set the swatch viewing scale. Keep `LinkedHashMap` for captured regions because immutable copies probe poorly on clustered position hashes.
+- Tests without bound tags use gravel as ground. Grass, dirt and sand need tags to count.
+- `ScriptSafetyTest` executes real Lua with Axiom 6.1.5's globals and stubs its calls from their bytecode. `getBlockState` returns the negated state id less one. `isSolid` tests collision on the exact state for that id and the default for a block id. `getBlockProperty` returns a string or nil, and `isBlockTagged` errors on an unknown tag.
+- Script eligibility checks share code with the tools, so they can miss a defect in that shared code. `holdsSomething` and `waterlogged` are independent. The test can call Lua on void air. Axiom 6.1.5's Script Brush skips those positions.
+- Preserve the in-game cases and expectations in `RecolourCasesTest` and the ways a commit can go stale in `AxiomCommitTest`.

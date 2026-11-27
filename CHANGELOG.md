@@ -1,3 +1,33 @@
+# 1.3.0
+
+Chroma Studio works with Axiom, the building editor, on Fabric. Five Chroma tools in Axiom's editor recolour, shade or lay a gradient across a build, sample a build into a palette, and pick a block's colour. They change blocks only when you use them, and only through Axiom, so Axiom's undo, permissions and tool masks apply. The rest of Chroma Studio still places nothing. Axiom controls appear only when Axiom is installed on Fabric. This release is for Minecraft 26.3 on Fabric and NeoForge. The Axiom features need Fabric, and were made with Axiom 6.1.5.
+
+## Features
+
+- Recolour a build into a palette with the Chroma palette brush, keeping its shading, its stairs and slabs, and its windows. Brush it stroke by stroke, or preview the whole build and press Apply (#69)
+- Scatter a palette's blocks at random by weight with the palette brush's Scatter mode (#69)
+- Lay a gradient across a build with the Chroma gradient tool: right-click where it starts and where it ends, choose how far the steps blend, and press Apply. Stairs, slabs and walls take their step's block in the same shape (#69)
+- Shade a build darker or lighter with the Chroma shade brush, which turns each block into a near shade, close in hue and texture, or into a palette's next block (#69)
+- Sample a build into a weighted palette with the Chroma build sampler, by brushing over it or taking the whole build (#69)
+- Pick a block's colour in Axiom's editor with the Chroma eyedropper tool, or with X, which reads the block under the mouse there (#69)
+- Copy a palette or gradient as a script for Axiom's Script Brush, with Axiom script on the Palettes and Gradient tabs or with `/chroma axiom` (#69)
+- Put the blocks of a hotbar fill past the ninth into Axiom's hotbars, and undo it (#69)
+- Match Axiom's active block with the Axiom button on the Match tab or `/chroma axiom block` (#69)
+- Open Chroma Studio's window from Axiom's editor: the window leaves the editor, and the editor comes back when you close it. The export dialog says how to import a `.litematic` into Axiom (#69)
+
+## Fixes
+
+- Copying very long text, such as a long share string or palette notes, says the text is too long instead of crashing the game (#69)
+- Comparing blocks whose colours are almost tied could run forever, and now always finishes (#69)
+- A saved gradient loaded while Chroma Studio reads the blocks again, as after a resource pack change, takes its blocks from the new read (#69)
+- The import dialog and `/chroma export` say in your language why a palette can't be read (#69)
+- After Export and place, the export dialog shows where the file was saved as well as where it was placed (#69)
+- The hotbar fill dialog shows how many blocks go to the hotbar, to free slots and to shulker boxes, and warns before any could drop at your feet (#69)
+- Tooltips across the mod are shorter and say only what a control's label doesn't (#69)
+- In long languages, such as German, the Diorama toolbar takes a second row when its labels don't fit, and the texture filter chips stay inside the filters panel (#69)
+- The nine translations use the game's own words for the hotbar, shulker boxes and bedrock, and name a block's face once (#69)
+- A filters panel's title has a line under it, so a row scrolled partway no longer runs into it (#69)
+
 # 1.2.1
 
 The Gradient tab's buttons along the bottom no longer run past the window's edge at its smallest size in German, Spanish, French, Japanese, Polish, Portuguese and Russian. When they don't fit on one line they now take a second. This release is for Minecraft 26.3 on Fabric and NeoForge.

@@ -1,4 +1,3 @@
-// Settings both loader projects share. The plugins and dependencies are in fabric/ and neoforge/.
 subprojects {
 	version = rootProject.mod_version
 	group = rootProject.maven_group
@@ -10,7 +9,6 @@ subprojects {
 
 		tasks.withType(JavaCompile).configureEach {
 			it.options.release = 25
-			// Every warning but the ones about the libraries' own class files, which nothing here can fix.
 			it.options.compilerArgs += ['-Xlint:all,-classfile']
 		}
 

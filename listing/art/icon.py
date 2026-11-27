@@ -20,19 +20,16 @@ GRID, SCALE, COLOURS = 40, 8, 32
 
 
 def pixels(art):
-    """An RGBA picture's pixels, row by row."""
     raw = art.tobytes()
     return [tuple(raw[i:i + 4]) for i in range(0, len(raw), 4)]
 
 
 def snap(picture):
-    """The picture as GRID by GRID pixels, each the most common colour of its cell. A see-through pixel counts as clear."""
     picture = picture.convert("RGBA")
     width, height = picture.size
     pixels = picture.load()
     out = Image.new("RGBA", (GRID, GRID))
     for gy in range(GRID):
-        # A cell's edges by proportion, so a picture whose size isn't a multiple of the grid still divides evenly.
         top, bottom = gy * height // GRID, max((gy + 1) * height // GRID, gy * height // GRID + 1)
         for gx in range(GRID):
             left, right = gx * width // GRID, max((gx + 1) * width // GRID, gx * width // GRID + 1)
@@ -46,7 +43,6 @@ def snap(picture):
 
 
 def quantise(art):
-    """The art in at most COLOURS colours, a clear one included if it has any. Art with few enough is left as it is."""
     colours = set(pixels(art))
     if len(colours) <= COLOURS:
         return art
@@ -55,7 +51,6 @@ def quantise(art):
                                           dither=Image.Dither.NONE).convert("RGBA")
     if clear:
         reduced.putalpha(art.getchannel("A"))
-        # A clear pixel keeps no colour of its own, so it can't count as another.
         reduced.putdata([p if p[3] else (0, 0, 0, 0) for p in pixels(reduced)])
     return reduced
 

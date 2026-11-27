@@ -1,9 +1,6 @@
 package dev.chromastudio.core.color;
 
-/** The base colours the game draws maps with, indexed by map colour id. */
 public final class MapColors {
-    // Read from the static fields of net.minecraft.world.level.material.MapColor in Minecraft 26.3, in id order
-    // (the id and col fields of each). Id 0 is NONE, which a map leaves transparent.
     private static final int[] BASE = {
             0x000000, 0x7FB238, 0xF7E9A3, 0xC7C7C7, 0xFF0000, 0xA0A0FF, 0xA7A7A7, 0x007C00,
             0xFFFFFF, 0xA4A8B8, 0x976D4D, 0x707070, 0x4040FF, 0x8F7748, 0xFFFCF5, 0xD87F33,
@@ -21,13 +18,10 @@ public final class MapColors {
 
     private MapColors() {}
 
-    /** How many there are, NONE included. */
     public static int count() { return BASE.length; }
 
-    /** The base colour with this id, as 0xRRGGBB. */
     public static int rgb(int id) { return BASE[id]; }
 
-    /** The id of the base colour closest to a colour in OKLab. Never NONE, because no block shows as it. */
     public static int nearest(Color c) {
         Oklab target = c.oklab();
         int best = 1;

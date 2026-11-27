@@ -1,0 +1,1 @@
+These test doubles use the ImGui binding's signatures and contain none of its code. `ImGui` records drawn text and matches presses by the label before `##`. It performs no layout, so these tests can't verify geometry.

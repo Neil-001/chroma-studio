@@ -11,6 +11,10 @@ import dev.chromastudio.client.index.Kind;
 import dev.chromastudio.core.color.Harmony;
 import dev.chromastudio.core.export.Layout;
 import dev.chromastudio.core.palette.Analyzer;
+import dev.chromastudio.core.palette.QueuedChanges;
+import dev.chromastudio.core.palette.Recolour;
+import dev.chromastudio.core.palette.ShadeSteps;
+import dev.chromastudio.core.palette.UnreadablePalette;
 import dev.chromastudio.core.palette.WorldEditPattern;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,14 +28,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
-/**
- * The keys that code builds from names, which nothing else would notice missing from the language file, and the
- * generated translations, which must keep up with the English.
- */
 class LangTest {
-    /** The generated translations. English is written by hand. */
     private static final List<String> TRANSLATIONS = List.of("zh_cn", "ru_ru", "pt_br", "de_de", "es_es", "fr_fr", "ja_jp", "ko_kr", "pl_pl");
-    /** What the game fills in: {@code %s}, {@code %d} and their numbered forms such as {@code %1$s}. */
     private static final Pattern PLACEHOLDER = Pattern.compile("%(?:\\d+\\$)?([sd])");
 
     private static JsonObject english() throws IOException { return language("en_us"); }
@@ -43,7 +41,6 @@ class LangTest {
         }
     }
 
-    /** A text's placeholders in order of kind, so a translation may move them but not drop or add one. */
     private static List<String> placeholders(String text) {
         List<String> found = new ArrayList<>();
         Matcher m = PLACEHOLDER.matcher(text.replace("%%", ""));
@@ -76,26 +73,36 @@ class LangTest {
     @Test
     void everyBuiltKeyHasItsText() throws IOException {
         List<String> keys = new ArrayList<>(Analyzer.KEYS);
+        for (String finding : Analyzer.KEYS) keys.add(finding + ".title");
         for (String preset : PaletteStore.PRESETS) keys.add("preset.chromastudio." + preset);
         for (Harmony h : Harmony.values()) keys.add("option.chromastudio.harmony." + h.name().toLowerCase(Locale.ROOT));
         for (Layout l : Layout.values()) keys.add("option.chromastudio.layoutchoice." + l.name().toLowerCase(Locale.ROOT));
         keys.add("kind.chromastudio.all");
         for (Kind k : Kind.values()) keys.add("kind.chromastudio." + k.name().toLowerCase(Locale.ROOT));
-        for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) {
-            keys.add("palettes.chromastudio.tool." + tool);
-            keys.add("palettes.chromastudio.tool." + tool + ".tip");
+        for (Recolour.Mode m : Recolour.Mode.values()) keys.add("axiom.chromastudio.match." + m.name().toLowerCase(Locale.ROOT));
+        for (ShadeSteps.Direction d : ShadeSteps.Direction.values()) {
+            String way = d.name().toLowerCase(Locale.ROOT);
+            keys.add("axiom.chromastudio.shade." + way);
+            keys.add("axiom.chromastudio.shade." + way + ".tip");
+            keys.add("axiom.chromastudio.shade.left." + way);
         }
-        for (String action : List.of("new", "rename", "delete", "import", "share", "copy")) {
-            keys.add("palettes.chromastudio." + action);
-            keys.add("palettes.chromastudio." + action + ".tip");
+        for (QueuedChanges.Refusal r : QueuedChanges.Refusal.values()) {
+            if (r != QueuedChanges.Refusal.NONE && r != QueuedChanges.Refusal.EMPTY) keys.add("axiom.chromastudio.refused." + r.name().toLowerCase(Locale.ROOT));
         }
-        for (String action : List.of("hotbar", "copy", "export", "saved", "save", "swap")) {
-            keys.add("gradient.chromastudio.action." + action);
-            keys.add("gradient.chromastudio.action." + action + ".tip");
+        for (UnreadablePalette.Reason r : UnreadablePalette.Reason.values()) keys.add("palettes.chromastudio.unreadable." + r.name().toLowerCase(Locale.ROOT));
+        keys.add("palettes.chromastudio.import.ready");
+        keys.add("palettes.chromastudio.import.ready.one");
+        for (String counted : List.of("count", "masked", "gradient_tool.skipped", "gradient_tool.left_alone")) {
+            keys.add("axiom.chromastudio." + counted);
+            keys.add("axiom.chromastudio." + counted + ".one");
         }
+        for (String tool : List.of("generate", "capture", "image", "analyse", "diorama", "export", "worldedit", "hotbar")) keys.add("palettes.chromastudio.tool." + tool);
+        keys.add("palettes.chromastudio.tool.capture.tip");
+        for (String action : List.of("new", "rename", "delete", "import", "share", "copy")) keys.add("palettes.chromastudio." + action);
+        keys.add("palettes.chromastudio.copy.tip");
+        for (String action : List.of("hotbar", "copy", "export", "saved", "save", "swap")) keys.add("gradient.chromastudio.action." + action);
         JsonObject english = english();
         for (String key : keys) assertTrue(english.has(key) && !english.get(key).getAsString().isBlank(), key);
-        // The dialog shows the commands as they're typed, so they need no text of their own, only to be the five expected.
         assertTrue(WorldEditPattern.COMMANDS.containsAll(List.of("set", "replace", "walls", "outline", "overlay")));
     }
 }

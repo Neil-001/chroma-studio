@@ -15,10 +15,6 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 
-/**
- * A tab made of a group of controls, with at most one small dialog open over it. While a dialog is open it takes all
- * the input, and the tab underneath is dimmed and doesn't react to the cursor.
- */
 abstract class PanelTab extends Tab {
     static final int PAD = 3, GAP = 2, ROW = Widgets.H + GAP;
 
@@ -33,7 +29,6 @@ abstract class PanelTab extends Tab {
 
     static Font font() { return Minecraft.getInstance().font; }
 
-    /** Text cut to fit a width, ending in an ellipsis when it had to be. */
     static String fit(String text, int width) {
         Font font = font();
         if (font.width(text) <= width) return text;
@@ -42,12 +37,11 @@ abstract class PanelTab extends Tab {
     }
 
     @Override
-    public final void init(Bounds b) {
+    public void init(Bounds b) {
         bounds = b;
         rebuild();
     }
 
-    /** Lays every control out again, after something they show has changed. */
     protected final void rebuild() {
         if (bounds == null) return;
         widgets.clear();
@@ -55,10 +49,8 @@ abstract class PanelTab extends Tab {
         if (dialog != null) dialog.layout(bounds);
     }
 
-    /** Adds the tab's controls to {@link #widgets} for this area. */
     protected abstract void layout(Bounds b);
 
-    /** Draws what isn't a control. The cursor is off screen while a dialog is open. */
     protected abstract void draw(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta);
 
     protected final void open(Dialog d) {
@@ -74,7 +66,6 @@ abstract class PanelTab extends Tab {
 
     protected final boolean dialogOpen() { return dialog != null; }
 
-    /** Shows a line where the tab draws {@link #note()}, for a few seconds. */
     final void say(Component text, int colour) {
         note = text;
         noteColour = colour;
@@ -83,7 +74,6 @@ abstract class PanelTab extends Tab {
 
     final void say(Component text) { say(text, TEXT); }
 
-    /** The line to show now, or null. */
     protected final Component note() { return note != null && Util.getMillis() < noteUntil ? note : null; }
 
     protected final int noteColour() { return noteColour; }
@@ -100,7 +90,6 @@ abstract class PanelTab extends Tab {
         }
     }
 
-    /** Draws over the controls, for what scrolls in its own group. */
     protected void drawOver(GuiGraphicsExtractor g, Bounds b, int mouseX, int mouseY, float delta) {}
 
     protected boolean clicked(MouseButtonEvent e, boolean doubled) { return false; }
@@ -114,7 +103,6 @@ abstract class PanelTab extends Tab {
     @Override
     public final boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         if (dialog != null) return dialog.mouseClicked(e, doubled);
-        // Both get the click, so a click in one group ends typing in the other.
         boolean own = clicked(e, doubled);
         return widgets.mouseClicked(e, doubled) | own;
     }
@@ -146,11 +134,10 @@ abstract class PanelTab extends Tab {
     @Override
     public final boolean dismiss() {
         if (dialog == null) return dismissPanel();
-        closeDialog();
+        dialog.cancel();
         return true;
     }
 
-    /** Escape with no dialog open. Closes what the tab shows in place of its usual content, and says whether there was anything. */
     protected boolean dismissPanel() { return false; }
 
     @Override

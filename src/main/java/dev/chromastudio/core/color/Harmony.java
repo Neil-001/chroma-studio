@@ -3,7 +3,6 @@ package dev.chromastudio.core.color;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Colour harmonies as hue offsets in OKLCH, keeping lightness and chroma. */
 public enum Harmony {
     SIMILAR(0, 15, -15),
     ANALOGOUS(0, 30, -30),
@@ -12,10 +11,8 @@ public enum Harmony {
     TRIADIC(0, 120, 240),
     TETRADIC(0, 60, 180, 240),
     SQUARE(0, 90, 180, 270),
-    /** One hue, with lightness stepped instead. */
     MONOCHROMATIC(0);
 
-    /** The lightness range monochromatic steps cover. Beyond it nearly every hue clips to black or white. */
     public static final double MIN_LIGHTNESS = 0.2, MAX_LIGHTNESS = 0.95;
 
     private final double[] offsets;
@@ -24,16 +21,10 @@ public enum Harmony {
         this.offsets = offsets;
     }
 
-    /** The hue offsets from the seed, in degrees, the seed's own 0 first. */
     public double[] offsets() {
         return offsets.clone();
     }
 
-    /**
-     * {@code count} colours from the seed. They take the model's hues in turn, starting again from the seed's
-     * when there are more colours than hues. Monochromatic gives the seed for one colour, and otherwise even
-     * lightness steps from dark to light at the seed's hue and chroma, each clipped to sRGB.
-     */
     public List<Oklch> colours(Oklch seed, int count) {
         if (count < 1) throw new IllegalArgumentException("count must be at least 1");
         List<Oklch> out = new ArrayList<>(count);

@@ -1,88 +1,54 @@
 # Chroma Studio
 
-A client-only Fabric and NeoForge mod for Minecraft Java 26.3. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. It has one window with the tabs Match, Gradient, Palettes and Explore, an eyedropper, a `/chroma` command and a public API. It places nothing in the world and has no server side.
+Chroma Studio is a client-only Fabric and NeoForge mod for Minecraft Java 26.3. It matches colours to blocks and makes palettes, gradients and schematics. With Axiom installed it adds tools to Axiom's editor.
 
-## Commands
+## Build and test
 
-Needs JDK 25. Versions are in `gradle.properties`. Run `./gradlew build` after every change.
+Use JDK 25. Run `./gradlew build` after every change. It builds both jars and runs the Fabric tests. Keep compiler and IDE warnings at zero. Use `_` for unused lambda and catch parameters. `-Xlint:all,-classfile` skips warnings in dependency class files.
 
-- `./gradlew build` builds both jars in `fabric/build/libs/` and `neoforge/build/libs/` and runs the tests. It compiles with `-Xlint:all,-classfile` and must stay free of warnings. The IDE's own, such as unused imports, count too: name a lambda or catch parameter that isn't used `_`.
-- `./gradlew :fabric:test` runs the tests, which only Fabric hosts. `-Dchroma.timing=true` also runs the timing tests.
-- `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` starts a dev client. The Fabric one has Litematica, MaLiLib and Mod Menu. `-Pviewer=jei` or `-Pviewer=rei` adds that recipe viewer to either; both need a newer loader API than the builds' minimum, so add `-Pfabric_version=0.161.0+26.3` or `-Pneoforge_version=26.3.0.48-beta`, as CI uses. The game opens its window on a Wayland desktop whenever there is one, whatever `DISPLAY` says. To run it on a virtual display, unset `WAYLAND_DISPLAY` and set `SDL_VIDEODRIVER=x11`.
+- Run `./gradlew :fabric:test` for tests alone. Add `-Dchroma.timing=true` for timing tests.
+- Run `./gradlew :fabric:runClient` or `./gradlew :neoforge:runClient` for a dev client. Add `-Pviewer=jei` or `-Pviewer=rei` and the newer loader API version from `.github/workflows/build.yml` to try a recipe viewer.
+- For a virtual display, unset `WAYLAND_DISPLAY` and set `SDL_VIDEODRIVER=x11`. SDL otherwise prefers Wayland even with `DISPLAY` set.
+- Run `GameIndexTest` after changing what the index lists or how it reads models. Use `/chroma debug <block id>` in a dev client to inspect what the index read.
 
-Both jars target 26.3 only. Minecraft is unobfuscated, so use its own names without mappings. Builds use the minimum supported Fabric API and NeoForge versions; CI also compiles against newer ones.
+## Boundaries
 
-## Layout and boundaries
+- Read a package's `CLAUDE.md` before editing it. Record decisions the code can't explain in a sentence or two that names the class. Pair each `CLAUDE.md` with an `AGENTS.md` symlink. Keep source files free of comments except those listed in `SourceRulesTest`, which also checks the links.
+- Keep `dev.chromastudio.core` independent of Minecraft. Shared client code uses `ClientPlatform` for loader calls. Wire new hooks into both loaders and keep loader imports under their own `src/` directories.
+- Keep both jars client-only. Add no server entrypoints, payloads or registry entries. If a change needs a mixin, list its config only in the metadata of the loader that needs it.
+- Only `dev.chromastudio.api` follows semantic versioning. A change to a signature or its meaning needs a new major version.
+- Mod Menu, Litematica, MaLiLib, JEI and REI are optional. Refer to them only from classes the other mod loads or after a `ClientPlatform.isModLoaded` check.
+- Both builds need Architectury for REI's signatures. NeoForge compiles the Litematica bridge against the Fabric jars because Forgematica keeps the same classes. NeoForge's compile-only Fabric Loader dependency resolves REI's `@Environment` annotation. Keep Fabric Loader imports out of NeoForge and shared code. Keep optional dependencies scoped to their own repositories with `exclusiveContent` so another repository's outage can't fail the build.
+- Axiom is optional and Fabric-only. Keep Axiom references in `dev.chromastudio.client.axiom` and enter through `AxiomBridge`. Compile against the pinned client API and ImGui binding in `libs/` and keep both out of the built jars. Use guarded reflection with a player-visible reason for failures outside the API. Put Axiom's jar in `run/fabric/mods/` to try it. Keep that jar out of commits, builds and releases.
 
-Both loaders compile the shared `src/main` and `src/client` code with their own entrypoints and metadata. Fabric splits common and client source sets with Loom's `splitEnvironmentSourceSets()` and also compiles `src/test`; NeoForge combines them in one jar. `src/main/java` holds only `core`, `src/main/resources` the assets, and `src/client` everything else.
+## Minecraft and UI
 
-Most classes say what they do in a comment at the top, and their fields and methods say the rest. Read those before changing a class, and keep them true. This file has only what no one class says.
+- Minecraft is unobfuscated. Use its names. Draw blocks through `BlockModelResolver` and `BlockModelRenderState`. For world tint, `BlockTintSource.colorInWorld` needs a `BlockAndTintGetter` whose `getBlockTint` calls the resolver with the biome, x and z.
+- Request the cursor each frame with `g.requestCursor`. Use `CursorType.createStandardCursor` for shapes missing from `CursorTypes`. Compare mouse buttons with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`.
+- `NativeImage.getPixel` and `setPixel` use ARGB. NeoForge draws HUD layers even when F1 hides the HUD, so keep the check in `Hud.render`.
+- Grey out inapplicable controls and say why and how to enable them in the tooltip. Hide Axiom features instead unless `AxiomBridge.isPresent`. Build cyclers and spinners through `Widgets`. Use `Widgets.wheelNeedsClick` in scrolling lists. Use `AxiomPanel` for tools in Axiom's editor.
+- Size buttons to their text and keep controls from overlapping at 427 by 240 GUI pixels. Take space from existing controls when adding one. Centre text with `Widgets.centred`.
+- Take colours from `Theme` except when the colour is data or a black or white mark on a swatch. The game's tooltips and fields stay dark on every theme. Use `Theme.TIP_*` and `Theme.FIELD_BAD` there.
+- Use plain sentence case. Name an unlabelled control in one to three words. Other tooltips give a value and range, a swatch detail or a prerequisite the player can't see. Aim for 12 words and go past 20 only with a reason. A status line says what happened and what to do next. Give Axiom panels at most one line of instruction unless there's a refusal, an irreversible consequence or a risk of lost data.
+- Put every player-visible string in `assets/chromastudio/lang/en_us.json` and update all nine translations in the same change. New settings need a label and a `.tip` for search.
+- Verify that visual fixes preserve other behaviour, for example by comparing pixels. Test new core logic and check the source before changing reference values.
 
-- `dev.chromastudio.core` must have no Minecraft imports.
-- Only `fabric/src/` and `neoforge/src/` may import their loader's classes. Shared client code goes through `ClientPlatform`. Each loader's client entrypoint hooks the shared code into its events, so a change to `ClientPlatform` or a new hook goes into both.
-- The mod is client-only. Fabric's `environment` is `client` with only a `client` entrypoint. NeoForge's one `@Mod` class has `dist = Dist.CLIENT`, and the mod registers no payloads, so a server never checks for it. Don't add a server entrypoint, a payload or a registry entry.
-- There are no mixins. A change that needs one adds the config file to the loader that needs it and lists it in that loader's metadata.
-- `dev.chromastudio.api` is the only package under semantic versioning. Changing a signature or what a method means needs a new major version.
-- Mod Menu, Litematica, MaLiLib, JEI and REI are optional and only compiled against. Only a class that the other mod loads itself, or one entered after `ClientPlatform.isModLoaded`, may refer to them.
-- A new setting follows the comment on `ModSettings`, and needs a label and a `.tip` in the language file, which the settings screen's search reads.
-- `en_us.json` is written by hand, and the nine other language files are generated from it. A new English key needs its nine translations in the same change, or `LangTest` fails.
-- Read `listing/README.md` before changing anything in `listing/`.
+## Player actions
 
-## Block index
+- Giving, dyeing and filling the hotbar require creative mode or operator rights. Grey them out with a reason otherwise. Give items through `Give.stack` and send commands through `ClientPlatform.sendChatCommand`.
+- Only tools the player uses in Axiom's editor may change the world. Send those changes through Axiom for its permissions, server checks and undo, with one history entry per stroke.
+- Never silently overwrite an export. Outside Axiom, the only in-world preview is the capture outline. Structure import to a CAD, online accounts, server components and Cloth Config are out of scope.
 
-`BlockIndex` holds every block's colours and searches them. It builds on its own thread, and the client thread only hands it the models and reads the creative tabs. Run `GameIndexTest` after touching what the index lists or how it reads a model. In a dev client, `/chroma debug <block id>` prints what the index holds for a block.
+## Changes and releases
 
-## Minecraft rules
+Use conventional commit prefixes and short PR bodies. Update the [wiki](https://github.com/Neil-001/chroma-studio/wiki) for changes players will notice. Read `listing/README.md` before editing `listing/`.
 
-- The game has no `BlockRenderDispatcher`. A block is drawn through `BlockModelResolver` and `BlockModelRenderState`.
-- A tint comes from `BlockTintSource.colorInWorld(state, getter, pos)`, with a `BlockAndTintGetter` whose `getBlockTint` answers `resolver.getColor(biome, x, z)`.
-- Signs and beds have block models and are matched as any block.
-- The game runs on SDL, not GLFW, and ships no tinyfd. Ask for a mouse cursor each frame with `g.requestCursor`; a frame that asks for none gets the arrow back. `CursorType.createStandardCursor` makes a shape `CursorTypes` lacks, such as the diagonal arrows, and falls back where the system has none.
-- Mouse buttons count from 1. Compare with `InputConstants.MOUSE_BUTTON_LEFT` and `MOUSE_BUTTON_RIGHT`, never with a number.
-- `NativeImage.getPixel` and `setPixel` take ARGB.
+Develop on `main` for the newest Minecraft version. Port applicable changes to each supported `<line>/stable` branch and record version-specific differences in its `CLAUDE.md`.
 
-## Conventions
+1. Open a PR to bump `mod_version` and add `# <version>` to the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` for prereleases. For a stable branch, use the changelog from `main` with any note for that line.
+2. After merge, run `gh workflow run release.yml --ref main -f dry_run=true`. Check the jars and notes in the summary. Pass `-f branches=26.2/stable` for one stable branch or `-f branches=all` for all of them.
+3. Run the workflow again with the same branches and without `dry_run` to publish. Run `listing.yml` for description, gallery or icon changes. Update the changed parts of the CurseForge listing by hand using `listing/README.md`.
 
-- Grey out inapplicable controls with a tooltip explaining why. Don't hide them.
-- Use cyclers for options, so right-click steps backwards, and spinners for numbers. Make them through `Widgets`, which lets the mouse wheel step them. In a scrolling list, such as the settings or the Palettes tab's entries, use `Widgets.wheelNeedsClick`, so scrolling past a control doesn't change it.
-- Size buttons with the text's width. Nothing may overlap at 427 by 240 GUI pixels, as in 1280×720 at GUI scale 3. New controls must take space from existing ones.
-- Take colours from `Theme`, never a hex literal, apart from a colour that is data, such as a swatch, and the black and white marks drawn over one. The game's own tooltips and text fields stay dark on every theme, so text in them uses `Theme.TIP_*` and `Theme.FIELD_BAD`. Centre text with `Widgets.centred`.
-- Use plain, sentence case UI copy without jargon.
-- Every user-visible string goes through a translation key in `assets/chromastudio/lang/en_us.json`.
-- Visual fixes must preserve other behaviour. Prove it, for example by comparing pixels.
-- Test new core logic. Change a test's reference numbers only on purpose.
-- Comments say why, in plain English.
-- Commits follow the conventional style (`feat:`, `fix:`, `docs:`). Pull requests have a short body.
-- The [wiki](https://github.com/Neil-001/chroma-studio/wiki) must be updated with any change a player would notice.
+The changelog goes to all three sites as written. Start with a short paragraph for players, then list merged PRs under `## Features` and `## Fixes`. End each bullet with its PR number, such as `(#21)`. Omit CI, refactors and docs.
 
-## Giving blocks and sending commands
-
-The mod never places or changes blocks in the world. It acts only through the player's own inventory or chat:
-
-- Giving a block, filling the hotbar and dyeing need creative mode or operator rights, and are greyed out with the reason otherwise. A block's item reaches the player through `Give.stack`.
-- Commands go through `ClientPlatform.sendChatCommand`, as if the player had typed them.
-- Exported files are never silently overwritten.
-
-## Limits
-
-- Spread, which `Badge` goes by, can't order every texture as the eye does: wool, gravel and granite come out grainy.
-- Left out on purpose: placement, world editing, structure import to a CAD, online accounts, server components, in-world previews beyond the capture outline, and Cloth Config.
-
-## Releasing
-
-`main` is for the newest Minecraft version. Each older line the mod still supports lives on a `<line>/stable` branch, such as `26.2/stable` or `1.21.1/stable`, ported from `main` and kept to its own Minecraft. Develop on `main`, and backport to a stable branch only what makes sense for its version. Each branch's `CLAUDE.md` says how it differs from `main`.
-
-Run `.github/workflows/release.yml` from `main` to publish to Modrinth, CurseForge and GitHub. Its comments and those in `.github/scripts/` say how it works. Its `branches` input is a comma-separated list of `main` and `*/stable` branches, or `all` for every `*/stable` branch. Left empty, it is `main`.
-
-Those files name no mod, and Curve Generator's repository has the same ones, so make a change to them in both. `main` releases here because the repository variable `RELEASE_MAIN` is `true`.
-
-1. Open a PR bumping `mod_version` in `gradle.properties` and adding `# <version>` at the top of `CHANGELOG.md`. Use `-beta.1` or `-alpha.1` suffixes for prereleases. A stable branch gets the same two changes in a PR against it, with the changelog section as released on `main` and any note about that line.
-2. After merge, run `gh workflow run release.yml -f dry_run=true` and check the summary's jars and notes. Add `-f branches=26.2/stable`, say, for a stable branch, or `-f branches=all` for every one.
-3. Run `gh workflow run release.yml` with the same `branches` to publish.
-4. Run `gh workflow run listing.yml` when the description, gallery or icon changed. CurseForge has no API for its page, so paste `listing/curseforge.html` and upload the gallery by hand.
-
-Tags use `<version>+mc<line>`, such as `1.0.0+mc26.3`. A branch whose tag exists is skipped, so `all` releases only the branches with a new version.
-
-After a partial failure, re-run failed jobs or start a fresh run. Neither uploads a jar twice. Delete the artifact `curseforge-<version>` to upload a version to CurseForge again. If a publish job failed at its CurseForge step or while saving that artifact, the upload may have gone through, so check CurseForge's files page and retry only if the jar is absent. To limit sites, pass `-f targets=curseforge,github`, for example.
-
-The `CHANGELOG.md` section goes to all three sites as written. Start with a short paragraph about what changes for players. List merged PRs under `## Features` and `## Fixes`, one bullet per PR ending in `(#21)`, for example. Rewrite titles for players and omit CI, refactors and docs.
+The release workflow and `.github/scripts/` describe the inputs, tags and retry behaviour. Keep the shared release files in sync with Curve Generator. If a CurseForge upload or its marker failed, check the files page before retrying. If you intend to upload the same version again, delete its `curseforge-<version>` artifact first.

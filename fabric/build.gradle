@@ -14,7 +14,6 @@ repositories {
 		url = 'https://masa.dy.fi/maven/sakura-ryoko'
 		content { includeGroupByRegex 'fi\\.dy\\.masa\\..*' }
 	}
-	// Each of these groups is asked for from its own Maven alone, so another repository's outage can't fail the build.
 	exclusiveContent {
 		forRepository {
 			maven {
@@ -37,6 +36,19 @@ repositories {
 			includeGroup 'dev.architectury'
 		}
 	}
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Pinned'
+				url = rootProject.file('libs')
+				metadataSources { artifact() }
+			}
+		}
+		filter {
+			includeGroup 'com.github.Moulberry'
+			includeGroup 'com.github.moulberry.imgui-java'
+		}
+	}
 }
 
 loom {
@@ -52,7 +64,6 @@ loom {
 	}
 }
 
-// The shared code, next to this project's own Fabric entrypoints.
 sourceSets {
 	main {
 		java.srcDir rootProject.file('src/main/java')
@@ -63,7 +74,6 @@ sourceSets {
 	}
 	test {
 		java.srcDir rootProject.file('src/test/java')
-		// For the client classes that don't need the game running, such as ModSettings.
 		compileClasspath += sourceSets.client.output
 		runtimeClasspath += sourceSets.client.output
 	}
@@ -73,22 +83,15 @@ dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	// Mod Menu is optional: only its entrypoint class refers to it, and only Mod Menu loads that class.
 	compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-	// The dev client runs with it, to try the settings screen from its mod list.
 	localRuntime("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
-	// Litematica is optional too: only the bridge class refers to it, and only once the mod is known to be loaded.
-	// The dev client runs with both, to try the bridge. Their own dependencies are left out: the jars carry what they need.
 	compileOnly("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
 	compileOnly("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
 	localRuntime("fi.dy.masa.litematica:litematica-fabric-${project.minecraft_version}:${project.litematica_version}") { transitive = false }
 	localRuntime("fi.dy.masa.malilib:malilib-fabric-${project.minecraft_version}:${project.malilib_version}") { transitive = false }
-	// The recipe viewers are optional as well: only RecipeViewers and JEI's own plugin class refer to them.
 	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
 	compileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:${project.rei_version}") { transitive = false }
-	// REI's API names Architectury's types in the methods used.
 	compileOnly("dev.architectury:architectury-fabric:${project.architectury_version}") { transitive = false }
-	// To try the recipe key, run the dev client with one of them: ./gradlew :fabric:runClient -Pviewer=jei (or rei)
 	if (findProperty('viewer') == 'jei') {
 		localRuntime("mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}") { transitive = false }
 	}
@@ -96,15 +99,29 @@ dependencies {
 		localRuntime("me.shedaniel:RoughlyEnoughItems-fabric:${project.rei_version}")
 	}
 
-	// Tests cover the pure-Java core (dev.chromastudio.core), the settings file, and the block index against the game's own assets.
+	compileOnly("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
+	compileOnly("com.github.moulberry.imgui-java:imgui-java-binding:${project.axiom_imgui_version}") { transitive = false }
+
+	testImplementation("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
+	testImplementation "org.luaj:luaj-jse:3.0.1"
 	testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 test {
 	useJUnitPlatform()
-	// Timing tests are off unless asked for: ./gradlew :fabric:test -Dchroma.timing=true
 	systemProperty 'chroma.timing', System.getProperty('chroma.timing', 'false')
+	def sourceRules = fileTree(rootDir) {
+		include '**/*.java', '**/CLAUDE.md', '**/AGENTS.md'
+		exclude '**/.git/**', '**/.gradle/**', '**/.idea/**'
+		['', 'fabric/', 'neoforge/'].each { dir -> ['bin', 'build', 'logs', 'out', 'run'].each { exclude "${dir}${it}/**" } }
+	}
+	inputs.files(sourceRules).withPropertyName('sourceRules')
+	inputs.property('sourceRuleLinks', providers.provider {
+		sourceRules.matching { include '**/AGENTS.md' }.files
+				.findAll { java.nio.file.Files.isSymbolicLink(it.toPath()) }
+				.collect { "${rootDir.toPath().relativize(it.toPath())} ${java.nio.file.Files.readSymbolicLink(it.toPath())}".toString() }.sort()
+	})
 	testLogging {
 		events "failed"
 		exceptionFormat = "full"
