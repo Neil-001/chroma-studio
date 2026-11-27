@@ -207,6 +207,7 @@ public final class ExportCommand {
                     .filter(n -> format(n.substring(n.lastIndexOf('.') + 1)) != null && n.toLowerCase(Locale.ROOT).startsWith(start))
                     .sorted().forEach(builder::suggest);
         } catch (IOException | RuntimeException _) {
+            return builder.buildFuture();
         }
         return builder.buildFuture();
     }

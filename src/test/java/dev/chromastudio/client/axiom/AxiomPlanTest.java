@@ -64,6 +64,7 @@ class AxiomPlanTest {
             try {
                 PaletteBrushTool.wholeBuild(axiom.level, BlockPos.ZERO, to, null, true, Recolour.Mode.CLOSEST, mask, redone);
             } catch (AxiomBridge.Refused _) {
+                return redone;
             }
             return redone;
         });

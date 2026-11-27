@@ -27,7 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -136,18 +136,23 @@ final class EyedropperTool implements CustomTool, GuardedTool.PutAway {
         Query query = MatchState.query(Integer.MAX_VALUE);
         int version = index.version();
         Minecraft mc = Minecraft.getInstance();
-        CompletableFuture.supplyAsync(() -> index.closest(target, query)).whenComplete((found, _) -> mc.execute(() -> {
-            if (run != searches || found == null || index.version() != version) return;
-            List<Near> near = new ArrayList<>();
-            Set<String> shown = new HashSet<>(Set.of(index.material(p.entry())));
-            for (BlockIndex.Match m : found) {
-                if (near.size() == CLOSEST) break;
-                BlockState state = m.entry().state();
-                if (!shown.add(index.material(m.entry()))) continue;
-                index.colourOf(state, m.face(), query.tint).ifPresent(c -> near.add(new Near(c, m.entry().name().getString())));
-            }
-            closest = List.copyOf(near);
-        }));
+        ForkJoinPool.commonPool().execute(() -> {
+            List<BlockIndex.Match> found = index.closest(target, query);
+            mc.execute(() -> show(p, run, index, version, query, found));
+        });
+    }
+
+    private void show(Picked p, int run, BlockIndex index, int version, Query query, List<BlockIndex.Match> found) {
+        if (run != searches || index.version() != version) return;
+        List<Near> near = new ArrayList<>();
+        Set<String> shown = new HashSet<>(Set.of(index.material(p.entry())));
+        for (BlockIndex.Match m : found) {
+            if (near.size() == CLOSEST) break;
+            BlockState state = m.entry().state();
+            if (!shown.add(index.material(m.entry()))) continue;
+            index.colourOf(state, m.face(), query.tint).ifPresent(c -> near.add(new Near(c, m.entry().name().getString())));
+        }
+        closest = List.copyOf(near);
     }
 
     private void pickAgain(Picked p) {

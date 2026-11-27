@@ -45,15 +45,16 @@ public final class MatchFilters {
         List<Boolean> now = List.of(ModSettings.filterFullCube, ModSettings.filterSolid, ModSettings.filterOpaque, ModSettings.filterSurvival,
                 ModSettings.technicalBlocks);
         if (now.equals(seen)) return false;
-        boolean first = seen.isEmpty();
-        if (first || now.get(0) != seen.get(0)) fullCube = now.get(0);
-        if (first || now.get(1) != seen.get(1)) solid = now.get(1);
-        if (first || now.get(2) != seen.get(2)) opaque = now.get(2);
-        if (first || now.get(3) != seen.get(3)) creativeOnly = now.get(3) ? Tri.EXCLUDE : Tri.ANY;
-        if (first || now.get(4) != seen.get(4)) technical = now.get(4);
+        if (changed(now, 0)) fullCube = now.get(0);
+        if (changed(now, 1)) solid = now.get(1);
+        if (changed(now, 2)) opaque = now.get(2);
+        if (changed(now, 3)) creativeOnly = now.get(3) ? Tri.EXCLUDE : Tri.ANY;
+        if (changed(now, 4)) technical = now.get(4);
         seen = now;
         return true;
     }
+
+    private boolean changed(List<Boolean> now, int i) { return seen.isEmpty() || !now.get(i).equals(seen.get(i)); }
 
     public void preset(String token, Oklch around) {
         if (token == null) return;

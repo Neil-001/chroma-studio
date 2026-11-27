@@ -69,13 +69,18 @@ public final class AxiomBridge {
     private static void fail(Throwable t, boolean unsupported) {
         if (broken != null) return;
         version = unsupported;
-        if (unsupported) ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
-        else ChromaStudioClient.LOGGER.error("Chroma Studio's Axiom tools stopped after an error, so its Axiom features are off until the game restarts", t);
         broken = Component.translatable(unsupported ? "axiom.chromastudio.incompatible" : "axiom.chromastudio.stopped");
         try {
-            AxiomTools.shutDown();
-        } catch (Throwable _) {
+            AxiomTools.shutDown(t);
+        } catch (Throwable e) {
+            suppress(t, e);
         }
+        if (unsupported) ChromaStudioClient.LOGGER.warn("Chroma Studio's tools don't work with this version of Axiom, so its Axiom features are off", t);
+        else ChromaStudioClient.LOGGER.error("Chroma Studio's Axiom tools stopped after an error, so its Axiom features are off until the game restarts", t);
+    }
+
+    static void suppress(Throwable into, Throwable e) {
+        if (e != into) into.addSuppressed(e);
     }
 
     public static void leaveEditorForWindow() {

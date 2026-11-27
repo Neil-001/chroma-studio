@@ -333,6 +333,7 @@ final class PaletteBrushTool implements CustomTool, GuardedTool.PutAway {
             try {
                 wholeBuildNow(level, again, redone);
             } catch (Refused _) {
+                return redone;
             }
             return redone;
         });

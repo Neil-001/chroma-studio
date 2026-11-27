@@ -62,10 +62,11 @@ record GuardedTool(CustomTool tool) implements CustomTool {
     }
 
     private void failed(Throwable t) {
-        AxiomBridge.fail(t);
         try {
             tool.reset();
-        } catch (Throwable _) {
+        } catch (Throwable e) {
+            AxiomBridge.suppress(t, e);
         }
+        AxiomBridge.fail(t);
     }
 }
