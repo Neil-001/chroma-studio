@@ -14,13 +14,13 @@ Blossom pink in a cherry grove at sunset, and the closest blocks, nearest first.
 
 `02-material-set.jpg`
 
-Pale oak planks as the target, in a pale garden at dusk. A row opens to the other blocks of its material, here the logs, wood, slab, stairs, signs, fence and trapdoor, and one click makes them a palette.
+Pale oak planks as the target, in a pale garden at dusk. A row opens to the other blocks of its material, here the logs, wood, slab, stairs, signs, fence and trapdoor. The + button adds any of them to a palette.
 
 ## 3. Gradient
 
 `03-gradient.jpg`
 
-Sixteen steps of Nether fire, from near black through crimson and orange to gold. Click a step for its alternatives; here resin bricks replace lava at step 9.
+Sixteen full blocks of Nether fire, from near black through crimson and orange to gold. Click a step to see its alternatives or swap it.
 
 ## 4. Palettes
 
@@ -50,7 +50,7 @@ Every block as a dot, by hue and lightness. Scroll to zoom and click a dot to ma
 
 `08-eyedropper.jpg`
 
-Press X on a block to read its colour, here a giant mushroom's stem. The readout shows the block, its face and a swatch, and copies the hex. The hotbar holds a Nether fire gradient.
+Press X on a block to read its colour, here packed ice among the ice spikes at sunset. The readout shows the block, its face and a swatch, and copies the hex.
 
 ## 9. Axiom's editor
 
