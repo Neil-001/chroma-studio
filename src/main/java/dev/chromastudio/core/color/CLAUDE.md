@@ -4,14 +4,14 @@
 - Keep the first six `Face` constants in Minecraft `Direction` order. Client code converts by ordinal.
 - `MapColors.BASE` comes from Minecraft 26.3's `MapColor` fields in id order. Id 0 is transparent on maps, so leave it out of matches.
 - `TextureStats` uses full-scale alpha for stats. A faint pixel can contribute even if its thumbnail alpha rounds to zero. Choose or combine the animation frames before calling `TextureStats.of`.
-- `Kmeans` uses a fixed seed so cached and rebuilt indexes agree. `FlatNearest` must match single-colour `Distribution.emd` in OKLab, which is the weighted mean distance.
+- `Kmeans` uses a fixed seed so cached and rebuilt indexes agree. `FlatNearest` must match single-colour `Distribution.emd` in OKLab.
 
 ## Transport
 
 - `Distribution.transport` uses exact comparisons for Dijkstra and clamps negative rounding to zero. A predecessor settles before its successor. A tolerance on ties can create a predecessor cycle.
-- Treat the source and sink as having their own potentials. For supplies with weight left, start at the highest such potential less each supply's. Use the demand's potential less `sinkPotential` for its edge to the sink. This keeps those edges' reduced costs nonnegative.
-- Allow any positive residual weight or flow, however small. A floor can leave tiny weights moved the wrong way or unmoved. Subtracting the bottleneck empties at least one edge exactly. Optimality is limited by double precision, so weights below half an ulp of a larger weight can vanish on subtraction.
-- There is no proved path bound for real weights. `Distribution.transport` throws at `(n + m) · n · m` paths if unfinished. Four million fuzzed inputs, with tied and near-tied costs and weights down to 2⁻⁶⁰, used at most 29. The final balance and reduced-cost checks certify the plan within `OPTIMAL_SLACK`.
+- Treat the source and sink as having their own potentials so their edges have nonnegative reduced costs.
+- Allow any positive residual weight or flow. A floor can move tiny weights the wrong way or leave them unmoved. Subtracting the bottleneck empties an edge exactly, but weights below half an ulp of a larger weight can vanish on subtraction.
+- `Distribution.transport` has no proved path bound for real weights and throws at `(n + m) · n · m` paths if unfinished. Four million fuzzed inputs with tied and near-tied costs and weights down to 2⁻⁶⁰ used at most 29. Balance and reduced-cost checks certify the plan within `OPTIMAL_SLACK`.
 - `Distribution.emd` can fall back to the independent plan, a finite upper bound. Infinite costs would give `Gradient.assign` NaN prices and it would never finish. The default handler rethrows for tests. `ChromaStudioClient.init` logs the first failure of the session.
 
 ## Calibration and sources
