@@ -9,11 +9,15 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -23,6 +27,20 @@ class SourceRulesTest {
     private static final String API = "src/client/java/dev/chromastudio/api/";
     private static final Map<String, Integer> ALLOWED = Map.of(
             "src/client/java/dev/chromastudio/api/ChromaStudioApi.java", 2);
+    private static final String CORE = "src/main/java/";
+    private static final String CLIENT = "src/client/java/";
+    private static final String AXIOM = CLIENT + "dev/chromastudio/client/axiom/";
+    private static final List<Boundary> BOUNDARIES = List.of(
+            new Boundary(in(CORE), names("net.minecraft", "com.mojang"),
+                    "dev.chromastudio.core stays independent of Minecraft"),
+            new Boundary(in(CORE, CLIENT), names("net.fabricmc", "net.neoforged"),
+                    "loader classes belong in that loader's source tree, reached through ClientPlatform"),
+            new Boundary(in(CORE, CLIENT, "fabric/src/", "neoforge/src/").and(name -> !name.startsWith(AXIOM)),
+                    names("com.moulberry", "imgui.moulberry92"),
+                    "Axiom classes belong in dev.chromastudio.client.axiom, entered through AxiomBridge"));
+
+    private record Boundary(Predicate<String> covers, Pattern names, String rule) {
+    }
 
     @Test
     void everyClaudeMdHasAnAgentsMdLinkBesideIt() throws IOException {
@@ -34,6 +52,53 @@ class SourceRulesTest {
             }
         }
         assertEquals(List.of(), missing);
+    }
+
+    @Test
+    void sourceTreesNameOnlyThePackagesTheyMayUse() throws IOException {
+        List<String> problems = new ArrayList<>();
+        for (Path file : files(name -> name.endsWith(".java"))) {
+            problems.addAll(breaches(name(file), Files.readAllLines(file)));
+        }
+        assertEquals(List.of(), problems);
+    }
+
+    @Test
+    void everyBoundaryCatchesTheNamesItForbids() {
+        String block = "import net.minecraft.world.level.block.Block;";
+        String loader = "    boolean loaded = net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded(id);";
+        String axiom = "        Class.forName(\"com.moulberry.axiomclientapi.AxiomClientAPI\");";
+        String core = CORE + "dev/chromastudio/core/A.java";
+        String tab = CLIENT + "dev/chromastudio/client/ui/A.java";
+        assertEquals(List.of(core + ":2 names net.minecraft, but " + BOUNDARIES.get(0).rule()),
+                breaches(core, List.of("package dev.chromastudio.core;", block)));
+        assertEquals(List.of(), breaches(tab, List.of(block)));
+        assertEquals(List.of(tab + ":1 names net.fabricmc, but " + BOUNDARIES.get(1).rule()), breaches(tab, List.of(loader)));
+        assertEquals(List.of(), breaches("fabric/src/client/java/dev/chromastudio/client/fabric/A.java", List.of(loader)));
+        assertEquals(List.of(tab + ":1 names com.moulberry, but " + BOUNDARIES.get(2).rule()), breaches(tab, List.of(axiom)));
+        assertEquals(List.of(), breaches(AXIOM + "A.java", List.of(axiom, "import imgui.moulberry92.ImGui;")));
+        assertEquals(1, breaches("neoforge/src/main/java/dev/chromastudio/client/neoforge/A.java", List.of("import imgui.moulberry92.ImGui;")).size());
+        assertEquals(List.of(), breaches("src/test/java/dev/chromastudio/A.java", List.of(block, loader, axiom)));
+    }
+
+    private static List<String> breaches(String name, List<String> lines) {
+        List<String> problems = new ArrayList<>();
+        for (Boundary boundary : BOUNDARIES) {
+            if (!boundary.covers().test(name)) continue;
+            for (int i = 0; i < lines.size(); i++) {
+                Matcher found = boundary.names().matcher(lines.get(i));
+                if (found.find()) problems.add(name + ":" + (i + 1) + " names " + found.group() + ", but " + boundary.rule());
+            }
+        }
+        return problems;
+    }
+
+    private static Predicate<String> in(String... trees) {
+        return name -> Arrays.stream(trees).anyMatch(name::startsWith);
+    }
+
+    private static Pattern names(String... packages) {
+        return Pattern.compile("\\b(" + Arrays.stream(packages).map(Pattern::quote).collect(Collectors.joining("|")) + ")\\b");
     }
 
     @Test
