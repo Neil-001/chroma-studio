@@ -225,6 +225,7 @@ public final class GradientTab extends PanelTab {
         });
         if (full != null) Widgets.disable(handButton, full);
         else if (held == null) Widgets.disable(handButton, tr("colour.chromastudio.in_hand.none"));
+        else handButton.setTooltip(Tooltip.create(tr("gradient.chromastudio.stop.in_hand.tip")));
         if (filtersUp) filterButtons(right - moreW - GAP - kindW, y, kindW, kinds, more);
 
         x = left;
