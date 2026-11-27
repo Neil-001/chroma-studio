@@ -58,7 +58,7 @@ class SourceRulesTest {
     void sourceTreesNameOnlyThePackagesTheyMayUse() throws IOException {
         List<String> problems = new ArrayList<>();
         for (Path file : files(name -> name.endsWith(".java"))) {
-            problems.addAll(breaches(name(file), Files.readAllLines(file)));
+            problems.addAll(breaches(name(file), Files.readString(file)));
         }
         assertEquals(List.of(), problems);
     }
@@ -71,23 +71,30 @@ class SourceRulesTest {
         String core = CORE + "dev/chromastudio/core/A.java";
         String tab = CLIENT + "dev/chromastudio/client/ui/A.java";
         assertEquals(List.of(core + ":2 names net.minecraft, but " + BOUNDARIES.get(0).rule()),
-                breaches(core, List.of("package dev.chromastudio.core;", block)));
-        assertEquals(List.of(), breaches(tab, List.of(block)));
-        assertEquals(List.of(tab + ":1 names net.fabricmc, but " + BOUNDARIES.get(1).rule()), breaches(tab, List.of(loader)));
-        assertEquals(List.of(), breaches("fabric/src/client/java/dev/chromastudio/client/fabric/A.java", List.of(loader)));
-        assertEquals(List.of(tab + ":1 names com.moulberry, but " + BOUNDARIES.get(2).rule()), breaches(tab, List.of(axiom)));
-        assertEquals(List.of(), breaches(AXIOM + "A.java", List.of(axiom, "import imgui.moulberry92.ImGui;")));
-        assertEquals(1, breaches("neoforge/src/main/java/dev/chromastudio/client/neoforge/A.java", List.of("import imgui.moulberry92.ImGui;")).size());
-        assertEquals(List.of(), breaches("src/test/java/dev/chromastudio/A.java", List.of(block, loader, axiom)));
+                breaches(core, "package dev.chromastudio.core;\n" + block));
+        assertEquals(List.of(), breaches(tab, block));
+        assertEquals(List.of(tab + ":1 names net.fabricmc, but " + BOUNDARIES.get(1).rule()), breaches(tab, loader));
+        assertEquals(List.of(), breaches("fabric/src/client/java/dev/chromastudio/client/fabric/A.java", loader));
+        assertEquals(List.of(tab + ":1 names com.moulberry, but " + BOUNDARIES.get(2).rule()), breaches(tab, axiom));
+        assertEquals(List.of(), breaches(AXIOM + "A.java", axiom + "\nimport imgui.moulberry92.ImGui;"));
+        assertEquals(1, breaches("neoforge/src/main/java/dev/chromastudio/client/neoforge/A.java", "import imgui.moulberry92.ImGui;").size());
+        assertEquals(List.of(), breaches("src/test/java/dev/chromastudio/A.java", String.join("\n", block, loader, axiom)));
+        assertEquals(List.of(core + ":2 names net.minecraft, but " + BOUNDARIES.get(0).rule(),
+                        core + ":4 names net.minecraft, but " + BOUNDARIES.get(0).rule()),
+                breaches(core, "class A {\n    net.\n        minecraft.core.BlockPos a;\n    net . minecraft.core.BlockPos b;\n}"));
+        assertEquals(1, breaches(core, "import net.\\u006dinecraft.core.BlockPos;").size());
+        assertEquals(List.of(), breaches(core, "String internet = planet.minecrafty + magnet.minecraft;"));
     }
 
-    private static List<String> breaches(String name, List<String> lines) {
+    private static List<String> breaches(String name, String raw) {
+        String source = unescape(raw).replace("\r\n", "\n").replace('\r', '\n');
         List<String> problems = new ArrayList<>();
         for (Boundary boundary : BOUNDARIES) {
             if (!boundary.covers().test(name)) continue;
-            for (int i = 0; i < lines.size(); i++) {
-                Matcher found = boundary.names().matcher(lines.get(i));
-                if (found.find()) problems.add(name + ":" + (i + 1) + " names " + found.group() + ", but " + boundary.rule());
+            Matcher found = boundary.names().matcher(source);
+            while (found.find()) {
+                long line = 1 + source.substring(0, found.start()).chars().filter(c -> c == '\n').count();
+                problems.add(name + ":" + line + " names " + found.group().replaceAll("\\s", "") + ", but " + boundary.rule());
             }
         }
         return problems;
@@ -98,7 +105,7 @@ class SourceRulesTest {
     }
 
     private static Pattern names(String... packages) {
-        return Pattern.compile("\\b(" + Arrays.stream(packages).map(Pattern::quote).collect(Collectors.joining("|")) + ")\\b");
+        return Pattern.compile("\\b(" + Arrays.stream(packages).map(name -> name.replace(".", "\\s*\\.\\s*")).collect(Collectors.joining("|")) + ")\\b");
     }
 
     @Test
