@@ -82,12 +82,15 @@ class SourceRulesTest {
         assertEquals(List.of(core + ":2 names net.minecraft, but " + BOUNDARIES.get(0).rule(),
                         core + ":4 names net.minecraft, but " + BOUNDARIES.get(0).rule()),
                 breaches(core, "class A {\n    net.\n        minecraft.core.BlockPos a;\n    net . minecraft.core.BlockPos b;\n}"));
-        assertEquals(1, breaches(core, "import net.\\u006dinecraft.core.BlockPos;").size());
-        assertEquals(List.of(), breaches(core, "String internet = planet.minecrafty + magnet.minecraft;"));
+        assertEquals(List.of(), breaches(core, "String internet = planet.minecrafty.name + magnet.minecraft.name;"));
+        assertEquals(List.of(), breaches(core, "String note = \"\"\"\n    Download it from example.net.\n    minecraft:stone is the default.\n    \"\"\";"));
+        assertEquals(1, breaches(core, "boolean vanilla = name.startsWith(\"net.minecraft.\");").size());
+        assertEquals(List.of(core + ":1 names net.minecraft, but " + BOUNDARIES.get(0).rule()),
+                breaches(core, "package dev.chromastudio.core; \\u000a " + block));
     }
 
     private static List<String> breaches(String name, String raw) {
-        String source = unescape(raw).replace("\r\n", "\n").replace('\r', '\n');
+        String source = raw.replace("\r\n", "\n").replace('\r', '\n');
         List<String> problems = new ArrayList<>();
         for (Boundary boundary : BOUNDARIES) {
             if (!boundary.covers().test(name)) continue;
@@ -105,7 +108,7 @@ class SourceRulesTest {
     }
 
     private static Pattern names(String... packages) {
-        return Pattern.compile("\\b(" + Arrays.stream(packages).map(name -> name.replace(".", "\\s*\\.\\s*")).collect(Collectors.joining("|")) + ")\\b");
+        return Pattern.compile("\\b(" + Arrays.stream(packages).map(name -> name.replace(".", "\\s*\\.\\s*")).collect(Collectors.joining("|")) + ")(?=\\s*\\.)");
     }
 
     @Test
