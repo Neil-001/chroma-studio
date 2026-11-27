@@ -217,7 +217,7 @@ public final class GradientTab extends PanelTab {
         }));
         if (STOPS.size() <= 2) Widgets.disable(remove, tr("gradient.chromastudio.stop.two_needed"));
         x += 14 + GAP;
-        Component add = tr("gradient.chromastudio.stop.add"), hand = tr("gradient.chromastudio.stop.in_hand");
+        Component add = tr("gradient.chromastudio.stop.add"), hand = tr("colour.chromastudio.in_hand");
         int addW = Widgets.buttonWidth(add), handW = Widgets.buttonWidth(hand);
         EditBox field = widgets.search(x, y, Math.max(48, Math.min(70, b.right() - PAD - x - addW - handW - 2 * GAP)), tr("gradient.chromastudio.stop.hex"), s -> hex = s);
         field.setMaxLength(7);
@@ -227,10 +227,10 @@ public final class GradientTab extends PanelTab {
         Component full = STOPS.size() >= MAX_STOPS ? tr("gradient.chromastudio.stop.full", MAX_STOPS) : null;
         Button addButton = widgets.button(x, y, add, () -> {
             try {
-                addStop(Color.fromHex(hex.strip()));
+                addStop(Color.fromHex(hex));
                 changed();
             } catch (IllegalArgumentException _) {
-                say(tr("palettes.chromastudio.generate.bad_hex"), BAD);
+                say(tr("colour.chromastudio.hex.bad"), BAD);
             }
         });
         if (full != null) Widgets.disable(addButton, full);
@@ -242,7 +242,7 @@ public final class GradientTab extends PanelTab {
             changed();
         });
         if (full != null) Widgets.disable(handButton, full);
-        else if (held == null) Widgets.disable(handButton, tr("palettes.chromastudio.generate.in_hand.none"));
+        else if (held == null) Widgets.disable(handButton, tr("colour.chromastudio.in_hand.none"));
         else handButton.setTooltip(Tooltip.create(tr("gradient.chromastudio.stop.in_hand.tip")));
 
         x = b.x() + PAD;

@@ -3,14 +3,12 @@ package dev.chromastudio.client.ui;
 import dev.chromastudio.client.ui.tabs.ColourPicker;
 import dev.chromastudio.client.ui.tabs.TargetModel;
 import dev.chromastudio.core.color.Color;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
@@ -39,17 +37,17 @@ final class ColourDialog extends Popup {
         int side = Math.min(in.h(), in.w() / 2 - 14);
         picker.layout(new Bounds(in.x(), in.y(), side + 10, side));
         int fx = in.x() + side + 16 + LABEL_W, fw = in.right() - fx, y = in.y();
-        hex = widgets.field(fx, y, fw, model.hex(), text -> typed(hex, text, model::typeHex));
+        hex = widgets.field(fx, y, fw, model.hex(), text -> typed(hex, "hex", text, model::typeHex));
         hex.setMaxLength(7);
-        hex.setTooltip(Tooltip.create(Component.translatable("match.chromastudio.hex.tip")));
+        Widgets.colourFieldState(hex, "hex", true);
         y += ROW;
-        rgb = widgets.field(fx, y, fw, model.rgbText(), text -> typed(rgb, text, model::typeRgb));
+        rgb = widgets.field(fx, y, fw, model.rgbText(), text -> typed(rgb, "rgb", text, model::typeRgb));
         rgb.setMaxLength(13);
-        rgb.setTooltip(Tooltip.create(Component.translatable("match.chromastudio.rgb.tip")));
+        Widgets.colourFieldState(rgb, "rgb", true);
         y += ROW;
-        hsl = widgets.field(fx, y, fw, model.hslText(), text -> typed(hsl, text, model::typeHsl));
+        hsl = widgets.field(fx, y, fw, model.hslText(), text -> typed(hsl, "hsl", text, model::typeHsl));
         hsl.setMaxLength(13);
-        hsl.setTooltip(Tooltip.create(Component.translatable("match.chromastudio.hsl.tip")));
+        Widgets.colourFieldState(hsl, "hsl", true);
         Component done = Component.translatable("gui.done");
         int doneW = Widgets.buttonWidth(done) + 14;
         widgets.button(in.right() - doneW, in.bottom() - Widgets.H, doneW, done, this::close);
@@ -57,10 +55,10 @@ final class ColourDialog extends Popup {
 
 
     /** A field's text changed. Text that isn't a colour shows red and changes nothing. */
-    private void typed(EditBox field, String text, Predicate<String> take) {
+    private void typed(EditBox field, String format, String text, Predicate<String> take) {
         if (filling || field == null) return;
         boolean valid = take.test(text);
-        field.setTextColor(valid ? EditBox.DEFAULT_TEXT_COLOR : Theme.FIELD_BAD);
+        Widgets.colourFieldState(field, format, valid);
         if (valid) picked(field);
     }
 
@@ -68,10 +66,18 @@ final class ColourDialog extends Popup {
     private void picked(EditBox except) {
         TargetModel model = picker.model;
         filling = true;
-        if (hex != except) hex.setValue(model.hex());
-        if (rgb != except) rgb.setValue(model.rgbText());
-        if (hsl != except) hsl.setValue(model.hslText());
-        for (EditBox f : List.of(hex, rgb, hsl)) if (f != except) f.setTextColor(EditBox.DEFAULT_TEXT_COLOR);
+        if (hex != except) {
+            hex.setValue(model.hex());
+            Widgets.colourFieldState(hex, "hex", true);
+        }
+        if (rgb != except) {
+            rgb.setValue(model.rgbText());
+            Widgets.colourFieldState(rgb, "rgb", true);
+        }
+        if (hsl != except) {
+            hsl.setValue(model.hslText());
+            Widgets.colourFieldState(hsl, "hsl", true);
+        }
         filling = false;
         onChange.accept(model.colour());
     }
@@ -83,7 +89,7 @@ final class ColourDialog extends Popup {
         // Drawn here rather than as controls, because the colour they're drawn in changes as the player picks.
         String[] names = {"hex", "rgb", "hsl"};
         for (int i = 0; i < names.length; i++)
-            g.text(font, Component.translatable("settings.chromastudio.colour." + names[i]), hex.getX() - LABEL_W, in.y() + i * ROW + 4, Theme.SOFT, false);
+            g.text(font, Component.translatable("colour.chromastudio." + names[i]), hex.getX() - LABEL_W, in.y() + i * ROW + 4, Theme.SOFT, false);
     }
 
     @Override
