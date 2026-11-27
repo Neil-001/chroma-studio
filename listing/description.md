@@ -13,7 +13,7 @@ Chroma Studio finds the blocks closest to a colour. Build palettes and gradients
 
 <center>
 
-<img alt="The Chroma Studio window over a village. On the left a colour picker set to teal. On the right a list of the twelve closest blocks, from warped shelf to cyan stained glass, each with its distance, kind and texture." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/01-match.jpg">
+<img alt="The Chroma Studio window over a cherry grove at sunset. On the left a colour picker set to blossom pink. On the right a list of the twelve closest blocks, from pink concrete powder to pink stained glass pane, each with its distance, kind and texture." width="100%" src="https://raw.githubusercontent.com/Neil-001/chroma-studio/main/listing/gallery/01-match.jpg">
 
 </center>
 

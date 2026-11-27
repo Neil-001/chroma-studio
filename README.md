@@ -1,7 +1,7 @@
 <div align="center">
 <h1>Chroma Studio</h1>
 
-![The Chroma Studio window over a village, listing the blocks closest to a teal colour.](listing/gallery/01-match.jpg)
+![The Chroma Studio window over a cherry grove, listing the blocks closest to a blossom pink.](listing/gallery/01-match.jpg)
 <a href="https://modrinth.com/mod/chroma-studio"><img alt="Available on Modrinth" height="48" src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/modrinth/cozy.svg"></a>
 <a href="https://www.curseforge.com/minecraft/mc-mods/chroma-studio"><img alt="Available on Modrinth" height="48" src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/curseforge/cozy.svg"></a>
 </div>
