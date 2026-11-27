@@ -7,3 +7,4 @@ run/
 *.iml
 .vscode/
 fabric/logs/
+__pycache__/
