@@ -52,6 +52,7 @@ public final class DioramaPip {
                 pose.popPose();
             }
         g.flush();
+        Lighting.setupFor3DItems();
         pose.popPose();
         if (perspective) RenderSystem.restoreProjectionMatrix();
         g.disableScissor();

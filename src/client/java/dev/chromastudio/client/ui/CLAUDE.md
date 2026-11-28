@@ -20,4 +20,5 @@
 - `ColourDialog` and `MatchTab.typed` ignore their own field writes because rounding on readback would shift the colour.
 - `Hud` uses dark tooltip colours on its dark backing. Its panels avoid the crosshair and Axiom's menu bar, and don't count down while a screen covers them.
 - Read `Theme` colours while drawing and call `Theme.sync` at the start of a frame. `Theme.LIGHT_FROM` is the OKLab lightness where black and white have equal contrast.
+- The key binds screen can't open on one category, so `SettingsScreen` scrolls its list to the mod's heading. 1.21.1's headings hold no widget with their text, so it counts rows the way the list builds them: every key sorted, a heading before each new category, 20 pixels a row.
 - `SettingsScreen` lights group Reset only for changed visible rows. Hidden window and brush memory and unavailable `hotbarAxiom` still reset, but don't light the button or appear in Reset all.

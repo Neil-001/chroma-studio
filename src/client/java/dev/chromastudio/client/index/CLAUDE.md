@@ -21,7 +21,7 @@
 
 ## Tints and textures
 
-- `Tints` compares biomes at one position because tints can vary by x and z. `FaceLayers` bounds its cache because walks can create many tint contexts.
+- `Tints` compares biomes at one position because tints can vary by x and z. `FaceLayers` bounds its cache because walks can create many tint contexts. `Tints.OneBiome` answers only tints; it has no light or blocks.
 - Derive stats from `Textures.Frame` on cache hits and image reads. `Frame.stats` represents partial coverage as filled pixels because `TextureStats` discards low 8-bit alpha.
 - `Textures.read` takes animation metadata that lists no frames as every frame in turn, as the game does.
 - Raise `TextureCache.FORMAT` when frame calculation changes. Refresh bypasses the cache to see packs edited in place.

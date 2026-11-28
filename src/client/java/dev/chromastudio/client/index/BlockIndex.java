@@ -5,6 +5,7 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Distribution;
 import dev.chromastudio.core.color.Face;
+import dev.chromastudio.core.color.Scale;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;

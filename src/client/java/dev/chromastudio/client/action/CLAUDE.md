@@ -9,7 +9,7 @@
 - `Eyedropper.press` uses the pointer in Axiom's editor because Axiom hides the crosshair. It reads the clipboard back because the game logs refused writes and carries on.
 - `ScreenPicker.read` takes the frame being drawn with `glReadPixels`, after the world and HUD and before the picker's hint and loupe. Hide the window while armed and wait for the frame to settle before picking. The frame's rows run bottom to top.
 - At screen edges the pointer can be off-centre in the loupe.
-- Keep the reticle clear of sampled pixels. Skip preview reads over the previous frame's reticle or loupe. Bounds use the integer GUI scale for drawing and framebuffer ratio for reads, which can differ.
+- Keep the reticle clear of sampled pixels. Skip preview reads over the previous frame's reticle or loupe, which newer versions read back with the frame. Bounds use the integer GUI scale for drawing and framebuffer ratio for reads, which can differ.
 - `PaletteBlocks.tint` uses the player's location for biome ranges because they have no single tint.
 
 ## Capture and items
