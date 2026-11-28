@@ -26,6 +26,7 @@
 ## Drawing
 
 - `DioramaPip.draw` flushes the GUI first, then clears depth inside its scissor so the wall's blocks hide each other and nothing drawn earlier hides them. It flushes again before restoring the projection. Without perspective the wall sits behind the GUI's plane so the caption drawn afterwards shows. `DioramaPip.lens` is an off-centre frustum about the wall's middle and undoes the GUI's view matrix.
+- With Fabulous graphics, `renderBlock` puts translucent blocks on `Sheets.translucentItemSheet`, whose framebuffer the game has already composited before the screen draws. `DioramaPip.draw` swaps it for `translucentCullBlockSheet`, as the game's own GUI items do.
 - Keep the diorama's scale fixed while turning and allow room for perspective at the near end. Use `Lighting.setupForFlatItems` because 3D item lighting leaves the front dark. Both views need the flat texture for legend swatches.
 - 1.21.1 holds text back until the frame ends and draws block icons in front of flat colour. `PanelTab.render` flushes the tab before its dialog and draws the dialog at `DIALOG_Z`, past the tab's icons at about 160 and short of tooltips at 400.
 - 1.21.1's `EditBox` always inverts selected text, so the paste field in `PaletteDialogs` keeps that where 1.21.11 turns it off.

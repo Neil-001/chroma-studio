@@ -10,6 +10,7 @@ import dev.chromastudio.client.ChromaStudioClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Matrix4f;
@@ -41,7 +42,8 @@ public final class DioramaPip {
         pose.mulPose(Axis.XP.rotationDegrees(-pitch));
         pose.mulPose(Axis.YP.rotationDegrees(yaw));
         pose.translate(-width / 2f, -height / 2f, -0.5f);
-        MultiBufferSource.BufferSource buffers = g.bufferSource();
+        MultiBufferSource.BufferSource gui = g.bufferSource();
+        MultiBufferSource buffers = type -> gui.getBuffer(type == Sheets.translucentItemSheet() ? Sheets.translucentCullBlockSheet() : type);
         for (int row = 0; row < height; row++)
             for (int col = 0; col < width; col++) {
                 BlockState block = cells[row * width + col];
