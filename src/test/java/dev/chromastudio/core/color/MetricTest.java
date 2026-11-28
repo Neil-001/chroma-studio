@@ -6,10 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class MetricTest {
-    /**
-     * The test pairs published with Sharma, Wu and Dalal, "The CIEDE2000 color-difference formula: implementation
-     * notes, supplementary test data, and mathematical observations" (2005): L, a, b of each colour, then ΔE00.
-     */
     private static final double[][] SHARMA = {
             {50.0000, 2.6772, -79.7751, 50.0000, 0.0000, -82.7485, 2.0425},
             {50.0000, 3.1571, -77.2803, 50.0000, 0.0000, -82.7485, 2.8615},
@@ -61,15 +57,12 @@ class MetricTest {
         Color a = Color.ofRgb(0xFF0000), b = Color.ofRgb(0x00FF00);
         assertEquals(Metric.ciede2000(a.lab(), b.lab()), Metric.CIEDE2000.distance(a, b));
         assertEquals(0, Metric.CIEDE2000.distance(a, a));
-        // Black to white differ only in L: 100 over S_L, with S_L = 1 + 0.015 · 0² / √20 = 1 at the mean of 50.
         assertEquals(100, Metric.CIEDE2000.distance(Color.ofRgb(0), Color.ofRgb(0xFFFFFF)), 0.01);
     }
 
     @Test
     void cie76ByHand() {
         assertEquals(100, Metric.CIE76.distance(Color.ofRgb(0), Color.ofRgb(0xFFFFFF)), 0.01);
-        // Red (53.2408, 80.0925, 67.2032) to green (87.7347, -86.1827, 83.1793), from Lindbloom's tables:
-        // √(34.4939² + 166.2752² + 15.9761²) = √(1189.83 + 27647.44 + 255.24) = 170.565.
         assertEquals(170.565, Metric.CIE76.distance(Color.ofRgb(0xFF0000), Color.ofRgb(0x00FF00)), 0.01);
         assertEquals(5, Metric.cie76(new Lab(50, 0, 0), new Lab(50, 3, -4)));
     }
@@ -77,14 +70,12 @@ class MetricTest {
     @Test
     void srgbByHand() {
         assertEquals(Math.sqrt(3) * 255, Metric.SRGB.distance(Color.ofRgb(0), Color.ofRgb(0xFFFFFF)), 1e-9);
-        // (16, 32, 48) to (19, 36, 60): √(9 + 16 + 144) = 13.
         assertEquals(13, Metric.SRGB.distance(Color.ofRgb(0x102030), Color.ofRgb(0x13243C)), 1e-9);
     }
 
     @Test
     void oklabIsEuclidean() {
         assertEquals(1, Metric.OKLAB.distance(Color.ofRgb(0), Color.ofRgb(0xFFFFFF)), 1e-4);
-        // Red and green from the published values: √(0.23848² + 0.45875² + 0.05365²) = 0.5198.
         assertEquals(0.5198, Metric.OKLAB.distance(Color.ofRgb(0xFF0000), Color.ofRgb(0x00FF00)), 1e-4);
         assertEquals(0.5, new Oklab(0.2, 0.1, 0.1).distance(new Oklab(0.2, 0.4, -0.3)), 1e-12);
     }
@@ -92,12 +83,12 @@ class MetricTest {
     @Test
     void theMapColourTableIsTheGames() {
         assertEquals(62, MapColors.count());
-        assertEquals(0x000000, MapColors.rgb(0));  // NONE
-        assertEquals(0x7FB238, MapColors.rgb(1));  // GRASS
-        assertEquals(0x707070, MapColors.rgb(11)); // STONE
-        assertEquals(0x4040FF, MapColors.rgb(12)); // WATER
-        assertEquals(0x191919, MapColors.rgb(29)); // COLOR_BLACK
-        assertEquals(0x7FA796, MapColors.rgb(61)); // GLOW_LICHEN
+        assertEquals(0x000000, MapColors.rgb(0));
+        assertEquals(0x7FB238, MapColors.rgb(1));
+        assertEquals(0x707070, MapColors.rgb(11));
+        assertEquals(0x4040FF, MapColors.rgb(12));
+        assertEquals(0x191919, MapColors.rgb(29));
+        assertEquals(0x7FA796, MapColors.rgb(61));
     }
 
     @Test
@@ -106,12 +97,9 @@ class MetricTest {
         assertEquals(11, MapColors.nearest(Color.ofRgb(0x727071)));
         assertEquals(4, MapColors.nearest(Color.ofRgb(0xFA0505)));
         assertEquals(8, MapColors.nearest(Color.ofRgb(0xFFFFFF)));
-        // Pure black goes to the black base colour, not to NONE, which a map leaves empty.
         assertEquals(29, MapColors.nearest(Color.ofRgb(0x000000)));
 
-        // Two colours that snap to the same base colour are no distance apart.
         assertEquals(0, Metric.MAP_COLOR.distance(Color.ofRgb(0x707070), Color.ofRgb(0x727071)));
-        // Otherwise it is the OKLab distance between the two base colours, not between the colours themselves.
         double stoneToFire = Metric.OKLAB.distance(Color.ofRgb(0x707070), Color.ofRgb(0xFF0000));
         assertEquals(stoneToFire, Metric.MAP_COLOR.distance(Color.ofRgb(0x727071), Color.ofRgb(0xFA0505)), 1e-12);
     }

@@ -51,6 +51,24 @@ class PaletteStoreTest {
     }
 
     @Test
+    void aPaletteMadeSavedIsAddedOnlyOnceItsFileIsWritten() throws IOException {
+        Path blocked = dir.resolve("blocked");
+        Files.writeString(blocked, "a file where the folder should be");
+        PaletteStore store = new PaletteStore(blocked);
+        Palette before = store.create("Kept", STONES);
+        assertFalse(store.saved(before), "the Palettes tab keeps a palette it couldn't write");
+        assertTrue(store.createSaved("Sampled", STONES).isEmpty());
+        assertEquals(List.of(before), store.own());
+        assertSame(before, store.selected());
+
+        PaletteStore working = new PaletteStore(dir.resolve("working"));
+        Palette made = working.createSaved("Sampled", STONES).orElseThrow();
+        assertTrue(working.saved(made));
+        assertSame(made, working.selected());
+        assertTrue(Files.isRegularFile(dir.resolve("working").resolve("sampled.json")));
+    }
+
+    @Test
     void aMissingFolderIsEmptyAndIsOnlyMadeOnSaving() {
         Path missing = dir.resolve("not").resolve("there");
         PaletteStore store = new PaletteStore(missing);
@@ -67,10 +85,23 @@ class PaletteStoreTest {
         assertEquals("Wall", store.create("Wall", STONES).name);
         assertEquals("Wall (2)", store.create("Wall", STONES).name);
         assertEquals("wall (3)", store.create("wall", STONES).name);
-        // Different names that come to the same file name get a numbered file.
         store.create("Wall!", STONES);
         assertEquals(List.of("wall-2.json", "wall-3.json", "wall-4.json", "wall.json"), fileNames());
         assertEquals(4, new PaletteStore(dir).own().size());
+    }
+
+    @Test
+    void aNameIsTakenByAnotherPaletteIgnoringCase() {
+        PaletteStore store = new PaletteStore(dir);
+        Palette wall = store.create("Wall", STONES);
+        assertTrue(store.taken(" wall ", null));
+        assertFalse(store.taken("WALL", wall));
+        Palette other = store.create("Tower", STONES);
+        assertTrue(store.rename(other, "wall"));
+        assertTrue(store.taken("WALL", wall));
+        other.name = " wall ";
+        assertTrue(store.taken("WALL", wall));
+        assertFalse(store.taken("Gate", null));
     }
 
     @Test
@@ -92,7 +123,6 @@ class PaletteStoreTest {
         assertEquals("New name", new PaletteStore(dir).own().getFirst().name);
         assertFalse(store.rename(p, "  "));
         assertEquals("New name", p.name);
-        // A name that keeps the file name rewrites the file in place.
         assertTrue(store.rename(p, "NEW NAME"));
         assertEquals(List.of("new-name.json"), fileNames());
         assertEquals("NEW NAME", new PaletteStore(dir).own().getFirst().name);
@@ -180,7 +210,6 @@ class PaletteStoreTest {
         assertEquals(2, started.entries.size());
         assertEquals(2, new PaletteStore(dir).own().getFirst().entries.size());
 
-        // A preset can't be changed, so adding with one selected starts a palette of the player's own.
         store.select(store.presets().getFirst());
         store.add("minecraft:dirt", "");
         assertFalse(store.selected().preset);

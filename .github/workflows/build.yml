@@ -6,7 +6,6 @@ on:
     branches: [main, '**/stable']
   workflow_dispatch:
 
-# A new push to the same branch cancels the run it replaces.
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
@@ -26,25 +25,30 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # Caches Gradle and Loom's Minecraft files. Only runs on main write the cache.
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Test release scripts
-        run: python3 -B -m unittest discover -s .github/scripts -p 'test_*.py'
-
-      # CurseForge's page is written from Modrinth's; the two must not drift.
-      - name: Check the CurseForge listing is up to date
+      - name: Test release and listing scripts
         run: |
           pip install --quiet markdown
-          python3 listing/art/curseforge.py --check
+          python3 -B -m unittest discover -s .github/scripts -p 'test_*.py'
 
-      # Compiles both loaders' jars and runs the tests.
-      - run: ./gradlew build
+      - name: Check the CurseForge listing is up to date
+        run: python3 listing/art/curseforge.py --check
 
-      # The build compiles against the oldest Fabric API and NeoForge the jars accept. This compiles against newer ones.
+      - run: ./gradlew build --profile
+
       - run: >
           ./gradlew :fabric:compileJava :fabric:compileClientJava :neoforge:compileJava
           -Pfabric_version=0.141.6+1.21.11 -Pneoforge_version=21.11.48
+
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-timings
+          path: |
+            build/reports/profile/
+            fabric/build/test-results/test/
+          retention-days: 7
 
       - if: failure()
         uses: actions/upload-artifact@v7

@@ -19,7 +19,6 @@ import net.minecraft.core.Direction;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** The palette and gradient reads. The colour reads need the block index, so {@code GameIndexTest} covers them. */
 class ChromaStudioApiTest {
     @Test
     void palettesAreThePlayersOwnThenThePresetsAsCopies(@TempDir Path dir) {
@@ -34,7 +33,6 @@ class ChromaStudioApiTest {
         assertEquals(store.own().getFirst().entries, own.entries);
         assertTrue(palettes.subList(1, palettes.size()).stream().allMatch(p -> p.preset && !p.entries.isEmpty()));
 
-        // Another mod's changes stay its own.
         own.name = "Changed";
         own.entries.clear();
         assertEquals("Castle walls", store.own().getFirst().name);

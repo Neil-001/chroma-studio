@@ -19,11 +19,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 
-/** {@code /chroma debug <block id>}: prints what the index holds for a block, to check it against the game. */
 public final class DebugCommand {
     private DebugCommand() {}
 
-    /** Adds {@code debug <block id>} under the {@code /chroma} root. The source type differs by loader and isn't read. */
     public static <S> void attach(LiteralArgumentBuilder<S> root) {
         root.then(LiteralArgumentBuilder.<S>literal("debug")
                 .then(RequiredArgumentBuilder.<S, String>argument("block", StringArgumentType.greedyString())
@@ -52,7 +50,6 @@ public final class DebugCommand {
         return 0;
     }
 
-    /** An entry as lines of text: its kind and flags, then each face's textures and figures. */
     public static List<String> describe(Entry e, TintContext tint) {
         List<String> lines = new ArrayList<>();
         List<String> flags = new ArrayList<>();
@@ -79,7 +76,6 @@ public final class DebugCommand {
         return lines;
     }
 
-    /** A distribution's colours with their shares, as {@code #7D7D7D 72% #6B6B6B 28%}. */
     private static String colours(Distribution d) {
         List<String> parts = new ArrayList<>();
         for (int i = 0; i < d.colours().size(); i++) {

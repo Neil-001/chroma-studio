@@ -15,12 +15,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.ARGB;
 
-/**
- * The colour pickers: a saturation and value square with a hue bar, and three sliders in the space the
- * {@code colourFormat} setting names: OKLCH lightness, chroma and hue, or red, green and blue, or HSL hue, saturation
- * and lightness. Each slider is drawn as the colours it would give. Only OKLCH reaches outside sRGB: that part is
- * greyed, with a tick where the gamut ends. The Match tab has all of it; the settings' colour dialog has the square and the bar.
- */
 public final class ColourPicker implements AutoCloseable {
     private static final int SQUARE_PX = 64, SLIDER_PX = 128;
     private static final int OUT_OF_GAMUT = 0xFF3A3F47;
@@ -28,7 +22,6 @@ public final class ColourPicker implements AutoCloseable {
     static final int SLIDER_H = 9, LABEL_W = 9, VALUE_W = 26;
 
     public final TargetModel model;
-    /** Runs when the player moves a picker. The argument is true once they let go. */
     private final Consumer<Boolean> onChange;
 
     private Bounds square = new Bounds(0, 0, 0, 0), hueBar = square;
@@ -37,18 +30,16 @@ public final class ColourPicker implements AutoCloseable {
     private Pixels squarePixels, huePixels;
     private final Pixels[] sliderPixels = new Pixels[3];
     private float paintedHue = -1;
-    /** The format and slider positions the sliders were last painted for. */
     private String paintedFor;
-    /** Where along each slider the colours leave or come back into sRGB, 0 to 1. */
     private final List<List<Double>> edges = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
     private int dragging = NONE;
+    private boolean insetMarker;
 
     public ColourPicker(Color start, Consumer<Boolean> onChange) {
         model = new TargetModel(start);
         this.onChange = onChange;
     }
 
-    /** Lays the square and its hue bar out in {@code top}, and the three sliders in the first three rows of {@code below}. */
     void layout(Bounds top, Bounds below) {
         layout(top);
         for (int i = 0; i < 3; i++) {
@@ -56,10 +47,14 @@ public final class ColourPicker implements AutoCloseable {
         }
     }
 
-    /** Lays out the square and its hue bar alone, with no sliders. */
-    public void layout(Bounds top) {
-        hueBar = new Bounds(top.right() - 8, top.y(), 8, top.h());
-        square = new Bounds(top.x(), top.y(), top.w() - 10, top.h());
+    public void layout(Bounds top) { layout(top, 8, false); }
+
+    public void layout(Bounds top, int hueW) { layout(top, hueW, true); }
+
+    private void layout(Bounds top, int hueW, boolean insetMarker) {
+        this.insetMarker = insetMarker;
+        hueBar = new Bounds(top.right() - hueW, top.y(), hueW, top.h());
+        square = new Bounds(top.x(), top.y(), top.w() - hueW - 2, top.h());
         for (int i = 0; i < 3; i++) sliders[i] = new Bounds(0, 0, 0, 0);
     }
 
@@ -70,11 +65,11 @@ public final class ColourPicker implements AutoCloseable {
         float[] hsv = model.hsv();
         squarePixels.draw(g, square.x(), square.y(), square.w(), square.h(), opacity);
         huePixels.draw(g, hueBar.x(), hueBar.y(), hueBar.w(), hueBar.h(), opacity);
-        // The square's handle: a ring, dark outside and light inside, so it shows on any colour.
         int hx = square.x() + Math.round(hsv[1] * (square.w() - 1)), hy = square.y() + Math.round((1 - hsv[2]) * (square.h() - 1));
         g.renderOutline(hx - 3, hy - 3, 7, 7, 0xFF000000);
         g.renderOutline(hx - 2, hy - 2, 5, 5, 0xFFFFFFFF);
         int by = hueBar.y() + Math.round(hsv[0] / 360f * (hueBar.h() - 1));
+        if (insetMarker) by = Math.clamp(by, hueBar.y() + 1, hueBar.bottom() - 2);
         g.fill(hueBar.x() - 1, by - 1, hueBar.right() + 1, by + 2, 0xFF000000);
         g.fill(hueBar.x() - 1, by, hueBar.right() + 1, by + 1, 0xFFFFFFFF);
 
@@ -97,7 +92,6 @@ public final class ColourPicker implements AutoCloseable {
         }
     }
 
-    /** Paints again whatever the colour has changed: the square when the hue moved, the sliders when anything did. */
     private void paint() {
         if (squarePixels == null) {
             squarePixels = new Pixels(SQUARE_PX, SQUARE_PX);
@@ -146,7 +140,6 @@ public final class ColourPicker implements AutoCloseable {
         };
     }
 
-    /** The figures shown at the sliders' right ends. */
     private String[] values(ColourFormat format) {
         return switch (format) {
             case OKLCH -> {
@@ -165,7 +158,6 @@ public final class ColourPicker implements AutoCloseable {
         };
     }
 
-    /** Where each slider's handle stands, 0 to 1. */
     private double[] positions(ColourFormat format) {
         return switch (format) {
             case OKLCH -> {
@@ -183,7 +175,6 @@ public final class ColourPicker implements AutoCloseable {
         };
     }
 
-    /** The OKLCH colour a slider gives at a position along it, 0 to 1, with the other two as they are. */
     private static Oklch along(Oklch lch, int slider, double t) {
         return switch (slider) {
             case 0 -> lch.withL(t);
@@ -202,7 +193,6 @@ public final class ColourPicker implements AutoCloseable {
         return hsl;
     }
 
-    /** The colour a slider shows at a position along it, or null where that is outside sRGB. */
     private Color colourAlong(ColourFormat format, int slider, double t) {
         return switch (format) {
             case OKLCH -> {
@@ -217,7 +207,6 @@ public final class ColourPicker implements AutoCloseable {
         };
     }
 
-    /** Moves a slider to a position along it, 0 to 1. */
     private void setSlider(ColourFormat format, int slider, double t) {
         switch (format) {
             case OKLCH -> model.setLch(along(model.lch(), slider, t));
@@ -252,7 +241,6 @@ public final class ColourPicker implements AutoCloseable {
         return true;
     }
 
-    /** Steps the slider under the cursor by a hundredth of its length, or by one for red, green and blue. */
     boolean mouseScrolled(double mx, double my, double v) {
         ColourFormat format = ModSettings.colourFormat;
         double step = format == ColourFormat.RGB ? 1 / 255.0 : 0.01;
@@ -265,7 +253,6 @@ public final class ColourPicker implements AutoCloseable {
         return false;
     }
 
-    /** A slider's bar with a pixel more above and below, so it is easier to take hold of. */
     private static Bounds grown(Bounds s) { return new Bounds(s.x(), s.y() - 1, s.w(), s.h() + 2); }
 
     private void moveTo(double mx, double my) {

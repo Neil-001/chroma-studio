@@ -1,6 +1,5 @@
 package dev.chromastudio.client.ui.tabs;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import dev.chromastudio.client.action.PaletteBlocks;
 import dev.chromastudio.client.ui.Bounds;
 import dev.chromastudio.client.ui.ChromaScreen;
@@ -17,31 +16,29 @@ import dev.chromastudio.core.palette.Palette;
 import dev.chromastudio.core.palette.PaletteEntry;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
-/**
- * What the analysis finds in a palette, in place of its entries: each finding with its severity and, where one
- * colour would mend it, a Fix button that opens Match on that colour.
- */
 final class AnalysePanel {
-    private static final int MIN_ROW_H = 31, LINE_H = 10, STRIP_H = 8;
+    private static final int LINE_H = 10, BAR_H = 8, ICON_BAR_H = 4, SWATCH = 16, ARROW_W = 7, PAD = 3, TIP_H = 16;
+    private static final Set<String> BY_LIGHTNESS = Set.of(Analyzer.NO_DARKS, Analyzer.NO_HIGHLIGHTS, Analyzer.ACCENT_CONTRAST);
 
     private final List<PaletteEntry> entries;
-    private final List<Color> colours = new ArrayList<>();
+    private record Block(PaletteEntry entry, Color colour, int analysed) {}
+    private final List<Block> blocks = new ArrayList<>();
     private final List<Analyzer.Finding> findings;
     private final int unknown;
     private Widgets.ScrollList list;
     private Bounds area;
-    private int fixW;
-    /** Every row is as tall as the longest finding needs, so none is cut short in a language that takes more lines. */
-    private int rowH = MIN_ROW_H;
-    /** The Fix buttons as the last frame drew them, which is where a click finds them. */
-    private record Fix(Bounds button, Analyzer.Finding finding) {}
-    private final List<Fix> fixes = new ArrayList<>();
+    private int fixW, headingW, stripH;
+    private Analyzer.Finding marked;
+    private boolean icons;
+    private int rowH;
+    private final List<Button> fixes = new ArrayList<>();
 
     AnalysePanel(Palette palette) {
         entries = List.copyOf(palette.entries);
@@ -55,12 +52,13 @@ final class AnalysePanel {
                 missing++;
                 continue;
             }
-            colours.add(stats.mean(scale));
+            blocks.add(new Block(e, stats.mean(scale), lch.size()));
             lch.add(stats.mean(scale).oklch());
             badges.add(stats.badge());
         }
         unknown = missing;
         findings = Analyzer.analyse(lch, badges);
+        blocks.sort((a, b) -> Double.compare(a.colour.oklch().l(), b.colour.oklch().l()));
     }
 
     void layout(Widgets widgets, Bounds area, Runnable close) {
@@ -72,70 +70,127 @@ final class AnalysePanel {
             Handoff.exploreHighlight = entries;
             ChromaScreen screen = ChromaScreen.current();
             if (screen != null) screen.select("explore");
-        }).setTooltip(Tooltip.create(Component.translatable("palettes.chromastudio.analyse.explore.tip")));
-        fixW = Widgets.buttonWidth(Component.translatable("palettes.chromastudio.analyse.fix"));
-        int top = area.y() + PanelTab.ROW + STRIP_H + PanelTab.GAP;
-        // Measured at the width a row has beside a scrollbar, which is the narrowest it gets.
+        });
+        headingW = area.w() - backW - exploreW - 2 * PanelTab.GAP;
+        Component fix = Component.translatable("palettes.chromastudio.analyse.fix");
+        fixW = Widgets.buttonWidth(fix);
+        fixes.clear();
+        for (Analyzer.Finding f : findings) {
+            fixes.add(f.suggestedTarget() == null ? null : Button.builder(fix, ignored -> {
+                Handoff.matchTarget = Color.ofOklch(f.suggestedTarget());
+                Handoff.matchFilter = f.suggestedFilter();
+                ChromaScreen screen = ChromaScreen.current();
+                if (screen != null) screen.select("match");
+            }).bounds(0, 0, fixW, Widgets.H).build());
+        }
+        icons = !blocks.isEmpty() && area.w() / blocks.size() >= ToolButton.ICON + 1;
+        stripH = icons ? ToolButton.ICON + 1 + ICON_BAR_H : BAR_H;
+        int top = area.y() + PanelTab.ROW + stripH + PanelTab.GAP;
         int lines = 1, w = area.w() - Widgets.BAR_W - 2;
-        for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size());
-        rowH = Math.max(MIN_ROW_H, lines * LINE_H + 5);
+        for (Analyzer.Finding f : findings) lines = Math.max(lines, wrapped(f, w).size() + suggestion(f, w).size());
+        rowH = PAD + Widgets.H + 2 + lines * LINE_H + PAD + 2;
         list = new Widgets.ScrollList(new Bounds(area.x(), top, area.w(), area.bottom() - top), rowH, findings::size);
     }
 
-    private Bounds fix(int x, int y, int w) { return new Bounds(x + w - fixW - 2, y + (rowH - Widgets.H) / 2, fixW, Widgets.H); }
+    private static List<FormattedCharSequence> wrapped(Analyzer.Finding f, int w) {
+        return PanelTab.font().split(Component.translatable(f.key()), w - 8 - PAD);
+    }
 
-    /** A finding's text in the lines it takes in a row this wide, beside its swatch and Fix button when it has them. */
-    private List<FormattedCharSequence> wrapped(Analyzer.Finding f, int w) {
-        return PanelTab.font().split(Component.translatable(f.key()), w - 10 - (f.suggestedTarget() != null ? fixW + 6 + 14 : 0));
+    private List<FormattedCharSequence> suggestion(Analyzer.Finding f, int w) {
+        Block from = from(f);
+        if (from == null) return List.of();
+        boolean lighter = f.suggestedTarget().l() > from.colour.oklch().l();
+        Component way = Component.translatable(lighter ? "palettes.chromastudio.analyse.lighter" : "palettes.chromastudio.analyse.darker", PaletteBlocks.name(from.entry));
+        return PanelTab.font().split(way, w - 8 - PAD);
+    }
+
+    private Block from(Analyzer.Finding f) {
+        if (!BY_LIGHTNESS.contains(f.key()) || f.blocks().size() != 1) return null;
+        for (Block b : blocks) if (b.analysed == f.blocks().getFirst()) return b;
+        return null;
     }
 
     void draw(GuiGraphics g, int mouseX, int mouseY) {
         Component heading = Component.translatable(unknown > 0 ? "palettes.chromastudio.analyse.heading_unknown" : "palettes.chromastudio.analyse.heading", findings.size(), unknown);
-        g.drawString(PanelTab.font(), heading, area.x(), area.y() + 4, Theme.DIM, false);
-        // The colours the findings are about, darkest first, so a gap or a narrow range shows at a glance.
-        List<Color> sorted = new ArrayList<>(colours);
-        sorted.sort((a, b) -> Double.compare(a.oklch().l(), b.oklch().l()));
-        int stripY = area.y() + PanelTab.ROW;
-        for (int i = 0; i < sorted.size(); i++) {
-            int x0 = area.x() + area.w() * i / sorted.size(), x1 = area.x() + area.w() * (i + 1) / sorted.size();
-            g.fill(x0, stripY, x1, stripY + STRIP_H, 0xFF000000 | sorted.get(i).rgb());
+        String fitted = MatchTab.ellipsis(PanelTab.font(), heading.getString(), headingW);
+        g.drawString(PanelTab.font(), fitted, area.x(), area.y() + 4, Theme.TEXT, false);
+        if (!fitted.equals(heading.getString()) && mouseX >= area.x() && mouseX < area.x() + headingW && mouseY >= area.y() && mouseY < area.y() + Widgets.H) {
+            g.setTooltipForNextFrame(PanelTab.font(), heading, mouseX, mouseY);
         }
-        fixes.clear();
+        for (Button button : fixes) if (button != null) button.setPosition(-fixW, -Widgets.H);
         g.fill(list.area.x(), list.area.y(), list.area.right(), list.area.bottom(), Theme.WELL);
-        if (findings.isEmpty()) {
-            Widgets.centred(g, Component.translatable("palettes.chromastudio.analyse.none"), area.x() + area.w() / 2, list.area.y() + 12, Theme.GOOD);
-            return;
-        }
-        list.render(g, mouseX, mouseY, (gg, i, x, y, w, h, hovered) -> {
+        marked = null;
+        if (findings.isEmpty()) Widgets.centred(g, Component.translatable("palettes.chromastudio.analyse.none"), area.x() + area.w() / 2, list.area.y() + 12, Theme.GOOD);
+        else list.render(g, mouseX, mouseY, (gg, i, x, y, w, h, hovered) -> {
             Analyzer.Finding f = findings.get(i);
-            if (hovered) gg.fill(x, y, x + w, y + h - 1, Theme.HOVER);
-            boolean warning = f.severity() == Analyzer.Severity.WARNING;
-            gg.fill(x + 2, y + 3, x + 5, y + h - 4, warning ? Theme.FAIR : Theme.INFO);
+            if (hovered) marked = f;
+            gg.fill(x, y, x + w, y + h - 2, hovered ? Theme.HOVER : Theme.PANEL);
+            gg.fill(x, y, x + 3, y + h - 2, f.severity() == Analyzer.Severity.WARNING ? Theme.FAIR : Theme.INFO);
+            boolean pointing = list.area.contains(mouseX, mouseY);
+            int mx = pointing ? mouseX : -1, my = pointing ? mouseY : -1;
+            int tipY = y + h + TIP_H <= gg.guiHeight() ? y + h + 12 : y - 4, rowY = y + PAD, right = x + w - PAD;
+            Block from = from(f);
+            if (f.suggestedTarget() != null) {
+                Button button = fixes.get(i);
+                button.setPosition(right - fixW, rowY);
+                button.render(gg, mx, my, 0);
+                if (button.isHovered()) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, tipY);
+                Color target = Color.ofOklch(f.suggestedTarget());
+                int sx = button.getX() - 4 - SWATCH;
+                gg.fill(sx - 1, rowY - 1, sx + SWATCH + 1, rowY + SWATCH + 1, Theme.SOFT);
+                gg.fill(sx, rowY, sx + SWATCH, rowY + SWATCH, 0xFF000000 | target.rgb());
+                if (inside(mx, my, sx, rowY, SWATCH)) {
+                    gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.target", target.hex()), mouseX, tipY);
+                }
+                right = sx - 4;
+                if (from != null) {
+                    int ax = right - ARROW_W, cy = rowY + Widgets.H / 2;
+                    gg.fill(ax, cy, ax + ARROW_W - 1, cy + 1, Theme.DIM);
+                    gg.fill(ax + ARROW_W - 3, cy - 2, ax + ARROW_W - 2, cy + 3, Theme.DIM);
+                    gg.fill(ax + ARROW_W - 2, cy - 1, ax + ARROW_W - 1, cy + 2, Theme.DIM);
+                    int fx = ax - 3 - ToolButton.ICON;
+                    Widgets.blockIcon(gg, PaletteBlocks.icon(from.entry), fx, rowY);
+                    if (inside(mx, my, fx, rowY, ToolButton.ICON)) gg.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(from.entry), mouseX, tipY);
+                    right = fx - 4;
+                }
+            }
+            String title = MatchTab.ellipsis(PanelTab.font(), Component.translatable(f.key() + ".title").getString(), right - x - 8);
+            gg.drawString(PanelTab.font(), title, x + 8, rowY + 4, Theme.STRONG, false);
             List<FormattedCharSequence> lines = wrapped(f, w);
-            int lineY = y + (rowH - 1 - lines.size() * LINE_H) / 2 + 1;
-            for (int k = 0; k < lines.size(); k++) gg.drawString(PanelTab.font(), lines.get(k), x + 8, lineY + k * LINE_H, Theme.TEXT, false);
-            if (f.suggestedTarget() == null) return;
-            Bounds b = fix(x, y, w);
-            fixes.add(new Fix(b, f));
-            Widgets.swatch(gg, b.x() - 14, b.y() + 2, 12, 12, Color.ofOklch(f.suggestedTarget()).rgb());
-            boolean over = b.contains(mouseX, mouseY);
-            gg.fill(b.x(), b.y(), b.right(), b.bottom(), over ? Theme.CONTROL_HOVER : Theme.CONTROL);
-            Widgets.centred(gg, Component.translatable("palettes.chromastudio.analyse.fix"), b.x() + b.w() / 2, b.y() + 4, Theme.TEXT);
-            if (over) gg.setTooltipForNextFrame(PanelTab.font(), Component.translatable("palettes.chromastudio.analyse.fix.tip"), mouseX, mouseY);
+            for (int k = 0; k < lines.size(); k++) gg.drawString(PanelTab.font(), lines.get(k), x + 8, rowY + Widgets.H + 2 + k * LINE_H, Theme.SOFT, false);
+            List<FormattedCharSequence> way = suggestion(f, w);
+            for (int k = 0; k < way.size(); k++) gg.drawString(PanelTab.font(), way.get(k), x + 8, rowY + Widgets.H + 2 + (lines.size() + k) * LINE_H, Theme.HIGHLIGHT, false);
         });
+        drawStrip(g, mouseX, mouseY);
+    }
+
+    private static boolean inside(int mouseX, int mouseY, int x, int y, int size) {
+        return mouseX >= x - 1 && mouseX < x + size + 1 && mouseY >= y - 1 && mouseY < y + size + 1;
+    }
+
+    private void drawStrip(GuiGraphics g, int mouseX, int mouseY) {
+        int stripY = area.y() + PanelTab.ROW, barY = stripY + stripH - (icons ? ICON_BAR_H : BAR_H);
+        for (int i = 0; i < blocks.size(); i++) {
+            Block b = blocks.get(i);
+            int x0 = area.x() + area.w() * i / blocks.size(), x1 = area.x() + area.w() * (i + 1) / blocks.size();
+            int gap = x1 - x0 > 3 && i < blocks.size() - 1 ? 1 : 0;
+            if (icons) Widgets.blockIcon(g, PaletteBlocks.icon(b.entry), (x0 + x1 - ToolButton.ICON) / 2, stripY);
+            g.fill(x0, barY, x1 - gap, stripY + stripH, 0xFF000000 | b.colour.rgb());
+            if (marked != null && !marked.blocks().isEmpty()) {
+                if (marked.blocks().contains(b.analysed)) g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 2, Theme.STRONG);
+                else g.fill(x0, stripY, x1, stripY + stripH, Theme.sink(0x80));
+            }
+            if (mouseX >= x0 && mouseX < x1 && mouseY >= stripY && mouseY < stripY + stripH) {
+                g.fill(x0, stripY + stripH, x1 - gap, stripY + stripH + 1, Theme.STRONG);
+                g.setTooltipForNextFrame(PanelTab.font(), PaletteBlocks.name(b.entry), mouseX, mouseY);
+            }
+        }
     }
 
     boolean clicked(MouseButtonEvent e) {
         if (list.mouseClicked(e)) return true;
-        if (e.button() != InputConstants.MOUSE_BUTTON_LEFT || !list.area.contains(e.x(), e.y())) return false;
-        for (Fix fix : fixes) {
-            if (!fix.button.contains(e.x(), e.y())) continue;
-            Handoff.matchTarget = Color.ofOklch(fix.finding.suggestedTarget());
-            Handoff.matchFilter = fix.finding.suggestedFilter();
-            ChromaScreen screen = ChromaScreen.current();
-            if (screen != null) screen.select("match");
-            return true;
-        }
+        if (!list.area.contains(e.x(), e.y())) return false;
+        for (Button button : fixes) if (button != null && button.mouseClicked(e, false)) return true;
         return false;
     }
 

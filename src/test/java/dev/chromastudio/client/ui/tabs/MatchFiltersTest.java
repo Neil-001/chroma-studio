@@ -40,7 +40,6 @@ class MatchFiltersTest {
         assertEquals(Tri.EXCLUDE, f.creativeOnly, "survival blocks only means leaving the creative-only ones out");
     }
 
-    /** The settings screen's Reset has to reach a filter that started from the setting, or the tab goes on showing technical blocks. */
     @Test
     void aFilterFollowsItsSettingWhenThatIsChangedOrReset() {
         ModSettings.technicalBlocks = true;
@@ -53,7 +52,6 @@ class MatchFiltersTest {
         assertFalse(f.technical, "the reset reaches the filter");
         assertEquals(0, f.extras());
 
-        // A filter whose setting didn't move keeps what the player made it.
         f.solid = true;
         f.technical = true;
         ModSettings.filterFullCube = true;
@@ -65,7 +63,6 @@ class MatchFiltersTest {
         assertTrue(f.solid && f.technical);
     }
 
-    /** What the Match tab does before it builds its controls on the way back from the settings screen. */
     @Test
     void theMatchStateBringsItsFiltersUpToDate() {
         MatchState.resetFilters();
@@ -122,7 +119,6 @@ class MatchFiltersTest {
         assertEquals(12, f.extras(), "ten filters behind More and two mods, each counted once");
     }
 
-    /** The Gradient tab solves again when this changes, and counts the filters its own row doesn't show. */
     @Test
     void anyFilterChangesTheStateAndTheOnesBesideTheKindAreCounted() {
         MatchFilters f = new MatchFilters();
@@ -142,7 +138,6 @@ class MatchFiltersTest {
         assertEquals(f.extras() + 3, f.besidesKind(), "the kind doesn't count: the tab shows it");
     }
 
-    /** One set of filters: what the Gradient tab's kind control and More… write is what the Match tab reads. */
     @Test
     void theTabsShareOneSetOfFilters() {
         MatchState.resetFilters();

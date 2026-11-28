@@ -8,9 +8,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
-/** A palette as JSON, the form of its file and of JSON import and export. */
 public final class PaletteCodec {
-    /** The file format's version. A file without it, or with another, is refused rather than guessed at. */
     public static final int FORMAT = 1;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -37,23 +35,18 @@ public final class PaletteCodec {
         return GSON.toJson(o);
     }
 
-    /**
-     * Reads a palette. A missing or mistyped field gets its default and unknown fields are ignored, so a file
-     * edited by hand still loads. An entry with no block is left out, since nothing can stand in for it.
-     */
     public static Palette fromJson(String json) {
         JsonElement root;
         try {
             root = JsonParser.parseString(json == null ? "" : json);
         } catch (JsonParseException e) {
-            throw new IllegalArgumentException("This isn't valid JSON", e);
+            throw new UnreadablePalette(UnreadablePalette.Reason.NOT_JSON, e);
         }
-        if (!root.isJsonObject()) throw new IllegalArgumentException("This isn't a palette");
+        if (!root.isJsonObject()) throw new UnreadablePalette(UnreadablePalette.Reason.NOT_PALETTE);
         JsonObject o = root.getAsJsonObject();
-        if (!o.has("format")) throw new IllegalArgumentException("This palette has no format number");
-        if (!isInt(o.get("format"), FORMAT)) {
-            throw new IllegalArgumentException("This palette has format " + o.get("format") + ", and only format " + FORMAT + " can be read");
-        }
+        JsonElement format = o.get("format");
+        if (format == null || !format.isJsonPrimitive() || !format.getAsJsonPrimitive().isNumber()) throw new UnreadablePalette(UnreadablePalette.Reason.NO_FORMAT);
+        if (format.getAsDouble() != FORMAT) throw new UnreadablePalette(UnreadablePalette.Reason.OTHER_FORMAT, format.getAsString(), String.valueOf(FORMAT));
 
         Palette p = new Palette(string(o.get("name"), ""));
         p.notes = string(o.get("notes"), "");
@@ -72,11 +65,6 @@ public final class PaletteCodec {
             }
         }
         return p;
-    }
-
-    private static boolean isInt(JsonElement e, int value) {
-        if (e == null || !e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) return false;
-        return e.getAsDouble() == value;
     }
 
     private static String string(JsonElement e, String fallback) {

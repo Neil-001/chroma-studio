@@ -6,5 +6,5 @@ run/
 .idea/
 *.iml
 .vscode/
-# Minecraft writes an empty log here when a test loads its blocks
 fabric/logs/
+__pycache__/

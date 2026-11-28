@@ -20,11 +20,9 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-/** The textures' frames on disk, so a later start doesn't read every image again. */
 final class TextureCache {
     private TextureCache() {}
 
-    // Raise this when the frames are worked out differently, so old files stop being read.
     private static final int FORMAT = 2;
     private static final int MAGIC = 0x43485258;
     private static final String PREFIX = "index-", SUFFIX = ".bin";
@@ -34,10 +32,6 @@ final class TextureCache {
         return ChromaStudioClient.platform.configDir().resolve("chromastudio").resolve("cache");
     }
 
-    /**
-     * The file for one set of resource packs and mods. The packs count in their order, as a later one overrides an
-     * earlier one. A pack changed in place keeps its file: Refresh reads the images again.
-     */
     static Path file(Path folder, Collection<String> packs, Collection<String> mods, IndexOptions options) {
         try {
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
@@ -50,7 +44,6 @@ final class TextureCache {
         }
     }
 
-    /** The frames in a file by sprite name. Empty when the file is missing or isn't one of ours. */
     static Map<String, Textures.Frame> load(Path file) {
         Map<String, Textures.Frame> frames = new HashMap<>();
         if (!Files.isRegularFile(file)) return frames;
@@ -75,7 +68,6 @@ final class TextureCache {
         return frames;
     }
 
-    /** Writes the file atomically. */
     static void save(Path file, Map<String, Textures.Frame> frames) {
         try {
             Files.createDirectories(file.getParent());
@@ -103,7 +95,6 @@ final class TextureCache {
         }
     }
 
-    /** Deletes the files for other sets of packs and mods: only the current one is ever read. */
     static void prune(Path file) {
         if (!Files.isDirectory(file.getParent())) return;
         try (DirectoryStream<Path> others = Files.newDirectoryStream(file.getParent(), PREFIX + "*" + SUFFIX)) {
