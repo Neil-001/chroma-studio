@@ -16,21 +16,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.DyedItemColor;
 
-/** Hex to dye: gives a dyeable item, such as leather armour, in exactly the target's colour. */
 public final class Dye {
     private Dye() {}
 
-    /**
-     * The tag the game lists dyeable items in on this version, which newer versions dropped for {@code crafting_dye}
-     * recipes a client isn't sent. A mod or data pack that adds to it is heard.
-     */
     private static final TagKey<Item> DYEABLE = TagKey.create(Registries.ITEM, Identifier.withDefaultNamespace("dyeable"));
 
-    /** The targets of the game's own dye recipes. */
     private static final List<String> VANILLA = List.of("leather_helmet", "leather_chestplate", "leather_leggings", "leather_boots",
             "leather_horse_armor", "wolf_armor");
 
-    /** Every item known to be dyeable, each already in this colour: the game's own, then any the tag adds. */
     public static List<ItemStack> items(int rgb) {
         Set<Item> items = new LinkedHashSet<>();
         for (String path : VANILLA) BuiltInRegistries.ITEM.getOptional(Identifier.withDefaultNamespace(path)).ifPresent(items::add);
@@ -46,6 +39,5 @@ public final class Dye {
         return stack;
     }
 
-    /** Gives one dyed item. Returns the reason when it can't, as {@link Give#stack} does. */
     public static Optional<Component> give(ItemStack dyed) { return Give.stack(dyed, -1); }
 }

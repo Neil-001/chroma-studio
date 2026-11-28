@@ -11,10 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import net.minecraft.client.gui.GuiGraphics;
 
-/**
- * A face's texture as it looks at a scale, drawn as a small picture. Each is painted once and kept, by entry, face,
- * scale and tint, until enough newer ones have come along or the index is built again.
- */
 final class Thumbnails {
     private Thumbnails() {}
 
@@ -22,7 +18,6 @@ final class Thumbnails {
 
     private record Key(Entry entry, Face face, Scale scale, int tint) {}
 
-    // In order of last use, so the one dropped is the one longest unseen.
     private static final Map<Key, Pixels> CACHE = new LinkedHashMap<>(64, 0.75f, true);
     private static int builtFor = -1;
 
@@ -37,8 +32,6 @@ final class Thumbnails {
         if (pixels == null) {
             pixels = new Pixels(scale.texels, scale.texels);
             int[] argb = entry.face(face, tint).pixels(scale);
-            // Shown solid wherever there is anything to see: glass drawn at its own alpha over the dark list would
-            // look far darker than the colour it is matched by.
             for (int i = 0; i < argb.length; i++) argb[i] = argb[i] >>> 24 < TextureStats.ALPHA_CUTOFF ? 0 : argb[i] | 0xFF000000;
             pixels.set(argb);
             CACHE.put(key, pixels);

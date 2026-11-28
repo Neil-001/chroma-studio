@@ -2,14 +2,16 @@ package dev.chromastudio.core.color;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
-/** A texture or target summed up as at most eight colours, each with the share of the area it covers. The shares sum to 1. */
 public final class Distribution {
     public static final int MAX_ENTRIES = 8;
-    // What ofPixels asks k-means for. A block face at any scale rarely holds more distinct colour groups.
     private static final int PIXEL_CLUSTERS = 4;
-    // Shares below this are rounding left over from the transport, not mass still to move.
-    private static final double EMPTY = 1e-12;
+    private static final double OPTIMAL_SLACK = 1e-9;
+
+    private static volatile Consumer<IllegalStateException> unsolved = e -> {
+        throw e;
+    };
 
     private final Color[] colours;
     private final double[] weights;
@@ -23,7 +25,6 @@ public final class Distribution {
         return new Distribution(new Color[] {c}, new double[] {1});
     }
 
-    /** One to eight colours with weights that are not negative and not all zero. The weights are scaled to sum to 1. */
     public static Distribution of(List<Color> colours, List<Double> weights) {
         int n = colours.size();
         if (n != weights.size()) throw new IllegalArgumentException("Each colour needs one weight");
@@ -36,23 +37,16 @@ public final class Distribution {
             largest = Math.max(largest, w[i]);
         }
         if (largest <= 0) throw new IllegalArgumentException("The weights are all zero");
-        // Dividing by the largest first keeps the sum of very large weights from overflowing.
         double total = 0;
         for (int i = 0; i < n; i++) total += w[i] /= largest;
         for (int i = 0; i < n; i++) w[i] /= total;
         return new Distribution(colours.toArray(new Color[0]), w);
     }
 
-    /**
-     * The dominant colours of some pixels: k-means in OKLab with up to four clusters, with clusters less than a
-     * just-noticeable step apart merged. Pixels with alpha under {@code alphaCutoff} are left out and the rest
-     * count by their alpha. With nothing opaque enough the result is black alone, so check coverage first.
-     */
     public static Distribution ofPixels(int[] argb, int alphaCutoff) {
         return ofClusters(Kmeans.clusters(argb, PIXEL_CLUSTERS, alphaCutoff));
     }
 
-    /** As {@link #ofPixels}, with each pixel counting by its weight in place of its alpha. */
     static Distribution ofPixels(int[] argb, double[] weights) {
         return ofClusters(Kmeans.clusters(argb, weights, PIXEL_CLUSTERS));
     }
@@ -105,7 +99,6 @@ public final class Distribution {
         return List.copyOf(out);
     }
 
-    /** The colour the whole blends to from far away: the weighted mean in linear light. */
     public Color mean() {
         double[] sum = new double[3];
         for (int i = 0; i < colours.length; i++) {
@@ -116,73 +109,93 @@ public final class Distribution {
         return Color.ofRgb(Color.pack(sum));
     }
 
-    /**
-     * The earth mover's distance to another distribution: the least total of share moved times distance, to turn
-     * one into the other. Against a single colour that is the weighted mean distance from it.
-     */
     public double emd(Distribution other, Metric metric) {
         double[][] cost = new double[colours.length][other.colours.length];
         for (int i = 0; i < colours.length; i++) {
             for (int j = 0; j < other.colours.length; j++) cost[i][j] = metric.distance(colours[i], other.colours[j]);
         }
-        return transport(weights, other.weights, cost);
+        try {
+            return transport(weights, other.weights, cost);
+        } catch (IllegalStateException e) {
+            unsolved.accept(e);
+            double bound = 0;
+            for (int i = 0; i < colours.length; i++) {
+                for (int j = 0; j < other.colours.length; j++) bound += weights[i] * other.weights[j] * cost[i][j];
+            }
+            return bound;
+        }
     }
 
-    /** Each colour multiplied by the tint's channels over 255, as the game tints a texture. */
+    public static void whenUnsolved(Consumer<IllegalStateException> handler) { unsolved = handler; }
+
     public Distribution tinted(int rgbMultiplier) {
         Color[] out = new Color[colours.length];
         for (int i = 0; i < out.length; i++) out[i] = colours[i].tinted(rgbMultiplier);
         return new Distribution(out, weights);
     }
 
-    /**
-     * The cheapest way to move {@code supply} onto {@code demand}, which must sum to the same, at {@code cost[i][j]}
-     * a unit from i to j. It sends the mass a path at a time, each time down the cheapest path left, letting a
-     * later path undo part of an earlier one. That gives the exact optimum.
-     */
     static double transport(double[] supply, double[] demand, double[][] cost) {
         int n = supply.length, m = demand.length;
         double[] left = supply.clone(), wanted = demand.clone();
         double[][] flow = new double[n][m];
-        // More than enough paths for eight by eight; a guard against rounding keeping the loop alive.
-        for (int path = 0; path < 64 * (n + m); path++) {
-            // Bellman-Ford from every source with mass left. Sources are nodes 0 to n-1, sinks n to n+m-1.
-            double[] dist = new double[n + m];
-            int[] from = new int[n + m];
-            boolean any = false;
+        double[] potential = new double[n + m];
+        double[] dist = new double[n + m];
+        int[] from = new int[n + m];
+        boolean[] settled = new boolean[n + m];
+        double sinkPotential = 0;
+        int paths = 0, mostPaths = (n + m) * n * m;
+        while (true) {
+            double highest = Double.NEGATIVE_INFINITY;
             for (int i = 0; i < n; i++) {
-                dist[i] = left[i] > EMPTY ? 0 : Double.POSITIVE_INFINITY;
-                any |= left[i] > EMPTY;
-                from[i] = -1;
+                if (left[i] > 0) highest = Math.max(highest, potential[i]);
             }
-            if (!any) break;
-            for (int j = 0; j < m; j++) dist[n + j] = Double.POSITIVE_INFINITY;
-            for (int round = 0; round < n + m; round++) {
-                boolean changed = false;
-                for (int i = 0; i < n; i++) {
+            if (highest == Double.NEGATIVE_INFINITY) break;
+            for (int v = 0; v < n + m; v++) {
+                dist[v] = v < n && left[v] > 0 ? highest - potential[v] : Double.POSITIVE_INFINITY;
+                from[v] = -1;
+                settled[v] = false;
+            }
+            int end = -1;
+            double reach = Double.POSITIVE_INFINITY;
+            while (true) {
+                int u = -1;
+                for (int v = 0; v < n + m; v++) {
+                    if (!settled[v] && dist[v] < reach && (u < 0 || dist[v] < dist[u])) u = v;
+                }
+                if (u < 0) break;
+                settled[u] = true;
+                if (u >= n && wanted[u - n] > 0) {
+                    double toSink = dist[u] + Math.max(0, potential[u] - sinkPotential);
+                    if (toSink < reach) {
+                        reach = toSink;
+                        end = u;
+                    }
+                }
+                if (u < n) {
                     for (int j = 0; j < m; j++) {
-                        if (dist[i] + cost[i][j] < dist[n + j] - EMPTY) {
-                            dist[n + j] = dist[i] + cost[i][j];
-                            from[n + j] = i;
-                            changed = true;
+                        int v = n + j;
+                        double through = dist[u] + Math.max(0, cost[u][j] + potential[u] - potential[v]);
+                        if (!settled[v] && through < dist[v]) {
+                            dist[v] = through;
+                            from[v] = u;
                         }
-                        // Going back along a used cell takes its flow away again and refunds the cost.
-                        if (flow[i][j] > EMPTY && dist[n + j] - cost[i][j] < dist[i] - EMPTY) {
-                            dist[i] = dist[n + j] - cost[i][j];
-                            from[i] = n + j;
-                            changed = true;
+                    }
+                } else {
+                    for (int i = 0; i < n; i++) {
+                        double through = dist[u] + Math.max(0, potential[u] - cost[i][u - n] - potential[i]);
+                        if (flow[i][u - n] > 0 && !settled[i] && through < dist[i]) {
+                            dist[i] = through;
+                            from[i] = u;
                         }
                     }
                 }
-                if (!changed) break;
             }
-            int end = -1;
-            for (int j = 0; j < m; j++) {
-                if (wanted[j] > EMPTY && (end < 0 || dist[n + j] < dist[end])) end = n + j;
-            }
-            if (end < 0 || Double.isInfinite(dist[end])) break;
+            if (end < 0) break;
+            if (++paths > mostPaths) throw new IllegalStateException("The transport plan took more than " + mostPaths + " paths");
 
-            // The most the path can carry: what its source has, what its sink wants, and every flow it undoes.
+            for (int v = 0; v < n + m; v++) potential[v] += Math.min(dist[v], reach);
+            sinkPotential += reach;
+
             double amount = wanted[end - n];
             int node = end;
             while (from[node] >= 0) {
@@ -201,10 +214,41 @@ public final class Distribution {
                 node = prev;
             }
         }
+        checkOptimal(supply, demand, left, wanted, flow, cost, potential);
         double total = 0;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) total += flow[i][j] * cost[i][j];
         }
         return total;
+    }
+
+    private static void checkOptimal(double[] supply, double[] demand, double[] left, double[] wanted, double[][] flow, double[][] cost, double[] potential) {
+        int n = supply.length, m = demand.length;
+        double total = 0;
+        for (double s : supply) total += s;
+        double massTolerance = total * OPTIMAL_SLACK;
+        for (int i = 0; i < n; i++) {
+            double sent = left[i];
+            for (int j = 0; j < m; j++) sent += flow[i][j];
+            if (Math.abs(sent - supply[i]) > massTolerance) throw new IllegalStateException("The transport plan loses weight from supply " + i);
+        }
+        for (int j = 0; j < m; j++) {
+            double got = wanted[j];
+            for (int i = 0; i < n; i++) got += flow[i][j];
+            if (Math.abs(got - demand[j]) > massTolerance) throw new IllegalStateException("The transport plan loses weight at demand " + j);
+        }
+        double scale = 1;
+        for (double[] row : cost) {
+            for (double c : row) scale = Math.max(scale, Math.abs(c));
+        }
+        double tolerance = scale * OPTIMAL_SLACK;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                double reduced = cost[i][j] + potential[i] - potential[n + j];
+                if (reduced < -tolerance || flow[i][j] > 0 && reduced > tolerance) {
+                    throw new IllegalStateException("The transport plan is not optimal: cell " + i + ", " + j + " has reduced cost " + reduced);
+                }
+            }
+        }
     }
 }

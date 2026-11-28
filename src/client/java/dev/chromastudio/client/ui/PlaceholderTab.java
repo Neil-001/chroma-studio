@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.ARGB;
 
-/** Stands in for a tab that hasn't been written yet: it draws its title in the middle. */
 final class PlaceholderTab extends Tab {
     PlaceholderTab(String id) { super(id); }
 

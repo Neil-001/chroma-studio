@@ -12,10 +12,8 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
-/** A small panel of controls over a tab, with a title and a close button. A click outside it closes it. */
 abstract class Dialog {
     static final int TITLE_H = 13, STATUS_LINES = 2;
-    /** The room the status lines take at the bottom of a dialog. */
     static final int STATUS_H = STATUS_LINES * 9 + 2;
 
     protected final Widgets widgets = new Widgets();
@@ -23,7 +21,6 @@ abstract class Dialog {
     private final int wantW, wantH;
     protected PanelTab tab;
     protected Bounds box;
-    /** A line under the controls saying what happened, and its colour. */
     protected Component status;
     protected int statusColour = Theme.TEXT;
 
@@ -38,25 +35,31 @@ abstract class Dialog {
         layout(content);
     }
 
-    /** Centres the dialog in the tab, no bigger than the tab has room for, and lays its controls out. */
     final void layout(Bounds content) {
-        int w = Math.min(wantW, content.w() - 8), h = Math.min(wantH, content.h() - 8);
+        int w = Math.min(wantW, content.w() - 8), h = Math.min(height(), content.h() - 8);
         box = new Bounds(content.x() + (content.w() - w) / 2, content.y() + (content.h() - h) / 2, w, h);
         widgets.clear();
-        widgets.add(new IconButton(box.right() - 13, box.y() + 2, 10, 10, IconButton.Glyph.CLOSE, Component.translatable("window.chromastudio.close"), this::close));
+        widgets.add(new IconButton(box.right() - 13, box.y() + 2, 10, 10, IconButton.Glyph.CLOSE, Component.translatable("window.chromastudio.close"), this::cancel));
         build(new Bounds(box.x() + 5, box.y() + TITLE_H + 3, box.w() - 10, box.h() - TITLE_H - 7));
     }
 
-    /** Lays the controls out again, keeping the dialog open: after a choice that greys other controls out. */
     protected final void refresh() { layout(tab.bounds); }
 
-    /** Adds the dialog's controls to {@link #widgets}, inside {@code in}. */
+    protected int height() { return wantH; }
+
     protected abstract void build(Bounds in);
 
-    /** Draws what isn't a control. */
     protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {}
 
     protected final void close() { tab.closeDialog(); }
+
+    void cancel() { close(); }
+
+    protected int statusLines() { return STATUS_LINES; }
+
+    protected boolean statusFromTop() { return false; }
+
+    protected Component statusTip() { return status; }
 
     protected final void status(Component text, int colour) {
         status = text;
@@ -72,18 +75,17 @@ abstract class Dialog {
         draw(g, in, mouseX, mouseY);
         widgets.render(g, mouseX, mouseY, delta);
         if (status != null) {
-            // Two lines at the bottom, the second cut short if there's more. Pointing at them shows the whole of it.
             List<FormattedCharSequence> lines = PanelTab.font().split(status, in.w());
-            int shown = Math.min(STATUS_LINES, lines.size()), top = in.bottom() - shown * 9;
+            int shown = Math.min(statusLines(), lines.size()), top = in.bottom() - (statusFromTop() ? statusLines() : shown) * 9;
             for (int i = 0; i < shown; i++) g.drawString(PanelTab.font(), lines.get(i), in.x(), top + i * 9, statusColour, false);
-            if (lines.size() > shown && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
-                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), status), mouseX, mouseY);
+            if ((lines.size() > shown || statusTip() != status) && mouseY >= top && mouseY < in.bottom() && mouseX >= in.x() && mouseX < in.right())
+                g.setTooltipForNextFrame(PanelTab.font(), Tooltip.splitTooltip(Minecraft.getInstance(), statusTip()), mouseX, mouseY);
         }
     }
 
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
         if (!box.contains(e.x(), e.y())) {
-            close();
+            cancel();
             return true;
         }
         widgets.mouseClicked(e, doubled);
@@ -102,7 +104,6 @@ abstract class Dialog {
         return false;
     }
 
-    /** What Enter does. Returns whether it did anything. */
     protected boolean confirm() { return false; }
 
     void tick() {}

@@ -71,7 +71,6 @@ class WindowTest {
         assertEquals(new Bounds(100, 50, 400, 300), w.frame(SW, SH), "no narrower than the minimum");
         w.release();
 
-        // The top-left corner moves that corner and leaves the opposite one where it is.
         w.grab(Window.Grip.NW, 101, 51, SW, SH);
         w.dragTo(81, 41, SW, SH);
         assertEquals(new Bounds(80, 40, 420, 310), w.frame(SW, SH));

@@ -1,0 +1,2 @@
+- `ThemeTest` allows one noticeable OKLab step between the generated and hand-picked defaults. Its `worst < 5` check establishes that the sweep reaches middle greys, where black and white both give contrast near 4.6.
+- `DialogTextTest` approximates Chinese, Japanese and Korean glyph advances at 9 pixels because the game downloads Unifont separately. Keep Axiom's spellings, including typos, in `AXIOM_NAMES` and exercise the English fallback.

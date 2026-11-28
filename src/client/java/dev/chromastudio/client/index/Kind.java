@@ -27,29 +27,23 @@ import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.WaterloggedTransparentBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** What sort of block an entry is, for the kind filter. */
 public enum Kind {
     FULL, SLAB, STAIRS, WALL, FENCE, FENCE_GATE, PANE, TRAPDOOR, DOOR, SHELF, CARPET, GLASS, LEAVES, PLANT, FLUID, LIGHT, OTHER;
 
-    /** A block class and the kind its blocks have. A null kind sends the class on to the rules after the table. */
     private record Rule(Class<? extends Block> type, Kind kind) {}
 
-    // The first class a block is an instance of decides, so a modded block that extends one of these gets its kind
-    // too. A subclass that should not take its parent's kind goes above the parent.
     private static final List<Rule> BY_CLASS = List.of(
             new Rule(SlabBlock.class, SLAB),
             new Rule(StairBlock.class, STAIRS),
             new Rule(WallBlock.class, WALL),
             new Rule(FenceBlock.class, FENCE),
             new Rule(FenceGateBlock.class, FENCE_GATE),
-            // Glass panes are here too, as stained glass panes extend the bars.
             new Rule(IronBarsBlock.class, PANE),
             new Rule(TrapDoorBlock.class, TRAPDOOR),
             new Rule(DoorBlock.class, DOOR),
             new Rule(ShelfBlock.class, SHELF),
             new Rule(CarpetBlock.class, CARPET),
             new Rule(MossyCarpetBlock.class, CARPET),
-            // Copper grates share glass's class but aren't glass.
             new Rule(WaterloggedTransparentBlock.class, null),
             new Rule(TransparentBlock.class, GLASS),
             new Rule(LeavesBlock.class, LEAVES),
@@ -61,7 +55,6 @@ public enum Kind {
             new Rule(BambooStalkBlock.class, PLANT),
             new Rule(LiquidBlock.class, FLUID));
 
-    /** The kind of a state: by the block's class first, then a light source, then a full cube. */
     public static Kind of(BlockState state) {
         Block block = state.getBlock();
         for (Rule rule : BY_CLASS) {
@@ -73,7 +66,6 @@ public enum Kind {
         return fullCube(state) ? FULL : OTHER;
     }
 
-    // NeoForge deprecates this for a form that takes a world and a position. The index has neither.
     @SuppressWarnings("deprecation")
     static int lightEmission(BlockState state) { return state.getLightEmission(); }
 
@@ -81,7 +73,6 @@ public enum Kind {
         try {
             return state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
         } catch (RuntimeException ignored) {
-            // A modded shape that needs a real world.
             return false;
         }
     }

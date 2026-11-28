@@ -37,7 +37,6 @@ import net.minecraft.server.packs.PackType;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** Fabric's client entrypoint. */
 public class ChromaStudioFabricClient implements ClientModInitializer, ClientPlatform {
     @Override
     public void onInitializeClient() {
@@ -52,21 +51,19 @@ public class ChromaStudioFabricClient implements ClientModInitializer, ClientPla
                 BlockIndex.install(FabricLoader.getInstance().getAllMods().stream()
                         .map(mod -> mod.getMetadata().getId() + " " + mod.getMetadata().getVersion().getFriendlyString()).toList()));
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> BlockIndex.get().worldJoined());
-        // Keeps the game's replies to an operator's hotbar fill out of chat.
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> !HotbarFill.hidesFeedback(message, overlay));
         SpecialGuiElementRegistry.register(context -> new DioramaPip(context.vertexConsumers()));
-        // The capture outline is drawn straight to the game's buffers after the entities, as 1.21.11 has no later hook for lines.
         WorldRenderEvents.AFTER_ENTITIES.register(ctx -> Capture.render(ctx.matrices(), ctx.worldState().cameraRenderState.pos));
     }
 
     @Override public Path configDir() { return FabricLoader.getInstance().getConfigDir(); }
     @Override public Path gameDir() { return FabricLoader.getInstance().getGameDir(); }
     @Override public boolean isModLoaded(String id) { return FabricLoader.getInstance().isModLoaded(id); }
+    @Override public boolean isFabric() { return true; }
     @Override public void modelParts(BlockStateModel model, BlockState state, RandomSource random, List<BlockModelPart> out) {
         model.collectParts(random, out);
     }
     @Override public TextureAtlasSprite particleIcon(BlockStateModel model, BlockState state) { return model.particleIcon(); }
-    // Fabric API's transitive access wideners open the field.
     @Override public void submitPicture(GuiGraphics g, PictureInPictureRenderState state) { g.guiRenderState.submitPicturesInPictureState(state); }
     @Override public void sendChatCommand(String command) {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
