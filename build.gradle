@@ -1,3 +1,7 @@
+plugins {
+	id 'net.ltgt.errorprone' version '5.2.0' apply false
+}
+
 subprojects {
 	version = rootProject.mod_version
 	group = rootProject.maven_group
@@ -15,6 +19,21 @@ subprojects {
 		java {
 			sourceCompatibility = JavaVersion.VERSION_25
 			targetCompatibility = JavaVersion.VERSION_25
+		}
+	}
+
+	plugins.withId('net.ltgt.errorprone') {
+		dependencies {
+			errorprone "com.google.errorprone:error_prone_core:${rootProject.errorprone_version}"
+		}
+
+		tasks.withType(JavaCompile).configureEach {
+			it.options.errorprone {
+				disable('ArrayRecordComponent', 'AssignmentExpression', 'ComplexBooleanConstant', 'EnumOrdinal',
+						'ExposedPrivateType', 'IdentityHashMapUsage', 'OperatorPrecedence', 'ReferenceEquality',
+						'RefactorSwitch', 'RethrowReflectiveOperationExceptionAsLinkageError', 'SameNameButDifferent',
+						'ShortCircuitBoolean', 'StringSplitter')
+			}
 		}
 	}
 }

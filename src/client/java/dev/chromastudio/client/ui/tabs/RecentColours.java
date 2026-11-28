@@ -9,7 +9,7 @@ public final class RecentColours {
     private final List<Integer> colours = new ArrayList<>();
 
     public void push(int rgb) {
-        colours.remove((Integer) rgb);
+        colours.remove(Integer.valueOf(rgb));
         colours.addFirst(rgb);
         while (colours.size() > KEPT) colours.removeLast();
     }

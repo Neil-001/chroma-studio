@@ -91,6 +91,7 @@ public final class ChromaScreen extends Screen {
     private boolean tabHasMouse;
     private boolean pinning;
 
+    @SuppressWarnings("StaticAssignmentInConstructor")
     private ChromaScreen() {
         super(Component.translatable("screen.chromastudio.title"));
         selected = tab(lastTab) != null ? lastTab : tab(ModSettings.startTab) != null ? ModSettings.startTab : REGISTRY.getFirst().id;
