@@ -60,7 +60,6 @@ class ArrangementTest {
 
     @Test
     void aPatchGridReadsFromTheTopLeft() {
-        // Seven entries make a grid three across and three down, with two patches left empty at the end.
         Arrangement a = Arrangement.of(ones(7), options(Layout.PATCH_GRID, false));
         assertEquals(List.of(9, 9, 1), List.of(a.sizeX(), a.sizeY(), a.sizeZ()));
         for (int y = 0; y < 9; y++)
@@ -132,7 +131,6 @@ class ArrangementTest {
             assertEquals(0, a.at(x, 0, 0));
             assertEquals(3, a.at(x, 39, 0));
         }
-        // The edges between bands are ragged, so some row holds two entries.
         boolean mixed = false;
         for (int y = 0; y < 40 && !mixed; y++)
             for (int x = 1; x < 30 && !mixed; x++) mixed = a.at(x, y, 0) != a.at(0, y, 0);
@@ -179,7 +177,6 @@ class ArrangementTest {
         assertEquals(127, gapped.at(254, 0, 0));
         Arrangement wall = Arrangement.of(ones(300), new LayoutOptions(Layout.WALL, 999, 3, 16, false, 0));
         assertEquals(List.of(256, 256), sizeOf(wall));
-        // Patches 16 across with a gap fit fifteen to a side.
         Arrangement grid = Arrangement.of(ones(300), new LayoutOptions(Layout.PATCH_GRID, 3, 16, 16, true, 0));
         assertEquals(List.of(254, 254), sizeOf(grid));
         assertEquals(225, grid.placed());

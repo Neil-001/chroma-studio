@@ -16,33 +16,42 @@ import dev.chromastudio.core.color.TextureStats;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 
-/** The mod's lines in item tooltips. Each loader calls {@link #append} from its item tooltip event. */
 public final class Tooltips {
     private Tooltips() {}
 
     private static final int GREY = 0xA8A8A8;
+    private static final Set<Block> UNREADABLE = ConcurrentHashMap.newKeySet();
 
-    /** Adds the mod's lines for {@code stack} to {@code lines}, when the tooltip setting says to show them now. */
     public static void append(ItemStack stack, List<Component> lines) {
         if (!wanted() || !(stack.getItem() instanceof BlockItem item)) return;
         BlockIndex index = BlockIndex.get();
         List<Entry> states = index.statesOf(item.getBlock());
         if (states.isEmpty()) return;
+        add(item.getBlock(), () -> lines(states.getFirst()), lines);
+    }
+
+    static boolean add(Block block, Supplier<List<Component>> made, List<Component> lines) {
         try {
-            lines.addAll(lines(states.getFirst()));
+            lines.addAll(made.get());
+            return false;
         } catch (RuntimeException e) {
-            // A tooltip is drawn every frame: a block that can't be read is left alone, not allowed to break them all.
-            ChromaStudioClient.LOGGER.debug("Couldn't add the colour to a tooltip", e);
+            if (!UNREADABLE.add(block)) return false;
+            ChromaStudioClient.LOGGER.warn("Couldn't add the colour to the tooltip of {}", BuiltInRegistries.BLOCK.getKey(block), e);
+            return true;
         }
     }
 
-    /** A block's lines, each behind its setting: the swatch and hex, the kind and texture badge, and how far it is from the target. */
     static List<Component> lines(Entry entry) {
         List<Component> out = new ArrayList<>();
         MatchState.follow();

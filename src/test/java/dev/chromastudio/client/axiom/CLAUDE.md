@@ -1,0 +1,3 @@
+- In `FakeAxiom`, the window and field of view determine swatch scale. Keep `LinkedHashMap` for captured regions because immutable copies probe poorly on clustered position hashes.
+- Use gravel for ground in tests without bound tags. Grass, dirt and sand rely on tags.
+- `ScriptSafetyTest` models the Lua calls from Axiom 6.1.5's bytecode. Its eligibility checks share production code except for `holdsSomething` and `waterlogged`, so agreement alone can miss a shared defect. The test can run scripts on void air, which Axiom's brush skips.
