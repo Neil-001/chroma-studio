@@ -112,7 +112,7 @@ test {
 	useJUnitPlatform()
 	systemProperty 'chroma.timing', System.getProperty('chroma.timing', 'false')
 	def sourceRules = fileTree(rootDir) {
-		include '**/*.java', '**/CLAUDE.md', '**/AGENTS.md'
+		include '**/*.java', '**/CLAUDE.md', '**/AGENTS.md', '**/build.gradle'
 		exclude '**/.git/**', '**/.gradle/**', '**/.idea/**'
 		['', 'fabric/', 'neoforge/'].each { dir -> ['bin', 'build', 'logs', 'out', 'run'].each { exclude "${dir}${it}/**" } }
 	}

@@ -4,15 +4,16 @@ Chroma Studio is a client-only Fabric and NeoForge mod for Minecraft Java 26.3.
 
 ## Build and test
 
-Use JDK 25 and run `./gradlew build` after every change. Keep compiler and IDE warnings at zero. Use `_` for unused lambda and catch parameters.
+Use JDK 25 and run `./gradlew build` after every change. Javac warnings fail the build, and IDE warnings stay at zero. Use `_` for unused lambda and catch parameters.
 
 - Add `-Dchroma.timing=true` to `./gradlew :fabric:test` for timing tests. Run `GameIndexTest` when changing what the index lists or how it reads models. Inspect real models with `/chroma debug <block id>`.
 - To try JEI or REI in a dev client, pass `-Pviewer=jei` or `-Pviewer=rei` and the newer loader API version from `.github/workflows/build.yml`. For a virtual display, unset `WAYLAND_DISPLAY` and set `SDL_VIDEODRIVER=x11`.
+- Leave Gradle's configuration cache off. It freezes the `sourceRuleLinks` test input, so a broken `AGENTS.md` link would pass.
 - Test new core logic. Check the source of reference values before changing them. Verify visual fixes preserve other behaviour, for example by comparing pixels.
 
 ## Boundaries
 
-- Read a package's `CLAUDE.md` before editing it. Record conventions and decisions the code can't explain. Name the class and keep the note to a sentence or two. Pair each file with an `AGENTS.md` symlink. Only the exceptions in `SourceRulesTest` may have source comments.
+- Read a package's `CLAUDE.md` before editing it. Record conventions and decisions the code can't explain. Name the class and keep the note to a sentence or two. Pair each file with an `AGENTS.md` symlink. Only the exceptions in `SourceRulesTest` may have source comments. `SourceRulesTest` also fails a source tree that names a package the rules below keep out of it.
 - Keep `dev.chromastudio.core` independent of Minecraft. Route shared client hooks through `ClientPlatform` and wire them into both loaders. Keep loader imports in their own source trees and mixin configs in the metadata of the loader that needs them. Neither jar may add server entrypoints, payloads or registry entries.
 - Only `dev.chromastudio.api` follows semantic versioning. Changing a signature or its meaning requires a new major version.
 - Reference Mod Menu, Litematica, MaLiLib, JEI and REI only from classes the optional mod loads or after a `ClientPlatform.isModLoaded` check. Isolate optional repositories with `exclusiveContent` so an outage can't break unrelated dependency lookups.
