@@ -51,6 +51,8 @@ public final class HotbarFill {
     private static final List<ItemStack> DROPS = new ArrayList<>();
     private static int dropWait;
     private static Object dropsOn;
+    private static final List<ItemStack> FILL_DROPS = new ArrayList<>();
+    private static List<ItemStack> lastDrops = List.of();
 
     public static void tick() {
         REPLIES.tick();
@@ -108,6 +110,7 @@ public final class HotbarFill {
     }
 
     public static Component fill(List<PaletteEntry> entries, boolean intoAxiom) {
+        FILL_DROPS.clear();
         Optional<Component> why = whyNoFill();
         if (why.isPresent()) return why.get();
         boolean axiom = usesAxiom();
@@ -292,6 +295,7 @@ public final class HotbarFill {
         lastHotbar = -1;
         lastAxiom = List.copyOf(before);
         lastDropped = false;
+        lastDrops = List.copyOf(FILL_DROPS);
         lastOn = Minecraft.getInstance().getConnection();
     }
 
@@ -301,6 +305,7 @@ public final class HotbarFill {
         last = List.copyOf(before);
         lastHotbar = hotbar;
         lastDropped = dropped;
+        lastDrops = List.copyOf(FILL_DROPS);
         lastOn = Minecraft.getInstance().getConnection();
     }
 
@@ -316,7 +321,9 @@ public final class HotbarFill {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player.hasInfiniteMaterials()) {
-            DROPS.add(stack.copy());
+            ItemStack queued = stack.copy();
+            DROPS.add(queued);
+            FILL_DROPS.add(queued);
             dropsOn = mc.getConnection();
             sendDueDrop();
             return Dropped.ON_THE_GROUND;
@@ -376,7 +383,8 @@ public final class HotbarFill {
         }
         boolean wroteAxiom = !lastAxiom.isEmpty();
         last = List.of();
-        DROPS.clear();
+        DROPS.removeIf(queued -> lastDrops.stream().anyMatch(mine -> mine == queued));
+        lastDrops = List.of();
         lastAxiom = List.of();
         lastHotbar = -1;
         lastFailed = false;
