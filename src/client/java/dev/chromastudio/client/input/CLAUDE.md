@@ -1,0 +1,2 @@
+- These records stand in for the input events newer versions of the game hand over. `MouseButtonEvent.of` reads the modifier keys as they are at the call.
+- 1.21.1 doesn't count double clicks, so `MouseButtonEvent.doubled` takes a second press of the same button within 250 ms and 4 GUI pixels as one. Call it once per press. A third press starts over.

@@ -23,11 +23,9 @@ import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 
-/** The tint contexts, and the biomes they can be asked about. */
 public final class Tints {
     private Tints() {}
 
-    // Biome colours can vary with x and z, as a swamp's grass does, so every biome is asked at the same spot.
     private static final BlockPos SPOT = new BlockPos(0, 64, 0);
 
     static final TintContext NONE = (source, state) -> TintContext.NO_TINT;
@@ -53,7 +51,6 @@ public final class Tints {
         };
     }
 
-    /** A source that throws, as a modded one may without a real world, means no tint. */
     private static int colour(TintSource source, BlockState state, BlockAndTintGetter level, BlockPos pos) {
         try {
             int c = source.colorInWorld(state, level, pos);
@@ -63,16 +60,10 @@ public final class Tints {
         }
     }
 
-    /** Every biome the game knows now: the world's when in one, else the vanilla set. */
     public static List<ResourceKey<Biome>> biomes() {
         return registries().lookupOrThrow(Registries.BIOME).listElementIds().toList();
     }
 
-    /**
-     * The tint of an entry's face in every biome, in the order of {@link #biomes()}, each packed 0xRRGGBB or
-     * {@link TintContext#NO_TINT}. Empty when the face has no tinted texture. {@link Face#ANY} takes the first
-     * face that has one.
-     */
     public static List<Integer> tintsAcross(Entry entry, Face face) {
         FaceLayers layers = face == Face.ANY ? entry.firstTintedFace() : entry.layers(face);
         if (layers == null || !layers.tinted()) return List.of();
@@ -84,7 +75,6 @@ public final class Tints {
         return out;
     }
 
-    /** The vanilla registries, for when no world is loaded. Building them takes a moment, so it happens once. */
     private static final class Vanilla {
         static final HolderLookup.Provider LOOKUP = VanillaRegistries.createLookup();
     }
@@ -99,7 +89,6 @@ public final class Tints {
         return Vanilla.LOOKUP;
     }
 
-    /** A world that is one biome everywhere and otherwise empty. Only the tint is ever asked of it; there is no light. */
     private record OneBiome(Biome biome) implements BlockAndTintGetter {
         @Override public int getBlockTint(BlockPos pos, ColorResolver resolver) { return resolver.getColor(biome, pos.getX(), pos.getZ()); }
         @Override public float getShade(Direction direction, boolean shaded) { return 1; }

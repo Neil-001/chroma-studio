@@ -23,7 +23,6 @@ class ThemeTest {
         Theme.sync();
     }
 
-    /** The backgrounds that carry the main text. */
     private static Map<String, Integer> surfaces() {
         Map<String, Integer> m = new LinkedHashMap<>();
         m.put("WINDOW", Theme.WINDOW); m.put("WELL", Theme.WELL); m.put("PANEL", Theme.PANEL); m.put("BAR", Theme.BAR);
@@ -32,7 +31,6 @@ class ThemeTest {
         return m;
     }
 
-    /** The text and marks drawn straight on the window or a panel. */
     private static Map<String, Integer> marks() {
         Map<String, Integer> m = new LinkedHashMap<>();
         m.put("SOFT", Theme.SOFT); m.put("DIM", Theme.DIM); m.put("ACCENT", Theme.ACCENT); m.put("HIGHLIGHT", Theme.HIGHLIGHT);
@@ -68,7 +66,6 @@ class ThemeTest {
         assertEquals(0x60000000, Theme.sink(0x60));
     }
 
-    /** The default's colours are written out, not worked out. Worked out from its base, each lands within a just noticeable step of the written one. */
     @Test
     void workingTheDefaultOutGivesNearlyWhatIsWritten() {
         use(ThemeChoice.DEFAULT);
@@ -94,7 +91,6 @@ class ThemeTest {
         assertTrue(Color.ofRgb(Theme.TEXT & 0xFFFFFF).oklab().l() > 0.9);
     }
 
-    /** The fainter text with each background it is drawn on: a chip's label, plain and under the cursor, and the muted text of rows and the title bar. */
     private static void assertFaintTextReads(String theme) {
         Map<String, Integer> soft = Map.of("WINDOW", Theme.WINDOW, "PANEL", Theme.PANEL, "CHIP", Theme.CHIP, "CONTROL", Theme.CONTROL);
         soft.forEach((name, c) -> assertTrue(Theme.contrast(Theme.SOFT, c) >= Theme.MARK_CONTRAST, theme + " SOFT on " + name + ": " + Theme.contrast(Theme.SOFT, c)));
@@ -113,13 +109,11 @@ class ThemeTest {
                     theme + " " + name + " on the window: " + Theme.contrast(c, Theme.WINDOW)));
             assertFaintTextReads(theme.toString());
             assertTrue(Theme.contrast(Theme.ON_LIT, Theme.LIT_HOVER) >= Theme.MARK_CONTRAST);
-            // Greyed text is meant to be faint, but it still has to show.
             assertTrue(Theme.contrast(Theme.GREYED, Theme.WINDOW) >= 1.8, theme + " greyed text: " + Theme.contrast(Theme.GREYED, Theme.WINDOW));
             assertTrue(Theme.contrast(Theme.BORDER, Theme.WINDOW) >= 1.5, theme + " border: " + Theme.contrast(Theme.BORDER, Theme.WINDOW));
         }
     }
 
-    /** A player's own colour can be anything, and a middling one leaves less room: black and white both manage only 4.6 on the worst grey. */
     @Test
     void anyCustomColourReads() {
         ModSettings.theme = ThemeChoice.CUSTOM;

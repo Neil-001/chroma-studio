@@ -13,19 +13,13 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
-/**
- * The client-side {@code /chroma} command. Each loader registers {@link #build()} with its own client dispatcher; the
- * command's source type differs between them and nothing here reads it.
- */
 public final class ChromaCommand {
     private ChromaCommand() {}
 
-    /** Adds a subcommand, such as {@code capture}, to the root. A literal wins over the colour-or-block argument. */
     public interface Subcommand {
         <S> void attach(LiteralArgumentBuilder<S> root);
     }
 
-    /** Subcommands other tasks add before the player joins a world, which is when the loaders build the command. */
     public static final List<Subcommand> SUBCOMMANDS = new ArrayList<>();
 
     public static <S> LiteralArgumentBuilder<S> build() {
@@ -44,14 +38,8 @@ public final class ChromaCommand {
         }));
     }
 
-    /** Prints a line in the player's own chat. */
     public static void say(Component message) { Minecraft.getInstance().gui.getChat().addMessage(message); }
 
-    /**
-     * What the player asked for: an Integer for a colour, packed 0xRRGGBB; a String for a block, as its full id; or a
-     * Component saying what's wrong. A leading {@code #} always means a colour. Without one, a block's id wins over a
-     * colour, so a block whose name happens to be six hex letters can still be asked for.
-     */
     static Object parse(String text, Predicate<String> blockExists) {
         String s = text.trim().toLowerCase(Locale.ROOT);
         if (s.startsWith("#")) {
@@ -66,7 +54,6 @@ public final class ChromaCommand {
         return Component.translatable("command.chromastudio.unknown_block", text.trim());
     }
 
-    /** Six hex digits, or three as shorthand ({@code f80} is {@code ff8800}). Null for anything else. */
     private static Integer hex(String s) {
         if (!s.matches("[0-9a-f]{6}|[0-9a-f]{3}")) return null;
         if (s.length() == 3) s = "" + s.charAt(0) + s.charAt(0) + s.charAt(1) + s.charAt(1) + s.charAt(2) + s.charAt(2);

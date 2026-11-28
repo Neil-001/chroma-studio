@@ -38,7 +38,6 @@ import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** Fabric's client entrypoint. */
 public class ChromaStudioFabricClient implements ClientModInitializer, ClientPlatform {
     @Override
     public void onInitializeClient() {
@@ -55,15 +54,14 @@ public class ChromaStudioFabricClient implements ClientModInitializer, ClientPla
             @Override public void onResourceManagerReload(ResourceManager manager) { index.onResourceManagerReload(manager); }
         });
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> BlockIndex.get().worldJoined());
-        // Keeps the game's replies to an operator's hotbar fill out of chat.
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> !HotbarFill.hidesFeedback(message, overlay));
-        // The capture outline is drawn straight to the game's buffers after the entities.
         WorldRenderEvents.AFTER_ENTITIES.register(ctx -> Capture.render(ctx.matrixStack(), ctx.camera().getPosition()));
     }
 
     @Override public Path configDir() { return FabricLoader.getInstance().getConfigDir(); }
     @Override public Path gameDir() { return FabricLoader.getInstance().getGameDir(); }
     @Override public boolean isModLoaded(String id) { return FabricLoader.getInstance().isModLoaded(id); }
+    @Override public boolean isFabric() { return true; }
     @Override public List<BakedQuad> quads(BakedModel model, BlockState state, Direction side, RandomSource random) {
         return model.getQuads(state, side, random);
     }

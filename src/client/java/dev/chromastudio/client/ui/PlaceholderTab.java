@@ -4,7 +4,6 @@ import dev.chromastudio.client.ARGB;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
-/** Stands in for a tab that hasn't been written yet: it draws its title in the middle. */
 final class PlaceholderTab extends Tab {
     PlaceholderTab(String id) { super(id); }
 

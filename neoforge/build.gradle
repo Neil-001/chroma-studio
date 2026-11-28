@@ -1,9 +1,9 @@
 plugins {
 	id 'net.neoforged.moddev' version '2.0.148'
+	id 'net.ltgt.errorprone'
 }
 
 repositories {
-	// Forgematica and MaFgLib have no maven of their own; Modrinth serves every project's files as one.
 	exclusiveContent {
 		forRepository {
 			maven {
@@ -22,7 +22,6 @@ repositories {
 		}
 		filter { includeModule 'net.fabricmc', 'fabric-loader' }
 	}
-	// Each of these groups is asked for from its own Maven alone, so another repository's outage can't fail the build.
 	exclusiveContent {
 		forRepository {
 			maven {
@@ -45,6 +44,19 @@ repositories {
 			includeGroup 'dev.architectury'
 		}
 	}
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Pinned'
+				url = rootProject.file('libs')
+				metadataSources { artifact() }
+			}
+		}
+		filter {
+			includeGroup 'com.github.Moulberry'
+			includeGroup 'com.github.moulberry.imgui-java'
+		}
+	}
 }
 
 neoForge {
@@ -62,8 +74,6 @@ neoForge {
 	}
 }
 
-// The shared code, next to this project's own NeoForge entrypoints. NeoForge has no separate client source set,
-// so the client code goes into the same jar.
 sourceSets {
 	main {
 		java.srcDir rootProject.file('src/main/java')
@@ -73,20 +83,14 @@ sourceSets {
 }
 
 dependencies {
-	// Forgematica and MaFgLib, Litematica's and MaLiLib's NeoForge ports, only to compile the bridge against. They keep
-	// Litematica's package and class names and register the id litematica, and carry Mojang's names, which Litematica's
-	// own Fabric jars don't on 1.21.11.
+	compileOnly("com.github.Moulberry:AxiomClientAPI:${project.axiom_api_version}") { transitive = false }
+	compileOnly("com.github.moulberry.imgui-java:imgui-java-binding:${project.axiom_imgui_version}") { transitive = false }
 	compileOnly("maven.modrinth:forgematica:${project.forgematica_version}") { transitive = false }
 	compileOnly("maven.modrinth:mafglib:${project.mafglib_version}") { transitive = false }
-	// The recipe viewers' APIs, only to compile RecipeViewers and JEI's plugin class against. JEI's is the loader-neutral jar.
 	compileOnly("mezz.jei:jei-${project.minecraft_version}-common-api:${project.jei_version}") { transitive = false }
 	compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:${project.rei_version}") { transitive = false }
-	// REI's API names Architectury's types in the methods used.
 	compileOnly("dev.architectury:architectury-neoforge:${project.architectury_version}") { transitive = false }
-	// REI's classes carry Fabric's @Environment annotation on every loader, and the compiler warns when it can't
-	// read it. Nothing here may import from this jar: it is on the path for that annotation alone.
 	compileOnly("net.fabricmc:fabric-loader:${project.loader_version}") { transitive = false }
-	// To try the recipe key, run the dev client with one of them: ./gradlew :neoforge:runClient -Pviewer=jei (or rei)
 	if (findProperty('viewer') == 'jei') {
 		runtimeOnly("mezz.jei:jei-${project.minecraft_version}-neoforge:${project.jei_version}") { transitive = false }
 	}

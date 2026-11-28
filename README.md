@@ -1,14 +1,14 @@
 <div align="center">
 <h1>Chroma Studio</h1>
 
-![The Chroma Studio window over a village, listing the blocks closest to a teal colour.](listing/gallery/01-match.jpg)
+![The Chroma Studio window over a cherry grove, listing the blocks closest to a blossom pink.](listing/gallery/01-match.jpg)
 <a href="https://modrinth.com/mod/chroma-studio"><img alt="Available on Modrinth" height="48" src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/modrinth/cozy.svg"></a>
 <a href="https://www.curseforge.com/minecraft/mc-mods/chroma-studio"><img alt="Available on Modrinth" height="48" src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/curseforge/cozy.svg"></a>
 </div>
 
-A client-only Fabric and NeoForge mod for Minecraft Java 1.21 and 1.21.1. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. The [wiki](https://github.com/Neil-001/chroma-studio/wiki) covers matching, palettes, gradients, exports and settings.
+A client-only Fabric and NeoForge mod for Minecraft Java 1.21 and 1.21.1. It finds the blocks closest to a colour, builds palettes and gradients from them, and exports them as schematics. With [Axiom](https://modrinth.com/mod/axiom) on Fabric, it also adds tools to Axiom's editor. The [wiki](https://github.com/Neil-001/chroma-studio/wiki) covers matching, palettes, gradients, exports, Axiom and settings.
 
-Building requires JDK 25.
+Building requires JDK 21 or newer.
 
 ```
 ./gradlew build                 # builds both jars and runs the tests
@@ -20,6 +20,7 @@ On Windows, use `gradlew.bat`. The jars end up in `fabric/build/libs/` and `neof
 
 - The shared code is in `src/`. `fabric/` and `neoforge/` each hold only that loader's entrypoints and metadata.
 - `dev.chromastudio.core` holds the colour maths, palettes, gradients and schematic layouts. It has no Minecraft imports, so its tests run without the game. Keep it that way.
+- `dev.chromastudio.client.axiom` holds everything that refers to Axiom, which is optional. The build compiles against Axiom's client API and ImGui binding, pinned in `libs/`, and never against Axiom itself.
 - `dev.chromastudio.api` is the API for other mods, and the only package that follows semantic versioning.
 - Run `./gradlew build` before pushing.
 

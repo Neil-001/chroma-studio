@@ -9,7 +9,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 
-/** A small image the mod paints itself and draws stretched: a picker's gradient, or a texture thumbnail. Close it when done. */
 final class Pixels implements AutoCloseable {
     private static int next;
 
@@ -25,16 +24,13 @@ final class Pixels implements AutoCloseable {
         Minecraft.getInstance().getTextureManager().register(id, texture);
     }
 
-    /** Paints the whole image from ARGB pixels, in rows from the top. */
     void set(int[] argb) {
         NativeImage image = texture.getPixels();
         for (int i = 0; i < argb.length; i++) Abgr.set(image, i % width, i / width, argb[i]);
         texture.upload();
     }
 
-    /** Draws it filling a rectangle, with every pixel's alpha scaled by {@code opacity}. */
     void draw(GuiGraphics g, int x, int y, int w, int h, float opacity) {
-        // 1.21.1's plain blit leaves blending as it finds it, and a fill before it leaves it off.
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         g.setColor(1, 1, 1, opacity);

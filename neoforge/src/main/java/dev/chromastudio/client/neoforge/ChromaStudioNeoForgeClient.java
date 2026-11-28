@@ -42,15 +42,12 @@ import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
-/** NeoForge's client entrypoint, and the mod's only one: a server loads nothing from the jar. */
 @Mod(value = ChromaStudioClient.MOD_ID, dist = Dist.CLIENT)
 public final class ChromaStudioNeoForgeClient implements ClientPlatform {
     public ChromaStudioNeoForgeClient(IEventBus modBus, ModContainer container) {
         ChromaStudioClient.init(this);
-        // The mod list's Config button.
         container.registerExtensionPoint(IConfigScreenFactory.class, (mod, modList) -> new SettingsScreen(modList));
         modBus.addListener(RegisterKeyMappingsEvent.class, event -> Keys.ALL.forEach(event::register));
-        // Hud.render checks for a hidden HUD (F1) itself: NeoForge draws modded layers even then.
         modBus.addListener(RegisterGuiLayersEvent.class, event -> event.registerAboveAll(
                 ResourceLocation.fromNamespaceAndPath(ChromaStudioClient.MOD_ID, "hud"), (graphics, tick) -> Hud.render(graphics)));
         modBus.addListener(RegisterClientReloadListenersEvent.class, event -> event.registerReloadListener(
@@ -58,12 +55,10 @@ public final class ChromaStudioNeoForgeClient implements ClientPlatform {
         NeoForge.EVENT_BUS.addListener(ClientPlayerNetworkEvent.LoggingIn.class, event -> BlockIndex.get().worldJoined());
         NeoForge.EVENT_BUS.addListener(RegisterClientCommandsEvent.class, event -> event.getDispatcher().register(ChromaCommand.build()));
         NeoForge.EVENT_BUS.addListener(ItemTooltipEvent.class, event -> Tooltips.append(event.getItemStack(), event.getToolTip()));
-        // The capture outline is drawn straight to the game's buffers after the entities.
         NeoForge.EVENT_BUS.addListener(RenderLevelStageEvent.class, event -> {
             if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES)
                 Capture.render(event.getPoseStack() != null ? event.getPoseStack() : new PoseStack(), event.getCamera().getPosition());
         });
-        // Keeps the game's replies to an operator's hotbar fill out of chat.
         NeoForge.EVENT_BUS.addListener(ClientChatReceivedEvent.System.class, event -> {
             if (HotbarFill.hidesFeedback(event.getMessage(), event.isOverlay())) event.setCanceled(true);
         });
@@ -73,7 +68,7 @@ public final class ChromaStudioNeoForgeClient implements ClientPlatform {
     @Override public Path configDir() { return FMLPaths.CONFIGDIR.get(); }
     @Override public Path gameDir() { return FMLPaths.GAMEDIR.get(); }
     @Override public boolean isModLoaded(String id) { return ModList.get().isLoaded(id); }
-    // The colours are worked out without a world, so NeoForge's methods get no model data.
+    @Override public boolean isFabric() { return false; }
     @Override public List<BakedQuad> quads(BakedModel model, BlockState state, Direction side, RandomSource random) {
         return model.getQuads(state, side, random, ModelData.EMPTY, null);
     }

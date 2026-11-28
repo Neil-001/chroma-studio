@@ -1,5 +1,7 @@
 package dev.chromastudio.client.ui;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import dev.chromastudio.client.input.KeyEvent;
 import dev.chromastudio.client.input.MouseButtonEvent;
 import dev.chromastudio.client.ui.tabs.ColourPicker;
 import dev.chromastudio.client.ui.tabs.TargetModel;
@@ -10,99 +12,212 @@ import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 
-/**
- * Picks a colour as the Match tab's target is picked: a square with a hue bar, and hex, RGB and HSL fields that all
- * follow each other. Every change goes to {@code onChange} straight away, so what the colour is for shows it at once.
- */
 final class ColourDialog extends Popup {
-    private static final int LABEL_W = 26, ROW = Widgets.H + 2;
+    private static final int LABEL_W = 26, ROW = Widgets.H + 2, HUE_W = 12, GAP = 8;
+    private static final String[] NAMES = {"hex", "rgb", "hsv"};
+    private static final int[] LENGTHS = {7, 32, 32};
+    private static final int KEYS = 3;
+    private static final int STALE = 0xFF000000 | Theme.TIP_GREYED;
 
     private final ColourPicker picker;
+    private final Color start;
     private final Consumer<Color> onChange;
-    private EditBox hex, rgb, hsl;
-    /** Set while the dialog writes the fields itself, so it doesn't read them back: a rounded colour taken again would drift. */
+    private final EditBox[] fields = new EditBox[NAMES.length];
+    private final boolean[] bad = new boolean[NAMES.length];
+    private Bounds compare, old;
+    private Button done;
     private boolean filling;
+    private int hint, focus;
 
     ColourDialog(Component title, Color start, Consumer<Color> onChange, Runnable onClose) {
-        super(title, 236, 100, onClose);
+        super(title, 260, 152, onClose);
+        this.start = start;
         this.onChange = onChange;
-        picker = new ColourPicker(start, colour -> picked(null));
+        picker = new ColourPicker(start, ignored -> picked(-1));
     }
+
+    private static Component tr(String key, Object... args) { return Component.translatable("settings.chromastudio.colour." + key, args); }
+
+    private static Component format(String key) { return Component.translatable("colour.chromastudio." + key); }
+
+    @Override
+    protected boolean fixedColours() { return true; }
 
     @Override
     protected void build(Bounds in) {
         TargetModel model = picker.model;
-        int side = Math.min(in.h(), in.w() / 2 - 14);
-        picker.layout(new Bounds(in.x(), in.y(), side + 10, side));
-        int fx = in.x() + side + 16 + LABEL_W, fw = in.right() - fx, y = in.y();
-        hex = widgets.field(fx, y, fw, model.hex(), text -> typed(hex, text, model::typeHex));
-        hex.setMaxLength(7);
-        hex.setTooltip(Tooltip.create(Component.translatable("match.chromastudio.hex.tip")));
-        y += ROW;
-        rgb = widgets.field(fx, y, fw, model.rgbText(), text -> typed(rgb, text, model::typeRgb));
-        rgb.setMaxLength(13);
-        rgb.setTooltip(Tooltip.create(Component.translatable("match.chromastudio.rgb.tip")));
-        y += ROW;
-        hsl = widgets.field(fx, y, fw, model.hslText(), text -> typed(hsl, text, model::typeHsl));
-        hsl.setMaxLength(13);
-        hsl.setTooltip(Tooltip.create(Component.translatable("match.chromastudio.hsl.tip")));
-        Component done = Component.translatable("gui.done");
-        int doneW = Widgets.buttonWidth(done) + 14;
-        widgets.button(in.right() - doneW, in.bottom() - Widgets.H, doneW, done, this::close);
+        int side = Math.min(in.h(), in.w() / 2 - HUE_W - 2 - GAP);
+        picker.layout(new Bounds(in.x(), in.y(), side + 2 + HUE_W, side), HUE_W);
+        int cx = in.x() + side + 2 + HUE_W + GAP, fx = cx + LABEL_W, fw = in.right() - fx;
+        String[] values = values();
+        List<Predicate<String>> takes = List.of(model::typeHex, model::typeRgb, model::typeHsv);
+        for (int i = 0; i < fields.length; i++) {
+            int at = i;
+            String text = fields[i] == null ? values[i] : fields[i].getValue();
+            fields[i] = widgets.field(fx, in.y() + i * ROW, fw, "", t -> typed(at, t, takes.get(at)));
+            fields[i].setMaxLength(LENGTHS[i]);
+            filling = true;
+            fields[i].setValue(text);
+            filling = false;
+        }
+        compare = new Bounds(cx, in.y() + 3 * ROW + 2, in.right() - cx, Widgets.H);
+        old = new Bounds(compare.x(), compare.y(), compare.w() / 2, compare.h());
+        Component done = Component.translatable("gui.done"), cancel = Component.translatable("gui.cancel");
+        int y = in.bottom() - Widgets.H, doneW = Widgets.buttonWidth(done) + 14, cancelW = Widgets.buttonWidth(cancel) + 6;
+        this.done = widgets.button(in.right() - doneW, y, doneW, done, this::close);
+        widgets.button(in.right() - doneW - 2 - cancelW, y, cancelW, cancel, this::cancel);
+        if (focus >= 0) widgets.setFocused(fields[focus]);
+        showBad();
     }
 
-
-    /** A field's text changed. Text that isn't a colour shows red and changes nothing. */
-    private void typed(EditBox field, String text, Predicate<String> take) {
-        if (filling || field == null) return;
-        boolean valid = take.test(text);
-        field.setTextColor(valid ? EditBox.DEFAULT_TEXT_COLOR : Theme.FIELD_BAD);
-        if (valid) picked(field);
-    }
-
-    /** The colour changed. The fields follow, but for the one being typed in. */
-    private void picked(EditBox except) {
+    private String[] values() {
         TargetModel model = picker.model;
+        return new String[] {model.hex(), model.rgbText(), model.hsvText()};
+    }
+
+    private int firstBad() {
+        for (int i = 0; i < bad.length; i++) if (bad[i]) return i;
+        return -1;
+    }
+
+    private void showBad() {
+        int at = firstBad();
+        for (int i = 0; i < fields.length; i++) fields[i].setTextColor(bad[i] ? Theme.FIELD_BAD : at >= 0 ? STALE : EditBox.DEFAULT_TEXT_COLOR);
+        done.active = at < 0;
+        done.setTooltip(at < 0 ? null : Tooltip.create(tr("fix", format(NAMES[at]))));
+    }
+
+    private void typed(int i, String text, Predicate<String> take) {
+        if (filling || fields[i] == null) return;
+        bad[i] = !take.test(text);
+        showBad();
+        if (!bad[i]) picked(i);
+    }
+
+    private void picked(int except) {
+        String[] values = values();
         filling = true;
-        if (hex != except) hex.setValue(model.hex());
-        if (rgb != except) rgb.setValue(model.rgbText());
-        if (hsl != except) hsl.setValue(model.hslText());
-        for (EditBox f : List.of(hex, rgb, hsl)) if (f != except) f.setTextColor(EditBox.DEFAULT_TEXT_COLOR);
+        for (int i = 0; i < fields.length; i++) {
+            if (i == except) continue;
+            fields[i].setValue(values[i]);
+            bad[i] = false;
+        }
         filling = false;
-        onChange.accept(model.colour());
+        showBad();
+        onChange.accept(picker.model.colour());
+    }
+
+    private void cancel() {
+        picker.model.setColour(start);
+        onChange.accept(start);
+        close();
     }
 
     @Override
     protected void draw(GuiGraphics g, Bounds in, int mouseX, int mouseY) {
         Font font = Minecraft.getInstance().font;
         picker.render(g, font, 1);
-        // Drawn here rather than as controls, because the colour they're drawn in changes as the player picks.
-        String[] names = {"hex", "rgb", "hsl"};
-        for (int i = 0; i < names.length; i++)
-            g.drawString(font, Component.translatable("settings.chromastudio.colour." + names[i]), hex.getX() - LABEL_W, in.y() + i * ROW + 4, Theme.SOFT, false);
+        int labelX = fields[0].getX() - LABEL_W;
+        for (int i = 0; i < NAMES.length; i++) {
+            EditBox f = fields[i];
+            g.drawString(font, format(NAMES[i]), labelX, f.getY() + 4, Theme.FIXED_SOFT, false);
+            if (bad[i]) g.renderOutline(f.getX() - 1, f.getY() - 1, f.getWidth() + 2, f.getHeight() + 2, Theme.FIELD_BAD);
+        }
+        trackFocus();
+        int wrong = firstBad();
+        Component text = wrong >= 0 ? format(NAMES[wrong] + ".bad") : hint == KEYS ? tr("keys.tip") : format(NAMES[hint] + ".bad");
+        g.drawWordWrap(font, text, labelX, compare.bottom() + 4, in.right() - labelX, wrong >= 0 ? Theme.FIELD_BAD : Theme.FIXED_SOFT);
+        swatch(g, old.x(), old.w(), start.rgb(), tr("old"));
+        swatch(g, old.right(), compare.w() - old.w(), picker.model.colour().rgb(), tr("new"));
+        if (wrong >= 0) g.fill(old.right(), compare.y(), compare.right(), compare.bottom(), 0xB0000000 | Theme.FIXED_PANEL & 0xFFFFFF);
+        if (old.contains(mouseX, mouseY)) g.renderOutline(old.x(), old.y(), old.w(), old.h(), 0xFFFFFFFF);
+    }
+
+    private void trackFocus() {
+        int now = -1;
+        for (int i = 0; i < fields.length; i++) if (fields[i].isFocused()) now = i;
+        if (now >= 0 && now != focus) hint = now;
+        focus = now;
+    }
+
+    private void swatch(GuiGraphics g, int x, int w, int rgb, Component label) {
+        Widgets.swatch(g, x, compare.y(), w, compare.h(), rgb);
+        int ink = Color.ofRgb(rgb).oklab().l() < Theme.LIGHT_FROM ? 0xFFFFFFFF : 0xFF000000;
+        Widgets.centred(g, label, x + w / 2, compare.y() + 4, ink);
     }
 
     @Override
     boolean mouseClicked(MouseButtonEvent e, boolean doubled) {
-        if (box.contains(e.x(), e.y()) && picker.mouseClicked(e.x(), e.y())) {
+        boolean took = clicked(e, doubled);
+        trackFocus();
+        return took;
+    }
+
+    private boolean clicked(MouseButtonEvent e, boolean doubled) {
+        if (!box.contains(e.x(), e.y())) return true;
+        boolean left = left(e);
+        if (left && picker.mouseClicked(e.x(), e.y())) {
             widgets.setFocused(null);
+            hint = KEYS;
+            return true;
+        }
+        if (left && old.contains(e.x(), e.y())) {
+            picker.model.setColour(start);
+            picked(-1);
             return true;
         }
         return super.mouseClicked(e, doubled);
     }
 
     @Override
-    boolean mouseDragged(MouseButtonEvent e, double dx, double dy) { return picker.mouseDragged(e.x(), e.y()) || super.mouseDragged(e, dx, dy); }
+    boolean mouseDragged(MouseButtonEvent e, double dx, double dy) { return left(e) && picker.mouseDragged(e.x(), e.y()) || super.mouseDragged(e, dx, dy); }
 
     @Override
-    boolean mouseReleased(MouseButtonEvent e) { return picker.mouseReleased() || super.mouseReleased(e); }
+    boolean mouseReleased(MouseButtonEvent e) { return left(e) && picker.mouseReleased() || super.mouseReleased(e); }
+
+    private static boolean left(MouseButtonEvent e) { return e.button() == InputConstants.MOUSE_BUTTON_LEFT; }
 
     @Override
-    protected void confirm() { close(); }
+    boolean keyPressed(KeyEvent e) {
+        if (e.isEscape()) {
+            cancel();
+            return true;
+        }
+        if (widgets.getFocused() == null && nudge(e)) return true;
+        boolean took = super.keyPressed(e);
+        trackFocus();
+        return took;
+    }
+
+    private boolean nudge(KeyEvent e) {
+        float[] hsv = picker.model.hsv();
+        float step = e.hasShiftDown() ? 0.1f : 0.01f, hue = e.hasShiftDown() ? 10 : 1;
+        switch (e.key()) {
+            case InputConstants.KEY_LEFT -> hsv[1] -= step;
+            case InputConstants.KEY_RIGHT -> hsv[1] += step;
+            case InputConstants.KEY_UP -> hsv[2] += step;
+            case InputConstants.KEY_DOWN -> hsv[2] -= step;
+            case InputConstants.KEY_PAGEUP -> hsv[0] = (hsv[0] - hue + 360) % 360;
+            case InputConstants.KEY_PAGEDOWN -> hsv[0] = (hsv[0] + hue) % 360;
+            default -> {
+                return false;
+            }
+        }
+        picker.model.setHsv(hsv[0], hsv[1], hsv[2]);
+        hint = KEYS;
+        picked(-1);
+        return true;
+    }
+
+    @Override
+    protected void confirm() {
+        if (firstBad() < 0) close();
+    }
 
     @Override
     void close() {

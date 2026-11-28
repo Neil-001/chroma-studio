@@ -15,22 +15,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
-/**
- * Hands an exported file to Litematica, when it's there. Litematica is optional and its version isn't checked, so
- * every call into it goes through {@link Calls}, which the game only loads once the mod is known to be present, and
- * anything a call throws, a missing class or method included, is caught here and never reaches the caller.
- */
 public final class LitematicaBridge {
     private LitematicaBridge() {}
 
-    /** Forgematica, the NeoForge port, registers this id too. */
     private static final String MOD_ID = "litematica";
 
     public static boolean isAvailable() {
         return ChromaStudioClient.platform != null && ChromaStudioClient.platform.isModLoaded(MOD_ID);
     }
 
-    /** Litematica's configured schematics folder, or the game's {@code schematics} folder when it can't say. */
     public static Path schematicsDir() {
         Path usual = ChromaStudioClient.platform.gameDir().resolve("schematics");
         if (!isAvailable()) return usual;
@@ -43,7 +36,6 @@ public final class LitematicaBridge {
         }
     }
 
-    /** Where a placement goes: the block the player looks at within reach, or failing that, where the player stands. */
     public static BlockPos originFor(PlacementChoice choice) {
         Minecraft mc = Minecraft.getInstance();
         if (choice == PlacementChoice.LOOKING_AT && mc.hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK) {
@@ -52,14 +44,9 @@ public final class LitematicaBridge {
         return mc.player != null ? mc.player.blockPosition() : BlockPos.ZERO;
     }
 
-    /**
-     * Loads the file into Litematica and makes it the selected placement at {@code origin}. Returns what went wrong,
-     * or nothing when it worked. The file is left as it is either way.
-     */
     public static Optional<Component> place(Path file, BlockPos origin, String name) {
         if (!isAvailable()) return Optional.of(Component.translatable("export.chromastudio.litematica.missing"));
         Minecraft mc = Minecraft.getInstance();
-        // Litematica's placements belong to the client thread.
         if (!mc.isSameThread()) return mc.submit(() -> place(file, origin, name)).join();
         if (mc.level == null) return Optional.of(Component.translatable("export.chromastudio.litematica.no_world"));
         try {
@@ -72,11 +59,9 @@ public final class LitematicaBridge {
         }
     }
 
-    /** The only code that names Litematica's classes. Enter it only after {@link #isAvailable}, inside a try. */
     private static final class Calls {
         static Path schematicsDir() { return DataManager.getSchematicsBaseDirectory().toPath(); }
 
-        /** False when Litematica couldn't read the file. */
         static boolean place(Path file, BlockPos origin, String name) {
             LitematicaSchematic schematic = SchematicHolder.getInstance().getOrLoad(file.toFile());
             if (schematic == null) return false;

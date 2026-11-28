@@ -2,7 +2,6 @@ package dev.chromastudio.client;
 
 import com.mojang.blaze3d.platform.NativeImage;
 
-/** 1.21.1's {@link NativeImage} keeps pixels as ABGR. These take and return ARGB, as the rest of the mod uses. */
 public final class Abgr {
     private Abgr() {}
 

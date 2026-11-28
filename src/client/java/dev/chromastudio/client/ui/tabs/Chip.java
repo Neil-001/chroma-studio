@@ -1,16 +1,13 @@
 package dev.chromastudio.client.ui.tabs;
 
-import dev.chromastudio.client.input.InputWithModifiers;
 import dev.chromastudio.client.ui.Theme;
 import dev.chromastudio.client.ui.Widgets;
 import java.util.function.BooleanSupplier;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 
-/** A compact toggle: its label alone, lit while it is on. The filter row has too little room for "Label: ON". */
 final class Chip extends AbstractButton {
     private final BooleanSupplier on;
     private final Runnable press;
