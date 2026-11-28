@@ -127,10 +127,14 @@ public final class Widgets extends AbstractContainerEventHandler {
                 onChange.accept(blank);
                 return;
             }
-            double d = parse(text);
-            if (!Double.isFinite(d)) return;
-            current[0] = Math.max(min, Math.min(max, integer ? Math.rint(d) : d));
-            onChange.accept(current[0]);
+            try {
+                double d = Double.parseDouble(text.trim());
+                if (!Double.isFinite(d)) return;
+                current[0] = Math.max(min, Math.min(max, integer ? Math.rint(d) : d));
+                onChange.accept(current[0]);
+            } catch (NumberFormatException _) {
+                return;
+            }
         });
         f.setTooltip(Tooltip.create(Component.translatable("widget.chromastudio.range", number(min, integer), number(max, integer))));
         add(f);
@@ -140,14 +144,6 @@ public final class Widgets extends AbstractContainerEventHandler {
         spinners.add(new Spinner(f, add(new Arrow(ax, y, ARROW_SLOT - 1, top, true, up)), add(new Arrow(ax, y + top, ARROW_SLOT - 1, H - top, false, down)),
                 current, min, max));
         return f;
-    }
-
-    private static double parse(String text) {
-        try {
-            return Double.parseDouble(text.trim());
-        } catch (NumberFormatException _) {
-            return Double.NaN;
-        }
     }
 
     public static String number(double v, boolean integer) {

@@ -2,6 +2,7 @@ package dev.chromastudio.client.axiom;
 
 import com.moulberry.axiomclientapi.CustomTool;
 import com.moulberry.axiomclientapi.IAxiomWorldRenderContext;
+import dev.chromastudio.client.ChromaStudioClient;
 import java.util.function.BooleanSupplier;
 
 record GuardedTool(CustomTool tool) implements CustomTool {
@@ -62,11 +63,11 @@ record GuardedTool(CustomTool tool) implements CustomTool {
     }
 
     private void failed(Throwable t) {
+        AxiomBridge.fail(t);
         try {
             tool.reset();
         } catch (Throwable e) {
-            AxiomBridge.suppress(t, e);
+            ChromaStudioClient.LOGGER.debug("Chroma Studio couldn't reset its Axiom tool after a failure", e);
         }
-        AxiomBridge.fail(t);
     }
 }

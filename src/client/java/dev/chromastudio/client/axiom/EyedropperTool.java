@@ -137,7 +137,12 @@ final class EyedropperTool implements CustomTool, GuardedTool.PutAway {
         int version = index.version();
         Minecraft mc = Minecraft.getInstance();
         ForkJoinPool.commonPool().execute(() -> {
-            List<BlockIndex.Match> found = index.closest(target, query);
+            List<BlockIndex.Match> found;
+            try {
+                found = index.closest(target, query);
+            } catch (Throwable _) {
+                return;
+            }
             mc.execute(() -> show(p, run, index, version, query, found));
         });
     }
