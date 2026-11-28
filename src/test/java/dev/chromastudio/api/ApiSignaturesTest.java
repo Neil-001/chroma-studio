@@ -67,8 +67,11 @@ class ApiSignaturesTest {
     private static String signatures() throws IOException, URISyntaxException, ClassNotFoundException {
         ClassLoader loader = ChromaStudioApi.class.getClassLoader();
         List<String> found = new ArrayList<>();
+        Path tests = Path.of(ApiSignaturesTest.class.getResource("ApiSignaturesTest.class").toURI()).getParent();
         for (URL classes : Collections.list(loader.getResources("dev/chromastudio/api"))) {
-            try (DirectoryStream<Path> files = Files.newDirectoryStream(Path.of(classes.toURI()), "*.class")) {
+            Path directory = Path.of(classes.toURI());
+            if (directory.equals(tests)) continue;
+            try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, "*.class")) {
                 for (Path file : files) {
                     String name = file.getFileName().toString();
                     Class<?> type = Class.forName("dev.chromastudio.api." + name.substring(0, name.length() - ".class".length()), false, loader);
