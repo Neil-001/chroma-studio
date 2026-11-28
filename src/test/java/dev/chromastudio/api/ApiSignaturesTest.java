@@ -9,10 +9,13 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -62,20 +65,20 @@ class ApiSignaturesTest {
     }
 
     private static String signatures() throws IOException, URISyntaxException, ClassNotFoundException {
-        Path classes = Path.of(ChromaStudioApi.class.getResource("ChromaStudioApi.class").toURI()).getParent();
-        List<String> names;
-        try (Stream<Path> files = Files.list(classes)) {
-            names = files.map(file -> file.getFileName().toString()).filter(name -> name.endsWith(".class"))
-                    .map(name -> name.substring(0, name.length() - ".class".length())).toList();
-        }
+        ClassLoader loader = ChromaStudioApi.class.getClassLoader();
         List<String> found = new ArrayList<>();
-        for (String name : names) {
-            Class<?> type = Class.forName("dev.chromastudio.api." + name, false, ChromaStudioApi.class.getClassLoader());
-            if (!exported(type)) continue;
-            found.add(declaration(type));
-            for (Field field : type.getDeclaredFields()) if (exported(field)) found.add(field.toGenericString());
-            for (Executable call : type.getDeclaredConstructors()) if (exported(call)) found.add(call.toGenericString());
-            for (Executable call : type.getDeclaredMethods()) if (exported(call)) found.add(call.toGenericString());
+        for (URL classes : Collections.list(loader.getResources("dev/chromastudio/api"))) {
+            try (DirectoryStream<Path> files = Files.newDirectoryStream(Path.of(classes.toURI()), "*.class")) {
+                for (Path file : files) {
+                    String name = file.getFileName().toString();
+                    Class<?> type = Class.forName("dev.chromastudio.api." + name.substring(0, name.length() - ".class".length()), false, loader);
+                    if (!exported(type)) continue;
+                    found.add(declaration(type));
+                    for (Field field : type.getDeclaredFields()) if (exported(field)) found.add(field.toGenericString());
+                    for (Executable call : type.getDeclaredConstructors()) if (exported(call)) found.add(call.toGenericString());
+                    for (Executable call : type.getDeclaredMethods()) if (exported(call)) found.add(call.toGenericString());
+                }
+            }
         }
         return found.stream().sorted().map(line -> line + "\n").collect(Collectors.joining());
     }
