@@ -15,6 +15,7 @@ public enum Harmony {
 
     public static final double MIN_LIGHTNESS = 0.2, MAX_LIGHTNESS = 0.95;
 
+    @SuppressWarnings("ImmutableEnumChecker")
     private final double[] offsets;
 
     Harmony(double... offsets) {

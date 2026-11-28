@@ -8,6 +8,7 @@ Use JDK 25 and run `./gradlew build` after every change. Javac warnings fail the
 
 - Add `-Dchroma.timing=true` to `./gradlew :fabric:test` for timing tests. Run `GameIndexTest` when changing what the index lists or how it reads models. Inspect real models with `/chroma debug <block id>`.
 - To try JEI or REI in a dev client, pass `-Pviewer=jei` or `-Pviewer=rei` and the newer loader API version from `.github/workflows/build.yml`. For a virtual display, unset `WAYLAND_DISPLAY` and set `SDL_VIDEODRIVER=x11`.
+- Error Prone runs in every compile, and its findings fail the build. The root `build.gradle` lists the checks that are off. Fix a new finding instead of adding its check to that list.
 - Leave Gradle's configuration cache off. It freezes the `sourceRuleLinks` test input, so a broken `AGENTS.md` link would pass.
 - Test new core logic. Check the source of reference values before changing them. Verify visual fixes preserve other behaviour, for example by comparing pixels.
 

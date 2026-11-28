@@ -86,7 +86,7 @@ final class PaletteDialogs {
     private static MutableComponent tr(String key, Object... args) { return Component.translatable(key, args); }
 
     private static Component option(Enum<?> value) {
-        return tr("option.chromastudio." + value.getClass().getSimpleName().toLowerCase(Locale.ROOT) + "." + value.name().toLowerCase(Locale.ROOT));
+        return tr("option.chromastudio." + value.getDeclaringClass().getSimpleName().toLowerCase(Locale.ROOT) + "." + value.name().toLowerCase(Locale.ROOT));
     }
 
     private static void label(GuiGraphicsExtractor g, String key, int x, int y) {
