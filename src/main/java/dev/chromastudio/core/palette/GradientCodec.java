@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import dev.chromastudio.core.color.Color;
 import java.util.ArrayList;
 import java.util.List;
@@ -108,7 +109,7 @@ public final class GradientCodec {
                 blocks.add(new StoredGradient.Step(ideal == null ? 0 : ideal, block, bool(step.get("by_hand"))));
             }
         }
-        int steps = o.get("steps") instanceof JsonElement e && e.isJsonPrimitive() && e.getAsJsonPrimitive().isNumber() ? (int) e.getAsDouble() : blocks.size();
+        int steps = o.get("steps") instanceof JsonPrimitive p && p.isNumber() ? (int) p.getAsDouble() : blocks.size();
         return new StoredGradient(name, stops, steps, string(o.get("easing"), ""), string(o.get("arc"), ""), bool(o.get("spread")),
                 string(o.get("kind"), ""), blocks);
     }

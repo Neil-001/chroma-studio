@@ -75,7 +75,8 @@ public final class Arrangement {
         double[] field = new double[count];
         Integer[] order = new Integer[count];
         for (int i = 0; i < count; i++) {
-            double x = i % sizeX / feature, y = i / sizeX / feature;
+            int column = i % sizeX, line = i / sizeX;
+            double x = column / feature, y = line / feature;
             field[i] = valueNoise(x, y, seed) + 0.3 * valueNoise(2 * x, 2 * y, seed + 1) + 1e-9 * unit(seed + 2, i, 0);
             order[i] = i;
         }
@@ -86,7 +87,8 @@ public final class Arrangement {
     private void heightGradient(double[] ends, long seed) {
         Random random = new Random(seed);
         for (int i = 0; i < cells.length; i++) {
-            double row = i / sizeX + 0.5 + (random.nextDouble() * 2 - 1) * RAGGED_ROWS;
+            int line = i / sizeX;
+            double row = line + 0.5 + (random.nextDouble() * 2 - 1) * RAGGED_ROWS;
             cells[i] = entryAt(ends, row / sizeY);
         }
     }

@@ -85,11 +85,13 @@ public final class ShareString {
     }
 
     private static int weight(String digits, String entry) {
+        int weight;
         try {
-            int weight = Integer.parseInt(digits);
-            if (weight >= 1) return weight;
+            weight = Integer.parseInt(digits);
         } catch (NumberFormatException _) {
+            throw new UnreadablePalette(UnreadablePalette.Reason.BAD_WEIGHT, entry);
         }
-        throw new UnreadablePalette(UnreadablePalette.Reason.BAD_WEIGHT, entry);
+        if (weight < 1) throw new UnreadablePalette(UnreadablePalette.Reason.BAD_WEIGHT, entry);
+        return weight;
     }
 }

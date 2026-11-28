@@ -36,6 +36,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import org.jspecify.annotations.Nullable;
 
 public final class SchematicExporter {
     private SchematicExporter() {}
@@ -147,13 +148,7 @@ public final class SchematicExporter {
     private static Path write(CompoundTag root, Path dir, String base, String extension) throws IOException {
         Files.createDirectories(dir);
         Path file = null;
-        for (int n = 1; file == null; n++) {
-            Path candidate = dir.resolve(base + (n == 1 ? "" : "-" + n) + "." + extension);
-            try {
-                file = Files.createFile(candidate);
-            } catch (FileAlreadyExistsException _) {
-            }
-        }
+        for (int n = 1; file == null; n++) file = claim(dir.resolve(base + (n == 1 ? "" : "-" + n) + "." + extension));
         Path temp = null;
         try {
             temp = writeNew(root, dir, base);
@@ -166,17 +161,29 @@ public final class SchematicExporter {
         return file;
     }
 
+    private static @Nullable Path claim(Path candidate) throws IOException {
+        try {
+            return Files.createFile(candidate);
+        } catch (FileAlreadyExistsException _) {
+            return null;
+        }
+    }
+
     private static Path writeNew(CompoundTag root, Path dir, String base) throws IOException {
-        while (true) {
-            Path temp = dir.resolve(base + "-" + Long.toHexString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-            try (OutputStream out = Files.newOutputStream(temp, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-                NbtIo.writeCompressed(root, out);
-                return temp;
-            } catch (FileAlreadyExistsException _) {
-            } catch (IOException | RuntimeException e) {
-                Files.deleteIfExists(temp);
-                throw e;
-            }
+        Path temp = null;
+        while (temp == null) temp = writeNew(root, dir.resolve(base + "-" + Long.toHexString(ThreadLocalRandom.current().nextLong()) + ".tmp"));
+        return temp;
+    }
+
+    private static @Nullable Path writeNew(CompoundTag root, Path temp) throws IOException {
+        try (OutputStream out = Files.newOutputStream(temp, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+            NbtIo.writeCompressed(root, out);
+            return temp;
+        } catch (FileAlreadyExistsException _) {
+            return null;
+        } catch (IOException | RuntimeException e) {
+            Files.deleteIfExists(temp);
+            throw e;
         }
     }
 

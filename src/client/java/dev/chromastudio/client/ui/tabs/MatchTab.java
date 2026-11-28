@@ -733,6 +733,8 @@ public final class MatchTab extends Tab {
         list = keptList;
     }
 
+    private int recentWidth() { return recent.w() / RecentColours.KEPT; }
+
     private void target(GuiGraphicsExtractor g, Font font, float opacity, int mouseX, int mouseY, List<Component> tip) {
         Entry entry = MatchState.entry();
         g.fill(area.x(), area.y(), results.x() - 1, area.bottom(), ARGB.multiplyAlpha(BACKING, opacity));
@@ -756,7 +758,7 @@ public final class MatchTab extends Tab {
         picker.render(g, font, opacity);
 
         List<Integer> colours = MatchState.recent();
-        int cw = recent.w() / RecentColours.KEPT;
+        int cw = recentWidth();
         for (int i = 0; i < RecentColours.KEPT; i++) {
             int rx = recent.x() + i * cw;
             if (i < colours.size()) {
@@ -1083,7 +1085,7 @@ public final class MatchTab extends Tab {
         }
         if (left && recent.contains(mx, my)) {
             List<Integer> colours = MatchState.recent();
-            int i = (int) ((mx - recent.x()) / (recent.w() / RecentColours.KEPT));
+            int i = (int) ((mx - recent.x()) / recentWidth());
             if (i >= 0 && i < colours.size()) MatchState.setColour(Color.ofRgb(colours.get(i)));
             return true;
         }

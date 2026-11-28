@@ -69,11 +69,12 @@ final class AxiomTools {
 
     static boolean off() { return AxiomBridge.whyNot().isPresent(); }
 
-    static void shutDown() {
+    static void shutDown(Throwable cause) {
         for (CustomTool tool : new CustomTool[] {brush, gradient, shade, sampler}) {
             try {
                 if (tool != null) tool.reset();
-            } catch (Throwable _) {
+            } catch (Throwable e) {
+                AxiomBridge.suppress(cause, e);
             }
         }
     }

@@ -132,7 +132,9 @@ public final class Widgets extends AbstractContainerEventHandler {
                 if (!Double.isFinite(d)) return;
                 current[0] = Math.max(min, Math.min(max, integer ? Math.rint(d) : d));
                 onChange.accept(current[0]);
-            } catch (NumberFormatException _) { }
+            } catch (NumberFormatException _) {
+                return;
+            }
         });
         f.setTooltip(Tooltip.create(Component.translatable("widget.chromastudio.range", number(min, integer), number(max, integer))));
         add(f);
