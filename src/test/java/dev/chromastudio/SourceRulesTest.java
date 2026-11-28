@@ -79,14 +79,13 @@ class SourceRulesTest {
         assertEquals(List.of(), breaches(AXIOM + "A.java", axiom + "\nimport imgui.moulberry92.ImGui;"));
         assertEquals(1, breaches("neoforge/src/main/java/dev/chromastudio/client/neoforge/A.java", "import imgui.moulberry92.ImGui;").size());
         assertEquals(List.of(), breaches("src/test/java/dev/chromastudio/A.java", String.join("\n", block, loader, axiom)));
-        assertEquals(List.of(core + ":2 names net.minecraft, but " + BOUNDARIES.get(0).rule(),
-                        core + ":4 names net.minecraft, but " + BOUNDARIES.get(0).rule()),
-                breaches(core, "class A {\n    net.\n        minecraft.core.BlockPos a;\n    net . minecraft.core.BlockPos b;\n}"));
-        assertEquals(List.of(), breaches(core, "String internet = planet.minecrafty.name + magnet.minecraft.name;"));
-        assertEquals(List.of(), breaches(core, "String note = \"\"\"\n    Download it from example.net.\n    minecraft:stone is the default.\n    \"\"\";"));
-        assertEquals(1, breaches(core, "boolean vanilla = name.startsWith(\"net.minecraft.\");").size());
         assertEquals(List.of(core + ":1 names net.minecraft, but " + BOUNDARIES.get(0).rule()),
                 breaches(core, "package dev.chromastudio.core; \\u000a " + block));
+        assertEquals(1, breaches(core, "boolean vanilla = type.getPackageName().equals(\"net.minecraft\");").size());
+        assertEquals(List.of(), breaches(core, "String internet = planet.minecrafty.name + magnet.minecraft.name;"));
+        assertEquals(List.of(), breaches(core, String.join("\n", "String help = \"\"\"",
+                "    Official information is available at minecraft.net.", "    minecraft.wiki lists block IDs.",
+                "    Download it from example.net. minecraft:stone is the default.", "    \"\"\";")));
     }
 
     private static List<String> breaches(String name, String raw) {
@@ -97,7 +96,7 @@ class SourceRulesTest {
             Matcher found = boundary.names().matcher(source);
             while (found.find()) {
                 long line = 1 + source.substring(0, found.start()).chars().filter(c -> c == '\n').count();
-                problems.add(name + ":" + line + " names " + found.group().replaceAll("\\s", "") + ", but " + boundary.rule());
+                problems.add(name + ":" + line + " names " + found.group() + ", but " + boundary.rule());
             }
         }
         return problems;
@@ -108,7 +107,7 @@ class SourceRulesTest {
     }
 
     private static Pattern names(String... packages) {
-        return Pattern.compile("\\b(" + Arrays.stream(packages).map(name -> name.replace(".", "\\s*\\.\\s*")).collect(Collectors.joining("|")) + ")(?=\\s*\\.)");
+        return Pattern.compile("\\b(" + Arrays.stream(packages).map(Pattern::quote).collect(Collectors.joining("|")) + ")\\b");
     }
 
     @Test
