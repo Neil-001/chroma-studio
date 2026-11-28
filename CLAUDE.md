@@ -58,4 +58,4 @@ Develop on `main` for the newest Minecraft version. Port applicable changes to e
 3. After merge, run `gh workflow run release.yml --ref main -f dry_run=true` and check the jars and notes in the summary. Use `-f branches=26.2/stable` for one stable line or `-f branches=all` for all. Publish with the same branches and omit `dry_run`.
 4. Run `listing.yml` for description, gallery or icon changes. Update CurseForge by hand using `listing/README.md`.
 
-Keep shared release files in sync with Curve Generator. If a CurseForge upload or its marker fails, check the files page before retrying. To upload the same version again, delete its `curseforge-<version>` artifact first.
+Keep shared release files in sync with Curve Generator. On this branch `test_release.py` expects `release-java.sh` to read Java 21 from this branch, where `main` expects 25; the release workflow runs `main`'s scripts either way. If a CurseForge upload or its marker fails, check the files page before retrying. To upload the same version again, delete its `curseforge-<version>` artifact first.

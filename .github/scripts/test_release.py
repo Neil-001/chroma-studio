@@ -232,7 +232,7 @@ class ReleaseJavaTest(unittest.TestCase):
     def test_reads_this_branch(self):
         result = subprocess.run([str(SCRIPTS / "release-java.sh"), str(SCRIPTS.parent.parent)],
                                 capture_output=True, text=True)
-        self.assertEqual((result.returncode, result.stdout), (0, "25\n"), result.stderr)
+        self.assertEqual((result.returncode, result.stdout), (0, "21\n"), result.stderr)
 
 
 class ReleaseCompareTest(unittest.TestCase):
