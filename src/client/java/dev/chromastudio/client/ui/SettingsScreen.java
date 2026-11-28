@@ -557,7 +557,10 @@ public final class SettingsScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double h, double v) {
-        if (popup != null) return popup.mouseScrolled(mx, my, h, v) || true;
+        if (popup != null) {
+            popup.mouseScrolled(mx, my, h, v);
+            return true;
+        }
         int before = list.scrolled();
         if (!list.mouseScrolled(mx, my, h, v)) {
             if (v == 0 || my < TOP || my >= listBottom()) return super.mouseScrolled(mx, my, h, v);

@@ -997,8 +997,13 @@ public final class GradientTab extends PanelTab {
 
     @Override
     protected boolean scrolled(double x, double y, double h, double v) {
-        if (swapStep >= 0 && swapBox.contains(x, y)) return swapRows.mouseScrolled(x, y, v) || true;
-        return filtersOpen && filtersArea().contains(x, y) && (filterWidgets.mouseScrolled(x, y, h, v) || true);
+        if (swapStep >= 0 && swapBox.contains(x, y)) {
+            swapRows.mouseScrolled(x, y, v);
+            return true;
+        }
+        if (!filtersOpen || !filtersArea().contains(x, y)) return false;
+        filterWidgets.mouseScrolled(x, y, h, v);
+        return true;
     }
 
     @Override

@@ -231,7 +231,9 @@ final class SavedGradients extends Dialog {
 
     @Override
     boolean mouseReleased(MouseButtonEvent e) {
-        return (rows != null && rows.mouseReleased()) | super.mouseReleased(e);
+        boolean took = rows != null && rows.mouseReleased();
+        boolean base = super.mouseReleased(e);
+        return took || base;
     }
 
     @Override

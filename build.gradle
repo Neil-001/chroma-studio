@@ -29,10 +29,9 @@ subprojects {
 
 		tasks.withType(JavaCompile).configureEach {
 			it.options.errorprone {
-				disable('ArrayRecordComponent', 'AssignmentExpression', 'ComplexBooleanConstant', 'EnumOrdinal',
+				disable('ArrayRecordComponent', 'AssignmentExpression', 'EnumOrdinal',
 						'ExposedPrivateType', 'IdentityHashMapUsage', 'OperatorPrecedence', 'ReferenceEquality',
-						'RefactorSwitch', 'RethrowReflectiveOperationExceptionAsLinkageError', 'SameNameButDifferent',
-						'ShortCircuitBoolean', 'StringSplitter')
+						'RefactorSwitch', 'RethrowReflectiveOperationExceptionAsLinkageError', 'SameNameButDifferent', 'StringSplitter')
 			}
 		}
 	}

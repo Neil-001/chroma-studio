@@ -1203,7 +1203,11 @@ public final class MatchTab extends Tab {
             draggingDistance = false;
             took = true;
         }
-        return list.mouseReleased() | panelList.mouseReleased() | controls.mouseReleased(e) | panelWidgets.mouseReleased(e) | took;
+        took |= list.mouseReleased();
+        took |= panelList.mouseReleased();
+        took |= controls.mouseReleased(e);
+        took |= panelWidgets.mouseReleased(e);
+        return took;
     }
 
     @Override
