@@ -85,7 +85,7 @@ class SourceRulesTest {
         assertEquals(List.of(), breaches(core, "String internet = planet.minecrafty.name + magnet.minecraft.name;"));
         assertEquals(List.of(), breaches(core, String.join("\n", "String help = \"\"\"",
                 "    Official information is available at minecraft.net.", "    minecraft.wiki lists block IDs.",
-                "    Download it from example.net. minecraft:stone is the default.", "    \"\"\";")));
+                "    Download it from example.net. minecraft.wiki lists the rest.", "    \"\"\";")));
     }
 
     private static List<String> breaches(String name, String raw) {
