@@ -7,13 +7,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import dev.chromastudio.core.color.Color;
 import java.util.ArrayList;
 import java.util.List;
 
-/** The saved gradients as JSON, the form of their one file. */
 public final class GradientCodec {
-    /** The file format's version. A file without it, or with another, is refused rather than guessed at. */
     public static final int FORMAT = 1;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -62,12 +61,6 @@ public final class GradientCodec {
         o.addProperty("properties", e.properties());
     }
 
-    /**
-     * Reads the saved gradients. A missing or mistyped field gets its default and unknown fields are ignored, so a
-     * file edited by hand still loads. A gradient without a name or two stops is left out, as is a step without a
-     * block, since nothing can stand in for them. Throws IllegalArgumentException, saying why, for a file that isn't
-     * one of these at all.
-     */
     public static List<StoredGradient> fromJson(String json) {
         JsonElement root;
         try {
@@ -101,7 +94,6 @@ public final class GradientCodec {
                 if (!(element instanceof JsonObject stop)) continue;
                 Integer rgb = colour(stop.get("colour"));
                 PaletteEntry block = block(stop);
-                // A block stop whose colour was lost still has its block; a colour stop needs its colour.
                 if (rgb == null && block == null) continue;
                 stops.add(new StoredGradient.Stop(rgb == null ? 0 : rgb, block));
             }
@@ -117,7 +109,7 @@ public final class GradientCodec {
                 blocks.add(new StoredGradient.Step(ideal == null ? 0 : ideal, block, bool(step.get("by_hand"))));
             }
         }
-        int steps = o.get("steps") instanceof JsonElement e && e.isJsonPrimitive() && e.getAsJsonPrimitive().isNumber() ? (int) e.getAsDouble() : blocks.size();
+        int steps = o.get("steps") instanceof JsonPrimitive p && p.isNumber() ? (int) p.getAsDouble() : blocks.size();
         return new StoredGradient(name, stops, steps, string(o.get("easing"), ""), string(o.get("arc"), ""), bool(o.get("spread")),
                 string(o.get("kind"), ""), blocks);
     }

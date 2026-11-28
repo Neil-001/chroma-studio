@@ -1,6 +1,5 @@
 package dev.chromastudio.client.ui.tabs;
 
-import dev.chromastudio.client.input.InputWithModifiers;
 import dev.chromastudio.client.ui.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
@@ -8,9 +7,8 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 
-/** A small square button with a drawn sign: an arrow, a cross or a plus. Its name is its tooltip. */
 final class IconButton extends AbstractButton {
-    enum Glyph { UP, DOWN, REMOVE, CLOSE, ADD }
+    enum Glyph { UP, DOWN, REMOVE, CLOSE, ADD, SWAP }
 
     private final Glyph glyph;
     private final Runnable action;
@@ -42,6 +40,14 @@ final class IconButton extends AbstractButton {
             case ADD -> {
                 g.fill(cx - 3, cy - 1, cx + 3, cy, c);
                 g.fill(cx - 1, cy - 3, cx, cy + 2, c);
+            }
+            case SWAP -> {
+                g.fill(cx - 3, cy - 2, cx + 3, cy - 1, c);
+                g.fill(cx + 1, cy - 3, cx + 2, cy - 2, c);
+                g.fill(cx + 1, cy - 1, cx + 2, cy, c);
+                g.fill(cx - 3, cy + 2, cx + 3, cy + 3, c);
+                g.fill(cx - 2, cy + 1, cx - 1, cy + 2, c);
+                g.fill(cx - 2, cy + 3, cx - 1, cy + 4, c);
             }
             default -> {
                 for (int i = -2; i <= 2; i++) {

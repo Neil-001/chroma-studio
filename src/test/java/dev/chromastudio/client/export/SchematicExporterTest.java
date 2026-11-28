@@ -53,7 +53,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Writes real files with the game's blocks loaded, and reads them back the way the game and Litematica do. It needs no world or client. */
 class SchematicExporterTest {
     @TempDir
     Path dir;
@@ -142,12 +141,10 @@ class SchematicExporterTest {
         assertEquals(SharedConstants.getCurrentVersion().getDataVersion().getVersion(), root.getInt("DataVersion"));
         assertEquals(0, root.getList("entities", Tag.TAG_COMPOUND).size());
         assertEquals(6, root.getList("palette", Tag.TAG_COMPOUND).size());
-        // The gaps aren't written, so there is no air.
         assertEquals(6 * 4, root.getList("blocks", Tag.TAG_COMPOUND).size());
 
         StructureTemplate template = new StructureTemplate();
         template.load(BuiltInRegistries.BLOCK.asLookup(), root);
-        // Three patches across and two down, each two blocks square with a gap between.
         assertEquals(new Vec3i(8, 5, 1), template.getSize());
         StructurePlaceSettings settings = new StructurePlaceSettings();
         assertEquals(4, template.filterBlocks(BlockPos.ZERO, settings, Blocks.STONE).size());
@@ -156,7 +153,6 @@ class SchematicExporterTest {
         assertEquals(4, logs.size());
         for (StructureTemplate.StructureBlockInfo log : logs) {
             assertEquals(Direction.Axis.X, log.state().getValue(RotatedPillarBlock.AXIS));
-            // The third entry is at the right of the top row.
             assertTrue(log.pos().getX() >= 6 && log.pos().getY() >= 3, log.pos().toString());
         }
         List<StructureTemplate.StructureBlockInfo> stairs = template.filterBlocks(BlockPos.ZERO, settings, Blocks.OAK_STAIRS);
@@ -220,7 +216,6 @@ class SchematicExporterTest {
         assertEquals("chroma-six-blocks-strip.litematic", first.getFileName().toString());
         assertEquals("chroma-six-blocks-wall.litematic", second.getFileName().toString());
         assertEquals("chroma-six-blocks-strip-3.litematic", third.getFileName().toString());
-        // The other format's names are its own.
         assertEquals("chroma-six-blocks-strip.nbt", nbt.getFileName().toString());
         assertArrayEquals(before, Files.readAllBytes(first));
         assertEquals("someone else's", Files.readString(dir.resolve("chroma-six-blocks-strip-2.litematic")));
@@ -237,7 +232,6 @@ class SchematicExporterTest {
         assertEquals("a leftover", Files.readString(leftover));
         byte[] before = Files.readAllBytes(first);
 
-        // A link at the next export's old temporary name must not lead the writer to the first file.
         Path link = dir.resolve("chroma-six-blocks-strip-2.litematic.tmp");
         try {
             Files.createSymbolicLink(link, first);
@@ -254,7 +248,6 @@ class SchematicExporterTest {
         }
     }
 
-    /** A schematic is the player's to share, so it is as readable as any file they save, not kept to its owner. */
     @Test
     void anExportedFileHasTheFoldersUsualPermissions() throws IOException {
         Assumptions.assumeTrue(Files.getFileStore(dir).supportsFileAttributeView("posix"));
@@ -313,10 +306,10 @@ class SchematicExporterTest {
 
     private static BlockState state(ListTag palette, int index) { return NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), palette.getCompound(index)); }
 
-    /** A loader with a game folder and no other mods. */
     private record Platform(Path gameDir) implements ClientPlatform {
         @Override public Path configDir() { return gameDir.resolve("config"); }
         @Override public boolean isModLoaded(String id) { return false; }
+        @Override public boolean isFabric() { return true; }
         @Override public List<BakedQuad> quads(BakedModel model, BlockState state, Direction side, RandomSource random) { return List.of(); }
         @Override public TextureAtlasSprite particleIcon(BakedModel model, BlockState state) { return null; }
         @Override public void renderBlock(BlockState state, PoseStack pose, MultiBufferSource buffers, int light, int overlay) { }

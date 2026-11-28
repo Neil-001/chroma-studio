@@ -1,16 +1,10 @@
 package dev.chromastudio.core.color;
 
-/** The ways to measure how far apart two colours are. */
 public enum Metric {
-    /** Euclidean distance in OKLab. */
     OKLAB(0.02),
-    /** The CIE's ΔE 2000 formula. */
     CIEDE2000(1.0),
-    /** Euclidean distance in CIELAB. */
     CIE76(2.3),
-    /** Euclidean distance on the 0 to 255 sRGB channels. */
     SRGB(8),
-    /** The OKLab distance between the map base colours nearest to each colour, so colours a map draws alike are 0 apart. */
     MAP_COLOR(0.02);
 
     private static final double POW_25_7 = Math.pow(25, 7);
@@ -34,7 +28,6 @@ public enum Metric {
         };
     }
 
-    /** The distance that counts as one visible step in this metric. */
     public double justNoticeable() { return justNoticeable; }
 
     public static double cie76(Lab x, Lab y) {
@@ -42,7 +35,6 @@ public enum Metric {
         return Math.sqrt(dl * dl + da * da + db * db);
     }
 
-    /** ΔE 2000 with all three weights at 1, as set out by Sharma, Wu and Dalal (2005). */
     public static double ciede2000(Lab x, Lab y) {
         double c1 = Math.hypot(x.a(), x.b()), c2 = Math.hypot(y.a(), y.b());
         double meanC7 = Math.pow((c1 + c2) / 2, 7);

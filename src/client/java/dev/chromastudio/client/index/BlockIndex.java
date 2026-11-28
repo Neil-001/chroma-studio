@@ -5,7 +5,6 @@ import dev.chromastudio.client.ChromaStudioClient;
 import dev.chromastudio.core.color.Color;
 import dev.chromastudio.core.color.Distribution;
 import dev.chromastudio.core.color.Face;
-import dev.chromastudio.core.color.Scale;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,19 +43,14 @@ import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
-/**
- * Every block's colours, and the search for the ones closest to a target. It is built on its own thread whenever
- * the resources reload, and until the first build is done it is empty.
- */
 public final class BlockIndex {
     private static final BlockIndex INSTANCE = new BlockIndex();
     private static final ResourceLocation OPERATOR_TAB = ResourceLocation.withDefaultNamespace("op_blocks");
 
     public static BlockIndex get() { return INSTANCE; }
 
-    /** A finished build. The client thread reads it while the next one is made. */
     private record Built(List<List<Entry>> blocks, Map<Block, List<Entry>> byBlock, Map<BlockState, Entry> byState,
-                         Set<String> namespaces, Map<String, List<Entry>> materials) {}
+                         Set<String> namespaces, Map<String, List<Entry>> materials, int version) {}
 
     public record Match(Entry entry, Face face, double distance) {}
 
@@ -65,16 +59,10 @@ public final class BlockIndex {
         t.setDaemon(true);
         return t;
     });
-    // Each build takes the next number, and gives up when it sees a later one has been asked for.
     private final AtomicInteger asked = new AtomicInteger();
     private volatile Built built;
-    private volatile int version;
-    // The build and the world's registries the creative tabs were last read for. Client thread only.
     private Built listedBuild;
     private HolderLookup.Provider listedFor;
-    // The same registries under another identity, to fill the tabs from. The game refills its tabs when it is
-    // asked with registries that aren't the very ones it last used, and only then feeds its creative search.
-    // Asked with the world's own, it could find nothing changed after us and leave that search empty.
     private HolderLookup.Provider tabRegistries;
     private volatile float progress;
     private volatile boolean building;
@@ -82,11 +70,6 @@ public final class BlockIndex {
 
     private BlockIndex() {}
 
-    /**
-     * Hooks the index up. Each loader's client entrypoint calls this once and registers what it returns as a client
-     * resource reload listener. {@code mods} names every loaded mod with its version; they key the cache. It also
-     * adds {@code /chroma debug}.
-     */
     public static ResourceManagerReloadListener install(Collection<String> mods) {
         INSTANCE.mods = List.copyOf(mods);
         ChromaCommand.SUBCOMMANDS.add(DebugCommand::attach);
@@ -95,19 +78,17 @@ public final class BlockIndex {
         };
     }
 
-    /** A number that changes with every finished build, so a caller knows when what it worked out is out of date. */
-    public int version() { return version; }
+    public int version() {
+        Built b = built;
+        return b == null ? 0 : b.version();
+    }
 
-    /** False until the first build finishes. It stays true while a later build runs, and the earlier one answers. */
     public boolean ready() { return built != null; }
 
-    /** Whether a build is running. */
     public boolean building() { return building; }
 
-    /** How far the running build is, 0 to 1. With none running, 1 when ready. */
     public float progress() { return building ? progress : ready() ? 1 : 0; }
 
-    /** Builds again in the background, reading every image afresh in case a pack changed in place. */
     public void rebuild() { start(false); }
 
     private void start(boolean useCache) {
@@ -129,7 +110,6 @@ public final class BlockIndex {
         long started = System.nanoTime();
         Minecraft mc = Minecraft.getInstance();
         IndexOptions options = IndexOptions.current();
-        // The models and the rest are read on the client thread, so they all come from the same reload.
         record Scene(BlockModelShaper models, BlockColors colours, ResourceManager resources, List<String> packs) {}
         Scene scene = mc.submit(() -> new Scene(mc.getModelManager().getBlockModelShaper(),
                 mc.getBlockColors(), mc.getResourceManager(), List.copyOf(mc.getResourcePackRepository().getSelectedIds()))).get(1, TimeUnit.MINUTES);
@@ -150,7 +130,6 @@ public final class BlockIndex {
             try {
                 entries = builder.entries(block, technical(block, null), byState);
             } catch (RuntimeException e) {
-                // One mod's odd model shouldn't cost the player every other block.
                 ChromaStudioClient.LOGGER.warn("Left {} out of the block index", BuiltInRegistries.BLOCK.getKey(block), e);
                 continue;
             }
@@ -169,7 +148,6 @@ public final class BlockIndex {
                 builder.imagesRead, builder.readNanos / 1_000_000, builder.statsNanos / 1_000_000);
     }
 
-    /** Makes a build's entries the ones the index answers from. Each list is one block's states, the default first. */
     void adopt(List<List<Entry>> blocks, Map<BlockState, Entry> byState) {
         Map<Block, List<Entry>> byBlock = new IdentityHashMap<>();
         Set<String> namespaces = new TreeSet<>();
@@ -182,21 +160,12 @@ public final class BlockIndex {
         }
         Comparator<Entry> inSet = Comparator.comparingInt(e -> MaterialSets.order(e.id()));
         for (List<Entry> set : materials.values()) set.sort(inSet.thenComparing(Entry::id));
-        built = new Built(List.copyOf(blocks), byBlock, byState, Collections.unmodifiableSet(namespaces), materials);
-        version++;
+        Built was = built;
+        built = new Built(List.copyOf(blocks), byBlock, byState, Collections.unmodifiableSet(namespaces), materials, was == null ? 1 : was.version() + 1);
     }
 
-    /**
-     * Reads the creative tabs for the world the player has just joined. Each loader calls this when the player
-     * joins, while the loading screen still hides the moment it takes. The client thread only.
-     */
     public void worldJoined() { current(); }
 
-    /**
-     * The build to answer from, or null before the first. On the client thread in a world it first reads the
-     * creative tabs, if they haven't been read for this build and this world. Item stacks can't be made before a
-     * world has loaded, so the tabs can't be filled any sooner.
-     */
     private Built current() {
         Built b = built;
         Minecraft mc = Minecraft.getInstance();
@@ -219,34 +188,21 @@ public final class BlockIndex {
         return b;
     }
 
-    /**
-     * Whether a block is technical: one with no item in a creative tab other than Operator Utilities. Fluids are
-     * never technical. Until the tabs have been read, {@code listed} is null and any block with an item counts.
-     */
     private static boolean technical(Block block, Set<Block> listed) {
         if (block instanceof LiquidBlock) return false;
         return listed == null ? !Item.BY_BLOCK.containsKey(block) : !listed.contains(block);
     }
 
-    /**
-     * The blocks with an item in a creative tab other than Operator Utilities. The tabs are filled by the game's
-     * own rebuild with every feature and the operator items on, so modded tabs and experimental blocks count.
-     */
     private static Set<Block> listedBlocks(HolderLookup.Provider registries) {
         CreativeModeTabs.tryRebuildTabContents(FeatureFlags.REGISTRY.allFlags(), true, registries);
         Set<Block> listed = new HashSet<>();
         for (CreativeModeTab tab : CreativeModeTabs.allTabs()) {
-            // The search tab repeats every other tab, the operator one included.
             if (tab.getType() != CreativeModeTab.Type.CATEGORY || OPERATOR_TAB.equals(BuiltInRegistries.CREATIVE_MODE_TAB.getKey(tab))) continue;
             for (ItemStack stack : tab.getDisplayItems()) if (stack.getItem() instanceof BlockItem item) listed.add(item.getBlock());
         }
         return listed;
     }
 
-    /**
-     * Every entry, by the settings: technical blocks only when they are on, and one entry a block, its default
-     * state, unless states are listed separately. Empty until the index is ready.
-     */
     public List<Entry> entries() {
         Built b = current();
         if (b == null) return List.of();
@@ -260,20 +216,14 @@ public final class BlockIndex {
         return out;
     }
 
-    /** A block's entries, the default state first. Empty when the block isn't indexed. */
     public List<Entry> statesOf(Block block) {
         Built b = current();
         return b == null ? List.of() : b.byBlock.getOrDefault(block, List.of());
     }
 
-    /**
-     * The entries closest to a target, nearest first, and by id among equals. A block gives its best state only,
-     * unless the query asks for states separately.
-     */
     public List<Match> closest(Target target, Query q) {
         Built b = current();
         if (b == null) return List.of();
-        // Many faces share a texture. Each look is scored once, for each shading it can have.
         Map<Sampled, double[]> scores = new IdentityHashMap<>();
         Distribution wanted = target.distribution(q.scale);
         List<Match> matches = new ArrayList<>();
@@ -292,11 +242,6 @@ public final class BlockIndex {
         return matches.size() > q.limit ? List.copyOf(matches.subList(0, Math.max(0, q.limit))) : matches;
     }
 
-    /**
-     * The entries that pass a query's filters when each is looked at on one face, for a caller that chooses among
-     * them itself, as a gradient does. A block gives one entry: its default state, or with states listed separately
-     * the first of its states that passes.
-     */
     public List<Entry> passing(Query q, Face face) {
         Built b = current();
         if (b == null) return List.of();
@@ -311,7 +256,6 @@ public final class BlockIndex {
         return out;
     }
 
-    /** An entry's best face under the query, or null when no face passes the filters. */
     private static Match match(Entry e, Distribution wanted, Query q, Map<Sampled, double[]> scores) {
         Match best = null;
         for (Face f : Entry.BY_PREFERENCE) {
@@ -323,7 +267,6 @@ public final class BlockIndex {
                 Arrays.fill(fresh, Double.NaN);
                 return fresh;
             });
-            // Without shading every face of a look scores the same, so one slot does for all.
             int slot = q.shading ? f.ordinal() : 0;
             if (Double.isNaN(byFace[slot])) byFace[slot] = wanted.emd(face.distribution(q.scale, q.shading ? f : null), q.metric);
             if (best == null || byFace[slot] < best.distance) best = new Match(e, f, byFace[slot]);
@@ -331,16 +274,11 @@ public final class BlockIndex {
         return best;
     }
 
-    /** The mod namespaces that have blocks in the index, in order. */
     public Set<String> namespaces() {
         Built b = current();
         return b == null ? Set.of() : b.namespaces;
     }
 
-    /**
-     * The blocks of the same material as an entry, such as oak's planks, log, slab, stairs and fence: full blocks
-     * first, then by shape. Technical ones are left out unless the setting lists them.
-     */
     public List<Entry> materialSet(Entry e) {
         Built b = current();
         if (b == null) return List.of();
@@ -348,16 +286,15 @@ public final class BlockIndex {
         return b.materials.getOrDefault(MaterialSets.base(e.id()), List.of()).stream().filter(m -> technical || !m.technical()).toList();
     }
 
-    /** What to call an entry's material set, such as "Cherry" for the set cherry planks are in. */
+    public String family(Entry e) { return MaterialSets.family(e.id()); }
+
+    public String material(Entry e) { return MaterialSets.base(e.id()); }
+
     public String materialName(Entry e) {
         String name = MaterialSets.name(e.id());
         return name.isEmpty() ? e.name().getString() : name;
     }
 
-    /**
-     * The entry that stands for a block state: its own, or the one it was folded into for showing the same
-     * textures, or the block's default when the cap left the state out. Null when the block isn't indexed.
-     */
     public Entry entryOf(BlockState state) {
         Built b = current();
         if (b == null) return null;
@@ -370,11 +307,6 @@ public final class BlockIndex {
         return states == null ? null : states.getFirst();
     }
 
-    /**
-     * The average colour of a block state's face, for the public API. A state the index folded into another that
-     * shows the same textures answers from that one's, with its own tint. {@link Face#ANY} gives the average of all six. Empty when the block
-     * isn't indexed.
-     */
     public Optional<Color> colourOf(BlockState state, Face face, TintContext tint) {
         Entry e = entryOf(state);
         if (e == null) return Optional.empty();

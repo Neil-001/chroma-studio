@@ -7,22 +7,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/** K-means clustering of pixels in OKLab, where distance follows how different colours look. */
 public final class Kmeans {
-    // A fixed seed, so one image always gives the same clusters and a cached index matches a rebuilt one.
     private static final long SEED = 0x43484F4D41L;
     private static final int MAX_ROUNDS = 64;
 
     private Kmeans() {}
 
-    /** Cluster means with the share of the weight each holds, largest first. */
     record Clusters(Oklab[] means, double[] weights) {}
 
-    /**
-     * The means of up to {@code k} clusters as colours, largest cluster first. Pixels with alpha under
-     * {@code alphaCutoff} are left out and the rest count by their alpha. Fewer than {@code k} come back when
-     * the image has fewer distinct colours, and none when nothing is opaque enough.
-     */
     public static List<Color> cluster(int[] argb, int k, int alphaCutoff) {
         Clusters found = clusters(argb, k, alphaCutoff);
         List<Color> out = new ArrayList<>(found.means.length);
@@ -39,10 +31,8 @@ public final class Kmeans {
         return clusters(argb, weights, k);
     }
 
-    /** Clusters the colour channels of {@code argb}, each pixel counting by its weight. Pixels of no weight are left out. */
     static Clusters clusters(int[] argb, double[] weights, int k) {
         if (k < 1) throw new IllegalArgumentException("k must be at least 1");
-        // Equal pixels are pooled first: textures and pixel art have few distinct colours.
         Map<Integer, double[]> pooled = new LinkedHashMap<>();
         for (int i = 0; i < argb.length; i++) {
             if (weights[i] > 0) pooled.computeIfAbsent(argb[i] & 0xFFFFFF, key -> new double[1])[0] += weights[i];
@@ -61,8 +51,6 @@ public final class Kmeans {
         int n = points.length;
         if (n == 0) return new Clusters(new Oklab[0], new double[0]);
 
-        // k-means++ seeding: each new centre is drawn with odds in proportion to its squared distance from the
-        // centres so far, which spreads them out.
         List<Oklab> centres = new ArrayList<>();
         double[] odds = weights.clone();
         double[] nearest = new double[n];
@@ -70,7 +58,6 @@ public final class Kmeans {
         while (centres.size() < k) {
             double total = 0;
             for (double o : odds) total += o;
-            // Every point already sits on a centre.
             if (total <= 1e-12) break;
             double pick = random.nextDouble() * total;
             int chosen = n - 1;
@@ -116,14 +103,12 @@ public final class Kmeans {
                 held[c] += weights[i];
             }
             for (int c = 0; c < means.length; c++) {
-                // A cluster left with nothing keeps its place and is dropped at the end.
                 if (held[c] > 0) means[c] = new Oklab(l[c] / held[c], a[c] / held[c], b[c] / held[c]);
             }
         }
         return sorted(means, held);
     }
 
-    /** Drops empty clusters, puts the largest first and scales the weights to sum to 1. */
     static Clusters sorted(Oklab[] means, double[] held) {
         List<Integer> order = new ArrayList<>();
         double total = 0;

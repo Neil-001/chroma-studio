@@ -13,7 +13,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 
-/** Reads a sprite's image from the resource packs and brings it down to one 16 by 16 frame. */
 final class Textures {
     private Textures() {}
 
@@ -27,16 +26,9 @@ final class Textures {
         }
     }
 
-    // How many pixels a side each cell becomes when a frame is handed to TextureStats. See Frame.stats.
     private static final int SUB = 8;
 
-    /**
-     * A texture as the index keeps it: 16 by 16 cells in rows from the top, each with its colour, packed 0xRRGGBB,
-     * and how much of it is filled, 0 to 1. The stats are always worked out from this, so a texture read from the
-     * cache gives the same numbers as one read from its image.
-     */
     record Frame(int[] rgb, float[] alpha, boolean animated) {
-        /** A frame from cells of alpha-multiplied linear light and alpha. */
         static Frame of(double[][] cells, boolean animated) {
             int[] rgb = new int[cells.length];
             float[] alpha = new float[cells.length];
@@ -49,12 +41,6 @@ final class Textures {
             return new Frame(rgb, alpha, animated);
         }
 
-        /**
-         * TextureStats takes 8-bit alpha and counts none under its cutoff, but a cell of a large texture can be far
-         * less filled than that: one texel in 64 is 4 in 255. So a cell that isn't simply full or empty is handed
-         * over as 8 by 8 pixels, of which as many are filled as the cell's alpha asks for. That keeps coverage and
-         * the colours' weights true to within a thousandth.
-         */
         TextureStats stats() {
             boolean plain = true;
             for (float a : alpha) plain &= a == 0 || a == 1;
@@ -62,8 +48,6 @@ final class Textures {
             int[] argb = new int[side * side];
             for (int i = 0; i < alpha.length; i++) {
                 if (alpha[i] <= 0) continue;
-                // As many whole pixels as fit, then one with what is left over. A leftover under the cutoff is
-                // dropped, unless it is all the cell has.
                 double wanted = alpha[i] * per * per;
                 int whole = (int) Math.floor(wanted + 1e-6);
                 int rest = (int) Math.round((wanted - whole) * 255);
@@ -76,10 +60,6 @@ final class Textures {
         }
     }
 
-    /**
-     * The frame for a sprite such as {@code minecraft:block/stone}, or null when its image is missing or can't be
-     * read. An animated texture's frames are averaged by how long each shows, or only the first is taken.
-     */
     static Frame read(ResourceManager resources, ResourceLocation sprite, boolean averageFrames) {
         ResourceLocation file = ResourceLocation.fromNamespaceAndPath(sprite.getNamespace(), "textures/" + sprite.getPath() + ".png");
         Optional<Resource> found = resources.getResource(file);
@@ -93,13 +73,11 @@ final class Textures {
             int fw = size.width(), fh = size.height();
             int columns = w / fw, count = columns * (h / fh);
             if (count < 1) return null;
-            // Each frame as its left edge, top edge and time on screen.
             List<int[]> frames = new ArrayList<>();
             int frameTime = animation.get().getDefaultFrameTime();
             animation.get().forEachFrame((index, time) -> {
                 if (index < count) frames.add(new int[] {index % columns * fw, index / columns * fh, time});
             });
-            // Metadata that lists no frames means every frame in turn, as the game takes it.
             if (frames.isEmpty()) for (int i = 0; i < count; i++) frames.add(new int[] {i % columns * fw, i / columns * fh, frameTime});
             boolean animated = frames.size() > 1;
             return Frame.of(reduce(image, averageFrames ? frames : frames.subList(0, 1), fw, fh), animated);
@@ -108,10 +86,6 @@ final class Textures {
         }
     }
 
-    /**
-     * Averages the frames into 16 by 16 cells, in linear light and weighted by alpha, as {@link TextureStats} does.
-     * A frame of any size fits: a cell covers the pixels that fall in it, and at least one.
-     */
     private static double[][] reduce(NativeImage image, List<int[]> frames, int fw, int fh) {
         double[][] cells = new double[SIDE * SIDE][4];
         double totalTime = 0;
