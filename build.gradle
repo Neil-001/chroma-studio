@@ -29,7 +29,6 @@ subprojects {
 
 		tasks.withType(JavaCompile).configureEach {
 			it.options.errorprone {
-				excludedPaths = '.*/src/test/java/(com/moulberry|imgui)/.*'
 				disable('ArrayRecordComponent', 'AssignmentExpression', 'ComplexBooleanConstant', 'EnumOrdinal',
 						'ExposedPrivateType', 'IdentityHashMapUsage', 'OperatorPrecedence', 'ReferenceEquality',
 						'RefactorSwitch', 'RethrowReflectiveOperationExceptionAsLinkageError', 'SameNameButDifferent',

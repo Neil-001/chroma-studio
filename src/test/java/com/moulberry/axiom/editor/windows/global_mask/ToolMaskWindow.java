@@ -4,5 +4,6 @@ public final class ToolMaskWindow {
     private ToolMaskWindow() {}
 
     public static String luaExecutionError;
+    @SuppressWarnings("unused")
     private static long lastLuaCompile;
 }
