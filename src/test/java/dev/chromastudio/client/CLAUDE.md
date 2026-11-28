@@ -1,0 +1,1 @@
+`GameIndexTest` and `TestIndex` use texture names because tests have registries and assets but no baked models. Tags need explicit binding, and grass colours need loading because tests skip the client resource reload.

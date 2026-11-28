@@ -2,8 +2,10 @@ package dev.chromastudio.core.color;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,7 +30,6 @@ class DistributionTest {
         assertEquals(List.of(0.75, 0.25), d.weights());
         assertEquals(List.of(Color.ofRgb(0xFF0000), Color.ofRgb(0x0000FF)), d.colours());
         assertEquals(List.of(1.0), Distribution.of(Color.ofRgb(0x123456)).weights());
-        // Weights too large to add up still scale.
         assertEquals(List.of(0.5, 0.5), Distribution.of(List.of(Color.ofRgb(0), Color.ofRgb(1)), List.of(Double.MAX_VALUE, Double.MAX_VALUE)).weights());
     }
 
@@ -69,12 +70,10 @@ class DistributionTest {
         }
     }
 
-    /** Along the grey axis the earth mover's distance is the area between the two cumulative curves. */
     @Test
     void emdOnGreysByHand() {
         Distribution a = Distribution.of(List.of(grey(0), grey(100)), List.of(0.5, 0.5));
         Distribution b = Distribution.of(List.of(grey(20), grey(60)), List.of(0.25, 0.75));
-        // 0 to 20: 0.5 · 20. 20 to 60: 0.25 · 40. 60 to 100: 0.5 · 40. That is 40 grey levels, each √3 in sRGB.
         assertEquals(40 * Math.sqrt(3), a.emd(b, Metric.SRGB), 1e-9);
     }
 
@@ -115,16 +114,70 @@ class DistributionTest {
 
     @Test
     void transportFindsTheOptimumWhereTheCheapestCellMisleads() {
-        // Filling the free cell first forces the dear one: 0 + 3 · 0.5 = 1.5. Crossing over costs 0.5 + 0.5 = 1.
         double[][] cost = {{0, 1}, {1, 3}};
         assertEquals(1.0, Distribution.transport(new double[] {0.5, 0.5}, new double[] {0.5, 0.5}, cost), 1e-12);
-        // One source can only split as the sinks ask.
         assertEquals(0.3 * 2 + 0.7 * 5, Distribution.transport(new double[] {1}, new double[] {0.3, 0.7}, new double[][] {{2, 5}}), 1e-12);
     }
 
     @Test
+    void transportEndsOnNearlyTiedCosts() {
+        int[][] steps = {{3, 6, 1, 0}, {4, 4, 7, 1}, {1, 5, 3, 4}, {1, 8, 3, 6}};
+        double[][] cost = new double[4][4];
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) cost[i][j] = 1 + steps[i][j] * 3e-13;
+        }
+        double[] quarters = {0.25, 0.25, 0.25, 0.25};
+        double best = Double.POSITIVE_INFINITY;
+        for (int[] order : orders(new int[] {0, 1, 2, 3}, 0, new ArrayList<>())) {
+            double sum = 0;
+            for (int i = 0; i < 4; i++) sum += 0.25 * cost[i][order[i]];
+            best = Math.min(best, sum);
+        }
+        double found = assertTimeoutPreemptively(Duration.ofSeconds(5), () -> Distribution.transport(quarters, quarters, cost));
+        assertEquals(best, found, 5e-14);
+    }
+
+    @Test
+    void transportShipsEvenATinyDifferenceInWeight() {
+        Color black = Color.ofRgb(0), white = Color.ofRgb(0xFFFFFF);
+        double tiny = Math.scalb(1.0, -41);
+        Distribution even = Distribution.of(List.of(black, white), List.of(0.5, 0.5));
+        Distribution uneven = Distribution.of(List.of(black, white), List.of(0.5 + tiny, 0.5 - tiny));
+        double expected = tiny * Metric.SRGB.distance(black, white);
+        assertEquals(expected, even.emd(uneven, Metric.SRGB), expected * 1e-6);
+        assertEquals(expected, uneven.emd(even, Metric.SRGB), expected * 1e-6);
+    }
+
+    @Test
+    void transportSendsBackEvenATinyFlow() {
+        double tiny = Math.scalb(1.0, -50);
+        double[] weights = {tiny, tiny, 1 - 2 * tiny};
+        int[] from = {2, 5, 255}, to = {3, 0, 255};
+        double[][] cost = new double[3][3];
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) cost[i][j] = Math.abs(from[i] - to[j]);
+        }
+        assertEquals(4 * tiny, Distribution.transport(weights, weights, cost), tiny * 1e-6);
+    }
+
+    private static List<int[]> orders(int[] a, int k, List<int[]> out) {
+        if (k == a.length) {
+            out.add(a.clone());
+            return out;
+        }
+        for (int i = k; i < a.length; i++) {
+            int t = a[k];
+            a[k] = a[i];
+            a[i] = t;
+            orders(a, k + 1, out);
+            a[i] = a[k];
+            a[k] = t;
+        }
+        return out;
+    }
+
+    @Test
     void meanBlendsInLinearLight() {
-        // Half black and half white is 50% luminance, which sRGB stores as 188.
         assertEquals(0xBCBCBC, Distribution.of(List.of(grey(0), grey(255)), List.of(1.0, 1.0)).mean().rgb());
         assertEquals(0x123456, Distribution.of(Color.ofRgb(0x123456)).mean().rgb());
     }
@@ -148,7 +201,6 @@ class DistributionTest {
 
     @Test
     void pixelsCloserThanAStepMerge() {
-        // Four greys one level apart are about 0.004 apart in OKLab lightness, far inside a step of 0.02.
         int[] pixels = {0xFF808080, 0xFF818181, 0xFF828282, 0xFF838383, 0xFFFF0000, 0xFFFF0000};
         Distribution d = Distribution.ofPixels(pixels, 16);
         assertEquals(2, d.colours().size());
@@ -167,7 +219,6 @@ class DistributionTest {
 
     @Test
     void faintPixelsAreLeftOutAndTheRestCountByAlpha() {
-        // Alpha 15 is under the cutoff; alpha 51 counts a fifth of a solid pixel.
         int[] pixels = {0x0F00FF00, 0xFFFF0000, 0x330000FF};
         Distribution d = Distribution.ofPixels(pixels, 16);
         assertEquals(List.of(Color.ofRgb(0xFF0000), Color.ofRgb(0x0000FF)), d.colours());

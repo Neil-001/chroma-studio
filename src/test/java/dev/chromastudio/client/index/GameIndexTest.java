@@ -57,12 +57,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Checks the index against the game itself: the vanilla textures read from the game's own resources, its block
- * classes and its tints. It loads Minecraft's registries and assets but no client and no window, so models aren't
- * baked: the entries here are put together by hand from texture names, and the dev client's
- * {@code /chroma debug} covers what the models say.
- */
 class GameIndexTest {
     private static ResourceManager resources;
     private static final Map<String, Sampled> SAMPLED = new java.util.HashMap<>();
@@ -74,13 +68,11 @@ class GameIndexTest {
         resources = new MultiPackResourceManager(PackType.CLIENT_RESOURCES, List.of(new VanillaPackResourcesBuilder()
                 .exposeNamespace("minecraft").pushJarResources()
                 .build(new PackLocationInfo("vanilla", Component.literal("vanilla"), PackSource.BUILT_IN, Optional.empty()))));
-        // The client loads the grass colours on a resource reload, which doesn't happen here.
         try (InputStream in = resources.open(Identifier.withDefaultNamespace("textures/colormap/grass.png")); NativeImage map = NativeImage.read(in)) {
             GrassColor.init(map.getPixels());
         }
     }
 
-    /** A vanilla block by its id's path. Many of the game's own constants are grouped by colour, so this reads plainer. */
     private static Block block(String path) {
         return BuiltInRegistries.BLOCK.getOptional(Identifier.withDefaultNamespace(path)).orElseThrow(() -> new AssertionError("No block " + path));
     }
@@ -97,7 +89,6 @@ class GameIndexTest {
         return SAMPLED.computeIfAbsent(sprite, s -> new Sampled(frame(s)));
     }
 
-    /** An entry whose faces are these textures, in the order down, up, north, south, west, east. One name does for all six. */
     private static Entry entry(BlockState state, boolean technical, String... sprites) {
         BlockState byDefault = state.getBlock().defaultBlockState();
         FaceLayers[] faces = new FaceLayers[6];
@@ -111,7 +102,6 @@ class GameIndexTest {
 
     private static Entry entry(Block block, String... sprites) { return entry(block.defaultBlockState(), false, sprites); }
 
-    /** Puts entries in the index, one list per block, and gives the index back. */
     private static BlockIndex index(List<List<Entry>> blocks) {
         Map<BlockState, Entry> byState = new IdentityHashMap<>();
         for (List<Entry> states : blocks) for (Entry e : states) byState.put(e.state(), e);
@@ -166,7 +156,6 @@ class GameIndexTest {
         assertEquals(130, green.h(), 15, "green in the plains");
         assertTrue(green.c() > 0.08);
 
-        // The same through an entry: its top is tinted, its bottom is plain dirt.
         FaceLayers[] faces = new FaceLayers[6];
         for (int i = 0; i < 6; i++) {
             boolean up = i == Face.UP.ordinal();
@@ -201,11 +190,9 @@ class GameIndexTest {
         assertEquals("minecraft:block/grass_block_side+minecraft:block/grass_block_side_overlay#0", side.key());
         TextureStats plains = side.sample(grass, TintContext.biome(Biomes.PLAINS)).stats;
         assertEquals(1, plains.coverage(), 1e-9);
-        // The top row is all fringe, so in the plains it is green, and the bottom row is all dirt.
         int[] pixels = plains.pixels(Scale.T16);
         assertEquals(130, Color.ofRgb(pixels[0]).oklch().h(), 20);
         assertEquals(Tone.WARM, Tone.of(Color.ofRgb(pixels[255]).oklch()));
-        // Untinted, the fringe is grey.
         assertTrue(Color.ofRgb(side.sample(grass, TintContext.none()).stats.pixels(Scale.T16)[0]).oklch().c() < 0.01);
     }
 
@@ -215,9 +202,7 @@ class GameIndexTest {
         assertTrue(water.animated());
         assertEquals(256, water.rgb().length);
         assertFalse(frame("block/stone").animated());
-        // A flowing texture's frame is 32 pixels wide, and is brought down like any other.
         assertTrue(frame("block/water_flow").animated());
-        // One frame alone is patchier than the average of them all.
         Textures.Frame first = Textures.read(resources, Identifier.withDefaultNamespace("block/water_still"), false);
         assertTrue(first.animated());
         assertTrue(first.stats().spread() > water.stats().spread());
@@ -226,8 +211,6 @@ class GameIndexTest {
 
     @Test
     void aSparseCellKeepsItsTrueWeight() {
-        // One texel in 64 filled, as in a 128 pixel texture brought down to 16 cells: too faint for 8-bit alpha
-        // to pass the stats' cutoff, yet it must still count for what it is.
         double[][] cells = new double[256][4];
         for (double[] cell : cells) {
             cell[0] = 1.0 / 64;
@@ -236,7 +219,6 @@ class GameIndexTest {
         Textures.Frame sparse = Textures.Frame.of(cells, false);
         assertEquals(1.0 / 64, sparse.stats().coverage(), 1e-4);
         assertEquals(0xFF0000, sparse.stats().mean(Scale.T1).rgb());
-        // Half a cell and a sliver of one.
         for (double[] cell : cells) cell[3] = cell[0] = 0;
         cells[0][0] = cells[0][3] = 0.5;
         cells[1][0] = cells[1][3] = 0.001;
@@ -247,7 +229,6 @@ class GameIndexTest {
 
     @Test
     void aFoldedStateKeepsItsOwnTint() {
-        // Redstone dust's sixteen powers share their textures, so one entry stands for them all, but each has its tint.
         Block wire = block("redstone_wire");
         BlockTintSource source = BlockColors.createDefault().getTintSource(wire.defaultBlockState(), 0);
         FaceLayers[] faces = new FaceLayers[6];
@@ -309,9 +290,7 @@ class GameIndexTest {
                 Map.entry(block("glowstone"), Kind.LIGHT), Map.entry(block("torch"), Kind.LIGHT), Map.entry(block("sea_lantern"), Kind.LIGHT),
                 Map.entry(block("chest"), Kind.OTHER), Map.entry(block("lever"), Kind.OTHER), Map.entry(block("anvil"), Kind.OTHER));
         expected.forEach((block, kind) -> assertEquals(kind, Kind.of(block.defaultBlockState()), block.toString()));
-        // A lamp is a light only while it is lit.
         assertEquals(Kind.LIGHT, Kind.of(block("redstone_lamp").defaultBlockState().setValue(BlockStateProperties.LIT, true)));
-        // Every block lands somewhere, without a model or a world.
         for (Block block : BuiltInRegistries.BLOCK) assertNotNull(Kind.of(block.defaultBlockState()), block.toString());
     }
 
@@ -329,7 +308,6 @@ class GameIndexTest {
                 block("piston"), block("dirt"), block("sand"), block("deepslate"), block("stone_bricks"), block("water"))) {
             assertFalse(CreativeOnly.is(block), block.toString());
         }
-        // Every infested block is caught by its class.
         long infested = BuiltInRegistries.BLOCK.stream().filter(b -> BuiltInRegistries.BLOCK.getKey(b).getPath().startsWith("infested_")).count();
         assertEquals(7, infested);
         BuiltInRegistries.BLOCK.stream().filter(b -> BuiltInRegistries.BLOCK.getKey(b).getPath().startsWith("infested_"))
@@ -363,7 +341,6 @@ class GameIndexTest {
                 Map.entry("somemod:ruby_bricks", "somemod:ruby_brick"), Map.entry("somemod:ruby_brick_slab", "somemod:ruby_brick"),
                 Map.entry("minecraft:slab", "minecraft:slab"));
         expected.forEach((id, base) -> assertEquals(base, MaterialSets.base(id), id));
-        // Every vanilla slab, stair and wall has a full block that shares its base.
         List<String> ids = BuiltInRegistries.BLOCK.keySet().stream().map(Identifier::toString).toList();
         java.util.Set<String> bases = new java.util.HashSet<>();
         List<String> orphans = new ArrayList<>();
@@ -375,7 +352,17 @@ class GameIndexTest {
         assertEquals(List.of("minecraft:petrified_oak_slab"), orphans);
     }
 
-    /** A set's palette is named after the material, whichever of its blocks the set was opened from. */
+    @Test
+    void variantsShareAFamilyAndDifferentStonesDont() {
+        for (String id : List.of("minecraft:stone_bricks", "minecraft:cracked_stone_bricks", "minecraft:mossy_stone_brick_stairs",
+                "minecraft:chiseled_stone_bricks", "minecraft:infested_stone_bricks")) {
+            assertEquals("minecraft:stone_brick", MaterialSets.family(id), id);
+        }
+        assertEquals("minecraft:cobblestone", MaterialSets.family("minecraft:mossy_cobblestone_wall"));
+        List<String> stones = List.of("minecraft:cobblestone", "minecraft:andesite", "minecraft:polished_andesite", "minecraft:smooth_stone");
+        assertEquals(stones.size(), stones.stream().map(MaterialSets::family).distinct().count());
+    }
+
     @Test
     void aSetIsNamedAfterItsMaterial() {
         for (String id : List.of("minecraft:cherry_planks", "minecraft:cherry_slab", "minecraft:stripped_cherry_log", "minecraft:cherry_wall_hanging_sign")) {
@@ -431,14 +418,11 @@ class GameIndexTest {
         Color red = stats("block/red_concrete").mean(Scale.T1);
         List<BlockIndex.Match> matches = index.closest(Target.of(red), query());
         assertEquals("minecraft:red_concrete", matches.getFirst().entry().id());
-        // A flat target's distance is the texture's mean distance from it, so a flat texture is nearly on it.
         assertTrue(matches.getFirst().distance() < 0.01);
         assertEquals(9, matches.size(), "one row a block, and the technical command block is left out");
         for (int i = 1; i < matches.size(); i++) assertTrue(matches.get(i - 1).distance() <= matches.get(i).distance());
         assertEquals(3, index.closest(Target.of(red), query().limit(3)).size());
 
-        // States: the lit lamp is found as its own state, and as its block's best when collapsed. Its texture is
-        // patchy, so it is only the nearest to its own average from far enough away to blend.
         Color litColour = stats("block/redstone_lamp_on").mean(Scale.T1);
         BlockIndex.Match lamp = index.closest(Target.of(litColour), query().scale(Scale.T1)).getFirst();
         assertEquals("minecraft:redstone_lamp", lamp.entry().id());
@@ -448,18 +432,15 @@ class GameIndexTest {
         separately.statesSeparately = true;
         assertEquals(11, index.closest(Target.of(litColour), separately).size());
 
-        // Faces: with any face, the log's end grain is found on the face that shows it.
         Target endGrain = Target.of(stats("block/oak_log_top").mean(Scale.T1));
         BlockIndex.Match log = index.closest(endGrain, query()).stream().filter(m -> m.entry().block() == block("oak_log")).findFirst().orElseThrow();
         assertTrue(log.face() == Face.DOWN || log.face() == Face.UP || log.face() == Face.WEST || log.face() == Face.EAST);
         assertEquals(Face.UP, index.statesOf(block("oak_log")).getFirst().bestFace(endGrain, Scale.T16, Metric.OKLAB, TintContext.none()));
-        // Asked for the north face, only the bark counts.
         BlockIndex.Match north = index.closest(endGrain, query().face(Face.NORTH)).stream()
                 .filter(m -> m.entry().block() == block("oak_log")).findFirst().orElseThrow();
         assertEquals(Face.NORTH, north.face());
         assertTrue(north.distance() > log.distance());
 
-        // A texture target matches itself exactly at every scale and in every metric.
         Entry shelf = index.statesOf(block("bookshelf")).getFirst();
         Target shelves = Target.of(shelf, Face.NORTH, TintContext.none());
         assertFalse(shelves.flat());
@@ -471,14 +452,12 @@ class GameIndexTest {
         }
         assertEquals(shelf, index.closest(shelves, query()).getFirst().entry());
 
-        // Shading darkens the sides, so a colour shaded as a north face is found on one.
         Color planks = stats("block/oak_planks").mean(Scale.T1);
         BlockIndex.Match shaded = index.closest(Target.of(Shading.apply(planks, Face.NORTH)), query().shading(true).scale(Scale.T1)).getFirst();
         assertTrue(shaded.face() == Face.NORTH || shaded.face() == Face.SOUTH, shaded.face().toString());
         assertTrue(shaded.distance() < 0.01);
         assertEquals(Face.UP, index.closest(Target.of(planks), query().scale(Scale.T1)).getFirst().face(), "unshaded, the top wins among equals");
 
-        // Filters.
         Target any = Target.of(Color.ofRgb(0x808080));
         Query q = query();
         q.kinds.add(Kind.SLAB);
@@ -528,13 +507,11 @@ class GameIndexTest {
         q.tinted = Query.Tri.ONLY;
         assertTrue(index.closest(any, q).isEmpty());
 
-        // The API's seam.
         assertEquals(Optional.of(red), index.colourOf(block("red_concrete").defaultBlockState(), Face.UP, TintContext.none()));
         assertEquals(Optional.of(litColour), index.colourOf(lit, Face.NORTH, TintContext.none()));
         assertEquals(Optional.of(red), index.colourOf(block("red_concrete").defaultBlockState(), Face.ANY, TintContext.none()));
         assertEquals(Optional.empty(), index.colourOf(block("diamond_block").defaultBlockState(), Face.UP, TintContext.none()));
 
-        // And the API itself, which other mods call.
         assertEquals(Optional.of(red.rgb()), ChromaStudioApi.colourOf(block("red_concrete").defaultBlockState(), Direction.UP, null));
         assertEquals(Optional.of(red.rgb()), ChromaStudioApi.colourOf(block("red_concrete").defaultBlockState(), Direction.EAST, Biomes.PLAINS));
         assertEquals(Optional.of(stats("block/bookshelf").mean(Scale.T1).rgb()), ChromaStudioApi.colourOf(block("bookshelf").defaultBlockState(), Direction.WEST, null),
@@ -555,7 +532,6 @@ class GameIndexTest {
         }
     }
 
-    /** The API's matcher: the closest of some blocks on one face, made on the client thread and asked from any. */
     @Test
     void theApisMatcherChoosesAmongTheBlocksGivenOnTheFaceGiven() {
         BlockState logX = block("oak_log").defaultBlockState().setValue(BlockStateProperties.AXIS, Direction.Axis.X);
@@ -580,14 +556,12 @@ class GameIndexTest {
         assertEquals(ChromaStudioApi.indexVersion(), m.indexVersion());
         assertTrue(ChromaStudioApi.indexReady());
 
-        // Each state is matched as it shows itself, on the face asked for.
         int endGrain = stats("block/oak_log_top").mean(Scale.T1).rgb();
         assertEquals(logY, ChromaStudioApi.matcher(List.of(logX, logY), Direction.UP, null).closest(endGrain));
         assertEquals(logX, ChromaStudioApi.matcher(List.of(logY, logX), Direction.WEST, null).closest(endGrain));
         int bark = stats("block/oak_log").mean(Scale.T1).rgb();
         assertEquals(logX, ChromaStudioApi.matcher(List.of(logY, logX), Direction.UP, null).closest(bark));
 
-        // The same as the index's own search, on the same face and blocks.
         Query q = query().scale(Scale.T8).face(Face.UP);
         q.kinds.clear();
         java.util.Random r = new java.util.Random(3);
@@ -598,7 +572,6 @@ class GameIndexTest {
             assertEquals(own, m.closest(rgb), Integer.toHexString(rgb));
         }
 
-        // Many threads at once get the answers one thread does.
         List<Integer> colours = r.ints(5000, 0, 0x1000000).boxed().toList();
         List<BlockState> alone = colours.stream().map(m::closest).toList();
         assertEquals(alone, colours.parallelStream().map(m::closest).toList());
@@ -608,7 +581,6 @@ class GameIndexTest {
         assertNull(none.closest(redRgb));
     }
 
-    /** A chest is drawn by its block entity, so all the index has of it is the planks it breaks into. */
     @Test
     void blocksABlockEntityDrawsAreLeftOutUnlessAskedFor() {
         BlockState chest = block("chest").defaultBlockState();
@@ -621,7 +593,6 @@ class GameIndexTest {
         assertFalse(barrier.modelDraws());
         assertFalse(new Entry(block("furnace").defaultBlockState(), "minecraft:furnace", "", false, true, true, faces).blockEntityRendered(),
                 "a furnace has a block entity and a model of its own");
-        // A bell's model draws the posts and the bar it hangs from. The bell is the block entity's, so stone isn't its colour.
         FaceLayers[] posts = new FaceLayers[6];
         Arrays.fill(posts, new FaceLayers(List.of(new FaceLayers.Layer("minecraft:block/stone", sampled("block/stone"), -1, null, 1))));
         Entry bell = new Entry(block("bell").defaultBlockState(), "minecraft:bell", "", false, true, true, posts);
@@ -635,12 +606,10 @@ class GameIndexTest {
         Query q = query();
         q.blockEntityRendered = true;
         assertEquals(List.of("minecraft:chest", "minecraft:oak_planks", "minecraft:bell"), ids(index.closest(planks, q)));
-        // The eyedropper and the API still read it.
         assertEquals(drawn, index.entryOf(chest));
         assertTrue(DebugCommand.describe(drawn, TintContext.none()).getFirst().contains("drawn by a block entity"));
     }
 
-    /** The blocks a gradient chose for these stops from the ones the filters let through, by id. */
     private static List<String> gradient(BlockIndex index, MatchFilters filters, int steps, Color... stops) {
         List<Gradient.Candidate> candidates = new ArrayList<>();
         for (Entry e : filters.candidates(index, Face.UP, Scale.T16, TintContext.none())) {
@@ -651,10 +620,6 @@ class GameIndexTest {
         return Gradient.solve(ideal, candidates, Metric.OKLAB, false).steps().stream().map(c -> (String) c.key()).toList();
     }
 
-    /**
-     * The player left creative-only blocks out in the Match tab, and a gradient through dark grey still chose a
-     * spawner. The Gradient tab now takes its blocks from those same filters, every one of them.
-     */
     @Test
     void aGradientOnlyChoosesBlocksTheMatchFiltersLetThrough() {
         FaceLayers[] planks = new FaceLayers[6];
@@ -687,7 +652,6 @@ class GameIndexTest {
             assertFalse(chosen.contains("minecraft:spawner") || chosen.contains("minecraft:bedrock"), chosen + " keeps to survival blocks");
         }
 
-        // Each of the other filters narrows the blocks the same way, and a block is there at most once.
         Function<MatchFilters, List<String>> pool = f -> f.candidates(index, Face.UP, Scale.T16, TintContext.none()).stream().map(Entry::id).toList();
         List<String> open = pool.apply(new MatchFilters());
         assertEquals(10, open.size(), open + " has each drawn block once, and no technical one, chest or barrier");
@@ -719,10 +683,8 @@ class GameIndexTest {
         assertTrue(pool.apply(f).contains("minecraft:chest"), "chests come in with the filter that lists them in Match");
     }
 
-    /** What the Match tab and the eyedropper lean on: a choice of faces, a state's entry, and knowing when a build is new. */
     @Test
     void aQueryCanChooseAmongTheSidesAndAStateFindsItsEntry() {
-        // Red on top and bottom, white round the sides.
         Entry twoTone = entry(block("oak_log"), "block/red_concrete", "block/red_concrete", "block/white_concrete", "block/white_concrete",
                 "block/white_concrete", "block/white_concrete");
         Entry lantern = entry(block("lantern"), "block/stone");
@@ -748,11 +710,9 @@ class GameIndexTest {
                 "a waterlogged state answers as the dry one");
         assertNull(index.entryOf(block("diamond_block").defaultBlockState()));
 
-        // Outside a world there is nowhere to stand, so a place in it tints nothing.
         assertSame(TintContext.none(), TintContext.at(BlockPos.ZERO));
     }
 
-    /** An entry whose every face is one texture, tinted as the game tints the block. */
     private static Entry tinted(Block block, String sprite) {
         BlockState state = block.defaultBlockState();
         BlockTintSource source = BlockColors.createDefault().getTintSource(state, 0);
@@ -761,7 +721,6 @@ class GameIndexTest {
                 new FaceLayers[] {layers, layers, layers, layers, layers, layers});
     }
 
-    /** The Match target is a block as it was found: in its state, in the biome the control names, on the index's latest build. */
     @Test
     void aBlockTargetKeepsItsStateAndFollowsTheBiomeAndTheIndex() {
         try {
@@ -778,7 +737,6 @@ class GameIndexTest {
             assertNotEquals(plains, MatchState.colour(), "the swatch follows the biome control");
             assertEquals(MatchState.target().colour(), MatchState.colour(), "and is the colour that is searched for");
 
-            // The settings screen changes the biome without a word to anyone.
             MatchState.follow();
             int before = MatchState.revision();
             Color badlands = MatchState.colour();
@@ -796,7 +754,6 @@ class GameIndexTest {
             MatchState.follow();
             assertEquals(settled, MatchState.revision(), "with nothing changed there is nothing to tell");
 
-            // Redstone dust's sixteen powers share their texture, so they share an entry, but not a tint.
             Entry dust = tinted(block("redstone_wire"), "block/redstone_dust_dot");
             BlockState powered = dust.state().setValue(BlockStateProperties.POWER, 15);
             Map<BlockState, Entry> byState = new IdentityHashMap<>();
@@ -813,7 +770,6 @@ class GameIndexTest {
             assertEquals("power=15", MatchState.entryProperties());
             assertEquals("", Entry.properties(dust.state()));
 
-            // A resource pack changes stone, and the index builds again.
             Entry old = entry(block("stone"), "block/red_concrete");
             index(List.of(List.of(old)));
             MatchState.follow();
@@ -836,10 +792,6 @@ class GameIndexTest {
 
     private static List<String> ids(List<BlockIndex.Match> matches) { return matches.stream().map(m -> m.entry().id()).toList(); }
 
-    /**
-     * How long a flat target takes against an index the size of the vanilla one. Off by default, as timings depend
-     * on the machine; run it with {@code -Dchroma.timing=true}.
-     */
     @Test
     @EnabledIfSystemProperty(named = "chroma.timing", matches = "true")
     void aFlatTargetAnswersWithinAFrameOrTwo() {
@@ -847,7 +799,6 @@ class GameIndexTest {
         List<Identifier> textures = new ArrayList<>(resources.listResources("textures/block", id -> id.getPath().endsWith(".png")).keySet());
         List<Block> all = BuiltInRegistries.BLOCK.stream().filter(b -> !b.defaultBlockState().isAir()).toList();
         for (int i = 0; i < all.size(); i++) {
-            // Two states a block with six different faces is more than the vanilla index holds.
             List<Entry> states = new ArrayList<>();
             for (int s = 0; s < 2; s++) {
                 String[] sprites = new String[6];
@@ -873,7 +824,6 @@ class GameIndexTest {
                 assertTrue(ms < 100, metric + " took " + ms + " ms");
             }
         }
-        // The API's matcher, as a mod painting a shape uses it: a few hundred blocks and tens of thousands of colours.
         List<BlockState> allowed = all.subList(0, 400).stream().map(Block::defaultBlockState).toList();
         BlockMatcher matcher = ChromaStudioApi.matcher(allowed, Direction.NORTH, null);
         int[] colours = new java.util.Random(5).ints(30_000, 0, 0x1000000).toArray();

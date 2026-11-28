@@ -1,7 +1,5 @@
 name: Listing
 
-# Puts listing/description.md, the gallery and the icon on the Modrinth project page. CurseForge has no API for
-# its page, so that one is pasted by hand from listing/curseforge.html.
 on:
   workflow_dispatch:
     inputs:

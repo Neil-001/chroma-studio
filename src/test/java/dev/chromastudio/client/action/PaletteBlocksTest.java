@@ -14,7 +14,6 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/** A state and its palette entry, with the game's blocks loaded. */
 class PaletteBlocksTest {
     @BeforeAll
     static void loadBlocks() {
@@ -32,7 +31,6 @@ class PaletteBlocksTest {
     void aStateKeepsEveryPropertyThatIsNotTheDefaultAndComesBackTheSame() {
         BlockState log = Blocks.OAK_LOG.defaultBlockState().setValue(BlockStateProperties.AXIS, Direction.Axis.X);
         assertEquals(new PaletteEntry("minecraft:oak_log", "axis=x"), PaletteBlocks.of(log));
-        // A capture counts states as they stand, so two that only differ by water are two entries.
         BlockState stairs = Blocks.OAK_STAIRS.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.EAST)
                 .setValue(BlockStateProperties.WATERLOGGED, true);
         PaletteEntry entry = PaletteBlocks.of(stairs);

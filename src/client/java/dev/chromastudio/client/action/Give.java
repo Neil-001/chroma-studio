@@ -14,14 +14,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.item.ItemStack;
 
-/**
- * Gives the player an item: with the creative inventory's own packet in creative mode, and with a command, as if
- * typed, for an operator in survival. Nobody else can be given anything, and callers grey their buttons out.
- */
 public final class Give {
     private Give() {}
 
-    /** The slots of the player's inventory before the hotbar, as the inventory menu numbers them. */
     private static final int MENU_HOTBAR = 36, HOTBAR = 9;
 
     public static boolean canGive() {
@@ -29,7 +24,6 @@ public final class Give {
         return player != null && (player.hasInfiniteMaterials() || operator(player));
     }
 
-    /** Why an item can't be given now, for a greyed-out button's tooltip, or nothing when it can. */
     public static Optional<Component> whyNot() {
         if (Minecraft.getInstance().player == null) return Optional.of(Component.translatable("give.chromastudio.no_world"));
         return canGive() ? Optional.empty() : Optional.of(Component.translatable("give.chromastudio.no_permission"));
@@ -37,10 +31,6 @@ public final class Give {
 
     private static boolean operator(LocalPlayer player) { return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER); }
 
-    /**
-     * Puts a stack in a hotbar slot, 0 to 8, or with -1 in the next free slot of the inventory. Returns the reason it
-     * couldn't, or nothing when it did.
-     */
     public static Optional<Component> stack(ItemStack stack, int hotbarSlot) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
@@ -64,8 +54,7 @@ public final class Give {
         return Optional.empty();
     }
 
-    /** A stack as commands take one: its id, then any components it has of its own in brackets. */
-    private static String commandItem(ItemStack stack) {
+    static String commandItem(ItemStack stack) {
         String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         Minecraft mc = Minecraft.getInstance();
         if (stack.getComponentsPatch().isEmpty() || mc.level == null) return id;
@@ -73,7 +62,7 @@ public final class Give {
         List<String> parts = new ArrayList<>();
         var patch = stack.getComponentsPatch().split();
         for (var added : patch.added()) {
-            if (added.type().codec() == null) continue;   // only ever sent over the network, so no command can set it
+            if (added.type().codec() == null) continue;
             added.encodeValue(ops).result().ifPresent(value -> parts.add(BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(added.type()) + "=" + value));
         }
         for (var removed : patch.removed()) parts.add("!" + BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(removed));

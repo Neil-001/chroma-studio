@@ -1,4 +1,7 @@
-// Settings both loader projects share. The plugins and dependencies are in fabric/ and neoforge/.
+plugins {
+	id 'net.ltgt.errorprone' version '5.2.0' apply false
+}
+
 subprojects {
 	version = rootProject.mod_version
 	group = rootProject.maven_group
@@ -10,13 +13,26 @@ subprojects {
 
 		tasks.withType(JavaCompile).configureEach {
 			it.options.release = 25
-			// Every warning but the ones about the libraries' own class files, which nothing here can fix.
-			it.options.compilerArgs += ['-Xlint:all,-classfile']
+			it.options.compilerArgs += ['-Xlint:all,-classfile', '-Werror']
 		}
 
 		java {
 			sourceCompatibility = JavaVersion.VERSION_25
 			targetCompatibility = JavaVersion.VERSION_25
+		}
+	}
+
+	plugins.withId('net.ltgt.errorprone') {
+		dependencies {
+			errorprone "com.google.errorprone:error_prone_core:${rootProject.errorprone_version}"
+		}
+
+		tasks.withType(JavaCompile).configureEach {
+			it.options.errorprone {
+				disable('ArrayRecordComponent', 'AssignmentExpression', 'EnumOrdinal',
+						'ExposedPrivateType', 'IdentityHashMapUsage', 'OperatorPrecedence', 'ReferenceEquality',
+						'RefactorSwitch', 'RethrowReflectiveOperationExceptionAsLinkageError', 'SameNameButDifferent', 'StringSplitter')
+			}
 		}
 	}
 }

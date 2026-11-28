@@ -14,6 +14,7 @@ class TargetModelTest {
         assertEquals("#FF8800", m.hex());
         assertEquals("255,136,0", m.rgbText());
         assertEquals("32,100,50", m.hslText());
+        assertEquals("32°,100%,100%", m.hsvText());
         assertEquals(Color.ofRgb(0xFF8800).oklch(), m.lch());
         assertEquals(32, m.hsv()[0], 0.01);
     }
@@ -23,19 +24,25 @@ class TargetModelTest {
         TargetModel m = new TargetModel(Color.ofRgb(0x000000));
         assertTrue(m.typeHex("3a7d44"));
         assertEquals("58,125,68", m.rgbText());
+        assertTrue(m.typeHex("#ＦＦ８８００"));
+        assertEquals("#FF8800", m.hex());
         assertTrue(m.typeRgb("255, 136, 0"));
         assertEquals("#FF8800", m.hex());
         assertTrue(m.typeHsl("210 50% 40%"));
         assertEquals(Color.fromHsl(210, 0.5f, 0.4f), m.colour());
         assertEquals(m.colour().oklch(), m.lch(), "the sliders follow a typed colour");
+        assertTrue(m.typeHsv("120 50% 80%"));
+        assertEquals(Color.fromHsv(120, 0.5f, 0.8f), m.colour());
+        assertEquals("120°,50%,80%", m.hsvText());
     }
 
     @Test
     void textThatIsNotAColourChangesNothing() {
         TargetModel m = new TargetModel(Color.ofRgb(0x123456));
-        for (String bad : new String[] {"", "#12345", "12345g", "#1234567"}) assertFalse(m.typeHex(bad), bad);
+        for (String bad : new String[] {"", "#F80", "#12345", "12345g", "#1234567"}) assertFalse(m.typeHex(bad), bad);
         for (String bad : new String[] {"", "1,2", "1,2,3,4", "256,0,0", "-1,0,0", "a,b,c"}) assertFalse(m.typeRgb(bad), bad);
         for (String bad : new String[] {"361,50,50", "10,101,50", "10,50", "x"}) assertFalse(m.typeHsl(bad), bad);
+        for (String bad : new String[] {"361,50,50", "10,50,101", "10,50", "x"}) assertFalse(m.typeHsv(bad), bad);
         assertEquals("#123456", m.hex());
     }
 
@@ -48,7 +55,6 @@ class TargetModelTest {
         assertEquals(Color.ofOklch(inside), m.colour());
         assertEquals(m.colour().hex(), m.hex(), "the hex field follows the slider");
 
-        // More chroma than sRGB has at this lightness and hue: the colour is clipped, the handle stays put.
         Oklch outside = new Oklch(0.7, 0.39, 150);
         assertFalse(outside.inGamut());
         m.setLch(outside);

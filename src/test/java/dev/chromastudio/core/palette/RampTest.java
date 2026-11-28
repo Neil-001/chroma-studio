@@ -72,13 +72,11 @@ class RampTest {
 
     @Test
     void stopsSitAtEqualIntervals() {
-        // Seven steps over three stops: the middle stop is step 3, with two steps inside each stretch.
         List<Oklch> ramp = Ramp.of(List.of(RED, GREEN, BLUE), 7, Easing.LINEAR, HueArc.SHORTEST);
         assertColour(GREEN.l(), GREEN.c(), GREEN.h(), ramp.get(3));
         assertColour(0.6 + 0.2 / 3, 0.2 - 0.05 / 3, 30 + 110.0 / 3, ramp.get(1));
         assertColour(0.8 - 0.4 * 2 / 3, 0.15 - 0.05 * 2 / 3, 140 + 110.0 * 2 / 3, ramp.get(5));
 
-        // Four stops and ten steps: each stretch holds a third of the parameter.
         List<Oklch> four = Ramp.of(List.of(RED, GREEN, BLUE, RED), 10, Easing.LINEAR, HueArc.SHORTEST);
         assertColour(GREEN.l(), GREEN.c(), GREEN.h(), four.get(3));
         assertColour(BLUE.l(), BLUE.c(), BLUE.h(), four.get(6));
@@ -86,10 +84,8 @@ class RampTest {
 
     @Test
     void easingPacesTheWholeRampNotEachStretch() {
-        // Ease-in at the halfway step is a quarter of the way along, which is halfway through the first stretch.
         List<Oklch> ramp = Ramp.of(List.of(RED, GREEN, BLUE), 3, Easing.EASE_IN, HueArc.SHORTEST);
         assertColour(0.7, 0.175, 85, ramp.get(1));
-        // Ease-out is three quarters along: halfway through the second.
         ramp = Ramp.of(List.of(RED, GREEN, BLUE), 3, Easing.EASE_OUT, HueArc.SHORTEST);
         assertColour(0.6, 0.125, 195, ramp.get(1));
     }
@@ -110,7 +106,6 @@ class RampTest {
         double[] hues = {350, 270, 190, 110, 30};
         for (int i = 0; i < 5; i++) assertEquals(hues[i], ramp.get(i).h(), 1e-9);
 
-        // Stops that the shortest arc joins without the seam cross it the long way.
         ramp = Ramp.of(List.of(new Oklch(0.5, 0.1, 60), new Oklch(0.5, 0.1, 100)), 5, Easing.LINEAR, HueArc.LONGEST);
         hues = new double[] {60, 340, 260, 180, 100};
         for (int i = 0; i < 5; i++) assertEquals(hues[i], ramp.get(i).h(), 1e-9);
@@ -129,11 +124,9 @@ class RampTest {
             assertEquals(grey, ramp.getLast());
             for (int i = 0; i < 4; i++) assertEquals(30, ramp.get(i).h(), 1e-9, arc + " step " + i);
 
-            // Between two greys nothing turns either.
             ramp = Ramp.of(List.of(grey, new Oklch(0.2, 0, 0)), 4, Easing.LINEAR, arc);
             for (int i = 0; i < 3; i++) assertEquals(200, ramp.get(i).h(), 1e-9, arc + " step " + i);
         }
-        // A stop just over the limit is a colour, and turns.
         List<Oklch> ramp = Ramp.of(List.of(new Oklch(0.9, 0.01, 200), RED), 3, Easing.LINEAR, HueArc.SHORTEST);
         assertEquals(115, ramp.get(1).h(), 1e-9);
     }
